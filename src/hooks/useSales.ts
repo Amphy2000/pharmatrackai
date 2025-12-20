@@ -2,6 +2,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { CartItem } from '@/types/medication';
 import { useToast } from '@/hooks/use-toast';
+import { usePharmacy } from '@/hooks/usePharmacy';
 
 interface CompleteSaleParams {
   items: CartItem[];
@@ -11,9 +12,14 @@ interface CompleteSaleParams {
 export const useSales = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { pharmacyId } = usePharmacy();
 
   const completeSale = useMutation({
     mutationFn: async ({ items, customerName }: CompleteSaleParams) => {
+      if (!pharmacyId) {
+        throw new Error('No pharmacy associated with your account. Please complete onboarding first.');
+      }
+
       // Process each item in the cart
       const salePromises = items.map(async (item) => {
         const price = item.medication.selling_price || item.medication.unit_price;
@@ -26,8 +32,8 @@ export const useSales = () => {
           unit_price: price,
           total_price: totalPrice,
           customer_name: customerName || null,
-          pharmacy_id: item.medication.pharmacy_id || null,
-        } as any);
+          pharmacy_id: pharmacyId,
+        });
 
         if (saleError) throw saleError;
 

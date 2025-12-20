@@ -11,6 +11,7 @@ import {
 import { useMedications } from '@/hooks/useMedications';
 import { useCart } from '@/hooks/useCart';
 import { useSales } from '@/hooks/useSales';
+import { useCurrency } from '@/contexts/CurrencyContext';
 import { ProductGrid } from '@/components/pos/ProductGrid';
 import { CartPanel } from '@/components/pos/CartPanel';
 import { Button } from '@/components/ui/button';
@@ -30,6 +31,7 @@ const Checkout = () => {
   const { medications, isLoading } = useMedications();
   const { completeSale } = useSales();
   const cart = useCart();
+  const { formatPrice, currency } = useCurrency();
   
   const [customerName, setCustomerName] = useState('');
   const [checkoutOpen, setCheckoutOpen] = useState(false);
@@ -58,6 +60,7 @@ const Checkout = () => {
         customerName: customerName || undefined,
         receiptNumber,
         date: new Date(),
+        currency,
       });
 
       // Open print dialog
@@ -94,6 +97,7 @@ const Checkout = () => {
       customerName: customerName || undefined,
       receiptNumber: lastReceiptNumber,
       date: new Date(),
+      currency,
     });
 
     receipt.autoPrint();
@@ -206,7 +210,7 @@ const Checkout = () => {
                   </div>
                   <div className="flex justify-between font-bold text-lg">
                     <span>Total</span>
-                    <span className="text-primary">₦{cart.getTotal().toLocaleString()}</span>
+                    <span className="text-primary">{formatPrice(cart.getTotal())}</span>
                   </div>
                 </div>
 

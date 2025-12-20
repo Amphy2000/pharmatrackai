@@ -2,6 +2,8 @@ import jsPDF from 'jspdf';
 import { CartItem } from '@/types/medication';
 import { format } from 'date-fns';
 
+type CurrencyCode = 'USD' | 'NGN';
+
 interface ReceiptData {
   items: CartItem[];
   total: number;
@@ -9,7 +11,15 @@ interface ReceiptData {
   pharmacyName?: string;
   receiptNumber: string;
   date: Date;
+  currency?: CurrencyCode;
 }
+
+const formatCurrency = (amount: number, currency: CurrencyCode = 'NGN'): string => {
+  if (currency === 'NGN') {
+    return `₦${amount.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  }
+  return `$${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+};
 
 export const generateReceipt = ({
   items,
@@ -18,6 +28,7 @@ export const generateReceipt = ({
   pharmacyName = 'PharmaTrack Pharmacy',
   receiptNumber,
   date,
+  currency = 'NGN',
 }: ReceiptData): jsPDF => {
   // Create PDF optimized for thermal printers (80mm width = ~226.77 points at 72 DPI)
   const doc = new jsPDF({
@@ -104,13 +115,13 @@ export const generateReceipt = ({
 
     doc.text(itemName, margin, y);
     doc.text(`x${item.quantity}`, 45, y);
-    rightText(`₦${itemTotal.toLocaleString()}`, y);
+    rightText(formatCurrency(itemTotal, currency), y);
     y += 5;
 
     // Unit price on second line
     doc.setFontSize(7);
     doc.setTextColor(120);
-    doc.text(`@ ₦${price.toLocaleString()}`, margin, y);
+    doc.text(`@ ${formatCurrency(price, currency)}`, margin, y);
     doc.setTextColor(0);
     y += 5;
   });
@@ -123,7 +134,7 @@ export const generateReceipt = ({
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(10);
   doc.text('TOTAL:', margin, y);
-  rightText(`₦${total.toLocaleString()}`, y);
+  rightText(formatCurrency(total, currency), y);
   y += 8;
 
   // Footer
