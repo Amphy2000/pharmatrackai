@@ -1,1 +1,7 @@
 project_id = "dbabttvhillcaenxzbnh"
+
+[functions.generate-insights]
+verify_jwt = false
+
+[functions.ai-search]
+verify_jwt = false

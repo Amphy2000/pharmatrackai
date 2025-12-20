@@ -14,7 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      medications: {
+        Row: {
+          batch_number: string
+          category: string
+          created_at: string
+          current_stock: number
+          expiry_date: string
+          id: string
+          name: string
+          reorder_level: number
+          unit_price: number
+          updated_at: string
+        }
+        Insert: {
+          batch_number: string
+          category: string
+          created_at?: string
+          current_stock?: number
+          expiry_date: string
+          id?: string
+          name: string
+          reorder_level?: number
+          unit_price: number
+          updated_at?: string
+        }
+        Update: {
+          batch_number?: string
+          category?: string
+          created_at?: string
+          current_stock?: number
+          expiry_date?: string
+          id?: string
+          name?: string
+          reorder_level?: number
+          unit_price?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
