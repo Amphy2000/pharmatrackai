@@ -4,12 +4,14 @@ import { TrendingUp, PieChart as PieChartIcon, BarChart3, Calendar } from 'lucid
 import { Medication } from '@/types/medication';
 import { cn } from '@/lib/utils';
 import { addDays, format, parseISO, differenceInDays, startOfMonth, endOfMonth, eachDayOfInterval } from 'date-fns';
+import { useCurrency } from '@/contexts/CurrencyContext';
 
 interface InventoryChartsProps {
   medications: Medication[];
 }
 
 export const InventoryCharts = ({ medications }: InventoryChartsProps) => {
+  const { formatPrice } = useCurrency();
   const chartColors = {
     primary: 'hsl(186 100% 50%)',
     secondary: 'hsl(265 90% 65%)',
@@ -242,7 +244,7 @@ export const InventoryCharts = ({ medications }: InventoryChartsProps) => {
         <div className="h-64 flex items-center justify-between">
           <div className="flex-1 space-y-4">
             <div className="text-center">
-              <p className="text-4xl font-bold font-display text-gradient">${totalValue.toLocaleString()}</p>
+              <p className="text-4xl font-bold font-display text-gradient">{formatPrice(totalValue)}</p>
               <p className="text-sm text-muted-foreground mt-1">Total Inventory Value</p>
             </div>
             <div className="space-y-3">
@@ -253,7 +255,7 @@ export const InventoryCharts = ({ medications }: InventoryChartsProps) => {
                       <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
                       <span className="text-muted-foreground">{item.name}</span>
                     </div>
-                    <span className="font-semibold" style={{ color: item.color }}>${item.value.toLocaleString()}</span>
+                    <span className="font-semibold" style={{ color: item.color }}>{formatPrice(item.value)}</span>
                   </div>
                   <div className="h-2 bg-muted rounded-full overflow-hidden">
                     <div 
