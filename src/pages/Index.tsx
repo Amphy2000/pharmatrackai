@@ -1,10 +1,12 @@
 import { useState } from 'react';
-import { Package, AlertTriangle, XCircle, Clock, Plus, RefreshCw } from 'lucide-react';
+import { Package, AlertTriangle, XCircle, Clock, Plus, TrendingUp, Shield, Zap } from 'lucide-react';
 import { useMedications } from '@/hooks/useMedications';
 import { Medication } from '@/types/medication';
 import { Header } from '@/components/Header';
 import { MetricCard } from '@/components/dashboard/MetricCard';
 import { AIInsightsPanel } from '@/components/dashboard/AIInsightsPanel';
+import { InventoryCharts } from '@/components/dashboard/InventoryCharts';
+import { FinancialSummary } from '@/components/dashboard/FinancialSummary';
 import { MedicationsTable } from '@/components/inventory/MedicationsTable';
 import { AddMedicationModal } from '@/components/inventory/AddMedicationModal';
 import { AISearchBar } from '@/components/inventory/AISearchBar';
@@ -35,44 +37,70 @@ const Index = () => {
     <div className="min-h-screen bg-background">
       <Header />
 
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-6 py-8">
+        {/* Hero Section */}
+        <section className="mb-10 animate-fade-in">
+          <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4 mb-8">
+            <div>
+              <h1 className="text-4xl font-bold font-display tracking-tight mb-2">
+                Dashboard <span className="text-gradient">Overview</span>
+              </h1>
+              <p className="text-muted-foreground max-w-xl">
+                Real-time inventory analytics and AI-powered insights to prevent losses and optimize stock levels.
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-muted/50 border border-border/50">
+                <Shield className="h-4 w-4 text-success" />
+                <span className="text-sm">Enterprise Protected</span>
+              </div>
+              <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary/10 border border-primary/20">
+                <Zap className="h-4 w-4 text-primary" />
+                <span className="text-sm text-primary font-medium">AI Active</span>
+              </div>
+            </div>
+          </div>
+        </section>
+
         {/* Dashboard Metrics */}
-        <section className="mb-8">
-          <h2 className="mb-6 text-2xl font-bold font-display text-foreground">Dashboard Overview</h2>
-          
+        <section className="mb-10">
           {isLoading ? (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
               {[...Array(4)].map((_, i) => (
-                <Skeleton key={i} className="h-32 rounded-xl" />
+                <Skeleton key={i} className="h-40 rounded-2xl bg-muted/50" />
               ))}
             </div>
           ) : (
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
               <MetricCard
                 title="Total SKUs"
                 value={metrics.totalSKUs}
-                icon={<Package className="h-6 w-6" />}
+                icon={<Package className="h-7 w-7" />}
                 variant="primary"
                 subtitle="Active medications"
+                trend={12}
+                trendLabel="vs last month"
               />
               <MetricCard
-                title="Low Stock Items"
+                title="Low Stock"
                 value={metrics.lowStockItems}
-                icon={<AlertTriangle className="h-6 w-6" />}
+                icon={<AlertTriangle className="h-7 w-7" />}
                 variant="warning"
                 subtitle="Below reorder level"
+                trend={-8}
+                trendLabel="improved"
               />
               <MetricCard
-                title="Expired Products"
+                title="Expired"
                 value={metrics.expiredItems}
-                icon={<XCircle className="h-6 w-6" />}
+                icon={<XCircle className="h-7 w-7" />}
                 variant="danger"
                 subtitle="Require disposal"
               />
               <MetricCard
                 title="Expiring Soon"
                 value={metrics.expiringWithin30Days}
-                icon={<Clock className="h-6 w-6" />}
+                icon={<Clock className="h-7 w-7" />}
                 variant="success"
                 subtitle="Within 30 days"
               />
@@ -80,44 +108,64 @@ const Index = () => {
           )}
         </section>
 
-        {/* AI Insights */}
-        <section className="mb-8">
-          <AIInsightsPanel medications={medications} />
-        </section>
+        {/* Financial Summary */}
+        {!isLoading && medications.length > 0 && (
+          <section className="mb-10 animate-slide-up" style={{ animationDelay: '100ms' }}>
+            <FinancialSummary medications={medications} />
+          </section>
+        )}
 
-        {/* Inventory Management */}
-        <section>
-          <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <h2 className="text-2xl font-bold font-display text-foreground">Inventory Management</h2>
-            <Button
-              onClick={() => setIsModalOpen(true)}
-              className="gap-2 bg-gradient-primary hover:opacity-90"
-            >
-              <Plus className="h-4 w-4" />
-              Add Medication
-            </Button>
+        {/* Charts Section */}
+        {!isLoading && medications.length > 0 && (
+          <section className="mb-10 animate-slide-up" style={{ animationDelay: '200ms' }}>
+            <InventoryCharts medications={medications} />
+          </section>
+        )}
+
+        {/* AI Insights & Inventory */}
+        <section className="grid gap-8 lg:grid-cols-3 mb-10">
+          <div className="lg:col-span-1 animate-slide-up" style={{ animationDelay: '300ms' }}>
+            <AIInsightsPanel medications={medications} />
           </div>
+          
+          <div className="lg:col-span-2 animate-slide-up" style={{ animationDelay: '400ms' }}>
+            <div className="glass-card rounded-2xl p-6">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+                <div>
+                  <h2 className="text-2xl font-bold font-display">Inventory Management</h2>
+                  <p className="text-sm text-muted-foreground">Track, manage, and optimize your stock</p>
+                </div>
+                <Button
+                  onClick={() => setIsModalOpen(true)}
+                  className="gap-2 bg-gradient-primary hover:opacity-90 shadow-glow-primary btn-glow h-11 px-6"
+                >
+                  <Plus className="h-5 w-5" />
+                  Add Medication
+                </Button>
+              </div>
 
-          <div className="mb-6">
-            <AISearchBar
-              onSearch={setSearchQuery}
-              placeholder="Try 'Which drugs expire next month?' or search by name..."
-            />
-          </div>
+              <div className="mb-6">
+                <AISearchBar
+                  onSearch={setSearchQuery}
+                  placeholder="Search by name, category, or try 'Which drugs expire next month?'"
+                />
+              </div>
 
-          {isLoading ? (
-            <div className="space-y-4">
-              {[...Array(5)].map((_, i) => (
-                <Skeleton key={i} className="h-16 rounded-lg" />
-              ))}
+              {isLoading ? (
+                <div className="space-y-4">
+                  {[...Array(5)].map((_, i) => (
+                    <Skeleton key={i} className="h-16 rounded-xl bg-muted/50" />
+                  ))}
+                </div>
+              ) : (
+                <MedicationsTable
+                  medications={medications}
+                  searchQuery={searchQuery}
+                  onEdit={handleEdit}
+                />
+              )}
             </div>
-          ) : (
-            <MedicationsTable
-              medications={medications}
-              searchQuery={searchQuery}
-              onEdit={handleEdit}
-            />
-          )}
+          </div>
         </section>
       </main>
 
