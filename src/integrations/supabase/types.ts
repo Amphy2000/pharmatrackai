@@ -410,6 +410,14 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_pharmacy_owner: {
+        Args: { check_pharmacy_id: string; check_user_id: string }
+        Returns: boolean
+      }
+      is_pharmacy_staff: {
+        Args: { check_pharmacy_id: string; check_user_id: string }
+        Returns: boolean
+      }
     }
     Enums: {
       pharmacy_role: "owner" | "manager" | "staff"
