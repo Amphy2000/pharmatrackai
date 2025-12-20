@@ -10,6 +10,9 @@ export interface Medication {
   selling_price?: number;
   barcode_id?: string;
   pharmacy_id?: string;
+  supplier?: string;
+  location?: string;
+  min_stock_alert?: number;
   created_at: string;
   updated_at: string;
 }

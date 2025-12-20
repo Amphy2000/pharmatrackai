@@ -4,7 +4,6 @@ import {
   Activity, 
   Bell, 
   Search, 
-  Settings, 
   ChevronDown,
   User,
   LogOut,
@@ -28,6 +27,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import { CurrencySettings } from '@/components/settings/CurrencySettings';
 
 export const Header = () => {
   const [notifications] = useState([
@@ -120,10 +120,8 @@ export const Header = () => {
               </PopoverContent>
             </Popover>
 
-            {/* Settings */}
-            <Button variant="ghost" size="icon" className="h-11 w-11 rounded-xl hover:bg-muted/50">
-              <Settings className="h-5 w-5 text-muted-foreground" />
-            </Button>
+            {/* Currency Settings */}
+            <CurrencySettings />
 
             {/* User Menu */}
             <DropdownMenu>

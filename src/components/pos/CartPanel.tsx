@@ -3,6 +3,7 @@ import { CartItem } from '@/types/medication';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
+import { useCurrency } from '@/contexts/CurrencyContext';
 
 interface CartPanelProps {
   items: CartItem[];
@@ -19,6 +20,7 @@ export const CartPanel = ({
   onRemove,
   total,
 }: CartPanelProps) => {
+  const { formatPrice } = useCurrency();
   if (items.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center h-[400px] text-muted-foreground">
@@ -46,7 +48,7 @@ export const CartPanel = ({
                   <div className="flex-1 min-w-0 pr-2">
                     <h4 className="font-medium truncate">{item.medication.name}</h4>
                     <p className="text-sm text-muted-foreground">
-                      ₦{price.toLocaleString()} each
+                      {formatPrice(price)} each
                     </p>
                   </div>
                   <Button
@@ -84,7 +86,7 @@ export const CartPanel = ({
                     </Button>
                   </div>
                   <p className="font-semibold text-primary tabular-nums">
-                    ₦{itemTotal.toLocaleString()}
+                    {formatPrice(itemTotal)}
                   </p>
                 </div>
 
@@ -102,11 +104,11 @@ export const CartPanel = ({
       <div className="space-y-3">
         <div className="flex justify-between items-center text-sm text-muted-foreground">
           <span>Subtotal</span>
-          <span className="tabular-nums">₦{total.toLocaleString()}</span>
+          <span className="tabular-nums">{formatPrice(total)}</span>
         </div>
         <div className="flex justify-between items-center text-lg font-bold">
           <span>Total</span>
-          <span className="text-primary tabular-nums">₦{total.toLocaleString()}</span>
+          <span className="text-primary tabular-nums">{formatPrice(total)}</span>
         </div>
       </div>
     </div>

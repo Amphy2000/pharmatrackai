@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { BarcodeScanner } from './BarcodeScanner';
+import { useCurrency } from '@/contexts/CurrencyContext';
 import { isBefore, parseISO } from 'date-fns';
 
 interface ProductGridProps {
@@ -17,6 +18,7 @@ interface ProductGridProps {
 export const ProductGrid = ({ medications, onAddToCart, isLoading }: ProductGridProps) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [scannerOpen, setScannerOpen] = useState(false);
+  const { formatPrice } = useCurrency();
 
   const filteredMedications = useMemo(() => {
     const query = searchQuery.toLowerCase().trim();
@@ -132,7 +134,7 @@ export const ProductGrid = ({ medications, onAddToCart, isLoading }: ProductGrid
                   <div className="flex items-end justify-between mt-3">
                     <div>
                       <p className="text-lg font-bold text-primary tabular-nums">
-                        ₦{price.toLocaleString()}
+                        {formatPrice(price)}
                       </p>
                       <p className={`text-xs ${outOfStock ? 'text-destructive' : lowStock ? 'text-warning' : 'text-muted-foreground'}`}>
                         {outOfStock ? 'Out of stock' : `${medication.current_stock} in stock`}

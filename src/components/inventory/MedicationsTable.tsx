@@ -3,6 +3,7 @@ import { format, parseISO } from 'date-fns';
 import { Edit2, Trash2, MoreHorizontal, Package } from 'lucide-react';
 import { Medication } from '@/types/medication';
 import { useMedications } from '@/hooks/useMedications';
+import { useCurrency } from '@/contexts/CurrencyContext';
 import { cn } from '@/lib/utils';
 import {
   Table,
@@ -39,15 +40,33 @@ interface MedicationsTableProps {
 
 export const MedicationsTable = ({ medications, searchQuery, onEdit }: MedicationsTableProps) => {
   const { deleteMedication, isExpired, isLowStock, isExpiringSoon } = useMedications();
+  const { formatPrice } = useCurrency();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [medicationToDelete, setMedicationToDelete] = useState<Medication | null>(null);
 
   const filteredMedications = medications.filter((med) => {
-    const query = searchQuery.toLowerCase();
+    const query = searchQuery.toLowerCase().trim();
+    
+    // Handle special keywords for status-based filtering
+    if (query === 'expired') {
+      return isExpired(med.expiry_date);
+    }
+    if (query === 'expiring' || query === 'expiring soon') {
+      return isExpiringSoon(med.expiry_date);
+    }
+    if (query === 'low stock' || query === 'low' || query === 'reorder') {
+      return isLowStock(med.current_stock, med.reorder_level);
+    }
+    if (query === 'in stock' || query === 'available') {
+      return !isExpired(med.expiry_date) && !isLowStock(med.current_stock, med.reorder_level);
+    }
+    
+    // Regular text search
     return (
       med.name.toLowerCase().includes(query) ||
       med.category.toLowerCase().includes(query) ||
-      med.batch_number.toLowerCase().includes(query)
+      med.batch_number.toLowerCase().includes(query) ||
+      (med.supplier && med.supplier.toLowerCase().includes(query))
     );
   });
 
@@ -131,7 +150,7 @@ export const MedicationsTable = ({ medications, searchQuery, onEdit }: Medicatio
                 </TableCell>
                 <TableCell>{format(parseISO(medication.expiry_date), 'MMM dd, yyyy')}</TableCell>
                 <TableCell className="text-right tabular-nums">
-                  ${Number(medication.unit_price).toFixed(2)}
+                  {formatPrice(Number(medication.unit_price))}
                 </TableCell>
                 <TableCell>{getStatusBadge(medication)}</TableCell>
                 <TableCell>
