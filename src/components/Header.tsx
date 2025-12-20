@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Link, useLocation } from 'react-router-dom';
 import { 
   Pill, 
   Activity, 
@@ -9,7 +10,10 @@ import {
   LogOut,
   HelpCircle,
   Shield,
-  Sparkles
+  Sparkles,
+  LayoutDashboard,
+  ShoppingCart,
+  History
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -30,11 +34,18 @@ import {
 import { CurrencySettings } from '@/components/settings/CurrencySettings';
 
 export const Header = () => {
+  const location = useLocation();
   const [notifications] = useState([
     { id: 1, title: '5 medications expiring soon', time: '2 hours ago', type: 'warning' },
     { id: 2, title: 'Low stock alert: Amoxicillin', time: '4 hours ago', type: 'danger' },
     { id: 3, title: 'AI analysis complete', time: '1 day ago', type: 'info' },
   ]);
+
+  const navLinks = [
+    { href: '/', label: 'Dashboard', icon: LayoutDashboard },
+    { href: '/checkout', label: 'POS', icon: ShoppingCart },
+    { href: '/sales-history', label: 'Sales History', icon: History },
+  ];
 
   return (
     <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
@@ -63,19 +74,26 @@ export const Header = () => {
             </div>
           </div>
 
-          {/* Search Bar */}
-          <div className="hidden lg:flex flex-1 max-w-xl">
-            <div className="relative w-full">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input 
-                placeholder="Search medications, batches, or use AI search..." 
-                className="pl-11 pr-4 h-11 bg-muted/50 border-border/50 rounded-xl focus:bg-background focus:border-primary/50 transition-all"
-              />
-              <kbd className="absolute right-3 top-1/2 -translate-y-1/2 hidden sm:inline-flex h-6 items-center gap-1 rounded-md border border-border/50 bg-muted px-2 text-xs text-muted-foreground">
-                ⌘K
-              </kbd>
-            </div>
-          </div>
+          {/* Navigation Links */}
+          <nav className="hidden md:flex items-center gap-1">
+            {navLinks.map((link) => {
+              const isActive = location.pathname === link.href;
+              return (
+                <Link
+                  key={link.href}
+                  to={link.href}
+                  className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+                    isActive 
+                      ? 'bg-primary/10 text-primary border border-primary/20' 
+                      : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                  }`}
+                >
+                  <link.icon className="h-4 w-4" />
+                  {link.label}
+                </Link>
+              );
+            })}
+          </nav>
 
           {/* Right Section */}
           <div className="flex items-center gap-3">

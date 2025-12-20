@@ -3,12 +3,14 @@ import { Medication } from '@/types/medication';
 import { useMemo } from 'react';
 import { differenceInDays, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
+import { useCurrency } from '@/contexts/CurrencyContext';
 
 interface FinancialSummaryProps {
   medications: Medication[];
 }
 
 export const FinancialSummary = ({ medications }: FinancialSummaryProps) => {
+  const { formatPrice } = useCurrency();
   const financialMetrics = useMemo(() => {
     const today = new Date();
     
@@ -100,7 +102,7 @@ export const FinancialSummary = ({ medications }: FinancialSummaryProps) => {
               <span className="text-xs text-muted-foreground">{metric.label}</span>
             </div>
             <p className={cn('text-2xl font-bold font-display', metric.color)}>
-              {metric.negative && metric.value > 0 && '-'}${metric.value.toLocaleString()}
+              {metric.negative && metric.value > 0 && '-'}{formatPrice(metric.value)}
             </p>
           </div>
         ))}
@@ -112,7 +114,7 @@ export const FinancialSummary = ({ medications }: FinancialSummaryProps) => {
             <div>
               <p className="text-sm text-muted-foreground">Potential Annual Savings with PharmaTrack AI</p>
               <p className="text-3xl font-bold font-display text-gradient mt-1">
-                ${(financialMetrics.potentialSavings * 12).toLocaleString()}
+                {formatPrice(financialMetrics.potentialSavings * 12)}
               </p>
             </div>
             <div className="h-16 w-16 rounded-full bg-gradient-primary flex items-center justify-center shadow-glow-primary">
