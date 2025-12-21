@@ -1,20 +1,46 @@
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
 
-export type CurrencyCode = 'USD' | 'NGN';
+export type CurrencyCode = 'USD' | 'NGN' | 'GBP';
+
+interface ExchangeRates {
+  NGN: number; // 1 USD = X NGN
+  GBP: number; // 1 USD = X GBP
+}
 
 interface CurrencySettings {
   currency: CurrencyCode;
-  exchangeRate: number; // 1 USD = X NGN
+  exchangeRates: ExchangeRates;
   setCurrency: (currency: CurrencyCode) => void;
-  setExchangeRate: (rate: number) => void;
+  setExchangeRate: (currency: 'NGN' | 'GBP', rate: number) => void;
   formatPrice: (amount: number, originalCurrency?: CurrencyCode) => string;
   convertPrice: (amount: number, fromCurrency?: CurrencyCode) => number;
+  currencySymbol: string;
+  // Legacy support
+  exchangeRate: number;
+  setExchangeRateLegacy: (rate: number) => void;
 }
 
 const CurrencyContext = createContext<CurrencySettings | undefined>(undefined);
 
 const CURRENCY_STORAGE_KEY = 'pharmatrack_currency';
-const EXCHANGE_RATE_STORAGE_KEY = 'pharmatrack_exchange_rate';
+const EXCHANGE_RATES_STORAGE_KEY = 'pharmatrack_exchange_rates';
+
+const DEFAULT_EXCHANGE_RATES: ExchangeRates = {
+  NGN: 1600,
+  GBP: 0.79,
+};
+
+const CURRENCY_SYMBOLS: Record<CurrencyCode, string> = {
+  USD: '$',
+  NGN: '₦',
+  GBP: '£',
+};
+
+const CURRENCY_LOCALES: Record<CurrencyCode, string> = {
+  USD: 'en-US',
+  NGN: 'en-NG',
+  GBP: 'en-GB',
+};
 
 export const useCurrency = () => {
   const context = useContext(CurrencyContext);
@@ -34,9 +60,9 @@ export const CurrencyProvider = ({ children }: CurrencyProviderProps) => {
     return (saved as CurrencyCode) || 'NGN';
   });
 
-  const [exchangeRate, setExchangeRateState] = useState<number>(() => {
-    const saved = localStorage.getItem(EXCHANGE_RATE_STORAGE_KEY);
-    return saved ? parseFloat(saved) : 1600;
+  const [exchangeRates, setExchangeRatesState] = useState<ExchangeRates>(() => {
+    const saved = localStorage.getItem(EXCHANGE_RATES_STORAGE_KEY);
+    return saved ? JSON.parse(saved) : DEFAULT_EXCHANGE_RATES;
   });
 
   useEffect(() => {
@@ -44,46 +70,67 @@ export const CurrencyProvider = ({ children }: CurrencyProviderProps) => {
   }, [currency]);
 
   useEffect(() => {
-    localStorage.setItem(EXCHANGE_RATE_STORAGE_KEY, exchangeRate.toString());
-  }, [exchangeRate]);
+    localStorage.setItem(EXCHANGE_RATES_STORAGE_KEY, JSON.stringify(exchangeRates));
+  }, [exchangeRates]);
 
   const setCurrency = (newCurrency: CurrencyCode) => {
     setCurrencyState(newCurrency);
   };
 
-  const setExchangeRate = (rate: number) => {
-    setExchangeRateState(rate);
+  const setExchangeRate = (curr: 'NGN' | 'GBP', rate: number) => {
+    setExchangeRatesState(prev => ({ ...prev, [curr]: rate }));
+  };
+
+  // Legacy support for existing code
+  const setExchangeRateLegacy = (rate: number) => {
+    setExchangeRatesState(prev => ({ ...prev, NGN: rate }));
+  };
+
+  const convertToUSD = (amount: number, fromCurrency: CurrencyCode): number => {
+    if (fromCurrency === 'USD') return amount;
+    if (fromCurrency === 'NGN') return amount / exchangeRates.NGN;
+    if (fromCurrency === 'GBP') return amount / exchangeRates.GBP;
+    return amount;
+  };
+
+  const convertFromUSD = (amount: number, toCurrency: CurrencyCode): number => {
+    if (toCurrency === 'USD') return amount;
+    if (toCurrency === 'NGN') return amount * exchangeRates.NGN;
+    if (toCurrency === 'GBP') return amount * exchangeRates.GBP;
+    return amount;
   };
 
   const convertPrice = (amount: number, fromCurrency: CurrencyCode = 'USD'): number => {
     if (fromCurrency === currency) return amount;
-    
-    if (fromCurrency === 'USD' && currency === 'NGN') {
-      return amount * exchangeRate;
-    }
-    if (fromCurrency === 'NGN' && currency === 'USD') {
-      return amount / exchangeRate;
-    }
-    return amount;
+    const usdAmount = convertToUSD(amount, fromCurrency);
+    return convertFromUSD(usdAmount, currency);
   };
 
   const formatPrice = (amount: number, originalCurrency: CurrencyCode = 'USD'): string => {
     const convertedAmount = convertPrice(amount, originalCurrency);
+    const symbol = CURRENCY_SYMBOLS[currency];
+    const locale = CURRENCY_LOCALES[currency];
     
-    if (currency === 'NGN') {
-      return `₦${convertedAmount.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-    }
-    return `$${convertedAmount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    return `${symbol}${convertedAmount.toLocaleString(locale, { 
+      minimumFractionDigits: 2, 
+      maximumFractionDigits: 2 
+    })}`;
   };
+
+  const currencySymbol = CURRENCY_SYMBOLS[currency];
 
   return (
     <CurrencyContext.Provider value={{ 
       currency, 
-      exchangeRate, 
+      exchangeRates,
       setCurrency, 
       setExchangeRate, 
       formatPrice,
-      convertPrice 
+      convertPrice,
+      currencySymbol,
+      // Legacy support
+      exchangeRate: exchangeRates.NGN,
+      setExchangeRateLegacy,
     }}>
       {children}
     </CurrencyContext.Provider>

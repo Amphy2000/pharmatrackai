@@ -8,12 +8,15 @@ import {
   Trash2,
   Check,
   Pause,
-  Clock
+  Clock,
+  Zap,
+  Building2
 } from 'lucide-react';
 import { useMedications } from '@/hooks/useMedications';
 import { useCart } from '@/hooks/useCart';
 import { useSales } from '@/hooks/useSales';
 import { useCurrency } from '@/contexts/CurrencyContext';
+import { useRegionalSettings } from '@/contexts/RegionalSettingsContext';
 import { useHeldTransactions } from '@/hooks/useHeldTransactions';
 import { ProductGrid } from '@/components/pos/ProductGrid';
 import { CartPanel } from '@/components/pos/CartPanel';
@@ -37,6 +40,7 @@ const Checkout = () => {
   const { completeSale } = useSales();
   const cart = useCart();
   const { formatPrice, currency } = useCurrency();
+  const { isSimpleMode, regulatory } = useRegionalSettings();
   const { toast } = useToast();
   const {
     heldTransactions,
@@ -165,8 +169,21 @@ const Checkout = () => {
                 <h1 className="text-base sm:text-xl font-bold font-display flex items-center gap-2">
                   <ShoppingCart className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
                   Point of Sale
+                  {isSimpleMode ? (
+                    <Badge variant="secondary" className="text-[10px] gap-1">
+                      <Zap className="h-3 w-3" />
+                      Simple
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="text-[10px] gap-1">
+                      <Building2 className="h-3 w-3" />
+                      Enterprise
+                    </Badge>
+                  )}
                 </h1>
-                <p className="text-[10px] sm:text-xs text-muted-foreground hidden xs:block">Fast checkout with barcode scanning</p>
+                <p className="text-[10px] sm:text-xs text-muted-foreground hidden xs:block">
+                  {isSimpleMode ? 'Fast checkout mode' : `Full ${regulatory.abbreviation} compliance tracking`}
+                </p>
               </div>
             </div>
 
@@ -301,7 +318,7 @@ const Checkout = () => {
 
                 <div>
                   <label className="text-sm font-medium mb-2 block">
-                    Customer Name (Optional)
+                    Customer Name {isSimpleMode ? '(Optional)' : '(Required for prescriptions)'}
                   </label>
                   <Input
                     placeholder="Enter customer name"
@@ -310,6 +327,16 @@ const Checkout = () => {
                     className="rounded-xl"
                   />
                 </div>
+
+                {/* Enterprise mode additional fields */}
+                {!isSimpleMode && (
+                  <div className="p-3 rounded-xl bg-muted/30 border border-border/50">
+                    <p className="text-xs text-muted-foreground flex items-center gap-2">
+                      <Building2 className="h-3.5 w-3.5" />
+                      {regulatory.abbreviation} batch tracking enabled for this sale
+                    </p>
+                  </div>
+                )}
               </div>
 
               <DialogFooter className="gap-2">

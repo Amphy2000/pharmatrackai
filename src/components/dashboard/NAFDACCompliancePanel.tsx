@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react';
-import { format, differenceInDays, parseISO, addDays } from 'date-fns';
-import { Shield, AlertTriangle, FileText, Download, ChevronDown, ChevronUp } from 'lucide-react';
+import { format, differenceInDays, parseISO } from 'date-fns';
+import { Shield, AlertTriangle, FileText, ChevronDown, ChevronUp } from 'lucide-react';
 import { Medication } from '@/types/medication';
+import { useRegionalSettings } from '@/contexts/RegionalSettingsContext';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -17,20 +18,21 @@ interface NAFDACCompliancePanelProps {
 
 interface ComplianceIssue {
   medication: Medication;
-  issue: 'expired' | 'expiring_soon' | 'near_nafdac_limit';
+  issue: 'expired' | 'expiring_soon' | 'near_limit';
   daysUntilExpiry: number;
   severity: 'critical' | 'warning' | 'info';
 }
 
 export const NAFDACCompliancePanel = ({ medications }: NAFDACCompliancePanelProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const { regulatory, country, flagEmoji } = useRegionalSettings();
 
   const complianceData = useMemo(() => {
     const today = new Date();
     const issues: ComplianceIssue[] = [];
     
-    // NAFDAC typically requires medications to have at least 6 months shelf life remaining
-    const nafdacMinDays = 180; // 6 months
+    // Regulatory bodies typically require medications to have at least 6 months shelf life remaining
+    const minDays = 180; // 6 months
     const warningDays = 90; // 3 months warning
     const criticalDays = 30; // 1 month critical
 
@@ -59,10 +61,10 @@ export const NAFDACCompliancePanel = ({ medications }: NAFDACCompliancePanelProp
           daysUntilExpiry,
           severity: 'warning'
         });
-      } else if (daysUntilExpiry <= nafdacMinDays) {
+      } else if (daysUntilExpiry <= minDays) {
         issues.push({
           medication: med,
-          issue: 'near_nafdac_limit',
+          issue: 'near_limit',
           daysUntilExpiry,
           severity: 'info'
         });
@@ -92,8 +94,9 @@ export const NAFDACCompliancePanel = ({ medications }: NAFDACCompliancePanelProp
 
   const generateComplianceReport = () => {
     const today = format(new Date(), 'yyyy-MM-dd');
-    let report = `NAFDAC COMPLIANCE REPORT\n`;
+    let report = `${regulatory.abbreviation} COMPLIANCE REPORT\n`;
     report += `Generated: ${format(new Date(), 'PPpp')}\n`;
+    report += `Regulatory Body: ${regulatory.name}\n`;
     report += `================================\n\n`;
     
     report += `SUMMARY\n`;
@@ -106,7 +109,7 @@ export const NAFDACCompliancePanel = ({ medications }: NAFDACCompliancePanelProp
     report += `--------------------------\n\n`;
 
     if (complianceData.issues.length === 0) {
-      report += `No compliance issues found. All medications meet NAFDAC requirements.\n`;
+      report += `No compliance issues found. All medications meet ${regulatory.abbreviation} requirements.\n`;
     } else {
       const critical = complianceData.issues.filter(i => i.severity === 'critical');
       const warning = complianceData.issues.filter(i => i.severity === 'warning');
@@ -116,6 +119,7 @@ export const NAFDACCompliancePanel = ({ medications }: NAFDACCompliancePanelProp
         report += `CRITICAL (Immediate Action Required):\n`;
         critical.forEach(issue => {
           report += `  - ${issue.medication.name} (Batch: ${issue.medication.batch_number})\n`;
+          report += `    ${regulatory.licenseLabel}: ${issue.medication.batch_number}\n`;
           report += `    Expiry: ${format(parseISO(issue.medication.expiry_date), 'PPP')}\n`;
           report += `    Status: ${issue.daysUntilExpiry < 0 ? 'EXPIRED' : `Expires in ${issue.daysUntilExpiry} days`}\n`;
           report += `    Stock: ${issue.medication.current_stock} units\n\n`;
@@ -133,7 +137,7 @@ export const NAFDACCompliancePanel = ({ medications }: NAFDACCompliancePanelProp
       }
 
       if (info.length > 0) {
-        report += `\nINFO (Monitor - Approaching NAFDAC Limit):\n`;
+        report += `\nINFO (Monitor - Approaching ${regulatory.abbreviation} Limit):\n`;
         info.forEach(issue => {
           report += `  - ${issue.medication.name} (Batch: ${issue.medication.batch_number})\n`;
           report += `    Expiry: ${format(parseISO(issue.medication.expiry_date), 'PPP')}\n`;
@@ -144,14 +148,14 @@ export const NAFDACCompliancePanel = ({ medications }: NAFDACCompliancePanelProp
     }
 
     report += `\n================================\n`;
-    report += `This report is for NAFDAC inspection purposes.\n`;
+    report += `This report is for ${regulatory.abbreviation} inspection purposes.\n`;
     report += `Retain for regulatory compliance records.\n`;
 
     const blob = new Blob([report], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `nafdac-compliance-report-${today}.txt`;
+    a.download = `${regulatory.abbreviation.toLowerCase()}-compliance-report-${today}.txt`;
     a.click();
   };
 
@@ -167,11 +171,11 @@ export const NAFDACCompliancePanel = ({ medications }: NAFDACCompliancePanelProp
     <div className="glass-card rounded-2xl p-4 sm:p-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
         <div className="flex items-center gap-3">
-          <div className="p-2 rounded-xl bg-primary/10">
-            <Shield className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
+          <div className="p-2 rounded-xl bg-primary/10 text-2xl">
+            {flagEmoji}
           </div>
           <div>
-            <h3 className="text-lg sm:text-xl font-bold font-display">NAFDAC Compliance</h3>
+            <h3 className="text-lg sm:text-xl font-bold font-display">{regulatory.abbreviation} Compliance</h3>
             <p className="text-xs sm:text-sm text-muted-foreground">Regulatory status and alerts</p>
           </div>
         </div>
@@ -262,7 +266,7 @@ export const NAFDACCompliancePanel = ({ medications }: NAFDACCompliancePanelProp
         <div className="text-center py-4">
           <Shield className="h-8 w-8 text-success mx-auto mb-2" />
           <p className="text-sm text-success font-medium">All Clear!</p>
-          <p className="text-xs text-muted-foreground">All medications meet NAFDAC requirements</p>
+          <p className="text-xs text-muted-foreground">All medications meet {regulatory.abbreviation} requirements</p>
         </div>
       )}
     </div>
