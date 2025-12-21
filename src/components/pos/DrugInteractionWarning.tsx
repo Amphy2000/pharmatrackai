@@ -3,8 +3,8 @@ import { AlertTriangle, AlertCircle, Info, X, Shield } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { supabase } from '@/integrations/supabase/client';
+import type { Medication } from '@/types/medication';
 import type { Medication } from '@/types/medication';
 
 interface DrugInteraction {
@@ -138,31 +138,33 @@ export const DrugInteractionWarning = ({ cartItems }: DrugInteractionWarningProp
               Drug Interaction{interactions.length > 1 ? 's' : ''} Detected
             </AlertTitle>
             <AlertDescription className="w-full">
-              <ScrollArea className="max-h-40 w-full">
-                <div className="space-y-2 pr-2">
+              <div className="max-h-[40vh] overflow-y-auto w-full pr-3">
+                <div className="space-y-2">
                   {interactions.map((interaction, index) => {
                     const config = severityConfig[interaction.severity];
                     const Icon = config.icon;
-                    
+
                     return (
-                      <div 
-                        key={index} 
+                      <div
+                        key={index}
                         className={`p-2 rounded-md ${config.bgColor} ${config.borderColor} border`}
                       >
-                        <div className="flex items-center gap-2 mb-1">
+                        <div className="flex items-center gap-2 mb-1 flex-wrap">
                           <Icon className={`h-3 w-3 ${config.color}`} />
-                          <span className="font-medium text-xs">{interaction.drugs.join(' + ')}</span>
+                          <span className="font-medium text-xs min-w-0 break-words">
+                            {interaction.drugs.join(' + ')}
+                          </span>
                           <Badge variant="outline" className={`text-[10px] ${config.color} border-current`}>
                             {config.label}
                           </Badge>
                         </div>
-                        <p className="text-xs text-muted-foreground">{interaction.description}</p>
-                        <p className="text-xs font-medium mt-1">{interaction.recommendation}</p>
+                        <p className="text-xs text-muted-foreground break-words">{interaction.description}</p>
+                        <p className="text-xs font-medium mt-1 break-words">{interaction.recommendation}</p>
                       </div>
                     );
                   })}
                 </div>
-              </ScrollArea>
+              </div>
             </AlertDescription>
           </div>
         </div>
