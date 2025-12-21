@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { 
   Pill, 
   Activity, 
@@ -17,7 +17,12 @@ import {
   Building2,
   Truck,
   PackageSearch,
-  Settings
+  Settings,
+  Check,
+  CheckCheck,
+  AlertCircle,
+  AlertTriangle,
+  Info
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -35,15 +40,16 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useNotifications } from '@/hooks/useNotifications';
+import { useAuth } from '@/contexts/AuthContext';
 
 export const Header = () => {
   const location = useLocation();
+  const navigate = useNavigate();
+  const { signOut } = useAuth();
   const { isOwnerOrManager, userRole } = usePermissions();
-  const [notifications] = useState([
-    { id: 1, title: '5 medications expiring soon', time: '2 hours ago', type: 'warning' },
-    { id: 2, title: 'Low stock alert: Amoxicillin', time: '4 hours ago', type: 'danger' },
-    { id: 3, title: 'AI analysis complete', time: '1 day ago', type: 'info' },
-  ]);
+  const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
 
   // Staff-accessible navigation
   const staffNavLinks = [
@@ -66,6 +72,32 @@ export const Header = () => {
     : staffNavLinks;
 
   const roleLabel = userRole === 'owner' ? 'Owner' : userRole === 'manager' ? 'Manager' : 'Staff';
+
+  const getNotificationIcon = (type: string) => {
+    switch (type) {
+      case 'danger':
+        return <AlertCircle className="h-4 w-4 text-destructive" />;
+      case 'warning':
+        return <AlertTriangle className="h-4 w-4 text-warning" />;
+      case 'success':
+        return <Check className="h-4 w-4 text-success" />;
+      default:
+        return <Info className="h-4 w-4 text-primary" />;
+    }
+  };
+
+  const handleNotificationClick = (notification: typeof notifications[0]) => {
+    markAsRead(notification.id);
+    if (notification.link) {
+      navigate(notification.link);
+      setNotificationsOpen(false);
+    }
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/');
+  };
 
   return (
     <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
@@ -128,7 +160,7 @@ export const Header = () => {
 
             {/* Mobile Nav */}
             <div className="flex lg:hidden items-center gap-1">
-              {navLinks.map((link) => {
+              {navLinks.slice(0, 4).map((link) => {
                 const isActive = location.pathname === link.href;
                 return (
                   <Link
@@ -147,33 +179,74 @@ export const Header = () => {
             </div>
 
             {/* Notifications */}
-            <Popover>
+            <Popover open={notificationsOpen} onOpenChange={setNotificationsOpen}>
               <PopoverTrigger asChild>
                 <Button variant="ghost" size="icon" className="relative h-9 w-9 sm:h-11 sm:w-11 rounded-xl hover:bg-muted/50">
                   <Bell className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
-                  <span className="absolute top-1.5 sm:top-2 right-1.5 sm:right-2 flex h-2 w-2 sm:h-2.5 sm:w-2.5">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 sm:h-2.5 sm:w-2.5 bg-destructive"></span>
-                  </span>
+                  {unreadCount > 0 && (
+                    <span className="absolute top-1.5 sm:top-2 right-1.5 sm:right-2 flex h-4 w-4 sm:h-5 sm:w-5 items-center justify-center">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-4 w-4 sm:h-5 sm:w-5 bg-destructive text-destructive-foreground text-[10px] font-bold items-center justify-center">
+                        {unreadCount}
+                      </span>
+                    </span>
+                  )}
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-80 p-0" align="end">
                 <div className="p-4 border-b border-border/50">
                   <div className="flex items-center justify-between">
                     <h4 className="font-semibold font-display">Notifications</h4>
-                    <Badge variant="secondary" className="text-xs">{notifications.length} new</Badge>
+                    {unreadCount > 0 && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 text-xs gap-1"
+                        onClick={markAllAsRead}
+                      >
+                        <CheckCheck className="h-3 w-3" />
+                        Mark all read
+                      </Button>
+                    )}
                   </div>
                 </div>
                 <div className="max-h-80 overflow-y-auto">
-                  {notifications.map((notification) => (
-                    <div key={notification.id} className="p-4 border-b border-border/30 last:border-0 hover:bg-muted/30 transition-colors cursor-pointer">
-                      <p className="text-sm font-medium">{notification.title}</p>
-                      <p className="text-xs text-muted-foreground mt-1">{notification.time}</p>
+                  {notifications.length === 0 ? (
+                    <div className="p-8 text-center text-muted-foreground">
+                      <Bell className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                      <p className="text-sm">No notifications</p>
                     </div>
-                  ))}
-                </div>
-                <div className="p-3 border-t border-border/50">
-                  <Button variant="ghost" className="w-full text-sm">View all notifications</Button>
+                  ) : (
+                    notifications.map((notification) => (
+                      <div 
+                        key={notification.id} 
+                        className={`p-4 border-b border-border/30 last:border-0 hover:bg-muted/30 transition-colors cursor-pointer ${
+                          !notification.isRead ? 'bg-primary/5' : ''
+                        }`}
+                        onClick={() => handleNotificationClick(notification)}
+                      >
+                        <div className="flex items-start gap-3">
+                          <div className="flex-shrink-0 mt-0.5">
+                            {getNotificationIcon(notification.type)}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className={`text-sm ${!notification.isRead ? 'font-medium' : ''}`}>
+                              {notification.title}
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">
+                              {notification.message}
+                            </p>
+                            <p className="text-xs text-muted-foreground mt-1">{notification.time}</p>
+                          </div>
+                          {!notification.isRead && (
+                            <div className="flex-shrink-0">
+                              <div className="h-2 w-2 rounded-full bg-primary"></div>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
               </PopoverContent>
             </Popover>
@@ -196,20 +269,23 @@ export const Header = () => {
               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuLabel>My Account</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate('/profile')}>
                   <User className="mr-2 h-4 w-4" />
                   Profile Settings
                 </DropdownMenuItem>
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate('/profile?tab=security')}>
                   <Shield className="mr-2 h-4 w-4" />
                   Security
                 </DropdownMenuItem>
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={() => navigate('/profile?tab=help')}>
                   <HelpCircle className="mr-2 h-4 w-4" />
                   Help & Support
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem className="text-destructive focus:text-destructive">
+                <DropdownMenuItem 
+                  className="text-destructive focus:text-destructive"
+                  onClick={handleSignOut}
+                >
                   <LogOut className="mr-2 h-4 w-4" />
                   Sign Out
                 </DropdownMenuItem>
