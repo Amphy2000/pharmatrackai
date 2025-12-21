@@ -19,31 +19,31 @@ import {
   Star,
   ChevronRight
 } from 'lucide-react';
-import { useRegionalSettings } from '@/contexts/RegionalSettingsContext';
+import { useRegionalSettings, CountryCode } from '@/contexts/RegionalSettingsContext';
 
 const Landing = () => {
   const { country, setCountry, flagEmoji } = useRegionalSettings();
   const [stockValue, setStockValue] = useState('');
   
   const isNigeria = country === 'NG';
-  const currencySymbol = isNigeria ? '₦' : country === 'UK' ? '£' : '$';
+  const currencySymbol = isNigeria ? '₦' : country === 'GB' ? '£' : '$';
   
-  // Pricing based on country
+  // Pricing based on country - All processed via Paystack (converts to Naira)
   const pricing = {
     NG: {
       starter: { price: 19500, original: 50000, sku: 200 },
       pro: { price: 35000, original: 80000, sku: 'Unlimited' },
-      elite: { price: 75000, original: 150000, sku: 'Unlimited' },
+      top: { price: 75000, original: 150000, sku: 'Unlimited' },
     },
-    UK: {
+    GB: {
       starter: { price: 49, original: 99, sku: 200 },
       pro: { price: 99, original: 199, sku: 'Unlimited' },
-      enterprise: { price: 299, original: 499, sku: 'Unlimited' },
+      top: { price: 299, original: 499, sku: 'Unlimited' },
     },
     US: {
       starter: { price: 49, original: 99, sku: 200 },
       pro: { price: 99, original: 199, sku: 'Unlimited' },
-      enterprise: { price: 299, original: 499, sku: 'Unlimited' },
+      top: { price: 299, original: 499, sku: 'Unlimited' },
     },
   };
   
@@ -63,7 +63,7 @@ const Landing = () => {
     if (isNigeria) {
       return `₦${amount.toLocaleString()}`;
     }
-    return country === 'UK' ? `£${amount.toLocaleString()}` : `$${amount.toLocaleString()}`;
+    return country === 'GB' ? `£${amount.toLocaleString()}` : `$${amount.toLocaleString()}`;
   };
 
   const features = [
@@ -135,7 +135,7 @@ const Landing = () => {
           <div className="flex items-center gap-4">
             {/* Country Toggle */}
             <div className="flex items-center gap-1 bg-muted rounded-lg p-1">
-              {(['NG', 'UK', 'US'] as const).map((c) => (
+              {(['NG', 'GB', 'US'] as CountryCode[]).map((c) => (
                 <button
                   key={c}
                   onClick={() => setCountry(c)}
@@ -145,7 +145,7 @@ const Landing = () => {
                       : 'text-muted-foreground hover:text-foreground'
                   }`}
                 >
-                  {c === 'NG' ? '🇳🇬' : c === 'UK' ? '🇬🇧' : '🇺🇸'} {c}
+                  {c === 'NG' ? '🇳🇬' : c === 'GB' ? '🇬🇧' : '🇺🇸'} {c === 'GB' ? 'UK' : c}
                 </button>
               ))}
             </div>
@@ -293,7 +293,7 @@ const Landing = () => {
           <div className="text-center mb-16">
             <Badge className="mb-4 bg-primary/10 text-primary border-primary/20">
               <Globe className="h-3 w-3 mr-1" />
-              {flagEmoji} Pricing for {country === 'NG' ? 'Nigeria' : country === 'UK' ? 'United Kingdom' : 'United States'}
+              {flagEmoji} Pricing for {country === 'NG' ? 'Nigeria' : country === 'GB' ? 'United Kingdom' : 'United States'}
             </Badge>
             <h2 className="text-4xl font-display font-bold mb-4">
               Simple, Transparent Pricing
@@ -301,6 +301,11 @@ const Landing = () => {
             <p className="text-muted-foreground">
               Start with a 7-day free trial. No credit card required.
             </p>
+            {country !== 'NG' && (
+              <p className="text-sm text-muted-foreground mt-2">
+                💳 Payments processed via Paystack (automatically converts to local currency equivalent)
+              </p>
+            )}
           </div>
           
           <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
@@ -362,7 +367,7 @@ const Landing = () => {
                 </Badge>
               </div>
               <CardHeader>
-                <CardTitle className="text-xl">{isNigeria ? 'Pro' : 'Pro'}</CardTitle>
+                <CardTitle className="text-xl">Pro</CardTitle>
                 <CardDescription>For growing pharmacies</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
@@ -424,12 +429,12 @@ const Landing = () => {
                 <div>
                   <div className="flex items-baseline gap-2">
                     <span className="text-4xl font-display font-bold">
-                      {currencySymbol}{(isNigeria ? currentPricing.elite : currentPricing.enterprise).price.toLocaleString()}
+                      {currencySymbol}{currentPricing.top.price.toLocaleString()}
                     </span>
                     <span className="text-muted-foreground">/month</span>
                   </div>
                   <p className="text-sm text-muted-foreground line-through">
-                    {currencySymbol}{(isNigeria ? currentPricing.elite : currentPricing.enterprise).original.toLocaleString()}/month
+                    {currencySymbol}{currentPricing.top.original.toLocaleString()}/month
                   </p>
                 </div>
                 
@@ -444,7 +449,7 @@ const Landing = () => {
                   </li>
                   <li className="flex items-center gap-2 text-sm">
                     <Check className="h-4 w-4 text-success" />
-                    Advanced BI dashboard
+                    Advanced analytics
                   </li>
                   <li className="flex items-center gap-2 text-sm">
                     <Check className="h-4 w-4 text-success" />
@@ -475,11 +480,12 @@ const Landing = () => {
       <section className="py-20">
         <div className="container mx-auto px-4">
           <div className="text-center mb-16">
-            <Badge className="mb-4 bg-success/10 text-success border-success/20">
+            <Badge className="mb-4 bg-warning/10 text-warning border-warning/20">
+              <Star className="h-3 w-3 mr-1" />
               Testimonials
             </Badge>
             <h2 className="text-4xl font-display font-bold mb-4">
-              Trusted by Leading Pharmacies
+              Trusted by Pharmacies Across Africa
             </h2>
           </div>
           
@@ -494,7 +500,7 @@ const Landing = () => {
                   </div>
                   <p className="text-foreground mb-4">"{testimonial.quote}"</p>
                   <div>
-                    <p className="font-semibold">{testimonial.author}</p>
+                    <p className="font-medium">{testimonial.author}</p>
                     <p className="text-sm text-muted-foreground">{testimonial.role}</p>
                   </div>
                 </CardContent>
@@ -505,27 +511,34 @@ const Landing = () => {
       </section>
 
       {/* CTA Section */}
-      <section className="py-20 bg-gradient-card">
-        <div className="container mx-auto px-4 text-center">
-          <h2 className="text-4xl font-display font-bold mb-4">
-            Ready to Transform Your Pharmacy?
-          </h2>
-          <p className="text-muted-foreground mb-8 max-w-xl mx-auto">
-            Join 500+ pharmacies already using PharmaTrack AI to reduce waste and maximize profits.
-          </p>
-          <Link to="/auth?mode=signup">
-            <Button size="lg" className="bg-gradient-primary text-primary-foreground h-14 px-8 text-lg">
-              Start Your 7-Day Free Trial
-              <ArrowRight className="ml-2 h-5 w-5" />
-            </Button>
-          </Link>
+      <section className="py-20 bg-gradient-to-b from-background to-card">
+        <div className="container mx-auto px-4">
+          <div className="max-w-3xl mx-auto text-center">
+            <h2 className="text-4xl font-display font-bold mb-6">
+              Ready to Transform Your Pharmacy?
+            </h2>
+            <p className="text-xl text-muted-foreground mb-8">
+              Join 500+ pharmacies already using PharmaTrack AI to save money and grow their business.
+            </p>
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+              <Link to="/auth?mode=signup">
+                <Button size="lg" className="bg-gradient-primary text-primary-foreground h-14 px-8 text-lg">
+                  Start Your 7-Day Free Trial
+                  <ArrowRight className="ml-2 h-5 w-5" />
+                </Button>
+              </Link>
+            </div>
+            <p className="mt-6 text-sm text-muted-foreground">
+              No credit card required • Cancel anytime • 24/7 support
+            </p>
+          </div>
         </div>
       </section>
 
       {/* Footer */}
       <footer className="py-12 border-t border-border">
         <div className="container mx-auto px-4">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-2">
               <div className="h-8 w-8 rounded-lg bg-gradient-primary flex items-center justify-center">
                 <Zap className="h-4 w-4 text-primary-foreground" />
@@ -535,6 +548,11 @@ const Landing = () => {
             <p className="text-sm text-muted-foreground">
               © 2024 PharmaTrack AI. All rights reserved.
             </p>
+            <div className="flex items-center gap-6">
+              <a href="#" className="text-sm text-muted-foreground hover:text-foreground">Privacy</a>
+              <a href="#" className="text-sm text-muted-foreground hover:text-foreground">Terms</a>
+              <a href="#" className="text-sm text-muted-foreground hover:text-foreground">Support</a>
+            </div>
           </div>
         </div>
       </footer>

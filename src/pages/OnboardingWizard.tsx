@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { useRegionalSettings } from '@/contexts/RegionalSettingsContext';
+import { useRegionalSettings, CountryCode } from '@/contexts/RegionalSettingsContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -118,7 +118,7 @@ const OnboardingWizard = () => {
   const getLicenseLabel = () => {
     switch (country) {
       case 'NG': return 'NAFDAC License Number';
-      case 'UK': return 'MHRA Registration Number';
+      case 'GB': return 'MHRA Registration Number';
       case 'US': return 'State Pharmacy License';
       default: return 'License Number';
     }
@@ -179,7 +179,7 @@ const OnboardingWizard = () => {
               </CardHeader>
               <CardContent className="space-y-6">
                 <div className="grid grid-cols-3 gap-4">
-                  {(['NG', 'UK', 'US'] as const).map((c) => (
+                  {(['NG', 'GB', 'US'] as CountryCode[]).map((c) => (
                     <button
                       key={c}
                       onClick={() => setCountry(c)}
@@ -190,13 +190,13 @@ const OnboardingWizard = () => {
                       }`}
                     >
                       <span className="text-4xl block mb-2">
-                        {c === 'NG' ? '🇳🇬' : c === 'UK' ? '🇬🇧' : '🇺🇸'}
+                        {c === 'NG' ? '🇳🇬' : c === 'GB' ? '🇬🇧' : '🇺🇸'}
                       </span>
                       <p className="font-medium">
-                        {c === 'NG' ? 'Nigeria' : c === 'UK' ? 'United Kingdom' : 'United States'}
+                        {c === 'NG' ? 'Nigeria' : c === 'GB' ? 'United Kingdom' : 'United States'}
                       </p>
                       <p className="text-sm text-muted-foreground">
-                        {c === 'NG' ? '₦ NGN' : c === 'UK' ? '£ GBP' : '$ USD'}
+                        {c === 'NG' ? '₦ NGN' : c === 'GB' ? '£ GBP' : '$ USD'}
                       </p>
                     </button>
                   ))}
@@ -205,9 +205,9 @@ const OnboardingWizard = () => {
                 <div className="p-4 rounded-xl bg-muted/50 space-y-2">
                   <p className="font-medium">{flagEmoji} {countryName} Settings:</p>
                   <ul className="text-sm text-muted-foreground space-y-1">
-                    <li>• {country === 'NG' ? 'NAFDAC' : country === 'UK' ? 'MHRA' : 'FDA'} Compliance</li>
-                    <li>• {country === 'NG' ? 'Nigerian Naira (₦)' : country === 'UK' ? 'British Pound (£)' : 'US Dollar ($)'} pricing</li>
-                    <li>• {country === 'NG' ? 'Paystack' : 'Stripe'} payment processing</li>
+                    <li>• {country === 'NG' ? 'NAFDAC' : country === 'GB' ? 'MHRA' : 'FDA'} Compliance</li>
+                    <li>• {country === 'NG' ? 'Nigerian Naira (₦)' : country === 'GB' ? 'British Pound (£)' : 'US Dollar ($)'} pricing</li>
+                    <li>• Paystack payment processing (auto-converts for international cards)</li>
                   </ul>
                 </div>
 
@@ -263,7 +263,7 @@ const OnboardingWizard = () => {
                     <Input
                       id="pharmacy-phone"
                       type="tel"
-                      placeholder={country === 'NG' ? '+234...' : country === 'UK' ? '+44...' : '+1...'}
+                      placeholder={country === 'NG' ? '+234...' : country === 'GB' ? '+44...' : '+1...'}
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
                     />
@@ -274,7 +274,7 @@ const OnboardingWizard = () => {
                     <Input
                       id="pharmacy-license"
                       type="text"
-                      placeholder={country === 'NG' ? 'A4-12345' : country === 'UK' ? 'PL12345/0001' : 'PH-12345'}
+                      placeholder={country === 'NG' ? 'A4-12345' : country === 'GB' ? 'PL12345/0001' : 'PH-12345'}
                       value={licenseNumber}
                       onChange={(e) => setLicenseNumber(e.target.value)}
                     />
