@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { ShoppingCart, Printer, TrendingDown, AlertTriangle, Package, Building2 } from 'lucide-react';
+import { Printer, TrendingDown, AlertTriangle, Package, Building2 } from 'lucide-react';
 import { useMedications } from '@/hooks/useMedications';
 import { useSuppliers } from '@/hooks/useSuppliers';
 import { usePharmacy } from '@/hooks/usePharmacy';
@@ -31,13 +31,12 @@ interface SelectedItem {
 
 export const BulkReorderModal = ({ open, onOpenChange }: BulkReorderModalProps) => {
   const { medications } = useMedications();
-  const { suppliers, supplierProducts, createReorder } = useSuppliers();
+  const { suppliers, supplierProducts } = useSuppliers();
   const { pharmacy } = usePharmacy();
   const { formatPrice, currency } = useCurrency();
   const { toast } = useToast();
   
   const [selectedItems, setSelectedItems] = useState<Map<string, SelectedItem>>(new Map());
-  const [isProcessing, setIsProcessing] = useState(false);
 
   // Get low stock medications
   const lowStockMedications = useMemo(() => 
@@ -138,8 +137,8 @@ export const BulkReorderModal = ({ open, onOpenChange }: BulkReorderModalProps) 
     return { grandTotal, itemCount };
   }, [selectedItems]);
 
-  // Generate and print purchase orders
-  const handlePrintPurchaseOrders = async () => {
+  // Print purchase orders (POS format)
+  const handlePrintPurchaseOrders = () => {
     if (selectedItems.size === 0) {
       toast({ title: 'No items selected', variant: 'destructive' });
       return;
@@ -149,7 +148,6 @@ export const BulkReorderModal = ({ open, onOpenChange }: BulkReorderModalProps) 
     const ordersForPrint: Array<{
       supplierName: string;
       supplierPhone?: string;
-      supplierEmail?: string;
       supplierAddress?: string;
       items: Array<{
         medicationName: string;
@@ -176,7 +174,6 @@ export const BulkReorderModal = ({ open, onOpenChange }: BulkReorderModalProps) 
         ordersForPrint.push({
           supplierName: supplier.name,
           supplierPhone: supplier.phone || undefined,
-          supplierEmail: supplier.email || undefined,
           supplierAddress: supplier.address || undefined,
           items: orderItems,
           totalAmount: orderItems.reduce((sum, i) => sum + i.totalPrice, 0),
@@ -193,14 +190,12 @@ export const BulkReorderModal = ({ open, onOpenChange }: BulkReorderModalProps) 
       return;
     }
 
-    // Generate PDF
+    // Generate POS receipt
     const orderNumber = generateOrderNumber();
     const doc = generatePurchaseOrder({
       orders: ordersForPrint,
       pharmacyName: pharmacy?.name || 'My Pharmacy',
-      pharmacyAddress: pharmacy?.address || undefined,
       pharmacyPhone: pharmacy?.phone || undefined,
-      pharmacyEmail: pharmacy?.email || undefined,
       orderNumber,
       date: new Date(),
       currency: currency as 'NGN' | 'USD' | 'GBP',
@@ -211,59 +206,12 @@ export const BulkReorderModal = ({ open, onOpenChange }: BulkReorderModalProps) 
     window.open(doc.output('bloburl'), '_blank');
 
     toast({ 
-      title: 'Purchase Orders Generated', 
-      description: `${ordersForPrint.length} purchase order(s) ready to print.` 
+      title: 'Purchase Order Printed', 
+      description: `${ordersForPrint.length} order(s) sent to printer.` 
     });
-  };
 
-  // Create reorder requests and print
-  const handleCreateOrdersAndPrint = async () => {
-    if (selectedItems.size === 0) {
-      toast({ title: 'No items selected', variant: 'destructive' });
-      return;
-    }
-
-    setIsProcessing(true);
-
-    try {
-      // Create reorder requests for each item
-      const promises: Promise<unknown>[] = [];
-      
-      selectedItems.forEach(item => {
-        if (item.selectedSupplierProduct && item.supplier) {
-          promises.push(
-            createReorder.mutateAsync({
-              supplier_id: item.supplier.id,
-              medication_id: item.medication.id,
-              supplier_product_id: item.selectedSupplierProduct.id,
-              quantity: item.quantity,
-              unit_price: Number(item.selectedSupplierProduct.unit_price),
-            })
-          );
-        }
-      });
-
-      await Promise.all(promises);
-
-      // Generate and print purchase orders
-      await handlePrintPurchaseOrders();
-
-      toast({ 
-        title: 'Orders Created Successfully', 
-        description: `${promises.length} reorder request(s) created and purchase orders generated.` 
-      });
-
-      setSelectedItems(new Map());
-      onOpenChange(false);
-    } catch (error) {
-      toast({ 
-        title: 'Error', 
-        description: 'Failed to create some orders. Please try again.',
-        variant: 'destructive' 
-      });
-    } finally {
-      setIsProcessing(false);
-    }
+    setSelectedItems(new Map());
+    onOpenChange(false);
   };
 
   return (
@@ -275,7 +223,7 @@ export const BulkReorderModal = ({ open, onOpenChange }: BulkReorderModalProps) 
             Bulk Reorder - Low Stock Items
           </DialogTitle>
           <DialogDescription>
-            Select items to reorder. Best prices are automatically suggested. Orders will be grouped by supplier.
+            Select items to reorder. Best prices are automatically suggested. Print purchase orders to take to suppliers.
           </DialogDescription>
         </DialogHeader>
 
@@ -439,19 +387,12 @@ export const BulkReorderModal = ({ open, onOpenChange }: BulkReorderModalProps) 
             Cancel
           </Button>
           <Button 
-            variant="outline" 
             onClick={handlePrintPurchaseOrders}
             disabled={selectedItems.size === 0}
+            className="gap-2"
           >
-            <Printer className="h-4 w-4 mr-2" />
-            Print Only
-          </Button>
-          <Button 
-            onClick={handleCreateOrdersAndPrint}
-            disabled={selectedItems.size === 0 || isProcessing}
-          >
-            <ShoppingCart className="h-4 w-4 mr-2" />
-            {isProcessing ? 'Creating...' : 'Create Orders & Print'}
+            <Printer className="h-4 w-4" />
+            Print Purchase Orders
           </Button>
         </DialogFooter>
       </DialogContent>
