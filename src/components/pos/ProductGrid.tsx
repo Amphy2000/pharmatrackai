@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { Search, Plus, ScanBarcode, AlertTriangle, XCircle } from 'lucide-react';
 import { Medication } from '@/types/medication';
 import { Input } from '@/components/ui/input';
@@ -7,6 +7,8 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { BarcodeScanner } from './BarcodeScanner';
 import { useCurrency } from '@/contexts/CurrencyContext';
+import { useBarcodeScanner } from '@/hooks/useBarcodeScanner';
+import { useToast } from '@/hooks/use-toast';
 import { isBefore, parseISO } from 'date-fns';
 
 interface ProductGridProps {
@@ -19,6 +21,53 @@ export const ProductGrid = ({ medications, onAddToCart, isLoading }: ProductGrid
   const [searchQuery, setSearchQuery] = useState('');
   const [scannerOpen, setScannerOpen] = useState(false);
   const { formatPrice } = useCurrency();
+  const { toast } = useToast();
+
+  const isExpired = (expiryDate: string): boolean => {
+    return isBefore(parseISO(expiryDate), new Date());
+  };
+
+  // Handle barcode scan (from camera or hardware scanner)
+  const handleBarcodeScan = useCallback((barcode: string) => {
+    const medication = medications.find(
+      (med) => med.barcode_id === barcode || med.batch_number === barcode
+    );
+
+    if (medication) {
+      if (medication.current_stock > 0 && !isExpired(medication.expiry_date)) {
+        onAddToCart(medication);
+        toast({
+          title: 'Added to cart',
+          description: `${medication.name} scanned and added`,
+        });
+      } else if (isExpired(medication.expiry_date)) {
+        toast({
+          title: 'Cannot add expired item',
+          description: medication.name,
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: 'Out of stock',
+          description: medication.name,
+          variant: 'destructive',
+        });
+      }
+    } else {
+      setSearchQuery(barcode);
+      toast({
+        title: 'Item not found',
+        description: `Searching for: ${barcode}`,
+      });
+    }
+    setScannerOpen(false);
+  }, [medications, onAddToCart, toast]);
+
+  // Auto-detect hardware barcode scanner input
+  useBarcodeScanner({
+    onScan: handleBarcodeScan,
+    enabled: !scannerOpen, // Disable when camera scanner is open
+  });
 
   const filteredMedications = useMemo(() => {
     const query = searchQuery.toLowerCase().trim();
@@ -32,25 +81,6 @@ export const ProductGrid = ({ medications, onAddToCart, isLoading }: ProductGrid
         med.barcode_id?.toLowerCase().includes(query)
     );
   }, [medications, searchQuery]);
-
-  const handleBarcodeScan = (barcode: string) => {
-    // First try to find by barcode_id
-    const medication = medications.find(
-      (med) => med.barcode_id === barcode || med.batch_number === barcode
-    );
-
-    if (medication) {
-      if (medication.current_stock > 0 && !isExpired(medication.expiry_date)) {
-        onAddToCart(medication);
-      }
-    } else {
-      setSearchQuery(barcode);
-    }
-  };
-
-  const isExpired = (expiryDate: string): boolean => {
-    return isBefore(parseISO(expiryDate), new Date());
-  };
 
   const isLowStock = (currentStock: number, reorderLevel: number): boolean => {
     return currentStock <= reorderLevel;

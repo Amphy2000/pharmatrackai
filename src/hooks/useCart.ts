@@ -1,8 +1,30 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Medication, CartItem } from '@/types/medication';
 
+const CART_STORAGE_KEY = 'pharmatrack_cart';
+
 export const useCart = () => {
-  const [items, setItems] = useState<CartItem[]>([]);
+  const [items, setItems] = useState<CartItem[]>(() => {
+    // Initialize from localStorage
+    try {
+      const saved = localStorage.getItem(CART_STORAGE_KEY);
+      if (saved) {
+        return JSON.parse(saved);
+      }
+    } catch (e) {
+      console.error('Failed to load cart from storage:', e);
+    }
+    return [];
+  });
+
+  // Persist to localStorage whenever items change
+  useEffect(() => {
+    try {
+      localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(items));
+    } catch (e) {
+      console.error('Failed to save cart to storage:', e);
+    }
+  }, [items]);
 
   const addItem = useCallback((medication: Medication, quantity: number = 1) => {
     setItems((current) => {
