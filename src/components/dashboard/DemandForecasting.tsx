@@ -1,0 +1,190 @@
+import { useMedications } from '@/hooks/useMedications';
+import { useSales } from '@/hooks/useSales';
+import { useCurrency } from '@/contexts/CurrencyContext';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Brain, TrendingUp, Package, AlertTriangle, ShoppingCart } from 'lucide-react';
+import { subDays, format, differenceInDays } from 'date-fns';
+
+export const DemandForecasting = () => {
+  const { medications } = useMedications();
+  const { sales } = useSales();
+  const { formatPrice } = useCurrency();
+
+  // Calculate demand for each product based on last 30 days of sales
+  const thirtyDaysAgo = subDays(new Date(), 30);
+  
+  const recentSales = (sales || []).filter(sale => 
+    new Date(sale.sale_date) >= thirtyDaysAgo
+  );
+
+  // Aggregate sales by medication
+  const salesByMedication: Record<string, { quantity: number; revenue: number; count: number }> = {};
+  
+  recentSales.forEach(sale => {
+    if (!salesByMedication[sale.medication_id]) {
+      salesByMedication[sale.medication_id] = { quantity: 0, revenue: 0, count: 0 };
+    }
+    salesByMedication[sale.medication_id].quantity += sale.quantity;
+    salesByMedication[sale.medication_id].revenue += sale.total_price;
+    salesByMedication[sale.medication_id].count += 1;
+  });
+
+  // Calculate forecasts
+  const forecasts = (medications || [])
+    .map(med => {
+      const salesData = salesByMedication[med.id] || { quantity: 0, revenue: 0, count: 0 };
+      const dailyAvg = salesData.quantity / 30;
+      const monthlyForecast = Math.ceil(dailyAvg * 30);
+      const daysOfStockLeft = dailyAvg > 0 ? Math.floor(med.current_stock / dailyAvg) : 999;
+      const recommendedReorder = Math.max(0, monthlyForecast - med.current_stock);
+      const reorderCost = recommendedReorder * med.unit_price;
+      
+      return {
+        id: med.id,
+        name: med.name,
+        currentStock: med.current_stock,
+        reorderLevel: med.reorder_level,
+        dailyAvg: Math.round(dailyAvg * 10) / 10,
+        monthlyForecast,
+        daysOfStockLeft,
+        recommendedReorder,
+        reorderCost,
+        velocity: salesData.quantity > 20 ? 'high' : salesData.quantity > 5 ? 'medium' : 'low',
+      };
+    })
+    .filter(f => f.dailyAvg > 0 || f.currentStock < f.reorderLevel)
+    .sort((a, b) => a.daysOfStockLeft - b.daysOfStockLeft);
+
+  // Critical items (less than 7 days of stock)
+  const criticalItems = forecasts.filter(f => f.daysOfStockLeft < 7 && f.dailyAvg > 0);
+  
+  // Total reorder value
+  const totalReorderValue = forecasts.reduce((sum, f) => sum + f.reorderCost, 0);
+
+  const getVelocityColor = (velocity: string) => {
+    switch (velocity) {
+      case 'high': return 'bg-success/10 text-success border-success/20';
+      case 'medium': return 'bg-primary/10 text-primary border-primary/20';
+      default: return 'bg-muted text-muted-foreground';
+    }
+  };
+
+  const getStockStatus = (days: number) => {
+    if (days < 7) return { color: 'text-destructive', label: 'Critical' };
+    if (days < 14) return { color: 'text-warning', label: 'Low' };
+    if (days < 30) return { color: 'text-primary', label: 'OK' };
+    return { color: 'text-success', label: 'Good' };
+  };
+
+  return (
+    <Card className="glass-card">
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl bg-secondary/20 flex items-center justify-center">
+              <Brain className="h-5 w-5 text-secondary" />
+            </div>
+            <div>
+              <CardTitle className="text-lg">AI Demand Forecasting</CardTitle>
+              <CardDescription>30-day reorder recommendations</CardDescription>
+            </div>
+          </div>
+          {criticalItems.length > 0 && (
+            <Badge variant="destructive">
+              <AlertTriangle className="h-3 w-3 mr-1" />
+              {criticalItems.length} critical
+            </Badge>
+          )}
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        {/* Summary Stats */}
+        <div className="grid grid-cols-3 gap-4">
+          <div className="p-4 rounded-xl bg-muted/50">
+            <p className="text-sm text-muted-foreground">Products Tracked</p>
+            <p className="text-2xl font-bold">{forecasts.length}</p>
+          </div>
+          <div className="p-4 rounded-xl bg-destructive/10">
+            <p className="text-sm text-muted-foreground">Need Reorder</p>
+            <p className="text-2xl font-bold text-destructive">{criticalItems.length}</p>
+          </div>
+          <div className="p-4 rounded-xl bg-muted/50">
+            <p className="text-sm text-muted-foreground">Reorder Value</p>
+            <p className="text-2xl font-bold">{formatPrice(totalReorderValue)}</p>
+          </div>
+        </div>
+
+        {/* Reorder Recommendations */}
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h4 className="text-sm font-medium">Recommended Reorders</h4>
+            <Button size="sm" variant="outline">
+              <ShoppingCart className="h-4 w-4 mr-1" />
+              Generate PO
+            </Button>
+          </div>
+          
+          {forecasts.slice(0, 8).map((item) => {
+            const status = getStockStatus(item.daysOfStockLeft);
+            
+            return (
+              <div 
+                key={item.id} 
+                className={`flex items-center justify-between p-3 rounded-lg ${
+                  item.daysOfStockLeft < 7 ? 'bg-destructive/5 border border-destructive/20' : 'bg-muted/30'
+                }`}
+              >
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <p className="font-medium text-sm">{item.name}</p>
+                    <Badge variant="outline" className={getVelocityColor(item.velocity)}>
+                      {item.velocity} velocity
+                    </Badge>
+                  </div>
+                  <div className="flex items-center gap-4 mt-1">
+                    <p className="text-xs text-muted-foreground">
+                      <Package className="h-3 w-3 inline mr-1" />
+                      {item.currentStock} in stock
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      <TrendingUp className="h-3 w-3 inline mr-1" />
+                      {item.dailyAvg}/day avg
+                    </p>
+                    <p className={`text-xs font-medium ${status.color}`}>
+                      {item.daysOfStockLeft < 999 ? `${item.daysOfStockLeft} days left` : 'No recent sales'}
+                    </p>
+                  </div>
+                </div>
+                <div className="text-right">
+                  {item.recommendedReorder > 0 ? (
+                    <>
+                      <p className="font-bold text-primary">
+                        Order {item.recommendedReorder}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {formatPrice(item.reorderCost)}
+                      </p>
+                    </>
+                  ) : (
+                    <Badge variant="outline" className="bg-success/10 text-success border-success/20">
+                      Well stocked
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+
+        {forecasts.length === 0 && (
+          <div className="text-center py-8 text-muted-foreground">
+            <Brain className="h-12 w-12 mx-auto mb-3 opacity-50" />
+            <p>Start making sales to see AI-powered demand forecasts</p>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+};
