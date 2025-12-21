@@ -54,10 +54,12 @@ const formSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters').max(100),
   category: z.enum(['Tablet', 'Syrup', 'Capsule', 'Injection', 'Cream', 'Drops', 'Inhaler', 'Powder', 'Other']),
   batch_number: z.string().min(1, 'Batch number is required').max(50),
+  barcode_id: z.string().max(100).optional(),
   current_stock: z.coerce.number().min(0, 'Stock cannot be negative'),
   reorder_level: z.coerce.number().min(0, 'Reorder level cannot be negative'),
   expiry_date: z.date({ required_error: 'Expiry date is required' }),
   unit_price: z.coerce.number().min(0, 'Price cannot be negative'),
+  selling_price: z.coerce.number().min(0, 'Price cannot be negative').optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -82,9 +84,11 @@ export const AddMedicationModal = ({
       name: '',
       category: 'Tablet',
       batch_number: '',
+      barcode_id: '',
       current_stock: 0,
       reorder_level: 10,
       unit_price: 0,
+      selling_price: undefined,
     },
   });
 
@@ -94,19 +98,23 @@ export const AddMedicationModal = ({
         name: editingMedication.name,
         category: editingMedication.category,
         batch_number: editingMedication.batch_number,
+        barcode_id: editingMedication.barcode_id || '',
         current_stock: editingMedication.current_stock,
         reorder_level: editingMedication.reorder_level,
         expiry_date: new Date(editingMedication.expiry_date),
         unit_price: Number(editingMedication.unit_price),
+        selling_price: editingMedication.selling_price ? Number(editingMedication.selling_price) : undefined,
       });
     } else {
       form.reset({
         name: '',
         category: 'Tablet',
         batch_number: '',
+        barcode_id: '',
         current_stock: 0,
         reorder_level: 10,
         unit_price: 0,
+        selling_price: undefined,
       });
     }
   }, [editingMedication, form]);
@@ -116,9 +124,11 @@ export const AddMedicationModal = ({
       name: values.name,
       category: values.category,
       batch_number: values.batch_number,
+      barcode_id: values.barcode_id || undefined,
       current_stock: values.current_stock,
       reorder_level: values.reorder_level,
       unit_price: values.unit_price,
+      selling_price: values.selling_price || undefined,
       expiry_date: format(values.expiry_date, 'yyyy-MM-dd'),
     };
 
@@ -202,6 +212,20 @@ export const AddMedicationModal = ({
               />
             </div>
 
+            <FormField
+              control={form.control}
+              name="barcode_id"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Barcode / SKU (Optional)</FormLabel>
+                  <FormControl>
+                    <Input placeholder="e.g., 5901234123457" {...field} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             <div className="grid grid-cols-2 gap-4">
               <FormField
                 control={form.control}
@@ -274,7 +298,7 @@ export const AddMedicationModal = ({
                 name="unit_price"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Unit Price ($)</FormLabel>
+                    <FormLabel>Cost Price</FormLabel>
                     <FormControl>
                       <Input type="number" min="0" step="0.01" {...field} />
                     </FormControl>
@@ -283,6 +307,27 @@ export const AddMedicationModal = ({
                 )}
               />
             </div>
+
+            <FormField
+              control={form.control}
+              name="selling_price"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Selling Price (Optional)</FormLabel>
+                  <FormControl>
+                    <Input 
+                      type="number" 
+                      min="0" 
+                      step="0.01" 
+                      placeholder="Leave empty to use cost price"
+                      {...field} 
+                      value={field.value ?? ''}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             <div className="flex justify-end gap-3 pt-4">
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
