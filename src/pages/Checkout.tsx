@@ -21,6 +21,7 @@ import { useHeldTransactions } from '@/hooks/useHeldTransactions';
 import { ProductGrid } from '@/components/pos/ProductGrid';
 import { CartPanel } from '@/components/pos/CartPanel';
 import { HeldTransactionsPanel } from '@/components/pos/HeldTransactionsPanel';
+import { DrugInteractionWarning } from '@/components/pos/DrugInteractionWarning';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -253,6 +254,13 @@ const Checkout = () => {
                 onRemove={cart.removeItem}
                 total={cart.getTotal()}
               />
+
+              {/* Drug Interaction Warning */}
+              {cart.items.length >= 2 && (
+                <div className="mt-4">
+                  <DrugInteractionWarning cartItems={cart.items} />
+                </div>
+              )}
 
               {/* Action Buttons */}
               <div className="space-y-2 mt-4 sm:mt-6">
