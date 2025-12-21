@@ -8,16 +8,18 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Users, Shield, Settings2, UserCog, Crown, Briefcase, User } from 'lucide-react';
+import { Users, Shield, Settings2, UserCog, Crown, Briefcase, User, UserPlus } from 'lucide-react';
 import { useStaffManagement } from '@/hooks/useStaffManagement';
 import { usePermissions, PERMISSION_LABELS, ROLE_TEMPLATES, PermissionKey } from '@/hooks/usePermissions';
+import { AddStaffModal } from './AddStaffModal';
 
 export const StaffManagement = () => {
-  const { staff, isLoading, updateStaffPermissions, updateStaffRole, toggleStaffActive } = useStaffManagement();
-  const { isOwnerOrManager } = usePermissions();
+  const { staff, isLoading, refetch, updateStaffPermissions, updateStaffRole, toggleStaffActive } = useStaffManagement();
+  const { isOwnerOrManager, userRole } = usePermissions();
   const [selectedStaff, setSelectedStaff] = useState<string | null>(null);
   const [editPermissions, setEditPermissions] = useState<PermissionKey[]>([]);
   const [showPermissionModal, setShowPermissionModal] = useState(false);
+  const [showAddStaffModal, setShowAddStaffModal] = useState(false);
 
   if (!isOwnerOrManager) {
     return (
@@ -88,13 +90,23 @@ export const StaffManagement = () => {
     <>
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5 text-primary" />
-            Staff Management
-          </CardTitle>
-          <CardDescription>
-            Manage your team members and their access permissions
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5 text-primary" />
+                Staff Management
+              </CardTitle>
+              <CardDescription>
+                Manage your team members and their access permissions
+              </CardDescription>
+            </div>
+            {userRole === 'owner' && (
+              <Button onClick={() => setShowAddStaffModal(true)} className="gap-2">
+                <UserPlus className="h-4 w-4" />
+                Add Staff
+              </Button>
+            )}
+          </div>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
@@ -268,6 +280,12 @@ export const StaffManagement = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <AddStaffModal
+        isOpen={showAddStaffModal}
+        onClose={() => setShowAddStaffModal(false)}
+        onSuccess={refetch}
+      />
     </>
   );
 };

@@ -20,6 +20,7 @@ import Suppliers from "./pages/Suppliers";
 import Settings from "./pages/Settings";
 import Onboarding from "./pages/Onboarding";
 import OnboardingWizard from "./pages/OnboardingWizard";
+import ProfileSettings from "./pages/ProfileSettings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -48,7 +49,7 @@ const App = () => (
                 <Route path="/inventory" element={<ProtectedRoute><Inventory /></ProtectedRoute>} />
                 <Route path="/suppliers" element={<ManagerRoute><Suppliers /></ManagerRoute>} />
                 <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-                
+                <Route path="/profile" element={<ProtectedRoute><ProfileSettings /></ProtectedRoute>} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
