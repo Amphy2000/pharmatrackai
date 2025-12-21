@@ -207,15 +207,17 @@ const Index = () => {
           </section>
         )}
 
-        {/* Charts & AI Insights Row */}
+        {/* Charts Section */}
         {!isLoading && medications.length > 0 && (
-          <section className="grid gap-8 lg:grid-cols-2 mb-10">
-            <div className="animate-slide-up" style={{ animationDelay: '200ms' }}>
-              <InventoryCharts medications={medications} />
-            </div>
-            <div className="animate-slide-up" style={{ animationDelay: '250ms' }}>
-              <AIInsightsPanel medications={medications} />
-            </div>
+          <section className="mb-10 animate-slide-up" style={{ animationDelay: '200ms' }}>
+            <InventoryCharts medications={medications} />
+          </section>
+        )}
+
+        {/* AI Insights Section */}
+        {!isLoading && medications.length > 0 && (
+          <section className="mb-10 animate-slide-up" style={{ animationDelay: '250ms' }}>
+            <AIInsightsPanel medications={medications} />
           </section>
         )}
 
