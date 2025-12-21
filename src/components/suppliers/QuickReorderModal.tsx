@@ -52,7 +52,7 @@ export const QuickReorderModal = ({ open, onOpenChange, medication }: QuickReord
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Quick Reorder{medication && `: ${medication.name}`}</DialogTitle>
         </DialogHeader>
