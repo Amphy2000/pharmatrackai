@@ -1,9 +1,7 @@
 import { useState } from 'react';
-import { Settings, DollarSign, Globe, Zap, Building2, Bell, MessageCircle, Phone, TestTube } from 'lucide-react';
+import { Settings, DollarSign, Globe, Zap, Building2 } from 'lucide-react';
 import { useCurrency, CurrencyCode } from '@/contexts/CurrencyContext';
 import { useRegionalSettings, CountryCode, POSMode } from '@/contexts/RegionalSettingsContext';
-import { useNotifications } from '@/hooks/useNotifications';
-import { usePharmacy } from '@/hooks/usePharmacy';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -41,34 +39,10 @@ const CURRENCY_OPTIONS: { code: CurrencyCode; name: string; symbol: string }[] =
 export const CurrencySettings = () => {
   const { currency, exchangeRates, setCurrency, setExchangeRate } = useCurrency();
   const { country, posMode, setCountry, setPOSMode, regulatory } = useRegionalSettings();
-  const { settings: notificationSettings, updateSettings: updateNotificationSettings, sendTestNotification, sending } = useNotifications();
-  const { pharmacy } = usePharmacy();
   const [open, setOpen] = useState(false);
   const [tempNGNRate, setTempNGNRate] = useState(exchangeRates.NGN.toString());
   const [tempGBPRate, setTempGBPRate] = useState(exchangeRates.GBP.toString());
   const { toast } = useToast();
-
-  const handleTestNotification = async () => {
-    if (!notificationSettings.phone) {
-      toast({
-        title: 'Phone Required',
-        description: 'Please enter a phone number first',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    if (!pharmacy?.id) {
-      toast({
-        title: 'No Pharmacy',
-        description: 'Please set up your pharmacy first',
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    await sendTestNotification(pharmacy.id);
-  };
 
   const handleSave = () => {
     const ngnRate = parseFloat(tempNGNRate);
@@ -143,7 +117,7 @@ export const CurrencySettings = () => {
         </DialogHeader>
 
         <Tabs defaultValue="region" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="region" className="text-xs sm:text-sm">
               <Globe className="h-3.5 w-3.5 mr-1" />
               <span className="hidden sm:inline">Region</span>
@@ -155,10 +129,6 @@ export const CurrencySettings = () => {
             <TabsTrigger value="mode" className="text-xs sm:text-sm">
               <Zap className="h-3.5 w-3.5 mr-1" />
               <span className="hidden sm:inline">Mode</span>
-            </TabsTrigger>
-            <TabsTrigger value="alerts" className="text-xs sm:text-sm">
-              <Bell className="h-3.5 w-3.5 mr-1" />
-              <span className="hidden sm:inline">Alerts</span>
             </TabsTrigger>
           </TabsList>
           {/* Region Tab */}
@@ -338,131 +308,6 @@ export const CurrencySettings = () => {
                 </div>
               </div>
             </div>
-          </TabsContent>
-
-          {/* Alerts Tab */}
-          <TabsContent value="alerts" className="space-y-4 mt-4">
-            {/* Master Toggle */}
-            <div className="flex items-center justify-between p-4 rounded-xl bg-muted/30">
-              <div className="flex items-center gap-3">
-                <div className="p-2 rounded-lg bg-primary/20">
-                  <Bell className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                  <Label className="font-medium">Enable Notifications</Label>
-                  <p className="text-xs text-muted-foreground">Receive alerts via SMS/WhatsApp</p>
-                </div>
-              </div>
-              <Switch
-                checked={notificationSettings.enabled}
-                onCheckedChange={(enabled) => updateNotificationSettings({ enabled })}
-              />
-            </div>
-
-            {notificationSettings.enabled && (
-              <>
-                {/* Phone Number */}
-                <div className="space-y-2">
-                  <Label>Phone Number</Label>
-                  <Input
-                    type="tel"
-                    placeholder="+2348012345678"
-                    value={notificationSettings.phone}
-                    onChange={(e) => updateNotificationSettings({ phone: e.target.value })}
-                  />
-                  <p className="text-xs text-muted-foreground">
-                    Include country code (e.g., +234 for Nigeria, +44 for UK)
-                  </p>
-                </div>
-
-                {/* Channel Selection */}
-                <div className="space-y-2">
-                  <Label>Notification Channel</Label>
-                  <Select
-                    value={notificationSettings.channel}
-                    onValueChange={(value: 'sms' | 'whatsapp') => updateNotificationSettings({ channel: value })}
-                  >
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="whatsapp">
-                        <span className="flex items-center gap-2">
-                          <MessageCircle className="h-4 w-4 text-green-500" />
-                          WhatsApp
-                        </span>
-                      </SelectItem>
-                      <SelectItem value="sms">
-                        <span className="flex items-center gap-2">
-                          <Phone className="h-4 w-4 text-blue-500" />
-                          SMS
-                        </span>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                  {notificationSettings.channel === 'whatsapp' && (
-                    <p className="text-xs text-muted-foreground">
-                      Make sure you've joined the Twilio WhatsApp sandbox first
-                    </p>
-                  )}
-                </div>
-
-                {/* Alert Types */}
-                <div className="space-y-2">
-                  <Label>Alert Types</Label>
-                  
-                  <div className="flex items-center justify-between p-3 rounded-lg border">
-                    <div>
-                      <p className="text-sm font-medium">Low Stock Alerts</p>
-                      <p className="text-xs text-muted-foreground">When items fall below reorder level</p>
-                    </div>
-                    <Switch
-                      checked={notificationSettings.lowStockAlerts}
-                      onCheckedChange={(lowStockAlerts) => updateNotificationSettings({ lowStockAlerts })}
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-between p-3 rounded-lg border">
-                    <div>
-                      <p className="text-sm font-medium">Expiry Warnings</p>
-                      <p className="text-xs text-muted-foreground">Medications expiring within 90 days</p>
-                    </div>
-                    <Switch
-                      checked={notificationSettings.expiryWarnings}
-                      onCheckedChange={(expiryWarnings) => updateNotificationSettings({ expiryWarnings })}
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-between p-3 rounded-lg border">
-                    <div>
-                      <p className="text-sm font-medium">Daily Sales Summary</p>
-                      <p className="text-xs text-muted-foreground">End-of-day sales report</p>
-                    </div>
-                    <Switch
-                      checked={notificationSettings.dailySummary}
-                      onCheckedChange={(dailySummary) => updateNotificationSettings({ dailySummary })}
-                    />
-                  </div>
-                </div>
-
-                {/* Test Button */}
-                <Button
-                  onClick={handleTestNotification}
-                  disabled={sending || !notificationSettings.phone}
-                  variant="outline"
-                  className="w-full"
-                >
-                  {sending ? (
-                    <>Sending...</>
-                  ) : (
-                    <>
-                      <TestTube className="h-4 w-4 mr-2" />
-                      Send Test Notification
-                    </>
-                  )}
-                </Button>
-              </>
-            )}
           </TabsContent>
         </Tabs>
 
