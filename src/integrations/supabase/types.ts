@@ -458,6 +458,30 @@ export type Database = {
           },
         ]
       }
+      platform_admins: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["platform_role"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["platform_role"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["platform_role"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       prescription_items: {
         Row: {
           created_at: string
@@ -1159,6 +1183,8 @@ export type Database = {
         Args: { check_pharmacy_id: string; check_user_id: string }
         Returns: boolean
       }
+      is_platform_admin: { Args: { _user_id: string }; Returns: boolean }
+      is_super_admin: { Args: { _user_id: string }; Returns: boolean }
       staff_has_permission: {
         Args: { _permission_key: string; _user_id: string }
         Returns: boolean
@@ -1166,6 +1192,7 @@ export type Database = {
     }
     Enums: {
       pharmacy_role: "owner" | "manager" | "staff"
+      platform_role: "super_admin" | "support"
       subscription_plan: "starter" | "pro" | "enterprise"
       subscription_status: "active" | "expired" | "cancelled" | "trial"
     }
@@ -1296,6 +1323,7 @@ export const Constants = {
   public: {
     Enums: {
       pharmacy_role: ["owner", "manager", "staff"],
+      platform_role: ["super_admin", "support"],
       subscription_plan: ["starter", "pro", "enterprise"],
       subscription_status: ["active", "expired", "cancelled", "trial"],
     },
