@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Package, AlertTriangle, XCircle, Clock, Plus, ShoppingCart, Upload, Zap, Archive } from 'lucide-react';
+import { Package, AlertTriangle, XCircle, Clock, Plus, ShoppingCart, Upload, Zap, Archive, Send } from 'lucide-react';
 import { useMedications } from '@/hooks/useMedications';
+import { useNotifications } from '@/hooks/useNotifications';
+import { usePharmacy } from '@/hooks/usePharmacy';
 import { Medication } from '@/types/medication';
 import { Header } from '@/components/Header';
 import { MetricCard } from '@/components/dashboard/MetricCard';
@@ -91,6 +93,8 @@ const BulkUnshelveButton = ({ medications }: { medications: Medication[] }) => {
 
 const Index = () => {
   const { medications, isLoading, getMetrics, isLowStock } = useMedications();
+  const { sendNotification, settings: notificationSettings, sending } = useNotifications();
+  const { pharmacy } = usePharmacy();
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -98,6 +102,21 @@ const Index = () => {
   const [editingMedication, setEditingMedication] = useState<Medication | null>(null);
 
   const metrics = getMetrics();
+
+  const sendLowStockAlert = async () => {
+    if (!pharmacy?.id) return;
+    
+    const lowStockItems = medications
+      .filter(m => isLowStock(m.current_stock, m.reorder_level))
+      .map(m => ({
+        name: m.name,
+        stock: m.current_stock,
+      }));
+
+    if (lowStockItems.length > 0) {
+      await sendNotification('low_stock', pharmacy.id, { medications: lowStockItems });
+    }
+  };
 
   // Low stock notifications
   useEffect(() => {
@@ -183,6 +202,20 @@ const Index = () => {
                 subtitle="Below reorder level"
                 trend={-8}
                 trendLabel="improved"
+                action={
+                  notificationSettings.enabled && metrics.lowStockItems > 0 ? (
+                    <Button 
+                      size="sm" 
+                      variant="ghost" 
+                      className="h-7 text-xs gap-1"
+                      onClick={sendLowStockAlert}
+                      disabled={sending}
+                    >
+                      <Send className="h-3 w-3" />
+                      Alert
+                    </Button>
+                  ) : undefined
+                }
               />
               <MetricCard
                 title="Expired"

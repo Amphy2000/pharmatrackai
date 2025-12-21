@@ -32,6 +32,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { CurrencySettings } from '@/components/settings/CurrencySettings';
+import { NotificationSettings } from '@/components/settings/NotificationSettings';
 
 export const Header = () => {
   const location = useLocation();
@@ -157,6 +158,9 @@ export const Header = () => {
                 </div>
               </PopoverContent>
             </Popover>
+
+            {/* Notification Settings */}
+            <NotificationSettings />
 
             {/* Currency Settings */}
             <CurrencySettings />
