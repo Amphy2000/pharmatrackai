@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format } from 'date-fns';
 import { CalendarIcon, Plus, Save, X, Truck } from 'lucide-react';
-import { Medication, MedicationFormData, MedicationCategory } from '@/types/medication';
+import { Medication, MedicationFormData } from '@/types/medication';
 import { useMedications } from '@/hooks/useMedications';
 import { useSuppliers } from '@/hooks/useSuppliers';
 import { cn } from '@/lib/utils';
@@ -43,21 +43,11 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
-const categories: MedicationCategory[] = [
-  'Tablet',
-  'Syrup',
-  'Capsule',
-  'Injection',
-  'Cream',
-  'Drops',
-  'Inhaler',
-  'Powder',
-  'Other',
-];
+import { ALL_CATEGORIES, CATEGORY_GROUPS, ProductType, MedicationCategory } from '@/types/medication';
 
 const formSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters').max(100),
-  category: z.enum(['Tablet', 'Syrup', 'Capsule', 'Injection', 'Cream', 'Drops', 'Inhaler', 'Powder', 'Other']),
+  category: z.string().min(1, 'Category is required'),
   batch_number: z.string().min(1, 'Batch number is required').max(50),
   barcode_id: z.string().max(100).optional(),
   current_stock: z.coerce.number().min(0, 'Stock cannot be negative'),
@@ -188,7 +178,7 @@ export const AddMedicationModal = ({
   const onSubmit = async (values: FormValues) => {
     const medicationData: MedicationFormData = {
       name: values.name,
-      category: values.category,
+      category: values.category as MedicationCategory,
       batch_number: values.batch_number,
       barcode_id: values.barcode_id || undefined,
       current_stock: values.current_stock,
@@ -291,11 +281,19 @@ export const AddMedicationModal = ({
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {categories.map((category) => (
-                          <SelectItem key={category} value={category}>
-                            {category}
-                          </SelectItem>
+                        {(Object.keys(CATEGORY_GROUPS) as ProductType[]).map((group) => (
+                          <div key={group}>
+                            <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground bg-muted/50">
+                              {group}
+                            </div>
+                            {CATEGORY_GROUPS[group].map((category) => (
+                              <SelectItem key={category} value={category}>
+                                {category}
+                              </SelectItem>
+                            ))}
+                          </div>
                         ))}
+                        <SelectItem value="Other">Other</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
