@@ -93,17 +93,12 @@ const BulkUnshelveButton = ({ medications }: { medications: Medication[] }) => {
 
 const Index = () => {
   const { medications, isLoading, getMetrics, isLowStock } = useMedications();
-  const { hasPermission } = usePermissions();
+  const { isOwnerOrManager } = usePermissions();
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCSVModalOpen, setIsCSVModalOpen] = useState(false);
   const [editingMedication, setEditingMedication] = useState<Medication | null>(null);
-
-  // Check permissions for dashboard features
-  // Staff can always see basic metrics, charts, compliance, and AI insights
-  // Only financial data (revenue, profit, margins) is restricted
-  const canViewFinancial = hasPermission('view_financial_data');
 
   const metrics = getMetrics();
 
@@ -210,15 +205,15 @@ const Index = () => {
           )}
         </section>
 
-        {/* Financial Summary - Only visible to owners/managers or staff with permission */}
-        {!isLoading && medications.length > 0 && canViewFinancial && (
+        {/* Financial Summary - Only visible to owners/managers */}
+        {!isLoading && medications.length > 0 && isOwnerOrManager && (
           <section className="mb-8 sm:mb-10 animate-slide-up" style={{ animationDelay: '100ms' }}>
             <FinancialSummary medications={medications} />
           </section>
         )}
 
-        {/* Sales Analytics - Always visible to all staff */}
-        {!isLoading && (
+        {/* Sales Analytics - Only visible to owners/managers (contains revenue/profit data) */}
+        {!isLoading && isOwnerOrManager && (
           <section className="mb-8 sm:mb-10 animate-slide-up" style={{ animationDelay: '125ms' }}>
             <SalesAnalytics />
           </section>

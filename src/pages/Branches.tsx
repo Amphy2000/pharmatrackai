@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Header } from '@/components/Header';
 import { useBranches } from '@/hooks/useBranches';
 import { useCurrency } from '@/contexts/CurrencyContext';
+import { usePermissions } from '@/hooks/usePermissions';
 import { AddBranchModal } from '@/components/branches/AddBranchModal';
 import { StockTransferModal } from '@/components/branches/StockTransferModal';
 import { BranchInventoryTable } from '@/components/branches/BranchInventoryTable';
@@ -39,6 +40,7 @@ import { Branch } from '@/types/branch';
 const Branches = () => {
   const { branches, branchInventory, transfers, deleteBranch, isLoading } = useBranches();
   const { formatPrice } = useCurrency();
+  const { isOwnerOrManager } = usePermissions();
   const [showAddBranch, setShowAddBranch] = useState(false);
   const [showTransfer, setShowTransfer] = useState(false);
   const [editingBranch, setEditingBranch] = useState<Branch | null>(null);
@@ -74,10 +76,12 @@ const Branches = () => {
               <ArrowLeftRight className="h-4 w-4" />
               Transfer Stock
             </Button>
-            <Button onClick={() => setShowAddBranch(true)} className="gap-2">
-              <Plus className="h-4 w-4" />
-              Add Branch
-            </Button>
+            {isOwnerOrManager && (
+              <Button onClick={() => setShowAddBranch(true)} className="gap-2">
+                <Plus className="h-4 w-4" />
+                Add Branch
+              </Button>
+            )}
           </div>
         </div>
 
@@ -103,9 +107,9 @@ const Branches = () => {
                   <Package className="h-5 w-5 text-success" />
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Total Inventory</p>
+                  <p className="text-sm text-muted-foreground">Total Stock</p>
                   <p className="text-2xl font-bold">
-                    {formatPrice(branchStats.reduce((sum, s) => sum + s.totalValue, 0))}
+                    {branchStats.reduce((sum, s) => sum + s.totalStock, 0)} units
                   </p>
                 </div>
               </div>
@@ -172,29 +176,31 @@ const Branches = () => {
                           <Badge variant="secondary" className="text-xs">Main</Badge>
                         )}
                       </div>
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-8 w-8">
-                            <MoreVertical className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => {
-                            setEditingBranch(branch);
-                            setShowAddBranch(true);
-                          }}>
-                            <Edit className="h-4 w-4 mr-2" />
-                            Edit
-                          </DropdownMenuItem>
-                          <DropdownMenuItem
-                            onClick={() => deleteBranch.mutate(branch.id)}
-                            className="text-destructive"
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Delete
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                      {isOwnerOrManager && (
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                              <MoreVertical className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => {
+                              setEditingBranch(branch);
+                              setShowAddBranch(true);
+                            }}>
+                              <Edit className="h-4 w-4 mr-2" />
+                              Edit
+                            </DropdownMenuItem>
+                            <DropdownMenuItem
+                              onClick={() => deleteBranch.mutate(branch.id)}
+                              className="text-destructive"
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Delete
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      )}
                     </div>
                     <CardDescription className="flex flex-col gap-1 text-xs">
                       {branch.address && (
@@ -221,10 +227,12 @@ const Branches = () => {
                         <p className="text-muted-foreground">Total Stock</p>
                         <p className="font-semibold">{totalStock} units</p>
                       </div>
-                      <div>
-                        <p className="text-muted-foreground">Value</p>
-                        <p className="font-semibold text-primary">{formatPrice(totalValue)}</p>
-                      </div>
+                      {isOwnerOrManager && (
+                        <div>
+                          <p className="text-muted-foreground">Value</p>
+                          <p className="font-semibold text-primary">{formatPrice(totalValue)}</p>
+                        </div>
+                      )}
                       <div>
                         <p className="text-muted-foreground">Low Stock</p>
                         <p className={`font-semibold ${lowStockCount > 0 ? 'text-warning' : ''}`}>

@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { CurrencyProvider } from "@/contexts/CurrencyContext";
 import { RegionalSettingsProvider } from "@/contexts/RegionalSettingsContext";
+import { ManagerRoute } from "@/components/ManagerRoute";
 import Index from "./pages/Index";
 import Checkout from "./pages/Checkout";
 import SalesHistory from "./pages/SalesHistory";
@@ -32,8 +33,8 @@ const App = () => (
                 <Route path="/sales-history" element={<SalesHistory />} />
                 <Route path="/customers" element={<Customers />} />
                 <Route path="/branches" element={<Branches />} />
-                <Route path="/suppliers" element={<Suppliers />} />
-                <Route path="/settings" element={<Settings />} />
+                <Route path="/suppliers" element={<ManagerRoute><Suppliers /></ManagerRoute>} />
+                <Route path="/settings" element={<ManagerRoute><Settings /></ManagerRoute>} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
