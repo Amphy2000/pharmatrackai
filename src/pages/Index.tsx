@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Package, AlertTriangle, XCircle, Clock, Plus, ShoppingCart, Upload, Shield, Zap } from 'lucide-react';
+import { Package, AlertTriangle, XCircle, Clock, Plus, ShoppingCart, Upload, Zap, Archive } from 'lucide-react';
 import { useMedications } from '@/hooks/useMedications';
 import { Medication } from '@/types/medication';
 import { Header } from '@/components/Header';
@@ -15,6 +15,77 @@ import { AISearchBar } from '@/components/inventory/AISearchBar';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+
+// Bulk unshelve button component
+const BulkUnshelveButton = ({ medications }: { medications: Medication[] }) => {
+  const [dialogOpen, setDialogOpen] = useState(false);
+  const { updateMedication, isExpired } = useMedications();
+  const { toast } = useToast();
+
+  const expiredShelved = medications.filter(m => isExpired(m.expiry_date) && m.is_shelved !== false);
+
+  const handleBulkUnshelve = async () => {
+    let successCount = 0;
+    for (const med of expiredShelved) {
+      try {
+        await updateMedication.mutateAsync({ id: med.id, is_shelved: false });
+        successCount++;
+      } catch (error) {
+        console.error(`Failed to unshelve ${med.name}:`, error);
+      }
+    }
+    toast({
+      title: `✓ ${successCount} expired items unshelved`,
+      description: 'Removed from active inventory to prevent accidental sales',
+    });
+    setDialogOpen(false);
+  };
+
+  if (expiredShelved.length === 0) return null;
+
+  return (
+    <>
+      <Button
+        onClick={() => setDialogOpen(true)}
+        variant="outline"
+        className="gap-2 h-11 border-destructive/50 text-destructive hover:bg-destructive/10"
+      >
+        <Archive className="h-4 w-4" />
+        Unshelve {expiredShelved.length} Expired
+      </Button>
+      <AlertDialog open={dialogOpen} onOpenChange={setDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Unshelve All Expired Medications?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will unshelve <strong>{expiredShelved.length}</strong> expired medications, 
+              removing them from active inventory. They won't appear in POS and won't be sold to customers.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleBulkUnshelve}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Unshelve All Expired
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+};
 
 const Index = () => {
   const { medications, isLoading, getMetrics, isLowStock } = useMedications();
@@ -136,66 +207,68 @@ const Index = () => {
           </section>
         )}
 
-        {/* Charts Section */}
+        {/* Charts & AI Insights Row */}
         {!isLoading && medications.length > 0 && (
-          <section className="mb-10 animate-slide-up" style={{ animationDelay: '200ms' }}>
-            <InventoryCharts medications={medications} />
+          <section className="grid gap-8 lg:grid-cols-2 mb-10">
+            <div className="animate-slide-up" style={{ animationDelay: '200ms' }}>
+              <InventoryCharts medications={medications} />
+            </div>
+            <div className="animate-slide-up" style={{ animationDelay: '250ms' }}>
+              <AIInsightsPanel medications={medications} />
+            </div>
           </section>
         )}
 
-        {/* AI Insights & Inventory */}
-        <section className="grid gap-8 lg:grid-cols-3 mb-10">
-          <div className="lg:col-span-1 animate-slide-up" style={{ animationDelay: '300ms' }}>
-            <AIInsightsPanel medications={medications} />
-          </div>
-          
-          <div className="lg:col-span-2 animate-slide-up" style={{ animationDelay: '400ms' }}>
-            <div className="glass-card rounded-2xl p-6">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
-                <div>
-                  <h2 className="text-2xl font-bold font-display">Inventory Management</h2>
-                  <p className="text-sm text-muted-foreground">Track, manage, and optimize your stock</p>
-                </div>
-                <div className="flex gap-2">
-                  <Button
-                    onClick={() => setIsCSVModalOpen(true)}
-                    variant="outline"
-                    className="gap-2 h-11"
-                  >
-                    <Upload className="h-4 w-4" />
-                    Import CSV
-                  </Button>
-                  <Button
-                    onClick={() => setIsModalOpen(true)}
-                    className="gap-2 bg-gradient-primary hover:opacity-90 shadow-glow-primary btn-glow h-11 px-6"
-                  >
-                    <Plus className="h-5 w-5" />
-                    Add Medication
-                  </Button>
-                </div>
+        {/* Inventory Management */}
+        <section className="mb-10 animate-slide-up" style={{ animationDelay: '300ms' }}>
+          <div className="glass-card rounded-2xl p-6">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+              <div>
+                <h2 className="text-2xl font-bold font-display">Inventory Management</h2>
+                <p className="text-sm text-muted-foreground">Track, manage, and optimize your stock</p>
               </div>
-
-              <div className="mb-6">
-                <AISearchBar
-                  onSearch={setSearchQuery}
-                  placeholder="Search by name, category, or try 'Which drugs expire next month?'"
-                />
+              <div className="flex flex-wrap gap-2">
+                {metrics.expiredItems > 0 && (
+                  <BulkUnshelveButton medications={medications} />
+                )}
+                <Button
+                  onClick={() => setIsCSVModalOpen(true)}
+                  variant="outline"
+                  className="gap-2 h-11"
+                >
+                  <Upload className="h-4 w-4" />
+                  Import CSV
+                </Button>
+                <Button
+                  onClick={() => setIsModalOpen(true)}
+                  className="gap-2 bg-gradient-primary hover:opacity-90 shadow-glow-primary btn-glow h-11 px-6"
+                >
+                  <Plus className="h-5 w-5" />
+                  Add Medication
+                </Button>
               </div>
-
-              {isLoading ? (
-                <div className="space-y-4">
-                  {[...Array(5)].map((_, i) => (
-                    <Skeleton key={i} className="h-16 rounded-xl bg-muted/50" />
-                  ))}
-                </div>
-              ) : (
-                <MedicationsTable
-                  medications={medications}
-                  searchQuery={searchQuery}
-                  onEdit={handleEdit}
-                />
-              )}
             </div>
+
+            <div className="mb-6">
+              <AISearchBar
+                onSearch={setSearchQuery}
+                placeholder="Search by name, category, or try 'Which drugs expire next month?'"
+              />
+            </div>
+
+            {isLoading ? (
+              <div className="space-y-4">
+                {[...Array(5)].map((_, i) => (
+                  <Skeleton key={i} className="h-16 rounded-xl bg-muted/50" />
+                ))}
+              </div>
+            ) : (
+              <MedicationsTable
+                medications={medications}
+                searchQuery={searchQuery}
+                onEdit={handleEdit}
+              />
+            )}
           </div>
         </section>
       </main>
