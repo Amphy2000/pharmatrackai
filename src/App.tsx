@@ -7,7 +7,10 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { CurrencyProvider } from "@/contexts/CurrencyContext";
 import { RegionalSettingsProvider } from "@/contexts/RegionalSettingsContext";
 import { ManagerRoute } from "@/components/ManagerRoute";
-import Index from "./pages/Index";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
+import Landing from "./pages/Landing";
+import Auth from "./pages/Auth";
+import Dashboard from "./pages/Dashboard";
 import Checkout from "./pages/Checkout";
 import SalesHistory from "./pages/SalesHistory";
 import Customers from "./pages/Customers";
@@ -15,6 +18,8 @@ import Branches from "./pages/Branches";
 import Inventory from "./pages/Inventory";
 import Suppliers from "./pages/Suppliers";
 import Settings from "./pages/Settings";
+import Onboarding from "./pages/Onboarding";
+import OnboardingWizard from "./pages/OnboardingWizard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -29,14 +34,21 @@ const App = () => (
             <Sonner />
             <BrowserRouter>
               <Routes>
-                <Route path="/" element={<Index />} />
-                <Route path="/checkout" element={<Checkout />} />
-                <Route path="/sales" element={<SalesHistory />} />
-                <Route path="/customers" element={<Customers />} />
-                <Route path="/branches" element={<Branches />} />
-                <Route path="/inventory" element={<Inventory />} />
+                {/* Public Routes */}
+                <Route path="/" element={<Landing />} />
+                <Route path="/auth" element={<Auth />} />
+                <Route path="/onboarding" element={<OnboardingWizard />} />
+                
+                {/* Protected Routes */}
+                <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
+                <Route path="/checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
+                <Route path="/sales" element={<ProtectedRoute><SalesHistory /></ProtectedRoute>} />
+                <Route path="/customers" element={<ProtectedRoute><Customers /></ProtectedRoute>} />
+                <Route path="/branches" element={<ProtectedRoute><Branches /></ProtectedRoute>} />
+                <Route path="/inventory" element={<ProtectedRoute><Inventory /></ProtectedRoute>} />
                 <Route path="/suppliers" element={<ManagerRoute><Suppliers /></ManagerRoute>} />
-                <Route path="/settings" element={<Settings />} />
+                <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
+                
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
