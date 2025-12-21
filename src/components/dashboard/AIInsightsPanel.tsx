@@ -23,7 +23,8 @@ interface Insight {
 export const AIInsightsPanel = ({ medications }: AIInsightsPanelProps) => {
   const [insights, setInsights] = useState<Insight[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const { formatPrice } = useCurrency();
+  const { formatPrice, currency } = useCurrency();
+  const currencySymbol = currency === 'NGN' ? '₦' : '$';
 
   useEffect(() => {
     const generateInsights = async () => {
@@ -37,7 +38,7 @@ export const AIInsightsPanel = ({ medications }: AIInsightsPanelProps) => {
       
       try {
         const { data, error } = await supabase.functions.invoke('generate-insights', {
-          body: { medications }
+          body: { medications, currency, currencySymbol }
         });
 
         if (error) throw error;
