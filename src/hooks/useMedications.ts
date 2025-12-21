@@ -50,15 +50,19 @@ export const useMedications = () => {
 
   const updateMedication = useMutation({
     mutationFn: async ({ id, ...updates }: Partial<Medication> & { id: string }) => {
-      // First verify the medication exists
+      // First verify the medication exists (use maybeSingle to avoid error on 0 rows)
       const { data: existing, error: fetchError } = await supabase
         .from('medications')
         .select('id')
         .eq('id', id)
-        .single();
+        .maybeSingle();
       
-      if (fetchError || !existing) {
-        throw new Error('Medication not found or you do not have access');
+      if (fetchError) {
+        throw new Error(`Database error: ${fetchError.message}`);
+      }
+      
+      if (!existing) {
+        throw new Error('Medication not found or you do not have access to it');
       }
 
       const { data, error } = await supabase
@@ -66,9 +70,10 @@ export const useMedications = () => {
         .update(updates)
         .eq('id', id)
         .select()
-        .single();
+        .maybeSingle();
 
       if (error) throw error;
+      if (!data) throw new Error('Failed to update medication');
       return data;
     },
     onSuccess: () => {
