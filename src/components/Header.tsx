@@ -10,7 +10,6 @@ import {
   LogOut,
   HelpCircle,
   Shield,
-  Sparkles,
   LayoutDashboard,
   ShoppingCart,
   History,
@@ -51,6 +50,8 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePlatformAdmin } from '@/hooks/usePlatformAdmin';
+import { BranchSwitcher } from '@/components/header/BranchSwitcher';
+import { useBranchContext } from '@/contexts/BranchContext';
 
 export const Header = () => {
   const location = useLocation();
@@ -59,34 +60,37 @@ export const Header = () => {
   const { isOwnerOrManager, userRole } = usePermissions();
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
   const { isAdmin, isDevEmail } = usePlatformAdmin();
+  const { currentBranchId, setCurrentBranchId } = useBranchContext();
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   
   // Show admin link for admins or the dev email
   const showAdminLink = isAdmin || isDevEmail;
+  
+  // Only owners can see Settings
+  const canSeeSettings = userRole === 'owner';
 
-  // Staff-accessible navigation
-  const staffNavLinks = [
-    { href: '/', label: 'Dashboard', icon: LayoutDashboard },
-    { href: '/checkout', label: 'POS', icon: ShoppingCart },
-    { href: '/customers', label: 'Customers', icon: Users },
-    { href: '/branches', label: 'Branches', icon: Building2 },
-    { href: '/inventory', label: 'Inventory', icon: PackageSearch },
-    { href: '/sales', label: 'Sales', icon: History },
-  ];
+  // Staff (Cashier) only sees POS
+  const staffNavLinks = userRole === 'staff' 
+    ? [
+        { href: '/checkout', label: 'POS', icon: ShoppingCart },
+      ]
+    : [
+        { href: '/', label: 'Dashboard', icon: LayoutDashboard },
+        { href: '/checkout', label: 'POS', icon: ShoppingCart },
+        { href: '/customers', label: 'Customers', icon: Users },
+        { href: '/branches', label: 'Branches', icon: Building2 },
+        { href: '/inventory', label: 'Inventory', icon: PackageSearch },
+        { href: '/sales', label: 'Sales', icon: History },
+      ];
 
   // Manager/Owner only navigation
-  const managerNavLinks = [
-    { href: '/suppliers', label: 'Suppliers', icon: Truck },
-  ];
+  const managerNavLinks = isOwnerOrManager
+    ? [{ href: '/suppliers', label: 'Suppliers', icon: Truck }]
+    : [];
 
-  // Settings - always visible to owner/manager
-  const settingsLink = { href: '/settings', label: 'Settings', icon: Settings };
+  const navLinks = [...staffNavLinks, ...managerNavLinks];
 
-  const navLinks = isOwnerOrManager 
-    ? [...staffNavLinks, ...managerNavLinks]
-    : staffNavLinks;
-
-  const roleLabel = userRole === 'owner' ? 'Owner' : userRole === 'manager' ? 'Manager' : 'Staff';
+  const roleLabel = userRole === 'owner' ? 'Owner' : userRole === 'manager' ? 'Manager' : 'Cashier';
 
   const getNotificationIcon = (type: string) => {
     switch (type) {
@@ -121,24 +125,35 @@ export const Header = () => {
       <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
         <div className="container mx-auto px-4 sm:px-6">
           <div className="flex h-16 sm:h-20 items-center justify-between gap-4 lg:gap-6">
-            <Link to="/dashboard" className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
-              <div className="relative">
-                <div className="flex h-9 w-9 sm:h-11 sm:w-11 items-center justify-center rounded-xl bg-gradient-primary shadow-glow-primary">
-                  <Pill className="h-4 w-4 sm:h-5 sm:w-5 text-primary-foreground" />
+            {/* Logo and Branch Switcher */}
+            <div className="flex items-center gap-3">
+              <Link to="/dashboard" className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+                <div className="relative">
+                  <div className="flex h-9 w-9 sm:h-11 sm:w-11 items-center justify-center rounded-xl bg-gradient-primary shadow-glow-primary">
+                    <Pill className="h-4 w-4 sm:h-5 sm:w-5 text-primary-foreground" />
+                  </div>
+                  <div className="absolute -bottom-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-success">
+                    <Activity className="h-2 w-2 text-success-foreground" />
+                  </div>
                 </div>
-                <div className="absolute -bottom-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-success">
-                  <Activity className="h-2 w-2 text-success-foreground" />
+                <div className="hidden sm:block">
+                  <h1 className="text-lg font-bold font-display tracking-tight">
+                    <span className="text-foreground">Pharma</span>
+                    <span className="text-gradient">Track</span>
+                  </h1>
                 </div>
-              </div>
-              <div className="hidden sm:block">
-                <h1 className="text-lg font-bold font-display tracking-tight">
-                  <span className="text-foreground">Pharma</span>
-                  <span className="text-gradient">Track</span>
-                </h1>
-              </div>
-            </Link>
+              </Link>
 
-            {/* Navigation Links - icon-only until very wide screens (consistent across browsers) */}
+              {/* Branch Switcher - Only for Pro/Enterprise */}
+              <div className="hidden md:block">
+                <BranchSwitcher 
+                  currentBranchId={currentBranchId} 
+                  onBranchChange={setCurrentBranchId} 
+                />
+              </div>
+            </div>
+
+            {/* Navigation Links */}
             <nav className="hidden lg:flex items-center flex-1 min-w-0 justify-center">
               <div className="flex items-center gap-0.5 2xl:gap-1">
                 {navLinks.map((link) => {
@@ -164,8 +179,8 @@ export const Header = () => {
                     </Tooltip>
                   );
                 })}
-                {/* Settings Link - Always visible */}
-                {isOwnerOrManager && (
+                {/* Settings Link - Only for Owners */}
+                {canSeeSettings && (
                   <Tooltip>
                     <TooltipTrigger asChild>
                       <Link
@@ -220,7 +235,7 @@ export const Header = () => {
               <span className="text-xs font-medium text-success">Online</span>
             </div>
 
-            {/* Mobile Nav - Only show on small screens */}
+            {/* Mobile Nav */}
             <div className="flex lg:hidden items-center gap-0.5">
               {navLinks.slice(0, 4).map((link) => {
                 const isActive = location.pathname === link.href || (link.href === '/' && location.pathname === '/dashboard');
