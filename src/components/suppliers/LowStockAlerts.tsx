@@ -1,7 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { AlertTriangle, ShoppingCart, TrendingDown } from 'lucide-react';
+import { AlertTriangle, ShoppingCart, TrendingDown, Package } from 'lucide-react';
 import { useMedications } from '@/hooks/useMedications';
 import { useSuppliers } from '@/hooks/useSuppliers';
 import { useCurrency } from '@/contexts/CurrencyContext';
@@ -9,9 +9,10 @@ import type { Medication } from '@/types/medication';
 
 interface LowStockAlertsProps {
   onReorder: (medication: Medication) => void;
+  onBulkReorder?: () => void;
 }
 
-export const LowStockAlerts = ({ onReorder }: LowStockAlertsProps) => {
+export const LowStockAlerts = ({ onReorder, onBulkReorder }: LowStockAlertsProps) => {
   const { medications, isLoading } = useMedications();
   const { supplierProducts } = useSuppliers();
   const { formatPrice } = useCurrency();
@@ -48,10 +49,18 @@ export const LowStockAlerts = ({ onReorder }: LowStockAlertsProps) => {
   return (
     <Card>
       <CardHeader className="pb-3">
-        <CardTitle className="text-lg flex items-center gap-2">
-          <AlertTriangle className="h-5 w-5 text-destructive" />
-          Low Stock Alerts ({lowStockMedications.length})
-        </CardTitle>
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <AlertTriangle className="h-5 w-5 text-destructive" />
+            Low Stock ({lowStockMedications.length})
+          </CardTitle>
+          {onBulkReorder && lowStockMedications.length > 1 && (
+            <Button size="sm" onClick={onBulkReorder}>
+              <Package className="h-4 w-4 mr-1" />
+              Bulk Reorder
+            </Button>
+          )}
+        </div>
       </CardHeader>
       <CardContent className="space-y-3">
         {lowStockMedications.slice(0, 10).map((med) => {

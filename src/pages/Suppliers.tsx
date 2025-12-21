@@ -3,13 +3,14 @@ import { Header } from '@/components/Header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Package, Truck, Users, AlertTriangle } from 'lucide-react';
+import { Package, Truck, Users, AlertTriangle, ShoppingCart } from 'lucide-react';
 import { useSuppliers } from '@/hooks/useSuppliers';
 import { useMedications } from '@/hooks/useMedications';
 import { SuppliersTable } from '@/components/suppliers/SuppliersTable';
 import { ReorderRequestsTable } from '@/components/suppliers/ReorderRequestsTable';
 import { LowStockAlerts } from '@/components/suppliers/LowStockAlerts';
 import { QuickReorderModal } from '@/components/suppliers/QuickReorderModal';
+import { BulkReorderModal } from '@/components/suppliers/BulkReorderModal';
 import type { Medication } from '@/types/medication';
 
 const Suppliers = () => {
@@ -17,6 +18,7 @@ const Suppliers = () => {
   const { medications } = useMedications();
   const [reorderMedication, setReorderMedication] = useState<Medication | null>(null);
   const [showReorderModal, setShowReorderModal] = useState(false);
+  const [showBulkReorderModal, setShowBulkReorderModal] = useState(false);
 
   const activeSuppliers = suppliers.filter(s => s.is_active).length;
   const pendingOrders = reorderRequests.filter(r => 
@@ -43,10 +45,16 @@ const Suppliers = () => {
               View suppliers and reorder stock with best price suggestions
             </p>
           </div>
-          <Button onClick={() => setShowReorderModal(true)} variant="outline">
-            <Package className="h-4 w-4 mr-2" />
-            Quick Reorder
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={() => setShowBulkReorderModal(true)} variant="default">
+              <ShoppingCart className="h-4 w-4 mr-2" />
+              Bulk Reorder
+            </Button>
+            <Button onClick={() => setShowReorderModal(true)} variant="outline">
+              <Package className="h-4 w-4 mr-2" />
+              Quick Reorder
+            </Button>
+          </div>
         </div>
 
         {/* Stats Cards */}
@@ -144,7 +152,10 @@ const Suppliers = () => {
           </div>
           
           <div>
-            <LowStockAlerts onReorder={handleReorder} />
+            <LowStockAlerts 
+              onReorder={handleReorder} 
+              onBulkReorder={() => setShowBulkReorderModal(true)}
+            />
           </div>
         </div>
       </main>
@@ -153,6 +164,11 @@ const Suppliers = () => {
         open={showReorderModal}
         onOpenChange={setShowReorderModal}
         medication={reorderMedication}
+      />
+      
+      <BulkReorderModal
+        open={showBulkReorderModal}
+        onOpenChange={setShowBulkReorderModal}
       />
     </div>
   );
