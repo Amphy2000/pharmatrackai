@@ -4,7 +4,6 @@ import {
   Pill, 
   Activity, 
   Bell, 
-  Search, 
   ChevronDown,
   User,
   LogOut,
@@ -20,7 +19,6 @@ import {
   Settings
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import {
   DropdownMenu,
@@ -35,25 +33,37 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
-
+import { usePermissions } from '@/hooks/usePermissions';
 
 export const Header = () => {
   const location = useLocation();
+  const { isOwnerOrManager, userRole } = usePermissions();
   const [notifications] = useState([
     { id: 1, title: '5 medications expiring soon', time: '2 hours ago', type: 'warning' },
     { id: 2, title: 'Low stock alert: Amoxicillin', time: '4 hours ago', type: 'danger' },
     { id: 3, title: 'AI analysis complete', time: '1 day ago', type: 'info' },
   ]);
 
-  const navLinks = [
+  // Staff-accessible navigation
+  const staffNavLinks = [
     { href: '/', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/checkout', label: 'POS', icon: ShoppingCart },
     { href: '/customers', label: 'Customers', icon: Users },
     { href: '/branches', label: 'Branches', icon: Building2 },
-    { href: '/suppliers', label: 'Suppliers', icon: Truck },
     { href: '/sales-history', label: 'Sales', icon: History },
+  ];
+
+  // Manager/Owner only navigation
+  const managerNavLinks = [
+    { href: '/suppliers', label: 'Suppliers', icon: Truck },
     { href: '/settings', label: 'Settings', icon: Settings },
   ];
+
+  const navLinks = isOwnerOrManager 
+    ? [...staffNavLinks, ...managerNavLinks]
+    : staffNavLinks;
+
+  const roleLabel = userRole === 'owner' ? 'Owner' : userRole === 'manager' ? 'Manager' : 'Staff';
 
   return (
     <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
@@ -175,8 +185,8 @@ export const Header = () => {
                     <User className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary-foreground" />
                   </div>
                   <div className="hidden md:block text-left">
-                    <p className="text-sm font-medium leading-none">Admin User</p>
-                    <p className="text-xs text-muted-foreground">Pharmacy Manager</p>
+                    <p className="text-sm font-medium leading-none">User</p>
+                    <p className="text-xs text-muted-foreground">{roleLabel}</p>
                   </div>
                   <ChevronDown className="h-4 w-4 text-muted-foreground hidden sm:block" />
                 </Button>
