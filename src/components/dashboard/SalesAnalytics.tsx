@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays, subMonths, subYears, parseISO } from 'date-fns';
-import { TrendingUp, TrendingDown, DollarSign, ShoppingCart, Target, Calendar, ChevronDown } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, ShoppingCart, Target, Calendar, ChevronDown, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -12,6 +12,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useToast } from '@/hooks/use-toast';
 
 type Period = 'today' | 'week' | 'month' | 'year';
 
@@ -28,6 +29,7 @@ interface SalesWithMedication {
 
 export const SalesAnalytics = () => {
   const { formatPrice } = useCurrency();
+  const { toast } = useToast();
   const [period, setPeriod] = useState<Period>('month');
 
   const getDateRange = (p: Period) => {
@@ -166,6 +168,32 @@ export const SalesAnalytics = () => {
     );
   }
 
+  const exportToCSV = () => {
+    const dateRange = getDateRange(period);
+    const headers = ['Metric', 'Value', 'Change', 'Period'];
+    const rows = [
+      ['Revenue', analytics.revenue.toFixed(2), `${analytics.revenueChange.toFixed(1)}%`, periodLabels[period]],
+      ['Profit', analytics.profit.toFixed(2), `${analytics.profitChange.toFixed(1)}%`, periodLabels[period]],
+      ['Orders', analytics.orders.toString(), `${analytics.ordersChange.toFixed(1)}%`, periodLabels[period]],
+      ['Profit Margin', `${analytics.profitMargin.toFixed(1)}%`, '-', periodLabels[period]],
+      ['Items Sold', analytics.items.toString(), '-', periodLabels[period]],
+    ];
+
+    const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `sales-analytics-${period}-${format(new Date(), 'yyyy-MM-dd')}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    
+    toast({
+      title: 'Export Complete',
+      description: `Sales analytics for ${periodLabels[period].toLowerCase()} exported successfully.`,
+    });
+  };
+
   return (
     <div className="glass-card rounded-2xl p-4 sm:p-6">
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
@@ -173,21 +201,27 @@ export const SalesAnalytics = () => {
           <h3 className="text-lg sm:text-xl font-bold font-display">Sales & Profit Analytics</h3>
           <p className="text-xs sm:text-sm text-muted-foreground">Track your pharmacy's financial performance</p>
         </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" className="gap-2 text-sm">
-              <Calendar className="h-4 w-4" />
-              {periodLabels[period]}
-              <ChevronDown className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => setPeriod('today')}>Today</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setPeriod('week')}>This Week</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setPeriod('month')}>This Month</DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setPeriod('year')}>This Year</DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={exportToCSV} className="gap-2">
+            <Download className="h-4 w-4" />
+            Export
+          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="gap-2 text-sm">
+                <Calendar className="h-4 w-4" />
+                {periodLabels[period]}
+                <ChevronDown className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setPeriod('today')}>Today</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setPeriod('week')}>This Week</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setPeriod('month')}>This Month</DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setPeriod('year')}>This Year</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
