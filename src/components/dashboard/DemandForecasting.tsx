@@ -1,28 +1,44 @@
+import { useQuery } from '@tanstack/react-query';
 import { useMedications } from '@/hooks/useMedications';
-import { useSales } from '@/hooks/useSales';
 import { useCurrency } from '@/contexts/CurrencyContext';
+import { usePharmacy } from '@/hooks/usePharmacy';
+import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Brain, TrendingUp, Package, AlertTriangle, ShoppingCart } from 'lucide-react';
-import { subDays, format, differenceInDays } from 'date-fns';
+import { subDays } from 'date-fns';
 
 export const DemandForecasting = () => {
   const { medications } = useMedications();
-  const { sales } = useSales();
   const { formatPrice } = useCurrency();
+  const { pharmacyId } = usePharmacy();
 
-  // Calculate demand for each product based on last 30 days of sales
-  const thirtyDaysAgo = subDays(new Date(), 30);
-  
-  const recentSales = (sales || []).filter(sale => 
-    new Date(sale.sale_date) >= thirtyDaysAgo
-  );
+  // Fetch sales data separately
+  const { data: sales = [] } = useQuery({
+    queryKey: ['sales-history', pharmacyId],
+    queryFn: async () => {
+      if (!pharmacyId) return [];
+      
+      const thirtyDaysAgo = subDays(new Date(), 30).toISOString();
+      
+      const { data, error } = await supabase
+        .from('sales')
+        .select('*')
+        .eq('pharmacy_id', pharmacyId)
+        .gte('sale_date', thirtyDaysAgo)
+        .order('sale_date', { ascending: false });
+
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!pharmacyId,
+  });
 
   // Aggregate sales by medication
   const salesByMedication: Record<string, { quantity: number; revenue: number; count: number }> = {};
   
-  recentSales.forEach(sale => {
+  sales.forEach(sale => {
     if (!salesByMedication[sale.medication_id]) {
       salesByMedication[sale.medication_id] = { quantity: 0, revenue: 0, count: 0 };
     }

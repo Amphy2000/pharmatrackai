@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useMedications } from '@/hooks/useMedications';
 import { useAuth } from '@/contexts/AuthContext';
@@ -35,7 +34,7 @@ import {
 const Dashboard = () => {
   const navigate = useNavigate();
   const { user, isLoading: authLoading } = useAuth();
-  const { pharmacy, staffRecord, isLoading: pharmacyLoading } = usePharmacy();
+  const { pharmacy, isLoading: pharmacyLoading } = usePharmacy();
   const { medications, isLoading: medsLoading, getMetrics, isExpired, isLowStock, isExpiringSoon } = useMedications();
   const { activeShift } = useShifts();
   const { isOwnerOrManager } = usePermissions();
@@ -85,7 +84,7 @@ const Dashboard = () => {
         {/* Welcome Section */}
         <div className="mb-8">
           <h1 className="text-3xl font-display font-bold mb-2">
-            Welcome back, {staffRecord?.role === 'owner' ? 'Owner' : user.email?.split('@')[0]}
+            Welcome back, {user.email?.split('@')[0]}
           </h1>
           <p className="text-muted-foreground">
             Here's what's happening at {pharmacy.name} today.
@@ -105,25 +104,25 @@ const Dashboard = () => {
           <MetricCard
             title="Total Products"
             value={metrics.totalSKUs}
-            icon={Package}
-            trend={{ value: 0, isPositive: true }}
+            icon={<Package className="h-5 w-5" />}
+            trend={0}
           />
           <MetricCard
             title="Low Stock Items"
-            value={metrics.lowStock}
-            icon={AlertTriangle}
-            variant={metrics.lowStock > 0 ? 'warning' : 'default'}
+            value={metrics.lowStockItems}
+            icon={<AlertTriangle className="h-5 w-5" />}
+            variant={metrics.lowStockItems > 0 ? 'warning' : 'default'}
           />
           <MetricCard
             title="Expiring Soon"
-            value={metrics.expiringSoon}
-            icon={Calendar}
-            variant={metrics.expiringSoon > 0 ? 'warning' : 'default'}
+            value={metrics.expiringWithin30Days}
+            icon={<Calendar className="h-5 w-5" />}
+            variant={metrics.expiringWithin30Days > 0 ? 'warning' : 'default'}
           />
           <MetricCard
             title="Inventory Value"
             value={formatPrice(totalInventoryValue)}
-            icon={DollarSign}
+            icon={<DollarSign className="h-5 w-5" />}
           />
         </div>
 
@@ -146,18 +145,18 @@ const Dashboard = () => {
 
         {/* Charts and Analytics */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          <InventoryCharts />
+          <InventoryCharts medications={medications} />
           <SalesAnalytics />
         </div>
 
         {/* AI Insights and Compliance */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          <AIInsightsPanel />
-          <NAFDACCompliancePanel />
+          <AIInsightsPanel medications={medications} />
+          <NAFDACCompliancePanel medications={medications} />
         </div>
 
         {/* Financial Summary */}
-        <FinancialSummary />
+        <FinancialSummary medications={medications} />
 
         {/* Quick Actions */}
         <Card className="mt-8">
