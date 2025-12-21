@@ -158,27 +158,27 @@ export const InventoryCharts = ({ medications }: InventoryChartsProps) => {
       </div>
 
       {/* Category Distribution */}
-      <div className="chart-container overflow-hidden">
+      <div className="chart-container">
         <div className="section-header">
-          <div className="section-icon flex-shrink-0">
+          <div className="section-icon">
             <PieChartIcon className="h-5 w-5 text-primary-foreground" />
           </div>
-          <div className="min-w-0">
+          <div>
             <h3 className="text-lg font-semibold font-display">Category Distribution</h3>
             <p className="text-sm text-muted-foreground">Inventory by category</p>
           </div>
         </div>
-        <div className="h-64 flex flex-col sm:flex-row items-center gap-4">
-          <div className="w-full sm:w-1/2 h-40 sm:h-full flex-shrink-0">
+        <div className="h-64 flex items-center gap-6">
+          <div className="w-[180px] h-[180px] flex-shrink-0">
             <ResponsiveContainer width="100%" height="100%">
               <PieChart>
                 <Pie
                   data={categoryData}
                   cx="50%"
                   cy="50%"
-                  innerRadius={40}
-                  outerRadius={65}
-                  paddingAngle={4}
+                  innerRadius={50}
+                  outerRadius={80}
+                  paddingAngle={3}
                   dataKey="count"
                 >
                   {categoryData.map((entry, index) => (
@@ -189,14 +189,14 @@ export const InventoryCharts = ({ medications }: InventoryChartsProps) => {
               </PieChart>
             </ResponsiveContainer>
           </div>
-          <div className="flex-1 w-full space-y-1.5 max-h-40 overflow-y-auto">
-            {categoryData.map((item, index) => (
-              <div key={index} className="flex items-center justify-between text-sm gap-2">
+          <div className="flex-1 grid grid-cols-2 gap-x-4 gap-y-2">
+            {categoryData.slice(0, 8).map((item, index) => (
+              <div key={index} className="flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2 min-w-0">
-                  <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: item.color }} />
-                  <span className="text-muted-foreground text-xs truncate">{item.name}</span>
+                  <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: item.color }} />
+                  <span className="text-muted-foreground text-sm truncate">{item.name}</span>
                 </div>
-                <span className="font-medium flex-shrink-0 text-xs">{item.count}</span>
+                <span className="font-semibold text-sm flex-shrink-0">{item.count}</span>
               </div>
             ))}
           </div>

@@ -226,42 +226,42 @@ export const SalesAnalytics = () => {
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
         {/* Revenue Card */}
-        <div className="p-3 sm:p-4 rounded-xl bg-primary/10 border border-primary/20">
-          <div className="flex items-center gap-2 mb-2">
-            <DollarSign className="h-4 w-4 text-primary" />
-            <span className="text-xs sm:text-sm text-muted-foreground">Revenue</span>
+        <div className="p-4 sm:p-5 rounded-xl bg-primary/10 border border-primary/20">
+          <div className="flex items-center gap-2 mb-3">
+            <DollarSign className="h-5 w-5 text-primary" />
+            <span className="text-sm text-muted-foreground">Revenue</span>
           </div>
-          <p className="text-lg sm:text-2xl font-bold text-primary truncate">{formatPrice(analytics.revenue)}</p>
+          <p className="text-2xl sm:text-3xl font-bold text-primary mb-1">{formatPrice(analytics.revenue)}</p>
           <TrendIndicator value={analytics.revenueChange} label={comparisonLabels[period]} />
         </div>
 
         {/* Profit Card */}
-        <div className="p-3 sm:p-4 rounded-xl bg-success/10 border border-success/20">
-          <div className="flex items-center gap-2 mb-2">
-            <TrendingUp className="h-4 w-4 text-success" />
-            <span className="text-xs sm:text-sm text-muted-foreground">Profit</span>
+        <div className="p-4 sm:p-5 rounded-xl bg-success/10 border border-success/20">
+          <div className="flex items-center gap-2 mb-3">
+            <TrendingUp className="h-5 w-5 text-success" />
+            <span className="text-sm text-muted-foreground">Profit</span>
           </div>
-          <p className="text-lg sm:text-2xl font-bold text-success truncate">{formatPrice(analytics.profit)}</p>
+          <p className="text-2xl sm:text-3xl font-bold text-success mb-1">{formatPrice(analytics.profit)}</p>
           <TrendIndicator value={analytics.profitChange} label={comparisonLabels[period]} />
         </div>
 
         {/* Orders Card */}
-        <div className="p-3 sm:p-4 rounded-xl bg-secondary/10 border border-secondary/20">
-          <div className="flex items-center gap-2 mb-2">
-            <ShoppingCart className="h-4 w-4 text-secondary-foreground" />
-            <span className="text-xs sm:text-sm text-muted-foreground">Orders</span>
+        <div className="p-4 sm:p-5 rounded-xl bg-secondary/10 border border-secondary/20">
+          <div className="flex items-center gap-2 mb-3">
+            <ShoppingCart className="h-5 w-5 text-secondary-foreground" />
+            <span className="text-sm text-muted-foreground">Orders</span>
           </div>
-          <p className="text-lg sm:text-2xl font-bold">{analytics.orders}</p>
+          <p className="text-2xl sm:text-3xl font-bold mb-1">{analytics.orders}</p>
           <TrendIndicator value={analytics.ordersChange} label={comparisonLabels[period]} />
         </div>
 
         {/* Margin Card */}
-        <div className="p-3 sm:p-4 rounded-xl bg-warning/10 border border-warning/20">
-          <div className="flex items-center gap-2 mb-2">
-            <Target className="h-4 w-4 text-warning" />
-            <span className="text-xs sm:text-sm text-muted-foreground">Profit Margin</span>
+        <div className="p-4 sm:p-5 rounded-xl bg-warning/10 border border-warning/20">
+          <div className="flex items-center gap-2 mb-3">
+            <Target className="h-5 w-5 text-warning" />
+            <span className="text-sm text-muted-foreground">Profit Margin</span>
           </div>
-          <p className="text-lg sm:text-2xl font-bold text-warning">{analytics.profitMargin.toFixed(1)}%</p>
+          <p className="text-2xl sm:text-3xl font-bold text-warning mb-1">{analytics.profitMargin.toFixed(1)}%</p>
           <p className="text-xs text-muted-foreground">{analytics.items} items sold</p>
         </div>
       </div>

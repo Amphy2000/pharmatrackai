@@ -275,7 +275,7 @@ const Dashboard = () => {
           </motion.section>
         )}
 
-        {/* Charts and Analytics */}
+        {/* Inventory Charts - Full Width */}
         {medications.length > 0 && (
           <motion.section 
             initial={{ opacity: 0, y: 20 }}
@@ -283,14 +283,23 @@ const Dashboard = () => {
             transition={{ delay: 0.55 }}
             className="mb-8 sm:mb-10"
           >
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-              <InventoryCharts medications={medications} />
-              {isOwnerOrManager && <SalesAnalytics />}
-            </div>
+            <InventoryCharts medications={medications} />
           </motion.section>
         )}
 
-        {/* AI Insights and Compliance */}
+        {/* Sales Analytics - Full Width for Owner/Manager */}
+        {isOwnerOrManager && medications.length > 0 && (
+          <motion.section 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.58 }}
+            className="mb-8 sm:mb-10"
+          >
+            <SalesAnalytics />
+          </motion.section>
+        )}
+
+        {/* AI Insights - Full Width */}
         {medications.length > 0 && (
           <motion.section 
             initial={{ opacity: 0, y: 20 }}
@@ -298,10 +307,19 @@ const Dashboard = () => {
             transition={{ delay: 0.6 }}
             className="mb-8 sm:mb-10"
           >
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-              <AIInsightsPanel medications={medications} />
-              <NAFDACCompliancePanel medications={medications} />
-            </div>
+            <AIInsightsPanel medications={medications} />
+          </motion.section>
+        )}
+
+        {/* NAFDAC Compliance - Full Width */}
+        {medications.length > 0 && (
+          <motion.section 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.62 }}
+            className="mb-8 sm:mb-10"
+          >
+            <NAFDACCompliancePanel medications={medications} />
           </motion.section>
         )}
 
