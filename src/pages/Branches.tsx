@@ -40,10 +40,13 @@ import { Branch } from '@/types/branch';
 const Branches = () => {
   const { branches, branchInventory, transfers, deleteBranch, isLoading } = useBranches();
   const { formatPrice } = useCurrency();
-  const { isOwnerOrManager } = usePermissions();
+  const { isOwnerOrManager, hasPermission } = usePermissions();
   const [showAddBranch, setShowAddBranch] = useState(false);
   const [showTransfer, setShowTransfer] = useState(false);
   const [editingBranch, setEditingBranch] = useState<Branch | null>(null);
+
+  // Staff with manage_stock_transfers permission can also transfer stock
+  const canTransferStock = isOwnerOrManager || hasPermission('manage_stock_transfers');
 
   // Calculate stats per branch
   const branchStats = branches.map(branch => {
@@ -72,10 +75,12 @@ const Branches = () => {
             <p className="text-muted-foreground mt-1">Manage inventory across all pharmacy locations</p>
           </div>
           <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setShowTransfer(true)} className="gap-2">
-              <ArrowLeftRight className="h-4 w-4" />
-              Transfer Stock
-            </Button>
+            {canTransferStock && (
+              <Button variant="outline" onClick={() => setShowTransfer(true)} className="gap-2">
+                <ArrowLeftRight className="h-4 w-4" />
+                Transfer Stock
+              </Button>
+            )}
             {isOwnerOrManager && (
               <Button onClick={() => setShowAddBranch(true)} className="gap-2">
                 <Plus className="h-4 w-4" />
@@ -227,7 +232,7 @@ const Branches = () => {
                         <p className="text-muted-foreground">Total Stock</p>
                         <p className="font-semibold">{totalStock} units</p>
                       </div>
-                      {isOwnerOrManager && (
+                      {(isOwnerOrManager || hasPermission('view_financial_data')) && (
                         <div>
                           <p className="text-muted-foreground">Value</p>
                           <p className="font-semibold text-primary">{formatPrice(totalValue)}</p>
