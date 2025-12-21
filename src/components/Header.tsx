@@ -49,33 +49,33 @@ export const Header = () => {
 
   return (
     <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
-      <div className="container mx-auto px-6">
-        <div className="flex h-20 items-center justify-between gap-8">
+      <div className="container mx-auto px-4 sm:px-6">
+        <div className="flex h-16 sm:h-20 items-center justify-between gap-2 sm:gap-8">
           {/* Logo & Brand */}
-          <div className="flex items-center gap-4">
-            <div className="relative">
-              <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-primary shadow-glow-primary animate-glow-pulse">
-                <Pill className="h-6 w-6 text-primary-foreground" />
+          <Link to="/" className="flex items-center gap-2 sm:gap-4 min-w-0">
+            <div className="relative flex-shrink-0">
+              <div className="flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-xl sm:rounded-2xl bg-gradient-primary shadow-glow-primary animate-glow-pulse">
+                <Pill className="h-5 w-5 sm:h-6 sm:w-6 text-primary-foreground" />
               </div>
-              <div className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-success">
-                <Activity className="h-3 w-3 text-success-foreground" />
+              <div className="absolute -bottom-1 -right-1 flex h-4 w-4 sm:h-5 sm:w-5 items-center justify-center rounded-full bg-success">
+                <Activity className="h-2 w-2 sm:h-3 sm:w-3 text-success-foreground" />
               </div>
             </div>
-            <div>
-              <h1 className="text-2xl font-bold font-display tracking-tight flex items-center gap-2">
+            <div className="hidden xs:block min-w-0">
+              <h1 className="text-lg sm:text-2xl font-bold font-display tracking-tight flex items-center gap-2">
                 <span className="text-foreground">Pharma</span>
                 <span className="text-gradient">Track</span>
-                <Badge variant="secondary" className="ml-2 bg-secondary/20 text-secondary border-secondary/30 text-xs font-medium">
+                <Badge variant="secondary" className="hidden sm:inline-flex ml-2 bg-secondary/20 text-secondary border-secondary/30 text-xs font-medium">
                   <Sparkles className="h-3 w-3 mr-1" />
                   AI
                 </Badge>
               </h1>
-              <p className="text-xs text-muted-foreground tracking-wide">Enterprise Inventory Management</p>
+              <p className="text-xs text-muted-foreground tracking-wide hidden sm:block">Enterprise Inventory Management</p>
             </div>
-          </div>
+          </Link>
 
           {/* Navigation Links */}
-          <nav className="hidden md:flex items-center gap-1">
+          <nav className="hidden lg:flex items-center gap-1">
             {navLinks.map((link) => {
               const isActive = location.pathname === link.href;
               return (
@@ -96,24 +96,44 @@ export const Header = () => {
           </nav>
 
           {/* Right Section */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-1 sm:gap-3">
             {/* Live Status */}
-            <div className="hidden md:flex items-center gap-2 px-4 py-2 rounded-xl bg-success/10 border border-success/20">
+            <div className="hidden md:flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl bg-success/10 border border-success/20">
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75"></span>
                 <span className="relative inline-flex rounded-full h-2 w-2 bg-success"></span>
               </span>
-              <span className="text-sm font-medium text-success">System Online</span>
+              <span className="text-xs sm:text-sm font-medium text-success">Online</span>
+            </div>
+
+            {/* Mobile Nav */}
+            <div className="flex lg:hidden items-center gap-1">
+              {navLinks.map((link) => {
+                const isActive = location.pathname === link.href;
+                return (
+                  <Link
+                    key={link.href}
+                    to={link.href}
+                    className={`flex items-center justify-center h-9 w-9 rounded-lg transition-all ${
+                      isActive 
+                        ? 'bg-primary/10 text-primary' 
+                        : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                    }`}
+                  >
+                    <link.icon className="h-4 w-4" />
+                  </Link>
+                );
+              })}
             </div>
 
             {/* Notifications */}
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="ghost" size="icon" className="relative h-11 w-11 rounded-xl hover:bg-muted/50">
-                  <Bell className="h-5 w-5 text-muted-foreground" />
-                  <span className="absolute top-2 right-2 flex h-2.5 w-2.5">
+                <Button variant="ghost" size="icon" className="relative h-9 w-9 sm:h-11 sm:w-11 rounded-xl hover:bg-muted/50">
+                  <Bell className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
+                  <span className="absolute top-1.5 sm:top-2 right-1.5 sm:right-2 flex h-2 w-2 sm:h-2.5 sm:w-2.5">
                     <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-destructive"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 sm:h-2.5 sm:w-2.5 bg-destructive"></span>
                   </span>
                 </Button>
               </PopoverTrigger>
@@ -144,15 +164,15 @@ export const Header = () => {
             {/* User Menu */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="h-11 gap-3 px-3 rounded-xl hover:bg-muted/50">
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-primary">
-                    <User className="h-4 w-4 text-primary-foreground" />
+                <Button variant="ghost" className="h-9 sm:h-11 gap-2 sm:gap-3 px-2 sm:px-3 rounded-xl hover:bg-muted/50">
+                  <div className="flex h-7 w-7 sm:h-8 sm:w-8 items-center justify-center rounded-lg bg-gradient-primary">
+                    <User className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary-foreground" />
                   </div>
                   <div className="hidden md:block text-left">
                     <p className="text-sm font-medium leading-none">Admin User</p>
                     <p className="text-xs text-muted-foreground">Pharmacy Manager</p>
                   </div>
-                  <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                  <ChevronDown className="h-4 w-4 text-muted-foreground hidden sm:block" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-56">

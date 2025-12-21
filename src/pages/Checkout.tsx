@@ -6,17 +6,22 @@ import {
   CreditCard, 
   Printer, 
   Trash2,
-  Check
+  Check,
+  Pause,
+  Clock
 } from 'lucide-react';
 import { useMedications } from '@/hooks/useMedications';
 import { useCart } from '@/hooks/useCart';
 import { useSales } from '@/hooks/useSales';
 import { useCurrency } from '@/contexts/CurrencyContext';
+import { useHeldTransactions } from '@/hooks/useHeldTransactions';
 import { ProductGrid } from '@/components/pos/ProductGrid';
 import { CartPanel } from '@/components/pos/CartPanel';
+import { HeldTransactionsPanel } from '@/components/pos/HeldTransactionsPanel';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/hooks/use-toast';
 import {
   Dialog,
   DialogContent,
@@ -32,12 +37,52 @@ const Checkout = () => {
   const { completeSale } = useSales();
   const cart = useCart();
   const { formatPrice, currency } = useCurrency();
+  const { toast } = useToast();
+  const {
+    heldTransactions,
+    holdTransaction,
+    resumeTransaction,
+    deleteTransaction,
+    count: heldCount,
+  } = useHeldTransactions();
   
   const [customerName, setCustomerName] = useState('');
   const [checkoutOpen, setCheckoutOpen] = useState(false);
+  const [heldPanelOpen, setHeldPanelOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [saleComplete, setSaleComplete] = useState(false);
   const [lastReceiptNumber, setLastReceiptNumber] = useState('');
+
+  const handleHoldSale = () => {
+    if (cart.items.length === 0) return;
+    
+    holdTransaction(cart.items, customerName, cart.getTotal());
+    cart.clearCart();
+    setCustomerName('');
+    
+    toast({
+      title: 'Sale held',
+      description: 'Transaction saved. Resume it anytime from the Held button.',
+    });
+  };
+
+  const handleResumeSale = (id: string) => {
+    const transaction = resumeTransaction(id);
+    if (transaction) {
+      // Clear current cart and load held items
+      cart.clearCart();
+      transaction.items.forEach(item => {
+        cart.addItem(item.medication, item.quantity);
+      });
+      setCustomerName(transaction.customerName);
+      setHeldPanelOpen(false);
+      
+      toast({
+        title: 'Sale resumed',
+        description: 'Transaction loaded into cart.',
+      });
+    }
+  };
 
   const handleCompleteSale = async () => {
     if (cart.items.length === 0) return;
@@ -108,27 +153,43 @@ const Checkout = () => {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
-        <div className="container mx-auto px-6">
-          <div className="flex h-16 items-center justify-between">
-            <div className="flex items-center gap-4">
+        <div className="container mx-auto px-4 sm:px-6">
+          <div className="flex h-14 sm:h-16 items-center justify-between">
+            <div className="flex items-center gap-2 sm:gap-4">
               <Link to="/">
-                <Button variant="ghost" size="icon" className="rounded-xl">
-                  <ArrowLeft className="h-5 w-5" />
+                <Button variant="ghost" size="icon" className="rounded-xl h-9 w-9">
+                  <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
                 </Button>
               </Link>
               <div>
-                <h1 className="text-xl font-bold font-display flex items-center gap-2">
-                  <ShoppingCart className="h-5 w-5 text-primary" />
+                <h1 className="text-base sm:text-xl font-bold font-display flex items-center gap-2">
+                  <ShoppingCart className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
                   Point of Sale
                 </h1>
-                <p className="text-xs text-muted-foreground">Fast checkout with barcode scanning</p>
+                <p className="text-[10px] sm:text-xs text-muted-foreground hidden xs:block">Fast checkout with barcode scanning</p>
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
-              <Badge variant="secondary" className="gap-1 px-3 py-1">
+            <div className="flex items-center gap-2 sm:gap-3">
+              {/* Held Transactions Button */}
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setHeldPanelOpen(true)}
+                className="gap-1.5 h-8 sm:h-9 px-2 sm:px-3 text-xs sm:text-sm relative"
+              >
+                <Clock className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                <span className="hidden xs:inline">Held</span>
+                {heldCount > 0 && (
+                  <Badge className="absolute -top-2 -right-2 h-5 w-5 p-0 flex items-center justify-center text-[10px] bg-primary">
+                    {heldCount}
+                  </Badge>
+                )}
+              </Button>
+
+              <Badge variant="secondary" className="gap-1 px-2 sm:px-3 py-1 text-xs">
                 <ShoppingCart className="h-3 w-3" />
-                {cart.getTotalItems()} items
+                {cart.getTotalItems()}
               </Badge>
             </div>
           </div>
@@ -136,12 +197,12 @@ const Checkout = () => {
       </header>
 
       {/* Main Content */}
-      <main className="container mx-auto px-6 py-6">
-        <div className="grid gap-6 lg:grid-cols-3">
+      <main className="container mx-auto px-4 sm:px-6 py-4 sm:py-6">
+        <div className="grid gap-4 sm:gap-6 lg:grid-cols-3">
           {/* Product Grid */}
           <div className="lg:col-span-2">
-            <div className="glass-card rounded-2xl p-6">
-              <h2 className="text-lg font-bold font-display mb-4">Select Products</h2>
+            <div className="glass-card rounded-2xl p-4 sm:p-6">
+              <h2 className="text-base sm:text-lg font-bold font-display mb-4">Select Products</h2>
               <ProductGrid
                 medications={medications}
                 onAddToCart={cart.addItem}
@@ -152,18 +213,18 @@ const Checkout = () => {
 
           {/* Cart Panel */}
           <div className="lg:col-span-1">
-            <div className="glass-card rounded-2xl p-6 sticky top-24">
+            <div className="glass-card rounded-2xl p-4 sm:p-6 lg:sticky lg:top-24">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-bold font-display">Cart</h2>
+                <h2 className="text-base sm:text-lg font-bold font-display">Cart</h2>
                 {cart.items.length > 0 && (
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={cart.clearCart}
-                    className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                    className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8 px-2"
                   >
-                    <Trash2 className="h-4 w-4 mr-1" />
-                    Clear
+                    <Trash2 className="h-3.5 w-3.5 mr-1" />
+                    <span className="text-xs">Clear</span>
                   </Button>
                 )}
               </div>
@@ -176,23 +237,47 @@ const Checkout = () => {
                 total={cart.getTotal()}
               />
 
-              {/* Checkout Button */}
-              <Button
-                onClick={() => setCheckoutOpen(true)}
-                disabled={cart.items.length === 0}
-                className="w-full h-14 mt-6 text-lg font-bold gap-3 bg-gradient-primary hover:opacity-90 shadow-glow-primary btn-glow rounded-xl"
-              >
-                <CreditCard className="h-5 w-5" />
-                Complete Sale
-              </Button>
+              {/* Action Buttons */}
+              <div className="space-y-2 mt-4 sm:mt-6">
+                {/* Hold Sale Button */}
+                {cart.items.length > 0 && (
+                  <Button
+                    onClick={handleHoldSale}
+                    variant="outline"
+                    className="w-full h-10 sm:h-11 gap-2 text-sm"
+                  >
+                    <Pause className="h-4 w-4" />
+                    Hold Sale
+                  </Button>
+                )}
+
+                {/* Checkout Button */}
+                <Button
+                  onClick={() => setCheckoutOpen(true)}
+                  disabled={cart.items.length === 0}
+                  className="w-full h-12 sm:h-14 text-base sm:text-lg font-bold gap-2 sm:gap-3 bg-gradient-primary hover:opacity-90 shadow-glow-primary btn-glow rounded-xl"
+                >
+                  <CreditCard className="h-4 w-4 sm:h-5 sm:w-5" />
+                  Complete Sale
+                </Button>
+              </div>
             </div>
           </div>
         </div>
       </main>
 
+      {/* Held Transactions Panel */}
+      <HeldTransactionsPanel
+        open={heldPanelOpen}
+        onOpenChange={setHeldPanelOpen}
+        transactions={heldTransactions}
+        onResume={handleResumeSale}
+        onDelete={deleteTransaction}
+      />
+
       {/* Checkout Dialog */}
       <Dialog open={checkoutOpen} onOpenChange={setCheckoutOpen}>
-        <DialogContent className="sm:max-w-md">
+        <DialogContent className="sm:max-w-md mx-4">
           {!saleComplete ? (
             <>
               <DialogHeader>

@@ -127,47 +127,47 @@ const Index = () => {
     <div className="min-h-screen bg-background">
       <Header />
 
-      <main className="container mx-auto px-6 py-8">
+      <main className="container mx-auto px-4 sm:px-6 py-6 sm:py-8">
         {/* Hero Section */}
-        <section className="mb-10 animate-fade-in">
-          <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4 mb-8">
+        <section className="mb-8 sm:mb-10 animate-fade-in">
+          <div className="flex flex-col gap-4 mb-6 sm:mb-8">
             <div>
-              <h1 className="text-4xl font-bold font-display tracking-tight mb-2">
+              <h1 className="text-2xl sm:text-4xl font-bold font-display tracking-tight mb-2">
                 Dashboard <span className="text-gradient">Overview</span>
               </h1>
-              <p className="text-muted-foreground max-w-xl">
-                Real-time inventory analytics and AI-powered insights to prevent losses and optimize stock levels.
+              <p className="text-sm sm:text-base text-muted-foreground max-w-xl">
+                Real-time inventory analytics and AI-powered insights.
               </p>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
               <Link to="/checkout">
-                <Button className="gap-2 bg-gradient-primary hover:opacity-90 shadow-glow-primary btn-glow h-11 px-6">
-                  <ShoppingCart className="h-5 w-5" />
-                  POS Checkout
+                <Button className="gap-2 bg-gradient-primary hover:opacity-90 shadow-glow-primary btn-glow h-10 sm:h-11 px-4 sm:px-6 text-sm">
+                  <ShoppingCart className="h-4 w-4 sm:h-5 sm:w-5" />
+                  <span className="hidden xs:inline">POS</span> Checkout
                 </Button>
               </Link>
-              <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary/10 border border-primary/20">
-                <Zap className="h-4 w-4 text-primary" />
-                <span className="text-sm text-primary font-medium">AI Active</span>
+              <div className="flex items-center gap-2 px-3 sm:px-4 py-2 rounded-xl bg-primary/10 border border-primary/20">
+                <Zap className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary" />
+                <span className="text-xs sm:text-sm text-primary font-medium">AI Active</span>
               </div>
             </div>
           </div>
         </section>
 
         {/* Dashboard Metrics */}
-        <section className="mb-10">
+        <section className="mb-8 sm:mb-10">
           {isLoading ? (
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-4 sm:gap-6 grid-cols-2 lg:grid-cols-4">
               {[...Array(4)].map((_, i) => (
-                <Skeleton key={i} className="h-40 rounded-2xl bg-muted/50" />
+                <Skeleton key={i} className="h-32 sm:h-40 rounded-2xl bg-muted/50" />
               ))}
             </div>
           ) : (
-            <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="grid gap-4 sm:gap-6 grid-cols-2 lg:grid-cols-4">
               <MetricCard
                 title="Total SKUs"
                 value={metrics.totalSKUs}
-                icon={<Package className="h-7 w-7" />}
+                icon={<Package className="h-5 w-5 sm:h-7 sm:w-7" />}
                 variant="primary"
                 subtitle="Active medications"
                 trend={12}
@@ -176,7 +176,7 @@ const Index = () => {
               <MetricCard
                 title="Low Stock"
                 value={metrics.lowStockItems}
-                icon={<AlertTriangle className="h-7 w-7" />}
+                icon={<AlertTriangle className="h-5 w-5 sm:h-7 sm:w-7" />}
                 variant="warning"
                 subtitle="Below reorder level"
                 trend={-8}
@@ -185,14 +185,14 @@ const Index = () => {
               <MetricCard
                 title="Expired"
                 value={metrics.expiredItems}
-                icon={<XCircle className="h-7 w-7" />}
+                icon={<XCircle className="h-5 w-5 sm:h-7 sm:w-7" />}
                 variant="danger"
                 subtitle="Require disposal"
               />
               <MetricCard
                 title="Expiring Soon"
                 value={metrics.expiringWithin30Days}
-                icon={<Clock className="h-7 w-7" />}
+                icon={<Clock className="h-5 w-5 sm:h-7 sm:w-7" />}
                 variant="success"
                 subtitle="Within 30 days"
               />
@@ -202,32 +202,32 @@ const Index = () => {
 
         {/* Financial Summary */}
         {!isLoading && medications.length > 0 && (
-          <section className="mb-10 animate-slide-up" style={{ animationDelay: '100ms' }}>
+          <section className="mb-8 sm:mb-10 animate-slide-up" style={{ animationDelay: '100ms' }}>
             <FinancialSummary medications={medications} />
           </section>
         )}
 
         {/* Charts Section */}
         {!isLoading && medications.length > 0 && (
-          <section className="mb-10 animate-slide-up" style={{ animationDelay: '200ms' }}>
+          <section className="mb-8 sm:mb-10 animate-slide-up" style={{ animationDelay: '200ms' }}>
             <InventoryCharts medications={medications} />
           </section>
         )}
 
         {/* AI Insights Section */}
         {!isLoading && medications.length > 0 && (
-          <section className="mb-10 animate-slide-up" style={{ animationDelay: '250ms' }}>
+          <section className="mb-8 sm:mb-10 animate-slide-up" style={{ animationDelay: '250ms' }}>
             <AIInsightsPanel medications={medications} />
           </section>
         )}
 
         {/* Inventory Management */}
-        <section className="mb-10 animate-slide-up" style={{ animationDelay: '300ms' }}>
-          <div className="glass-card rounded-2xl p-6">
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
+        <section className="mb-8 sm:mb-10 animate-slide-up" style={{ animationDelay: '300ms' }}>
+          <div className="glass-card rounded-2xl p-4 sm:p-6">
+            <div className="flex flex-col gap-4 mb-4 sm:mb-6">
               <div>
-                <h2 className="text-2xl font-bold font-display">Inventory Management</h2>
-                <p className="text-sm text-muted-foreground">Track, manage, and optimize your stock</p>
+                <h2 className="text-xl sm:text-2xl font-bold font-display">Inventory Management</h2>
+                <p className="text-xs sm:text-sm text-muted-foreground">Track, manage, and optimize your stock</p>
               </div>
               <div className="flex flex-wrap gap-2">
                 {metrics.expiredItems > 0 && (
@@ -236,22 +236,22 @@ const Index = () => {
                 <Button
                   onClick={() => setIsCSVModalOpen(true)}
                   variant="outline"
-                  className="gap-2 h-11"
+                  className="gap-2 h-9 sm:h-11 text-xs sm:text-sm"
                 >
-                  <Upload className="h-4 w-4" />
+                  <Upload className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                   Import CSV
                 </Button>
                 <Button
                   onClick={() => setIsModalOpen(true)}
-                  className="gap-2 bg-gradient-primary hover:opacity-90 shadow-glow-primary btn-glow h-11 px-6"
+                  className="gap-2 bg-gradient-primary hover:opacity-90 shadow-glow-primary btn-glow h-9 sm:h-11 px-4 sm:px-6 text-xs sm:text-sm"
                 >
-                  <Plus className="h-5 w-5" />
+                  <Plus className="h-4 w-4 sm:h-5 sm:w-5" />
                   Add Medication
                 </Button>
               </div>
             </div>
 
-            <div className="mb-6">
+            <div className="mb-4 sm:mb-6">
               <AISearchBar
                 onSearch={setSearchQuery}
                 placeholder="Search by name, category, or try 'Which drugs expire next month?'"
