@@ -168,19 +168,19 @@ export const NAFDACCompliancePanel = ({ medications }: NAFDACCompliancePanelProp
   };
 
   return (
-    <div className="glass-card rounded-2xl p-4 sm:p-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
-        <div className="flex items-center gap-3">
-          <div className="p-2 rounded-xl bg-primary/10 text-2xl">
+    <div className="glass-card rounded-2xl p-4 sm:p-6 overflow-hidden">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="p-2 rounded-xl bg-primary/10 text-xl flex-shrink-0">
             {flagEmoji}
           </div>
-          <div>
-            <h3 className="text-lg sm:text-xl font-bold font-display">{regulatory.abbreviation} Compliance</h3>
-            <p className="text-xs sm:text-sm text-muted-foreground">Regulatory status and alerts</p>
+          <div className="min-w-0">
+            <h3 className="text-base sm:text-lg font-bold font-display truncate">{regulatory.abbreviation} Compliance</h3>
+            <p className="text-xs text-muted-foreground">Regulatory status and alerts</p>
           </div>
         </div>
-        <Button onClick={generateComplianceReport} variant="outline" className="gap-2 text-sm">
-          <FileText className="h-4 w-4" />
+        <Button onClick={generateComplianceReport} variant="outline" size="sm" className="gap-1.5 h-8 px-2.5 flex-shrink-0">
+          <FileText className="h-3.5 w-3.5" />
           <span className="hidden sm:inline">Generate</span> Report
         </Button>
       </div>

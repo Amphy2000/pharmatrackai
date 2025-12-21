@@ -128,7 +128,7 @@ export const InventoryCharts = ({ medications }: InventoryChartsProps) => {
   }
 
   return (
-    <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-2">
+    <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-2 max-w-full overflow-hidden">
       {/* Expiry Timeline */}
       <div className="chart-container">
         <div className="section-header">
@@ -158,43 +158,45 @@ export const InventoryCharts = ({ medications }: InventoryChartsProps) => {
       </div>
 
       {/* Category Distribution */}
-      <div className="chart-container">
+      <div className="chart-container overflow-hidden">
         <div className="section-header">
-          <div className="section-icon">
+          <div className="section-icon flex-shrink-0">
             <PieChartIcon className="h-5 w-5 text-primary-foreground" />
           </div>
-          <div>
+          <div className="min-w-0">
             <h3 className="text-lg font-semibold font-display">Category Distribution</h3>
             <p className="text-sm text-muted-foreground">Inventory by category</p>
           </div>
         </div>
-        <div className="h-64 flex items-center">
-          <ResponsiveContainer width="50%" height="100%">
-            <PieChart>
-              <Pie
-                data={categoryData}
-                cx="50%"
-                cy="50%"
-                innerRadius={50}
-                outerRadius={80}
-                paddingAngle={4}
-                dataKey="count"
-              >
-                {categoryData.map((entry, index) => (
-                  <Cell key={`cell-${index}`} fill={entry.color} stroke="transparent" />
-                ))}
-              </Pie>
-              <Tooltip content={<CustomTooltip />} />
-            </PieChart>
-          </ResponsiveContainer>
-          <div className="flex-1 space-y-2">
+        <div className="h-64 flex flex-col sm:flex-row items-center gap-4">
+          <div className="w-full sm:w-1/2 h-40 sm:h-full flex-shrink-0">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={categoryData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={40}
+                  outerRadius={65}
+                  paddingAngle={4}
+                  dataKey="count"
+                >
+                  {categoryData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} stroke="transparent" />
+                  ))}
+                </Pie>
+                <Tooltip content={<CustomTooltip />} />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="flex-1 w-full space-y-1.5 max-h-40 overflow-y-auto">
             {categoryData.map((item, index) => (
-              <div key={index} className="flex items-center justify-between text-sm">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
-                  <span className="text-muted-foreground">{item.name}</span>
+              <div key={index} className="flex items-center justify-between text-sm gap-2">
+                <div className="flex items-center gap-2 min-w-0">
+                  <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: item.color }} />
+                  <span className="text-muted-foreground text-xs truncate">{item.name}</span>
                 </div>
-                <span className="font-medium">{item.count}</span>
+                <span className="font-medium flex-shrink-0 text-xs">{item.count}</span>
               </div>
             ))}
           </div>

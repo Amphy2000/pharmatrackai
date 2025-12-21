@@ -195,23 +195,23 @@ export const SalesAnalytics = () => {
   };
 
   return (
-    <div className="glass-card rounded-2xl p-4 sm:p-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
-        <div>
-          <h3 className="text-lg sm:text-xl font-bold font-display">Sales & Profit Analytics</h3>
-          <p className="text-xs sm:text-sm text-muted-foreground">Track your pharmacy's financial performance</p>
+    <div className="glass-card rounded-2xl p-4 sm:p-6 overflow-hidden">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+        <div className="min-w-0">
+          <h3 className="text-base sm:text-lg font-bold font-display truncate">Sales & Profit Analytics</h3>
+          <p className="text-xs text-muted-foreground">Track your pharmacy's financial performance</p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={exportToCSV} className="gap-2">
-            <Download className="h-4 w-4" />
-            Export
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <Button variant="outline" size="sm" onClick={exportToCSV} className="gap-1.5 h-8 px-2.5">
+            <Download className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Export</span>
           </Button>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="gap-2 text-sm">
-                <Calendar className="h-4 w-4" />
-                {periodLabels[period]}
-                <ChevronDown className="h-4 w-4" />
+              <Button variant="outline" size="sm" className="gap-1.5 h-8 px-2.5">
+                <Calendar className="h-3.5 w-3.5" />
+                <span className="text-xs">{periodLabels[period]}</span>
+                <ChevronDown className="h-3 w-3" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
@@ -224,7 +224,7 @@ export const SalesAnalytics = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2 sm:gap-3">
         {/* Revenue Card */}
         <div className="p-3 sm:p-4 rounded-xl bg-primary/10 border border-primary/20">
           <div className="flex items-center gap-2 mb-2">
