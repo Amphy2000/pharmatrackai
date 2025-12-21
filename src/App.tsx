@@ -22,6 +22,7 @@ import Onboarding from "./pages/Onboarding";
 import OnboardingWizard from "./pages/OnboardingWizard";
 import ProfileSettings from "./pages/ProfileSettings";
 import UserGuide from "./pages/UserGuide";
+import AdminDashboard from "./pages/AdminDashboard";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -52,6 +53,7 @@ const App = () => (
                 <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
                 <Route path="/profile" element={<ProtectedRoute><ProfileSettings /></ProtectedRoute>} />
                 <Route path="/guide" element={<ProtectedRoute><UserGuide /></ProtectedRoute>} />
+                <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
