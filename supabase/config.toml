@@ -8,3 +8,9 @@ verify_jwt = false
 
 [functions.send-notification]
 verify_jwt = false
+
+[functions.check-drug-interactions]
+verify_jwt = false
+
+[functions.scan-invoice]
+verify_jwt = false
