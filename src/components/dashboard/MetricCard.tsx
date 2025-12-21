@@ -11,6 +11,7 @@ interface MetricCardProps {
   trend?: number;
   trendLabel?: string;
   className?: string;
+  action?: ReactNode;
 }
 
 const variantStyles = {
@@ -50,6 +51,7 @@ export const MetricCard = ({
   trend,
   trendLabel,
   className,
+  action,
 }: MetricCardProps) => {
   const styles = variantStyles[variant];
 
@@ -87,6 +89,7 @@ export const MetricCard = ({
               {trendLabel || subtitle}
             </p>
           )}
+          {action && <div className="mt-2">{action}</div>}
         </div>
         
         <div className={cn(

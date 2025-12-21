@@ -1,8 +1,10 @@
 import { useMemo, useState } from 'react';
 import { format, differenceInDays, parseISO } from 'date-fns';
-import { Shield, AlertTriangle, FileText, ChevronDown, ChevronUp } from 'lucide-react';
+import { Shield, AlertTriangle, FileText, ChevronDown, ChevronUp, Send } from 'lucide-react';
 import { Medication } from '@/types/medication';
 import { useRegionalSettings } from '@/contexts/RegionalSettingsContext';
+import { useNotifications } from '@/hooks/useNotifications';
+import { usePharmacy } from '@/hooks/usePharmacy';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -26,6 +28,8 @@ interface ComplianceIssue {
 export const NAFDACCompliancePanel = ({ medications }: NAFDACCompliancePanelProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const { regulatory, country, flagEmoji } = useRegionalSettings();
+  const { sendNotification, settings: notificationSettings, sending } = useNotifications();
+  const { pharmacy } = usePharmacy();
 
   const complianceData = useMemo(() => {
     const today = new Date();
@@ -159,6 +163,22 @@ export const NAFDACCompliancePanel = ({ medications }: NAFDACCompliancePanelProp
     a.click();
   };
 
+  const sendExpiryAlert = async () => {
+    if (!pharmacy?.id) return;
+    
+    const expiringMeds = complianceData.issues
+      .filter(i => i.severity === 'critical' || i.severity === 'warning')
+      .map(i => ({
+        name: i.medication.name,
+        daysUntilExpiry: i.daysUntilExpiry,
+        expiryDate: i.medication.expiry_date,
+      }));
+
+    if (expiringMeds.length > 0) {
+      await sendNotification('expiry_warning', pharmacy.id, { medications: expiringMeds });
+    }
+  };
+
   const getSeverityColor = (severity: string) => {
     switch (severity) {
       case 'critical': return 'bg-destructive text-destructive-foreground';
@@ -179,10 +199,24 @@ export const NAFDACCompliancePanel = ({ medications }: NAFDACCompliancePanelProp
             <p className="text-xs sm:text-sm text-muted-foreground">Regulatory status and alerts</p>
           </div>
         </div>
-        <Button onClick={generateComplianceReport} variant="outline" className="gap-2 text-sm">
-          <FileText className="h-4 w-4" />
-          <span className="hidden sm:inline">Generate</span> Report
-        </Button>
+        <div className="flex gap-2">
+          {notificationSettings.enabled && complianceData.issues.length > 0 && (
+            <Button 
+              onClick={sendExpiryAlert} 
+              variant="outline" 
+              size="sm"
+              disabled={sending}
+              className="gap-2 text-sm"
+            >
+              <Send className="h-4 w-4" />
+              <span className="hidden sm:inline">Send</span> Alert
+            </Button>
+          )}
+          <Button onClick={generateComplianceReport} variant="outline" className="gap-2 text-sm">
+            <FileText className="h-4 w-4" />
+            <span className="hidden sm:inline">Generate</span> Report
+          </Button>
+        </div>
       </div>
 
       {/* Compliance Score */}
