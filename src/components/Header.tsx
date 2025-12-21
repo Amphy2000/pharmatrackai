@@ -16,7 +16,8 @@ import {
   History,
   Users,
   Building2,
-  Truck
+  Truck,
+  Settings
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -51,6 +52,7 @@ export const Header = () => {
     { href: '/branches', label: 'Branches', icon: Building2 },
     { href: '/suppliers', label: 'Suppliers', icon: Truck },
     { href: '/sales-history', label: 'Sales', icon: History },
+    { href: '/settings', label: 'Settings', icon: Settings },
   ];
 
   return (

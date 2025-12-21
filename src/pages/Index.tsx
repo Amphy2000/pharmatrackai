@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Package, AlertTriangle, XCircle, Clock, Plus, ShoppingCart, Upload, Zap, Archive } from 'lucide-react';
+import { Package, AlertTriangle, XCircle, Clock, Plus, ShoppingCart, Upload, Zap, Archive, Lock } from 'lucide-react';
 import { useMedications } from '@/hooks/useMedications';
+import { usePermissions } from '@/hooks/usePermissions';
 import { Medication } from '@/types/medication';
 import { Header } from '@/components/Header';
 import { MetricCard } from '@/components/dashboard/MetricCard';
@@ -16,6 +17,7 @@ import { CSVImportModal } from '@/components/inventory/CSVImportModal';
 import { AISearchBar } from '@/components/inventory/AISearchBar';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import {
   AlertDialog,
@@ -91,11 +93,18 @@ const BulkUnshelveButton = ({ medications }: { medications: Medication[] }) => {
 
 const Index = () => {
   const { medications, isLoading, getMetrics, isLowStock } = useMedications();
+  const { hasPermission, isOwnerOrManager, isLoading: permissionsLoading } = usePermissions();
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCSVModalOpen, setIsCSVModalOpen] = useState(false);
   const [editingMedication, setEditingMedication] = useState<Medication | null>(null);
+
+  // Check permissions for dashboard features
+  const canViewDashboard = hasPermission('view_dashboard');
+  const canViewReports = hasPermission('view_reports');
+  const canViewAnalytics = hasPermission('view_analytics');
+  const canViewFinancial = hasPermission('view_financial_data');
 
   const metrics = getMetrics();
 
@@ -156,82 +165,91 @@ const Index = () => {
           </div>
         </section>
 
-        {/* Dashboard Metrics */}
-        <section className="mb-8 sm:mb-10">
-          {isLoading ? (
-            <div className="grid gap-4 sm:gap-6 grid-cols-2 lg:grid-cols-4">
-              {[...Array(4)].map((_, i) => (
-                <Skeleton key={i} className="h-32 sm:h-40 rounded-2xl bg-muted/50" />
-              ))}
-            </div>
-          ) : (
-            <div className="grid gap-4 sm:gap-6 grid-cols-2 lg:grid-cols-4">
-              <MetricCard
-                title="Total SKUs"
-                value={metrics.totalSKUs}
-                icon={<Package className="h-5 w-5 sm:h-7 sm:w-7" />}
-                variant="primary"
-                subtitle="Active medications"
-                trend={12}
-                trendLabel="vs last month"
-              />
-              <MetricCard
-                title="Low Stock"
-                value={metrics.lowStockItems}
-                icon={<AlertTriangle className="h-5 w-5 sm:h-7 sm:w-7" />}
-                variant="warning"
-                subtitle="Below reorder level"
-                trend={-8}
-                trendLabel="improved"
-              />
-              <MetricCard
-                title="Expired"
-                value={metrics.expiredItems}
-                icon={<XCircle className="h-5 w-5 sm:h-7 sm:w-7" />}
-                variant="danger"
-                subtitle="Require disposal"
-              />
-              <MetricCard
-                title="Expiring Soon"
-                value={metrics.expiringWithin30Days}
-                icon={<Clock className="h-5 w-5 sm:h-7 sm:w-7" />}
-                variant="success"
-                subtitle="Within 30 days"
-              />
-            </div>
-          )}
-        </section>
+        {/* Dashboard Metrics - Permission controlled */}
+        {!canViewDashboard && !isOwnerOrManager ? (
+          <Card className="mb-8">
+            <CardContent className="py-8 text-center">
+              <Lock className="h-12 w-12 mx-auto mb-4 text-muted-foreground opacity-30" />
+              <p className="text-muted-foreground">Dashboard metrics are restricted. Contact your manager for access.</p>
+            </CardContent>
+          </Card>
+        ) : (
+          <section className="mb-8 sm:mb-10">
+            {isLoading ? (
+              <div className="grid gap-4 sm:gap-6 grid-cols-2 lg:grid-cols-4">
+                {[...Array(4)].map((_, i) => (
+                  <Skeleton key={i} className="h-32 sm:h-40 rounded-2xl bg-muted/50" />
+                ))}
+              </div>
+            ) : (
+              <div className="grid gap-4 sm:gap-6 grid-cols-2 lg:grid-cols-4">
+                <MetricCard
+                  title="Total SKUs"
+                  value={metrics.totalSKUs}
+                  icon={<Package className="h-5 w-5 sm:h-7 sm:w-7" />}
+                  variant="primary"
+                  subtitle="Active medications"
+                  trend={12}
+                  trendLabel="vs last month"
+                />
+                <MetricCard
+                  title="Low Stock"
+                  value={metrics.lowStockItems}
+                  icon={<AlertTriangle className="h-5 w-5 sm:h-7 sm:w-7" />}
+                  variant="warning"
+                  subtitle="Below reorder level"
+                  trend={-8}
+                  trendLabel="improved"
+                />
+                <MetricCard
+                  title="Expired"
+                  value={metrics.expiredItems}
+                  icon={<XCircle className="h-5 w-5 sm:h-7 sm:w-7" />}
+                  variant="danger"
+                  subtitle="Require disposal"
+                />
+                <MetricCard
+                  title="Expiring Soon"
+                  value={metrics.expiringWithin30Days}
+                  icon={<Clock className="h-5 w-5 sm:h-7 sm:w-7" />}
+                  variant="success"
+                  subtitle="Within 30 days"
+                />
+              </div>
+            )}
+          </section>
+        )}
 
-        {/* Financial Summary */}
-        {!isLoading && medications.length > 0 && (
+        {/* Financial Summary - Permission controlled */}
+        {!isLoading && medications.length > 0 && canViewFinancial && (
           <section className="mb-8 sm:mb-10 animate-slide-up" style={{ animationDelay: '100ms' }}>
             <FinancialSummary medications={medications} />
           </section>
         )}
 
-        {/* Sales Analytics */}
-        {!isLoading && (
+        {/* Sales Analytics - Permission controlled */}
+        {!isLoading && canViewAnalytics && (
           <section className="mb-8 sm:mb-10 animate-slide-up" style={{ animationDelay: '125ms' }}>
             <SalesAnalytics />
           </section>
         )}
 
-        {/* NAFDAC Compliance */}
-        {!isLoading && medications.length > 0 && (
+        {/* NAFDAC Compliance - Permission controlled */}
+        {!isLoading && medications.length > 0 && canViewReports && (
           <section className="mb-8 sm:mb-10 animate-slide-up" style={{ animationDelay: '150ms' }}>
             <NAFDACCompliancePanel medications={medications} />
           </section>
         )}
 
-        {/* Charts Section */}
-        {!isLoading && medications.length > 0 && (
+        {/* Charts Section - Permission controlled */}
+        {!isLoading && medications.length > 0 && canViewAnalytics && (
           <section className="mb-8 sm:mb-10 animate-slide-up" style={{ animationDelay: '200ms' }}>
             <InventoryCharts medications={medications} />
           </section>
         )}
 
-        {/* AI Insights Section */}
-        {!isLoading && medications.length > 0 && (
+        {/* AI Insights Section - Permission controlled */}
+        {!isLoading && medications.length > 0 && canViewDashboard && (
           <section className="mb-8 sm:mb-10 animate-slide-up" style={{ animationDelay: '250ms' }}>
             <AIInsightsPanel medications={medications} />
           </section>
