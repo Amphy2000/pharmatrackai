@@ -1,14 +1,18 @@
 import { Header } from '@/components/Header';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Settings as SettingsIcon, Users, Globe } from 'lucide-react';
+import { Settings as SettingsIcon, Users, Globe, CreditCard } from 'lucide-react';
 import { StaffManagement } from '@/components/settings/StaffManagement';
 import { RegionCurrencySettings } from '@/components/settings/RegionCurrencySettings';
+import { SubscriptionManagement } from '@/components/settings/SubscriptionManagement';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useSearchParams } from 'react-router-dom';
 
 const Settings = () => {
   const { hasPermission } = usePermissions();
   const canManageStaff = hasPermission('manage_staff');
+  const [searchParams] = useSearchParams();
+  const defaultTab = searchParams.get('tab') || 'general';
 
   return (
     <div className="min-h-screen bg-background">
@@ -25,11 +29,15 @@ const Settings = () => {
           </p>
         </div>
 
-        <Tabs defaultValue="general" className="space-y-6">
+        <Tabs defaultValue={defaultTab} className="space-y-6">
           <TabsList>
             <TabsTrigger value="general" className="gap-2">
               <Globe className="h-4 w-4" />
               General
+            </TabsTrigger>
+            <TabsTrigger value="subscription" className="gap-2">
+              <CreditCard className="h-4 w-4" />
+              Subscription
             </TabsTrigger>
             {canManageStaff && (
               <TabsTrigger value="staff" className="gap-2">
@@ -51,6 +59,10 @@ const Settings = () => {
                 <RegionCurrencySettings />
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="subscription">
+            <SubscriptionManagement />
           </TabsContent>
 
           {canManageStaff && (
