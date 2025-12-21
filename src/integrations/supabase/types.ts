@@ -109,6 +109,98 @@ export type Database = {
           },
         ]
       }
+      branch_inventory: {
+        Row: {
+          branch_id: string
+          created_at: string
+          current_stock: number
+          id: string
+          medication_id: string
+          reorder_level: number
+          updated_at: string
+        }
+        Insert: {
+          branch_id: string
+          created_at?: string
+          current_stock?: number
+          id?: string
+          medication_id: string
+          reorder_level?: number
+          updated_at?: string
+        }
+        Update: {
+          branch_id?: string
+          created_at?: string
+          current_stock?: number
+          id?: string
+          medication_id?: string
+          reorder_level?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "branch_inventory_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "branch_inventory_medication_id_fkey"
+            columns: ["medication_id"]
+            isOneToOne: false
+            referencedRelation: "medications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      branches: {
+        Row: {
+          address: string | null
+          created_at: string
+          email: string | null
+          id: string
+          is_active: boolean
+          is_main_branch: boolean
+          name: string
+          pharmacy_id: string
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          is_main_branch?: boolean
+          name: string
+          pharmacy_id: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          is_main_branch?: boolean
+          name?: string
+          pharmacy_id?: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "branches_pharmacy_id_fkey"
+            columns: ["pharmacy_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       customers: {
         Row: {
           address: string | null
@@ -576,6 +668,83 @@ export type Database = {
             columns: ["pharmacy_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stock_transfers: {
+        Row: {
+          approved_by: string | null
+          completed_at: string | null
+          created_at: string
+          from_branch_id: string
+          id: string
+          medication_id: string
+          notes: string | null
+          pharmacy_id: string
+          quantity: number
+          requested_by: string | null
+          status: string
+          to_branch_id: string
+          updated_at: string
+        }
+        Insert: {
+          approved_by?: string | null
+          completed_at?: string | null
+          created_at?: string
+          from_branch_id: string
+          id?: string
+          medication_id: string
+          notes?: string | null
+          pharmacy_id: string
+          quantity: number
+          requested_by?: string | null
+          status?: string
+          to_branch_id: string
+          updated_at?: string
+        }
+        Update: {
+          approved_by?: string | null
+          completed_at?: string | null
+          created_at?: string
+          from_branch_id?: string
+          id?: string
+          medication_id?: string
+          notes?: string | null
+          pharmacy_id?: string
+          quantity?: number
+          requested_by?: string | null
+          status?: string
+          to_branch_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stock_transfers_from_branch_id_fkey"
+            columns: ["from_branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_transfers_medication_id_fkey"
+            columns: ["medication_id"]
+            isOneToOne: false
+            referencedRelation: "medications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_transfers_pharmacy_id_fkey"
+            columns: ["pharmacy_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stock_transfers_to_branch_id_fkey"
+            columns: ["to_branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
             referencedColumns: ["id"]
           },
         ]

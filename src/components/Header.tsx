@@ -14,7 +14,8 @@ import {
   LayoutDashboard,
   ShoppingCart,
   History,
-  Users
+  Users,
+  Building2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -46,6 +47,7 @@ export const Header = () => {
     { href: '/', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/checkout', label: 'POS', icon: ShoppingCart },
     { href: '/customers', label: 'Customers', icon: Users },
+    { href: '/branches', label: 'Branches', icon: Building2 },
     { href: '/sales-history', label: 'Sales', icon: History },
   ];
 
