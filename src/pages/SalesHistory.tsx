@@ -157,23 +157,30 @@ const SalesHistory = () => {
   }, [filteredSales]);
 
   // Quick date range presets
-  const setDatePreset = (preset: 'today' | 'week' | 'month' | '3months') => {
+  const setDatePreset = (preset: 'today' | 'week' | 'month' | 'year') => {
     const today = new Date();
     switch (preset) {
       case 'today':
         setDateRange({ from: today, to: today });
         break;
       case 'week':
-        setDateRange({ from: new Date(today.setDate(today.getDate() - 7)), to: new Date() });
+        setDateRange({ from: new Date(new Date().setDate(new Date().getDate() - 7)), to: new Date() });
         break;
       case 'month':
         setDateRange({ from: startOfMonth(new Date()), to: endOfMonth(new Date()) });
         break;
-      case '3months':
-        setDateRange({ from: startOfMonth(subMonths(new Date(), 2)), to: endOfMonth(new Date()) });
+      case 'year':
+        setDateRange({ from: new Date(new Date().getFullYear(), 0, 1), to: new Date() });
         break;
     }
     setCurrentPage(1);
+  };
+
+  const [activePreset, setActivePreset] = useState<'today' | 'week' | 'month' | 'year' | 'custom'>('month');
+
+  const handlePresetClick = (preset: 'today' | 'week' | 'month' | 'year') => {
+    setActivePreset(preset);
+    setDatePreset(preset);
   };
 
   const exportToCSV = () => {
@@ -263,6 +270,39 @@ const SalesHistory = () => {
           </div>
         </div>
 
+        {/* Period Filter Buttons */}
+        <div className="flex flex-wrap items-center gap-2 mb-4">
+          <span className="text-sm text-muted-foreground mr-2">Quick filters:</span>
+          <Button
+            variant={activePreset === 'today' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => handlePresetClick('today')}
+          >
+            Daily
+          </Button>
+          <Button
+            variant={activePreset === 'week' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => handlePresetClick('week')}
+          >
+            Weekly
+          </Button>
+          <Button
+            variant={activePreset === 'month' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => handlePresetClick('month')}
+          >
+            Monthly
+          </Button>
+          <Button
+            variant={activePreset === 'year' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => handlePresetClick('year')}
+          >
+            Yearly
+          </Button>
+        </div>
+
         {/* Filters */}
         <div className="glass-card p-4 rounded-xl mb-6">
           <div className="flex flex-wrap items-center gap-4">
@@ -292,19 +332,21 @@ const SalesHistory = () => {
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="end">
                 <div className="p-2 border-b flex gap-2">
-                  <Button size="sm" variant="ghost" onClick={() => setDatePreset('today')}>Today</Button>
-                  <Button size="sm" variant="ghost" onClick={() => setDatePreset('week')}>Week</Button>
-                  <Button size="sm" variant="ghost" onClick={() => setDatePreset('month')}>Month</Button>
-                  <Button size="sm" variant="ghost" onClick={() => setDatePreset('3months')}>3 Months</Button>
+                  <Button size="sm" variant="ghost" onClick={() => { handlePresetClick('today'); }}>Today</Button>
+                  <Button size="sm" variant="ghost" onClick={() => { handlePresetClick('week'); }}>Week</Button>
+                  <Button size="sm" variant="ghost" onClick={() => { handlePresetClick('month'); }}>Month</Button>
+                  <Button size="sm" variant="ghost" onClick={() => { handlePresetClick('year'); }}>Year</Button>
                 </div>
                 <CalendarComponent
                   mode="range"
                   selected={{ from: dateRange.from, to: dateRange.to }}
                   onSelect={(range) => {
                     setDateRange({ from: range?.from, to: range?.to });
+                    setActivePreset('custom');
                     setCurrentPage(1);
                   }}
                   numberOfMonths={2}
+                  className="pointer-events-auto"
                 />
               </PopoverContent>
             </Popover>
