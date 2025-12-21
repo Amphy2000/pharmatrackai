@@ -1,18 +1,40 @@
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useMedications } from '@/hooks/useMedications';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { usePharmacy } from '@/hooks/usePharmacy';
+import { useSuppliers } from '@/hooks/useSuppliers';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Brain, TrendingUp, Package, AlertTriangle, ShoppingCart } from 'lucide-react';
+import { Brain, TrendingUp, Package, AlertTriangle, ShoppingCart, Loader2, FileText } from 'lucide-react';
 import { subDays } from 'date-fns';
+import { useToast } from '@/hooks/use-toast';
+import { generatePurchaseOrder, generateOrderNumber } from '@/utils/purchaseOrderGenerator';
+
+interface ForecastItem {
+  id: string;
+  name: string;
+  currentStock: number;
+  reorderLevel: number;
+  dailyAvg: number;
+  monthlyForecast: number;
+  daysOfStockLeft: number;
+  recommendedReorder: number;
+  reorderCost: number;
+  velocity: 'high' | 'medium' | 'low';
+  supplierId?: string;
+  supplierName?: string;
+}
 
 export const DemandForecasting = () => {
   const { medications } = useMedications();
-  const { formatPrice } = useCurrency();
-  const { pharmacyId } = usePharmacy();
+  const { formatPrice, currency } = useCurrency();
+  const { pharmacyId, pharmacy } = usePharmacy();
+  const { suppliers } = useSuppliers();
+  const { toast } = useToast();
+  const [isGenerating, setIsGenerating] = useState(false);
 
   // Fetch sales data separately
   const { data: sales = [] } = useQuery({
@@ -47,8 +69,8 @@ export const DemandForecasting = () => {
     salesByMedication[sale.medication_id].count += 1;
   });
 
-  // Calculate forecasts
-  const forecasts = (medications || [])
+  // Calculate forecasts with supplier info
+  const forecasts: ForecastItem[] = (medications || [])
     .map(med => {
       const salesData = salesByMedication[med.id] || { quantity: 0, revenue: 0, count: 0 };
       const dailyAvg = salesData.quantity / 30;
@@ -56,6 +78,11 @@ export const DemandForecasting = () => {
       const daysOfStockLeft = dailyAvg > 0 ? Math.floor(med.current_stock / dailyAvg) : 999;
       const recommendedReorder = Math.max(0, monthlyForecast - med.current_stock);
       const reorderCost = recommendedReorder * med.unit_price;
+      
+      // Find supplier for this medication
+      const supplier = suppliers?.find(s => s.name === med.supplier);
+      
+      const velocity: 'high' | 'medium' | 'low' = salesData.quantity > 20 ? 'high' : salesData.quantity > 5 ? 'medium' : 'low';
       
       return {
         id: med.id,
@@ -67,7 +94,9 @@ export const DemandForecasting = () => {
         daysOfStockLeft,
         recommendedReorder,
         reorderCost,
-        velocity: salesData.quantity > 20 ? 'high' : salesData.quantity > 5 ? 'medium' : 'low',
+        velocity,
+        supplierId: supplier?.id,
+        supplierName: med.supplier || 'Unknown Supplier',
       };
     })
     .filter(f => f.dailyAvg > 0 || f.currentStock < f.reorderLevel)
@@ -78,6 +107,89 @@ export const DemandForecasting = () => {
   
   // Total reorder value
   const totalReorderValue = forecasts.reduce((sum, f) => sum + f.reorderCost, 0);
+
+  const handleGeneratePO = async () => {
+    const itemsToReorder = forecasts.filter(f => f.recommendedReorder > 0);
+    
+    if (itemsToReorder.length === 0) {
+      toast({
+        title: "No items to reorder",
+        description: "All products are well-stocked based on current demand.",
+        variant: "default",
+      });
+      return;
+    }
+
+    setIsGenerating(true);
+
+    try {
+      // Group items by supplier
+      const supplierGroups: Record<string, ForecastItem[]> = {};
+      
+      itemsToReorder.forEach(item => {
+        const supplierKey = item.supplierName || 'Unknown Supplier';
+        if (!supplierGroups[supplierKey]) {
+          supplierGroups[supplierKey] = [];
+        }
+        supplierGroups[supplierKey].push(item);
+      });
+
+      // Build orders for each supplier
+      const orders = Object.entries(supplierGroups).map(([supplierName, items]) => {
+        const supplier = suppliers?.find(s => s.name === supplierName);
+        
+        return {
+          supplierName,
+          supplierPhone: supplier?.phone || undefined,
+          supplierAddress: supplier?.address || undefined,
+          items: items.map(item => ({
+            medicationName: item.name,
+            quantity: item.recommendedReorder,
+            unitPrice: item.reorderCost / item.recommendedReorder,
+            totalPrice: item.reorderCost,
+          })),
+          totalAmount: items.reduce((sum, item) => sum + item.reorderCost, 0),
+        };
+      });
+
+      const orderNumber = generateOrderNumber();
+      
+      const pdf = generatePurchaseOrder({
+        orders,
+        pharmacyName: pharmacy?.name || 'Pharmacy',
+        pharmacyPhone: pharmacy?.phone || undefined,
+        orderNumber,
+        date: new Date(),
+        currency: currency as 'USD' | 'NGN' | 'GBP',
+      });
+
+      // Open PDF in new window for printing
+      const pdfBlob = pdf.output('blob');
+      const url = URL.createObjectURL(pdfBlob);
+      const printWindow = window.open(url, '_blank');
+      
+      if (printWindow) {
+        printWindow.onload = () => {
+          printWindow.print();
+        };
+      }
+
+      toast({
+        title: "Purchase Order Generated",
+        description: `PO #${orderNumber} created for ${orders.length} supplier(s) with ${itemsToReorder.length} items.`,
+      });
+
+    } catch (error) {
+      console.error('Error generating PO:', error);
+      toast({
+        title: "Failed to generate PO",
+        description: "Please try again or contact support.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
 
   const getVelocityColor = (velocity: string) => {
     switch (velocity) {
@@ -136,9 +248,23 @@ export const DemandForecasting = () => {
         <div className="space-y-3">
           <div className="flex items-center justify-between">
             <h4 className="text-sm font-medium">Recommended Reorders</h4>
-            <Button size="sm" variant="outline">
-              <ShoppingCart className="h-4 w-4 mr-1" />
-              Generate PO
+            <Button 
+              size="sm" 
+              variant="outline"
+              onClick={handleGeneratePO}
+              disabled={isGenerating || forecasts.filter(f => f.recommendedReorder > 0).length === 0}
+            >
+              {isGenerating ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-1 animate-spin" />
+                  Generating...
+                </>
+              ) : (
+                <>
+                  <FileText className="h-4 w-4 mr-1" />
+                  Generate PO
+                </>
+              )}
             </Button>
           </div>
           

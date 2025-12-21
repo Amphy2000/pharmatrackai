@@ -19,6 +19,7 @@ import { useShifts } from '@/hooks/useShifts';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { useRegionalSettings } from '@/contexts/RegionalSettingsContext';
 import { useHeldTransactions } from '@/hooks/useHeldTransactions';
+import { usePharmacy } from '@/hooks/usePharmacy';
 import { ProductGrid } from '@/components/pos/ProductGrid';
 import { CartPanel } from '@/components/pos/CartPanel';
 import { HeldTransactionsPanel } from '@/components/pos/HeldTransactionsPanel';
@@ -44,6 +45,7 @@ const Checkout = () => {
   const cart = useCart();
   const { formatPrice, currency } = useCurrency();
   const { isSimpleMode, regulatory } = useRegionalSettings();
+  const { pharmacy } = usePharmacy();
   const { toast } = useToast();
   const {
     heldTransactions,
@@ -59,6 +61,8 @@ const Checkout = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [saleComplete, setSaleComplete] = useState(false);
   const [lastReceiptNumber, setLastReceiptNumber] = useState('');
+  const [lastReceiptItems, setLastReceiptItems] = useState(cart.items);
+  const [lastReceiptTotal, setLastReceiptTotal] = useState(0);
 
   const handleHoldSale = () => {
     if (cart.items.length === 0) return;
@@ -91,40 +95,55 @@ const Checkout = () => {
     }
   };
 
+  const printReceipt = (items: typeof cart.items, total: number, receiptNumber: string, custName?: string) => {
+    const receipt = generateReceipt({
+      items,
+      total,
+      customerName: custName || undefined,
+      pharmacyName: pharmacy?.name || 'PharmaTrack Pharmacy',
+      pharmacyAddress: pharmacy?.address || undefined,
+      pharmacyPhone: pharmacy?.phone || undefined,
+      receiptNumber,
+      date: new Date(),
+      currency: currency as 'USD' | 'NGN' | 'GBP',
+    });
+
+    // Open print dialog - optimized for thermal printers
+    const pdfBlob = receipt.output('blob');
+    const url = URL.createObjectURL(pdfBlob);
+    const printWindow = window.open(url, '_blank');
+    if (printWindow) {
+      printWindow.onload = () => {
+        printWindow.print();
+      };
+    }
+  };
+
   const handleCompleteSale = async () => {
     if (cart.items.length === 0) return;
 
     setIsProcessing(true);
     
+    // Store cart items before clearing
+    const currentItems = [...cart.items];
+    const currentTotal = cart.getTotal();
+    const currentCustomer = customerName;
+    
     try {
       await completeSale.mutateAsync({
-        items: cart.items,
-        customerName: customerName || undefined,
+        items: currentItems,
+        customerName: currentCustomer || undefined,
         shiftId: activeShift?.id,
       });
 
-      // Generate and print receipt
+      // Generate receipt number
       const receiptNumber = generateReceiptNumber();
       setLastReceiptNumber(receiptNumber);
+      setLastReceiptItems(currentItems);
+      setLastReceiptTotal(currentTotal);
       
-      const receipt = generateReceipt({
-        items: cart.items,
-        total: cart.getTotal(),
-        customerName: customerName || undefined,
-        receiptNumber,
-        date: new Date(),
-        currency,
-      });
-
-      // Open print dialog
-      const pdfBlob = receipt.output('blob');
-      const url = URL.createObjectURL(pdfBlob);
-      const printWindow = window.open(url, '_blank');
-      if (printWindow) {
-        printWindow.onload = () => {
-          printWindow.print();
-        };
-      }
+      // Print receipt with pharmacy branding
+      printReceipt(currentItems, currentTotal, receiptNumber, currentCustomer);
 
       setSaleComplete(true);
     } catch (error) {
@@ -141,20 +160,9 @@ const Checkout = () => {
     setCheckoutOpen(false);
   };
 
-  const printLastReceipt = () => {
-    if (!lastReceiptNumber) return;
-    
-    const receipt = generateReceipt({
-      items: cart.items,
-      total: cart.getTotal(),
-      customerName: customerName || undefined,
-      receiptNumber: lastReceiptNumber,
-      date: new Date(),
-      currency,
-    });
-
-    receipt.autoPrint();
-    window.open(receipt.output('bloburl'), '_blank');
+  const handlePrintLastReceipt = () => {
+    if (!lastReceiptNumber || lastReceiptItems.length === 0) return;
+    printReceipt(lastReceiptItems, lastReceiptTotal, lastReceiptNumber, customerName);
   };
 
   return (
@@ -391,7 +399,7 @@ const Checkout = () => {
               <DialogFooter className="gap-2 sm:flex-col">
                 <Button
                   variant="outline"
-                  onClick={printLastReceipt}
+                  onClick={handlePrintLastReceipt}
                   className="gap-2"
                 >
                   <Printer className="h-4 w-4" />
