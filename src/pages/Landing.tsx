@@ -214,7 +214,7 @@ const Landing = () => {
             transition={{ duration: 0.6 }}
             className="text-center mb-16"
           >
-            <Badge variant="outline" className="mb-4 border-primary/30 text-primary">Features</Badge>
+            <Badge variant="outline" className="mb-4 border-primary/30 text-primary">Complete Solution</Badge>
             <h2 className="text-3xl sm:text-4xl md:text-5xl font-display font-bold mb-4">
               Everything You Need to <span className="text-gradient">Dominate</span>
             </h2>
@@ -223,102 +223,150 @@ const Landing = () => {
             </p>
           </motion.div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 max-w-6xl mx-auto">
-            {/* AI Expiry - Large Card */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 max-w-6xl mx-auto">
+            {/* AI Expiry - Featured Card */}
             <motion.div 
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5 }}
-              className="md:col-span-2 lg:row-span-2"
+              className="md:col-span-2 lg:col-span-1 lg:row-span-2"
             >
-              <Card className="h-full glass-card border-border/50 overflow-hidden group hover:border-primary/30 transition-all duration-500">
+              <Card className="h-full glass-card border-primary/30 overflow-hidden group hover:border-primary/50 transition-all duration-500">
                 <CardContent className="p-6 sm:p-8 h-full flex flex-col">
-                  <motion.div 
-                    whileHover={{ scale: 1.1, rotate: 5 }}
-                    className="h-14 w-14 rounded-2xl bg-gradient-primary flex items-center justify-center mb-6 group-hover:shadow-glow-primary transition-all duration-500"
-                  >
+                  <div className="h-14 w-14 rounded-2xl bg-gradient-primary flex items-center justify-center mb-6 group-hover:shadow-glow-primary transition-all">
                     <Clock className="h-7 w-7 text-primary-foreground" />
-                  </motion.div>
+                  </div>
+                  <Badge className="w-fit mb-4 bg-primary/20 text-primary border-0">AI-Powered</Badge>
                   <h3 className="text-2xl font-display font-bold mb-3">Predictive Expiry Alerts</h3>
                   <p className="text-muted-foreground mb-6 flex-grow">
-                    AI analyzes your inventory patterns to predict which items will expire before selling, giving you time to act with discount strategies.
+                    AI analyzes inventory patterns to predict which items will expire before selling, giving you time to act with discount strategies and prevent losses.
                   </p>
-                  <div className="flex items-center gap-2 text-primary font-medium group-hover:gap-3 transition-all">
+                  <div className="flex items-center gap-2 text-primary font-medium">
+                    <TrendingUp className="h-4 w-4" />
                     <span>Recover up to 10% lost revenue</span>
-                    <ChevronRight className="h-4 w-4" />
                   </div>
                 </CardContent>
               </Card>
             </motion.div>
 
-            {/* Security */}
+            {/* POS System */}
             <motion.div 
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: 0.1 }}
             >
-              <Card className="h-full glass-card border-border/50 overflow-hidden group hover:border-secondary/30 transition-all duration-500">
+              <Card className="h-full glass-card border-border/50 overflow-hidden group hover:border-success/30 transition-all">
                 <CardContent className="p-6 h-full flex flex-col">
-                  <motion.div 
-                    whileHover={{ scale: 1.1 }}
-                    className="h-12 w-12 rounded-xl bg-gradient-secondary flex items-center justify-center mb-4"
-                  >
-                    <ShieldCheck className="h-6 w-6 text-secondary-foreground" />
-                  </motion.div>
-                  <h3 className="text-lg font-display font-bold mb-2">Staff Clock-in & Anti-Theft</h3>
-                  <p className="text-sm text-muted-foreground">Track every transaction with shift accountability.</p>
+                  <div className="h-12 w-12 rounded-xl bg-success/20 flex items-center justify-center mb-4">
+                    <Calculator className="h-6 w-6 text-success" />
+                  </div>
+                  <h3 className="text-lg font-display font-bold mb-2">Smart POS System</h3>
+                  <p className="text-sm text-muted-foreground flex-grow">Fast checkout with barcode scanning, held transactions, and automatic stock deduction.</p>
                 </CardContent>
               </Card>
             </motion.div>
 
-            {/* Global */}
+            {/* Staff Management */}
             <motion.div 
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: 0.2 }}
             >
-              <Card className="h-full glass-card border-border/50 overflow-hidden group hover:border-accent/30 transition-all duration-500">
+              <Card className="h-full glass-card border-border/50 overflow-hidden group hover:border-secondary/30 transition-all">
                 <CardContent className="p-6 h-full flex flex-col">
-                  <motion.div 
-                    whileHover={{ scale: 1.1, rotate: 360 }}
-                    transition={{ duration: 0.5 }}
-                    className="h-12 w-12 rounded-xl bg-accent flex items-center justify-center mb-4"
-                  >
-                    <Globe className="h-6 w-6 text-accent-foreground" />
-                  </motion.div>
-                  <h3 className="text-lg font-display font-bold mb-2">Multi-Currency & Regulatory</h3>
-                  <p className="text-sm text-muted-foreground">NAFDAC • MHRA • FDA compliant.</p>
+                  <div className="h-12 w-12 rounded-xl bg-secondary/20 flex items-center justify-center mb-4">
+                    <ShieldCheck className="h-6 w-6 text-secondary" />
+                  </div>
+                  <h3 className="text-lg font-display font-bold mb-2">Staff Clock-in & Tracking</h3>
+                  <p className="text-sm text-muted-foreground flex-grow">Track shifts, sales per staff, and prevent theft with complete accountability.</p>
                 </CardContent>
               </Card>
             </motion.div>
 
-            {/* Mobile */}
+            {/* Inventory Management */}
             <motion.div 
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.5, delay: 0.3 }}
-              className="md:col-span-2"
             >
-              <Card className="glass-card border-border/50 overflow-hidden group hover:border-info/30 transition-all duration-500">
-                <CardContent className="p-6 sm:p-8 flex flex-col sm:flex-row items-start gap-6">
-                  <motion.div 
-                    whileHover={{ scale: 1.1, y: -5 }}
-                    className="h-14 w-14 rounded-2xl bg-info flex items-center justify-center shrink-0"
-                  >
-                    <Smartphone className="h-7 w-7 text-info-foreground" />
-                  </motion.div>
+              <Card className="h-full glass-card border-border/50 overflow-hidden group hover:border-info/30 transition-all">
+                <CardContent className="p-6 h-full flex flex-col">
+                  <div className="h-12 w-12 rounded-xl bg-info/20 flex items-center justify-center mb-4">
+                    <Sparkles className="h-6 w-6 text-info" />
+                  </div>
+                  <h3 className="text-lg font-display font-bold mb-2">AI Inventory Search</h3>
+                  <p className="text-sm text-muted-foreground flex-grow">Natural language search finds medications even with misspellings or generic names.</p>
+                </CardContent>
+              </Card>
+            </motion.div>
+
+            {/* Multi-Branch */}
+            <motion.div 
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: 0.4 }}
+            >
+              <Card className="h-full glass-card border-border/50 overflow-hidden group hover:border-warning/30 transition-all">
+                <CardContent className="p-6 h-full flex flex-col">
+                  <div className="h-12 w-12 rounded-xl bg-warning/20 flex items-center justify-center mb-4">
+                    <Globe className="h-6 w-6 text-warning" />
+                  </div>
+                  <h3 className="text-lg font-display font-bold mb-2">Multi-Branch Support</h3>
+                  <p className="text-sm text-muted-foreground flex-grow">Manage multiple locations, transfer stock between branches, centralized reporting.</p>
+                </CardContent>
+              </Card>
+            </motion.div>
+
+            {/* Barcode Scanning */}
+            <motion.div 
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ duration: 0.5, delay: 0.5 }}
+              className="md:col-span-2 lg:col-span-1"
+            >
+              <Card className="glass-card border-border/50 overflow-hidden group hover:border-primary/30 transition-all">
+                <CardContent className="p-6 flex items-start gap-4">
+                  <div className="h-12 w-12 rounded-xl bg-primary/20 flex items-center justify-center flex-shrink-0">
+                    <Smartphone className="h-6 w-6 text-primary" />
+                  </div>
                   <div>
-                    <h3 className="text-xl font-display font-bold mb-2">Barcode Scanning via Smartphone</h3>
-                    <p className="text-muted-foreground">No expensive hardware needed. Use your phone camera to scan items instantly.</p>
+                    <h3 className="text-lg font-display font-bold mb-1">Smartphone Barcode Scanning</h3>
+                    <p className="text-sm text-muted-foreground">No expensive hardware needed. Use your phone camera to scan items instantly.</p>
                   </div>
                 </CardContent>
               </Card>
             </motion.div>
           </div>
+
+          {/* Additional Features Grid */}
+          <motion.div 
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5, delay: 0.6 }}
+            className="mt-12 max-w-6xl mx-auto"
+          >
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {[
+                { icon: TrendingUp, label: 'Sales Analytics', desc: 'Real-time insights' },
+                { icon: ShieldCheck, label: 'NAFDAC Compliant', desc: 'Regulatory ready' },
+                { icon: Calculator, label: 'Profit Tracking', desc: 'Margin analysis' },
+                { icon: Zap, label: 'AI Insights', desc: 'Smart recommendations' },
+              ].map((feature, i) => (
+                <div key={i} className="p-4 rounded-xl bg-muted/30 border border-border/50 text-center hover:bg-muted/50 transition-colors">
+                  <feature.icon className="h-6 w-6 mx-auto mb-2 text-primary" />
+                  <p className="font-medium text-sm">{feature.label}</p>
+                  <p className="text-xs text-muted-foreground">{feature.desc}</p>
+                </div>
+              ))}
+            </div>
+          </motion.div>
         </div>
       </section>
 
