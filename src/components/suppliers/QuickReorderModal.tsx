@@ -1,17 +1,19 @@
 import { useState, useEffect } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Card } from '@/components/ui/card';
-import { useSuppliers } from '@/hooks/useSuppliers';
 import { useSupplierProducts } from '@/hooks/useSupplierProducts';
+import { usePharmacy } from '@/hooks/usePharmacy';
 import { useCurrency } from '@/contexts/CurrencyContext';
-import { Check, Clock, TrendingDown, Plus } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { Check, Clock, TrendingDown, Plus, Printer } from 'lucide-react';
 import { AddSupplierProductModal } from './AddSupplierProductModal';
+import { generatePurchaseOrder, generateOrderNumber } from '@/utils/purchaseOrderGenerator';
 import type { Medication } from '@/types/medication';
+import type { SupplierProductWithDetails } from '@/hooks/useSupplierProducts';
 
 interface QuickReorderModalProps {
   open: boolean;
@@ -20,80 +22,88 @@ interface QuickReorderModalProps {
 }
 
 export const QuickReorderModal = ({ open, onOpenChange, medication }: QuickReorderModalProps) => {
-  const { createReorder } = useSuppliers();
   const { supplierProducts, bestPriceSupplier, isLoading: loadingProducts } = useSupplierProducts(medication?.id);
-  const { formatPrice } = useCurrency();
+  const { pharmacy } = usePharmacy();
+  const { formatPrice, currency } = useCurrency();
+  const { toast } = useToast();
   
-  const [selectedSupplierId, setSelectedSupplierId] = useState('');
+  const [selectedProduct, setSelectedProduct] = useState<SupplierProductWithDetails | null>(null);
   const [showAddSupplierModal, setShowAddSupplierModal] = useState(false);
-  const [formData, setFormData] = useState({
-    quantity: 10,
-    unit_price: 0,
-    notes: '',
-    expected_delivery: '',
-  });
+  const [quantity, setQuantity] = useState(10);
 
   // Auto-select best price supplier when products load
   useEffect(() => {
-    if (bestPriceSupplier && !selectedSupplierId) {
-      setSelectedSupplierId(bestPriceSupplier.supplier_id);
-      setFormData(prev => ({ ...prev, unit_price: bestPriceSupplier.unit_price }));
+    if (bestPriceSupplier && !selectedProduct) {
+      setSelectedProduct(bestPriceSupplier);
     }
   }, [bestPriceSupplier]);
 
   // Reset form when medication changes
   useEffect(() => {
     if (medication) {
-      setFormData(prev => ({
-        ...prev,
-        quantity: Math.max(medication.reorder_level - medication.current_stock, 10),
-      }));
-      setSelectedSupplierId('');
+      setQuantity(Math.max(medication.reorder_level - medication.current_stock, 10));
+      setSelectedProduct(null);
     }
   }, [medication?.id]);
 
-  const handleSupplierSelect = (supplierId: string) => {
-    setSelectedSupplierId(supplierId);
-    const product = supplierProducts.find(p => p.supplier_id === supplierId);
-    if (product) {
-      setFormData(prev => ({ ...prev, unit_price: product.unit_price }));
-    }
+  const handleSupplierSelect = (product: SupplierProductWithDetails) => {
+    setSelectedProduct(product);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedSupplierId) return;
+  const handlePrint = () => {
+    if (!selectedProduct || !medication) {
+      toast({ title: 'Please select a supplier', variant: 'destructive' });
+      return;
+    }
+
+    const totalPrice = quantity * selectedProduct.unit_price;
     
-    try {
-      await createReorder.mutateAsync({
-        supplier_id: selectedSupplierId,
-        medication_id: medication?.id,
-        quantity: formData.quantity,
-        unit_price: formData.unit_price,
-        notes: formData.notes || undefined,
-        expected_delivery: formData.expected_delivery || undefined,
-      });
-      onOpenChange(false);
-    } catch (error) {
-      // Error handled in mutation
-    }
+    // Generate POS receipt
+    const orderNumber = generateOrderNumber();
+    const doc = generatePurchaseOrder({
+      orders: [{
+        supplierName: selectedProduct.supplier_name,
+        items: [{
+          medicationName: medication.name,
+          quantity,
+          unitPrice: selectedProduct.unit_price,
+          totalPrice,
+        }],
+        totalAmount: totalPrice,
+      }],
+      pharmacyName: pharmacy?.name || 'My Pharmacy',
+      pharmacyPhone: pharmacy?.phone || undefined,
+      orderNumber,
+      date: new Date(),
+      currency: currency as 'NGN' | 'USD' | 'GBP',
+    });
+
+    // Open print dialog
+    doc.autoPrint();
+    window.open(doc.output('bloburl'), '_blank');
+
+    toast({ 
+      title: 'Purchase Order Printed', 
+      description: `Order for ${medication.name} sent to printer.` 
+    });
+
+    onOpenChange(false);
   };
 
-  const totalAmount = formData.quantity * formData.unit_price;
-  const selectedProduct = supplierProducts.find(p => p.supplier_id === selectedSupplierId);
+  const totalAmount = selectedProduct ? quantity * selectedProduct.unit_price : 0;
 
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Quick Reorder{medication && `: ${medication.name}`}</DialogTitle>
+            <DialogTitle>Quick Order{medication && `: ${medication.name}`}</DialogTitle>
             <DialogDescription>
-              Select a supplier and create a reorder request
+              Select a supplier and print purchase order
             </DialogDescription>
           </DialogHeader>
           
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-4">
             {medication && (
               <div className="p-3 bg-muted rounded-lg text-sm">
                 <div className="flex justify-between">
@@ -129,20 +139,20 @@ export const QuickReorderModal = ({ open, onOpenChange, medication }: QuickReord
                     <Card
                       key={product.id}
                       className={`p-3 cursor-pointer transition-all ${
-                        selectedSupplierId === product.supplier_id
+                        selectedProduct?.id === product.id
                           ? 'border-primary bg-primary/5'
                           : 'hover:border-muted-foreground/50'
                       }`}
-                      onClick={() => handleSupplierSelect(product.supplier_id)}
+                      onClick={() => handleSupplierSelect(product)}
                     >
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
                           <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${
-                            selectedSupplierId === product.supplier_id
+                            selectedProduct?.id === product.id
                               ? 'border-primary bg-primary'
                               : 'border-muted-foreground/30'
                           }`}>
-                            {selectedSupplierId === product.supplier_id && (
+                            {selectedProduct?.id === product.id && (
                               <Check className="h-3 w-3 text-primary-foreground" />
                             )}
                           </div>
@@ -209,35 +219,21 @@ export const QuickReorderModal = ({ open, onOpenChange, medication }: QuickReord
               )}
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="quantity">Quantity *</Label>
-                <Input
-                  id="quantity"
-                  type="number"
-                  min={selectedProduct?.min_order_quantity || 1}
-                  value={formData.quantity}
-                  onChange={(e) => setFormData({ ...formData, quantity: parseInt(e.target.value) || 0 })}
-                  required
-                />
-                {selectedProduct?.min_order_quantity && selectedProduct.min_order_quantity > 1 && (
-                  <p className="text-xs text-muted-foreground">
-                    Min. order: {selectedProduct.min_order_quantity}
-                  </p>
-                )}
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="unit_price">Unit Price *</Label>
-                <Input
-                  id="unit_price"
-                  type="number"
-                  min={0}
-                  step="0.01"
-                  value={formData.unit_price}
-                  onChange={(e) => setFormData({ ...formData, unit_price: parseFloat(e.target.value) || 0 })}
-                  required
-                />
-              </div>
+            <div className="space-y-2">
+              <Label htmlFor="quantity">Quantity *</Label>
+              <Input
+                id="quantity"
+                type="number"
+                min={selectedProduct?.min_order_quantity || 1}
+                value={quantity}
+                onChange={(e) => setQuantity(parseInt(e.target.value) || 0)}
+                required
+              />
+              {selectedProduct?.min_order_quantity && selectedProduct.min_order_quantity > 1 && (
+                <p className="text-xs text-muted-foreground">
+                  Min. order: {selectedProduct.min_order_quantity}
+                </p>
+              )}
             </div>
 
             <div className="p-3 bg-primary/10 rounded-lg">
@@ -246,36 +242,21 @@ export const QuickReorderModal = ({ open, onOpenChange, medication }: QuickReord
                 <span>{formatPrice(totalAmount)}</span>
               </div>
             </div>
+          </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="expected_delivery">Expected Delivery</Label>
-              <Input
-                id="expected_delivery"
-                type="date"
-                value={formData.expected_delivery}
-                onChange={(e) => setFormData({ ...formData, expected_delivery: e.target.value })}
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="notes">Notes</Label>
-              <Textarea
-                id="notes"
-                value={formData.notes}
-                onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                placeholder="Special instructions..."
-                rows={2}
-              />
-            </div>
-
-            <Button
-              type="submit"
-              className="w-full"
-              disabled={createReorder.isPending || !selectedSupplierId}
-            >
-              Create Reorder Request
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => onOpenChange(false)}>
+              Cancel
             </Button>
-          </form>
+            <Button
+              onClick={handlePrint}
+              disabled={!selectedProduct}
+              className="gap-2"
+            >
+              <Printer className="h-4 w-4" />
+              Print Order
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
