@@ -573,6 +573,92 @@ export type Database = {
         }
         Relationships: []
       }
+      reorder_requests: {
+        Row: {
+          actual_delivery: string | null
+          approved_by: string | null
+          created_at: string
+          expected_delivery: string | null
+          id: string
+          medication_id: string | null
+          notes: string | null
+          pharmacy_id: string
+          quantity: number
+          requested_by: string | null
+          status: string
+          supplier_id: string
+          supplier_product_id: string | null
+          total_amount: number
+          unit_price: number
+          updated_at: string
+        }
+        Insert: {
+          actual_delivery?: string | null
+          approved_by?: string | null
+          created_at?: string
+          expected_delivery?: string | null
+          id?: string
+          medication_id?: string | null
+          notes?: string | null
+          pharmacy_id: string
+          quantity: number
+          requested_by?: string | null
+          status?: string
+          supplier_id: string
+          supplier_product_id?: string | null
+          total_amount: number
+          unit_price: number
+          updated_at?: string
+        }
+        Update: {
+          actual_delivery?: string | null
+          approved_by?: string | null
+          created_at?: string
+          expected_delivery?: string | null
+          id?: string
+          medication_id?: string | null
+          notes?: string | null
+          pharmacy_id?: string
+          quantity?: number
+          requested_by?: string | null
+          status?: string
+          supplier_id?: string
+          supplier_product_id?: string | null
+          total_amount?: number
+          unit_price?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reorder_requests_medication_id_fkey"
+            columns: ["medication_id"]
+            isOneToOne: false
+            referencedRelation: "medications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reorder_requests_pharmacy_id_fkey"
+            columns: ["pharmacy_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reorder_requests_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reorder_requests_supplier_product_id_fkey"
+            columns: ["supplier_product_id"]
+            isOneToOne: false
+            referencedRelation: "supplier_products"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sales: {
         Row: {
           created_at: string
@@ -789,6 +875,119 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "subscription_payments_pharmacy_id_fkey"
+            columns: ["pharmacy_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      supplier_products: {
+        Row: {
+          created_at: string
+          id: string
+          is_available: boolean
+          lead_time_days: number | null
+          medication_id: string | null
+          min_order_quantity: number
+          product_name: string
+          sku: string | null
+          supplier_id: string
+          unit_price: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_available?: boolean
+          lead_time_days?: number | null
+          medication_id?: string | null
+          min_order_quantity?: number
+          product_name: string
+          sku?: string | null
+          supplier_id: string
+          unit_price: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_available?: boolean
+          lead_time_days?: number | null
+          medication_id?: string | null
+          min_order_quantity?: number
+          product_name?: string
+          sku?: string | null
+          supplier_id?: string
+          unit_price?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supplier_products_medication_id_fkey"
+            columns: ["medication_id"]
+            isOneToOne: false
+            referencedRelation: "medications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supplier_products_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      suppliers: {
+        Row: {
+          address: string | null
+          contact_person: string | null
+          created_at: string
+          email: string | null
+          id: string
+          is_active: boolean
+          name: string
+          notes: string | null
+          payment_terms: string | null
+          pharmacy_id: string
+          phone: string | null
+          updated_at: string
+          website: string | null
+        }
+        Insert: {
+          address?: string | null
+          contact_person?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          notes?: string | null
+          payment_terms?: string | null
+          pharmacy_id: string
+          phone?: string | null
+          updated_at?: string
+          website?: string | null
+        }
+        Update: {
+          address?: string | null
+          contact_person?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          notes?: string | null
+          payment_terms?: string | null
+          pharmacy_id?: string
+          phone?: string | null
+          updated_at?: string
+          website?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "suppliers_pharmacy_id_fkey"
             columns: ["pharmacy_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
