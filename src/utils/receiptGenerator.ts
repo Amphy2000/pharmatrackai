@@ -9,6 +9,8 @@ interface ReceiptData {
   total: number;
   customerName?: string;
   pharmacyName?: string;
+  pharmacyAddress?: string;
+  pharmacyPhone?: string;
   receiptNumber: string;
   date: Date;
   currency?: CurrencyCode;
@@ -37,14 +39,24 @@ export const generateReceipt = ({
   total,
   customerName,
   pharmacyName = 'PharmaTrack Pharmacy',
+  pharmacyAddress,
+  pharmacyPhone,
   receiptNumber,
   date,
   currency = 'NGN',
 }: ReceiptData): jsPDF => {
+  // Calculate dynamic height based on items
+  const baseHeight = 140;
+  const itemHeight = items.length * 12;
+  const addressHeight = pharmacyAddress ? 8 : 0;
+  const phoneHeight = pharmacyPhone ? 6 : 0;
+  const customerHeight = customerName ? 6 : 0;
+  const totalHeight = baseHeight + itemHeight + addressHeight + phoneHeight + customerHeight;
+
   // Create PDF optimized for thermal printers (80mm width = ~226.77 points at 72 DPI)
   const doc = new jsPDF({
     unit: 'mm',
-    format: [80, 200], // 80mm width, variable height
+    format: [80, Math.max(totalHeight, 120)],
     orientation: 'portrait',
   });
 
@@ -65,15 +77,34 @@ export const generateReceipt = ({
     doc.text(text, pageWidth - margin - textWidth, yPos);
   };
 
-  // Header
+  // ============ PHARMACY BRANDING HEADER ============
   doc.setFont('helvetica', 'bold');
-  centerText(pharmacyName, y, 14);
+  centerText(pharmacyName.toUpperCase(), y, 14);
   y += 6;
+
+  // Pharmacy address (if provided)
+  if (pharmacyAddress) {
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7);
+    const addressLines = doc.splitTextToSize(pharmacyAddress, pageWidth - (margin * 2));
+    addressLines.forEach((line: string) => {
+      centerText(line, y, 7);
+      y += 3.5;
+    });
+    y += 2;
+  }
+
+  // Pharmacy phone (if provided)
+  if (pharmacyPhone) {
+    doc.setFont('helvetica', 'normal');
+    centerText(`Tel: ${pharmacyPhone}`, y, 8);
+    y += 5;
+  }
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8);
-  centerText('Enterprise Inventory Management', y);
-  y += 8;
+  centerText('Your Health, Our Priority', y);
+  y += 6;
 
   // Divider
   doc.setDrawColor(200);
@@ -155,19 +186,24 @@ export const generateReceipt = ({
   doc.setFontSize(8);
   centerText('Thank you for your purchase!', y);
   y += 4;
+  centerText('Get well soon. Visit us again!', y);
+  y += 5;
+
+  // Powered by branding
+  doc.setFontSize(7);
+  doc.setTextColor(120);
   centerText('Powered by PharmaTrack AI', y);
+  doc.setTextColor(0);
   y += 6;
 
-  // Barcode area (placeholder line)
-  doc.setDrawColor(150);
+  // Barcode area (placeholder lines simulating barcode)
+  doc.setDrawColor(50);
   doc.setLineWidth(0.5);
+  const barcodeStart = margin + 10;
   for (let i = 0; i < 30; i++) {
-    doc.line(
-      margin + 10 + i * 2,
-      y,
-      margin + 10 + i * 2,
-      y + 10
-    );
+    const width = (i % 3 === 0) ? 0.8 : 0.4;
+    doc.setLineWidth(width);
+    doc.line(barcodeStart + i * 2, y, barcodeStart + i * 2, y + 10);
   }
 
   return doc;
