@@ -3,22 +3,18 @@ import { Header } from '@/components/Header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Plus, Package, Truck, Users, AlertTriangle } from 'lucide-react';
+import { Package, Truck, Users, AlertTriangle } from 'lucide-react';
 import { useSuppliers } from '@/hooks/useSuppliers';
 import { useMedications } from '@/hooks/useMedications';
-import { AddSupplierModal } from '@/components/suppliers/AddSupplierModal';
 import { SuppliersTable } from '@/components/suppliers/SuppliersTable';
 import { ReorderRequestsTable } from '@/components/suppliers/ReorderRequestsTable';
 import { LowStockAlerts } from '@/components/suppliers/LowStockAlerts';
 import { QuickReorderModal } from '@/components/suppliers/QuickReorderModal';
-import type { Supplier } from '@/types/supplier';
 import type { Medication } from '@/types/medication';
 
 const Suppliers = () => {
   const { suppliers, reorderRequests, isLoading } = useSuppliers();
   const { medications } = useMedications();
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
   const [reorderMedication, setReorderMedication] = useState<Medication | null>(null);
   const [showReorderModal, setShowReorderModal] = useState(false);
 
@@ -27,11 +23,6 @@ const Suppliers = () => {
     ['pending', 'approved', 'ordered', 'shipped'].includes(r.status)
   ).length;
   const lowStockCount = medications.filter(m => m.current_stock <= m.reorder_level).length;
-
-  const handleEdit = (supplier: Supplier) => {
-    setEditingSupplier(supplier);
-    setShowAddModal(true);
-  };
 
   const handleReorder = (medication: Medication) => {
     setReorderMedication(medication);
@@ -49,19 +40,13 @@ const Suppliers = () => {
               Supplier Management
             </h1>
             <p className="text-muted-foreground mt-1">
-              Manage suppliers and auto-reorder stock when running low
+              View suppliers and reorder stock with best price suggestions
             </p>
           </div>
-          <div className="flex gap-2">
-            <Button onClick={() => setShowReorderModal(true)} variant="outline">
-              <Package className="h-4 w-4 mr-2" />
-              Quick Reorder
-            </Button>
-            <Button onClick={() => { setEditingSupplier(null); setShowAddModal(true); }}>
-              <Plus className="h-4 w-4 mr-2" />
-              Add Supplier
-            </Button>
-          </div>
+          <Button onClick={() => setShowReorderModal(true)} variant="outline">
+            <Package className="h-4 w-4 mr-2" />
+            Quick Reorder
+          </Button>
         </div>
 
         {/* Stats Cards */}
@@ -132,10 +117,15 @@ const Suppliers = () => {
               <TabsContent value="suppliers">
                 <Card>
                   <CardHeader>
-                    <CardTitle>Your Suppliers</CardTitle>
+                    <div className="flex items-center justify-between">
+                      <CardTitle>Your Suppliers</CardTitle>
+                      <p className="text-sm text-muted-foreground">
+                        Add suppliers when stocking medications
+                      </p>
+                    </div>
                   </CardHeader>
                   <CardContent>
-                    <SuppliersTable onEdit={handleEdit} />
+                    <SuppliersTable />
                   </CardContent>
                 </Card>
               </TabsContent>
@@ -158,12 +148,6 @@ const Suppliers = () => {
           </div>
         </div>
       </main>
-
-      <AddSupplierModal
-        open={showAddModal}
-        onOpenChange={setShowAddModal}
-        editingSupplier={editingSupplier}
-      />
       
       <QuickReorderModal
         open={showReorderModal}
