@@ -243,10 +243,10 @@ export const Header = () => {
                 <Button variant="ghost" size="icon" className="relative h-9 w-9 sm:h-11 sm:w-11 rounded-xl hover:bg-muted/50">
                   <Bell className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
                   {unreadCount > 0 && (
-                    <span className="absolute top-1.5 sm:top-2 right-1.5 sm:right-2 flex h-4 w-4 sm:h-5 sm:w-5 items-center justify-center">
+                    <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center">
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-destructive opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-4 w-4 sm:h-5 sm:w-5 bg-destructive text-destructive-foreground text-[10px] font-bold items-center justify-center">
-                        {unreadCount}
+                      <span className="relative inline-flex rounded-full h-5 w-5 bg-destructive text-destructive-foreground text-[10px] font-bold items-center justify-center">
+                        {unreadCount > 9 ? '9+' : unreadCount}
                       </span>
                     </span>
                   )}
