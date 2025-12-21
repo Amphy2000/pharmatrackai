@@ -116,9 +116,8 @@ export const Header = () => {
   return (
     <TooltipProvider delayDuration={200}>
       <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
-        <div className="container mx-auto px-4 sm:px-6 overflow-hidden">
+        <div className="container mx-auto px-4 sm:px-6">
           <div className="flex h-16 sm:h-20 items-center justify-between gap-4 lg:gap-6">
-            {/* Logo & Brand */}
             <Link to="/dashboard" className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
               <div className="relative">
                 <div className="flex h-9 w-9 sm:h-11 sm:w-11 items-center justify-center rounded-xl bg-gradient-primary shadow-glow-primary">
@@ -136,9 +135,9 @@ export const Header = () => {
               </div>
             </Link>
 
-            {/* Navigation Links - Icon-only on medium screens, full on large */}
-            <nav className="hidden lg:flex items-center flex-shrink min-w-0">
-              <div className="flex items-center gap-0.5 xl:gap-1">
+            {/* Navigation Links - icon-only until very wide screens (consistent across browsers) */}
+            <nav className="hidden lg:flex items-center flex-1 min-w-0 justify-center">
+              <div className="flex items-center gap-0.5 2xl:gap-1">
                 {navLinks.map((link) => {
                   const isActive = location.pathname === link.href || (link.href === '/' && location.pathname === '/dashboard');
                   return (
@@ -146,14 +145,14 @@ export const Header = () => {
                       <TooltipTrigger asChild>
                         <Link
                           to={link.href === '/' ? '/dashboard' : link.href}
-                          className={`flex items-center justify-center xl:justify-start gap-1.5 h-9 w-9 xl:h-auto xl:w-auto xl:px-3 xl:py-2 rounded-lg text-sm font-medium transition-all ${
+                          className={`flex items-center justify-center 2xl:justify-start gap-1.5 h-9 w-9 2xl:h-auto 2xl:w-auto 2xl:px-3 2xl:py-2 rounded-lg text-sm font-medium transition-all ${
                             isActive 
                               ? 'bg-primary/10 text-primary' 
                               : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
                           }`}
                         >
                           <link.icon className="h-4 w-4 flex-shrink-0" />
-                          <span className="hidden xl:inline whitespace-nowrap">{link.label}</span>
+                          <span className="hidden 2xl:inline whitespace-nowrap">{link.label}</span>
                         </Link>
                       </TooltipTrigger>
                       <TooltipContent>
@@ -168,14 +167,14 @@ export const Header = () => {
                     <TooltipTrigger asChild>
                       <Link
                         to="/settings"
-                        className={`flex items-center justify-center xl:justify-start gap-1.5 h-9 w-9 xl:h-auto xl:w-auto xl:px-3 xl:py-2 rounded-lg text-sm font-medium transition-all ${
+                        className={`flex items-center justify-center 2xl:justify-start gap-1.5 h-9 w-9 2xl:h-auto 2xl:w-auto 2xl:px-3 2xl:py-2 rounded-lg text-sm font-medium transition-all ${
                           location.pathname === '/settings'
                             ? 'bg-primary/10 text-primary' 
                             : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
                         }`}
                       >
                         <Settings className="h-4 w-4 flex-shrink-0" />
-                        <span className="hidden xl:inline whitespace-nowrap">Settings</span>
+                        <span className="hidden 2xl:inline whitespace-nowrap">Settings</span>
                       </Link>
                     </TooltipTrigger>
                     <TooltipContent>
@@ -189,14 +188,14 @@ export const Header = () => {
                     <TooltipTrigger asChild>
                       <Link
                         to="/admin"
-                        className={`flex items-center justify-center xl:justify-start gap-1.5 h-9 w-9 xl:h-auto xl:w-auto xl:px-3 xl:py-2 rounded-lg text-sm font-medium transition-all ${
+                        className={`flex items-center justify-center 2xl:justify-start gap-1.5 h-9 w-9 2xl:h-auto 2xl:w-auto 2xl:px-3 2xl:py-2 rounded-lg text-sm font-medium transition-all ${
                           location.pathname === '/admin'
                             ? 'bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-amber-500' 
                             : 'text-amber-500/70 hover:text-amber-500 hover:bg-amber-500/10'
                         }`}
                       >
                         <Crown className="h-4 w-4 flex-shrink-0" />
-                        <span className="hidden xl:inline whitespace-nowrap">Admin</span>
+                        <span className="hidden 2xl:inline whitespace-nowrap">Admin</span>
                       </Link>
                     </TooltipTrigger>
                     <TooltipContent>
