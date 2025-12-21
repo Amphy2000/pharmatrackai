@@ -125,7 +125,7 @@ export const ProductGrid = ({ medications, onAddToCart, isLoading }: ProductGrid
             <p>No medications found</p>
           </div>
         ) : (
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 pr-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 pr-4">
             {filteredMedications.map((medication) => {
               const expired = isExpired(medication.expiry_date);
               const lowStock = isLowStock(medication.current_stock, medication.reorder_level);
@@ -137,7 +137,7 @@ export const ProductGrid = ({ medications, onAddToCart, isLoading }: ProductGrid
                   key={medication.id}
                   onClick={() => onAddToCart(medication)}
                   disabled={expired || outOfStock}
-                  className={`group relative p-4 rounded-xl text-left transition-all duration-200 border
+                  className={`group relative p-5 rounded-xl text-left transition-all duration-200 border min-h-[140px]
                     ${expired 
                       ? 'bg-destructive/5 border-destructive/20 cursor-not-allowed opacity-60' 
                       : outOfStock

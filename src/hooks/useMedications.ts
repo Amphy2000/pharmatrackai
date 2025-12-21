@@ -54,11 +54,11 @@ export const useMedications = () => {
         .from('medications')
         .update(updates)
         .eq('id', id)
-        .select()
-        .single();
+        .select();
 
       if (error) throw error;
-      return data;
+      if (!data || data.length === 0) throw new Error('Medication not found');
+      return data[0];
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['medications'] });

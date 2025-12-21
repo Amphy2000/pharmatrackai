@@ -1,0 +1,175 @@
+import { useState, useEffect } from 'react';
+import { AlertTriangle, AlertCircle, Info, X, Shield } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { supabase } from '@/integrations/supabase/client';
+import type { Medication } from '@/types/medication';
+
+interface DrugInteraction {
+  drugs: string[];
+  severity: 'low' | 'moderate' | 'high' | 'severe';
+  description: string;
+  recommendation: string;
+}
+
+interface DrugInteractionWarningProps {
+  cartItems: Array<{ medication: Medication; quantity: number }>;
+}
+
+const severityConfig = {
+  low: {
+    icon: Info,
+    color: 'text-blue-500',
+    bgColor: 'bg-blue-500/10',
+    borderColor: 'border-blue-500/30',
+    label: 'Low',
+  },
+  moderate: {
+    icon: AlertCircle,
+    color: 'text-yellow-500',
+    bgColor: 'bg-yellow-500/10',
+    borderColor: 'border-yellow-500/30',
+    label: 'Moderate',
+  },
+  high: {
+    icon: AlertTriangle,
+    color: 'text-orange-500',
+    bgColor: 'bg-orange-500/10',
+    borderColor: 'border-orange-500/30',
+    label: 'High',
+  },
+  severe: {
+    icon: AlertTriangle,
+    color: 'text-destructive',
+    bgColor: 'bg-destructive/10',
+    borderColor: 'border-destructive/30',
+    label: 'Severe',
+  },
+};
+
+export const DrugInteractionWarning = ({ cartItems }: DrugInteractionWarningProps) => {
+  const [interactions, setInteractions] = useState<DrugInteraction[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const checkInteractions = async () => {
+      // Only check if there are 2+ different medications
+      if (cartItems.length < 2) {
+        setInteractions([]);
+        return;
+      }
+
+      setIsLoading(true);
+      setError(null);
+      setDismissed(false);
+
+      try {
+        const { data, error: fnError } = await supabase.functions.invoke('check-drug-interactions', {
+          body: {
+            medications: cartItems.map(item => ({
+              name: item.medication.name,
+              category: item.medication.category,
+            })),
+          },
+        });
+
+        if (fnError) throw fnError;
+        
+        if (data?.error) {
+          setError(data.error);
+          setInteractions([]);
+        } else {
+          setInteractions(data?.interactions || []);
+        }
+      } catch (err) {
+        console.error('Failed to check drug interactions:', err);
+        setError('Could not check drug interactions');
+        setInteractions([]);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    // Debounce the check
+    const timeout = setTimeout(checkInteractions, 500);
+    return () => clearTimeout(timeout);
+  }, [cartItems]);
+
+  if (dismissed || (interactions.length === 0 && !isLoading && !error)) {
+    return null;
+  }
+
+  if (isLoading) {
+    return (
+      <div className="p-3 rounded-lg bg-muted/30 border border-border/50 flex items-center gap-2">
+        <Shield className="h-4 w-4 text-muted-foreground animate-pulse" />
+        <span className="text-sm text-muted-foreground">Checking drug interactions...</span>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="p-3 rounded-lg bg-muted/30 border border-border/50 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Shield className="h-4 w-4 text-muted-foreground" />
+          <span className="text-xs text-muted-foreground">{error}</span>
+        </div>
+        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => setDismissed(true)}>
+          <X className="h-3 w-3" />
+        </Button>
+      </div>
+    );
+  }
+
+  const hasHighSeverity = interactions.some(i => i.severity === 'high' || i.severity === 'severe');
+
+  return (
+    <Alert className={`${hasHighSeverity ? 'border-destructive/50 bg-destructive/5' : 'border-orange-500/50 bg-orange-500/5'}`}>
+      <div className="flex items-start justify-between">
+        <div className="flex items-start gap-2">
+          <AlertTriangle className={`h-4 w-4 mt-0.5 ${hasHighSeverity ? 'text-destructive' : 'text-orange-500'}`} />
+          <div className="space-y-2">
+            <AlertTitle className="text-sm font-semibold">
+              Drug Interaction{interactions.length > 1 ? 's' : ''} Detected
+            </AlertTitle>
+            <AlertDescription>
+              <ScrollArea className="max-h-32">
+                <div className="space-y-2">
+                  {interactions.map((interaction, index) => {
+                    const config = severityConfig[interaction.severity];
+                    const Icon = config.icon;
+                    
+                    return (
+                      <div 
+                        key={index} 
+                        className={`p-2 rounded-md ${config.bgColor} ${config.borderColor} border`}
+                      >
+                        <div className="flex items-center gap-2 mb-1">
+                          <Icon className={`h-3 w-3 ${config.color}`} />
+                          <span className="font-medium text-xs">{interaction.drugs.join(' + ')}</span>
+                          <Badge variant="outline" className={`text-[10px] ${config.color} border-current`}>
+                            {config.label}
+                          </Badge>
+                        </div>
+                        <p className="text-xs text-muted-foreground">{interaction.description}</p>
+                        <p className="text-xs font-medium mt-1">{interaction.recommendation}</p>
+                      </div>
+                    );
+                  })}
+                </div>
+              </ScrollArea>
+            </AlertDescription>
+          </div>
+        </div>
+        <Button variant="ghost" size="icon" className="h-6 w-6 -mt-1 -mr-1" onClick={() => setDismissed(true)}>
+          <X className="h-3 w-3" />
+        </Button>
+      </div>
+    </Alert>
+  );
+};

@@ -2,13 +2,14 @@ import { useState } from 'react';
 import { Header } from '@/components/Header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Package, Users, AlertTriangle, ShoppingCart } from 'lucide-react';
+import { Package, Users, AlertTriangle, ShoppingCart, PackagePlus } from 'lucide-react';
 import { useSuppliers } from '@/hooks/useSuppliers';
 import { useMedications } from '@/hooks/useMedications';
 import { SuppliersTable } from '@/components/suppliers/SuppliersTable';
 import { LowStockAlerts } from '@/components/suppliers/LowStockAlerts';
 import { QuickReorderModal } from '@/components/suppliers/QuickReorderModal';
 import { BulkReorderModal } from '@/components/suppliers/BulkReorderModal';
+import { ReceiveStockModal } from '@/components/inventory/ReceiveStockModal';
 import type { Medication } from '@/types/medication';
 
 const Suppliers = () => {
@@ -17,6 +18,7 @@ const Suppliers = () => {
   const [reorderMedication, setReorderMedication] = useState<Medication | null>(null);
   const [showReorderModal, setShowReorderModal] = useState(false);
   const [showBulkReorderModal, setShowBulkReorderModal] = useState(false);
+  const [showReceiveStockModal, setShowReceiveStockModal] = useState(false);
 
   const activeSuppliers = suppliers.filter(s => s.is_active).length;
   const lowStockCount = medications.filter(m => m.current_stock <= m.reorder_level).length;
@@ -41,7 +43,11 @@ const Suppliers = () => {
               View suppliers, compare prices, and print purchase orders
             </p>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
+            <Button onClick={() => setShowReceiveStockModal(true)} variant="secondary">
+              <PackagePlus className="h-4 w-4 mr-2" />
+              Receive Stock
+            </Button>
             <Button onClick={() => setShowBulkReorderModal(true)} variant="default">
               <ShoppingCart className="h-4 w-4 mr-2" />
               Bulk Reorder
@@ -132,6 +138,11 @@ const Suppliers = () => {
       <BulkReorderModal
         open={showBulkReorderModal}
         onOpenChange={setShowBulkReorderModal}
+      />
+      
+      <ReceiveStockModal
+        open={showReceiveStockModal}
+        onOpenChange={setShowReceiveStockModal}
       />
     </div>
   );
