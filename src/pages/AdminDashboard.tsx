@@ -333,7 +333,21 @@ const AdminDashboard = () => {
             <CardContent className="text-center">
               <Button 
                 size="lg" 
-                onClick={bootstrapAdmin}
+                onClick={async () => {
+                  const result = await bootstrapAdmin();
+                  if (result.error) {
+                    toast({
+                      title: 'Activation Failed',
+                      description: result.error,
+                      variant: 'destructive',
+                    });
+                  } else {
+                    toast({
+                      title: 'Admin Activated!',
+                      description: 'You now have super admin access.',
+                    });
+                  }
+                }}
                 disabled={isBootstrapping}
                 className="gap-2"
               >
