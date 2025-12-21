@@ -118,6 +118,7 @@ export type Database = {
           current_stock: number
           expiry_date: string
           id: string
+          is_shelved: boolean
           location: string | null
           min_stock_alert: number | null
           name: string
@@ -136,6 +137,7 @@ export type Database = {
           current_stock?: number
           expiry_date: string
           id?: string
+          is_shelved?: boolean
           location?: string | null
           min_stock_alert?: number | null
           name: string
@@ -154,6 +156,7 @@ export type Database = {
           current_stock?: number
           expiry_date?: string
           id?: string
+          is_shelved?: boolean
           location?: string | null
           min_stock_alert?: number | null
           name?: string
@@ -346,6 +349,51 @@ export type Database = {
           },
           {
             foreignKeyName: "sales_pharmacy_id_fkey"
+            columns: ["pharmacy_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      shelving_history: {
+        Row: {
+          action: string
+          created_at: string
+          id: string
+          medication_id: string
+          performed_by: string | null
+          pharmacy_id: string
+          reason: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          id?: string
+          medication_id: string
+          performed_by?: string | null
+          pharmacy_id: string
+          reason?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          id?: string
+          medication_id?: string
+          performed_by?: string | null
+          pharmacy_id?: string
+          reason?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "shelving_history_medication_id_fkey"
+            columns: ["medication_id"]
+            isOneToOne: false
+            referencedRelation: "medications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shelving_history_pharmacy_id_fkey"
             columns: ["pharmacy_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
