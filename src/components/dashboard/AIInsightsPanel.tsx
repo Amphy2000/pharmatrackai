@@ -274,12 +274,12 @@ export const AIInsightsPanel = ({ medications }: AIInsightsPanelProps) => {
             </p>
           </div>
         ) : (
-          <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             {insights.map((insight, index) => (
               <div
                 key={insight.id}
                 className={cn(
-                  'relative p-4 rounded-xl border transition-all duration-300 group',
+                  'relative p-4 rounded-xl border transition-all duration-300',
                   typeStyles[insight.type].bg,
                   typeStyles[insight.type].border,
                   'animate-fade-in'
@@ -301,26 +301,19 @@ export const AIInsightsPanel = ({ medications }: AIInsightsPanelProps) => {
                       )}>
                         {insight.priority}
                       </span>
-                      {insight.category && (
-                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-background/50 text-muted-foreground">
-                          {categoryLabels[insight.category] || insight.category}
-                        </span>
-                      )}
                       {insight.impact && (
                         <span className="text-xs font-bold text-success ml-auto">
                           {insight.impact}
                         </span>
                       )}
                     </div>
-                    <p className="text-sm text-foreground leading-relaxed line-clamp-3">{insight.message}</p>
+                    <p className="text-sm text-foreground leading-relaxed line-clamp-3 mb-2">{insight.message}</p>
                     
                     {insight.action && (
-                      <div className="mt-2 pt-2 border-t border-border/30">
-                        <p className="text-xs text-muted-foreground flex items-center gap-1">
-                          <ArrowRight className="h-3 w-3" />
-                          {insight.action}
-                        </p>
-                      </div>
+                      <p className="text-xs text-muted-foreground flex items-center gap-1 pt-2 border-t border-border/30">
+                        <ArrowRight className="h-3 w-3 flex-shrink-0" />
+                        <span className="line-clamp-2">{insight.action}</span>
+                      </p>
                     )}
                   </div>
                 </div>
