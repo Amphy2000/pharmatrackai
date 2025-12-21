@@ -24,7 +24,11 @@ serve(async (req) => {
   }
 
   try {
-    const { medications } = await req.json() as { medications: Medication[] };
+    const { medications, currency = 'NGN', currencySymbol = '₦' } = await req.json() as { 
+      medications: Medication[];
+      currency?: string;
+      currencySymbol?: string;
+    };
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
 
     if (!LOVABLE_API_KEY) {
@@ -53,20 +57,24 @@ serve(async (req) => {
     // Potential lost sales from stockouts
     const potentialLostSales = lowStock.reduce((sum, m) => sum + ((m.reorder_level - m.current_stock) * Number(m.selling_price || m.unit_price)), 0);
 
-    const systemPrompt = `You are an elite AI pharmacy business analyst. Your insights directly save pharmacies thousands of dollars. Analyze inventory data and provide 6 HIGHLY ACTIONABLE insights.
+    const formatAmount = (amount: number) => `${currencySymbol}${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+
+    const systemPrompt = `You are an elite AI pharmacy business analyst. Your insights directly save pharmacies thousands. Analyze inventory data and provide 6 HIGHLY ACTIONABLE insights.
+
+IMPORTANT: All monetary values MUST be displayed in ${currency} using the ${currencySymbol} symbol. NEVER use $ or USD.
 
 Current date: ${today}
 30 days from now: ${thirtyDaysFromNow}
 
 ANALYTICS SUMMARY:
-- Total inventory value: $${totalInventoryValue.toFixed(2)}
-- At-risk value (expired/expiring): $${atRiskValue.toFixed(2)}
+- Total inventory value: ${formatAmount(totalInventoryValue)}
+- At-risk value (expired/expiring): ${formatAmount(atRiskValue)}
 - Expired items: ${expired.length}
 - Expiring within 30 days: ${expiringSoon.length}
 - Low stock items: ${lowStock.length}
 - Out of stock: ${outOfStock.length}
 - Average profit margin: ${avgMargin.toFixed(1)}%
-- Potential lost sales from stockouts: $${potentialLostSales.toFixed(2)}
+- Potential lost sales from stockouts: ${formatAmount(potentialLostSales)}
 
 INSIGHT CATEGORIES (provide one of each):
 1. **URGENT_ACTION** (type: "warning"): Immediate action needed - expired drugs, critical stockouts
@@ -74,21 +82,22 @@ INSIGHT CATEGORIES (provide one of each):
 3. **REORDER_PRIORITY** (type: "suggestion"): Which items to reorder first based on demand patterns and stock levels
 4. **PROFIT_OPTIMIZATION** (type: "info"): Margin analysis, pricing recommendations
 5. **DEMAND_FORECAST** (type: "info"): Predict which categories/items need attention based on stock velocity
-6. **COST_SAVINGS** (type: "info"): Specific dollar amounts that can be saved/recovered with recommended actions
+6. **COST_SAVINGS** (type: "info"): Specific amounts that can be saved/recovered with recommended actions
 
 RULES:
-- Include SPECIFIC medication names and dollar amounts
+- Include SPECIFIC medication names and ${currency} amounts using ${currencySymbol} symbol
+- NEVER use $ symbol - always use ${currencySymbol}
 - Every insight must have a CLEAR ACTION the pharmacist can take TODAY
-- Quantify the impact (e.g., "Save $450 by...", "Recover 60% of $200 by...")
+- Quantify the impact (e.g., "Save ${currencySymbol}450 by...", "Recover 60% of ${currencySymbol}200 by...")
 - For expiring items, suggest specific discount percentages
 - Be direct and business-focused
 
 Return JSON with "insights" array containing exactly 6 objects:
 - id: unique string
 - type: "warning" | "suggestion" | "info"
-- message: actionable insight under 60 words with specific amounts
+- message: actionable insight under 60 words with specific ${currency} amounts using ${currencySymbol}
 - action: one-line action the user should take (e.g., "Apply 30% discount to Amoxicillin now")
-- impact: estimated dollar impact or percentage (e.g., "$450" or "15%")
+- impact: estimated ${currency} impact or percentage (e.g., "${currencySymbol}450" or "15%")
 - category: "urgent" | "expiry" | "reorder" | "profit" | "demand" | "savings"`;
 
     const userPrompt = `Analyze this pharmacy inventory and provide 6 actionable insights:
