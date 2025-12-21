@@ -2,7 +2,7 @@ import jsPDF from 'jspdf';
 import { CartItem } from '@/types/medication';
 import { format } from 'date-fns';
 
-type CurrencyCode = 'USD' | 'NGN';
+type CurrencyCode = 'USD' | 'NGN' | 'GBP';
 
 interface ReceiptData {
   items: CartItem[];
@@ -14,11 +14,22 @@ interface ReceiptData {
   currency?: CurrencyCode;
 }
 
+const CURRENCY_SYMBOLS: Record<CurrencyCode, string> = {
+  USD: '$',
+  NGN: '₦',
+  GBP: '£',
+};
+
+const CURRENCY_LOCALES: Record<CurrencyCode, string> = {
+  USD: 'en-US',
+  NGN: 'en-NG',
+  GBP: 'en-GB',
+};
+
 const formatCurrency = (amount: number, currency: CurrencyCode = 'NGN'): string => {
-  if (currency === 'NGN') {
-    return `₦${amount.toLocaleString('en-NG', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
-  }
-  return `$${amount.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const symbol = CURRENCY_SYMBOLS[currency];
+  const locale = CURRENCY_LOCALES[currency];
+  return `${symbol}${amount.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 };
 
 export const generateReceipt = ({
@@ -39,7 +50,6 @@ export const generateReceipt = ({
 
   const pageWidth = 80;
   const margin = 5;
-  const contentWidth = pageWidth - margin * 2;
   let y = 10;
 
   // Helper function for centered text
@@ -152,7 +162,6 @@ export const generateReceipt = ({
   doc.setDrawColor(150);
   doc.setLineWidth(0.5);
   for (let i = 0; i < 30; i++) {
-    const barWidth = Math.random() > 0.5 ? 1 : 0.5;
     doc.line(
       margin + 10 + i * 2,
       y,
