@@ -73,10 +73,12 @@ export const StockCountModal = ({ open, onOpenChange }: StockCountModalProps) =>
     setScannerOpen(false);
   }, [medications, toast]);
 
-  // Auto-detect hardware barcode scanner
+  // Auto-detect hardware barcode scanner - works on focused input too
   useBarcodeScanner({
     onScan: handleBarcodeScan,
     enabled: open && !scannerOpen && activeTab === 'scan',
+    captureInInputs: true,
+    inputRef: barcodeInputRef,
   });
 
   // Add count from barcode/qty inputs

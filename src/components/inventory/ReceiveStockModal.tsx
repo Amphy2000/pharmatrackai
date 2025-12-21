@@ -114,10 +114,12 @@ export const ReceiveStockModal = ({ open, onOpenChange }: ReceiveStockModalProps
     }
   }, [medications, toast, quantityMultiplier, soundEnabled, rapidMode]);
 
-  // Auto-detect hardware barcode scanner
+  // Auto-detect hardware barcode scanner - works on focused input too
   useBarcodeScanner({
     onScan: handleBarcodeScan,
     enabled: open && !scannerOpen,
+    captureInInputs: true, // Enable auto-scanning when search input is focused
+    inputRef: searchInputRef,
   });
 
   // Keyboard shortcuts

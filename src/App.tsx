@@ -12,6 +12,7 @@ import SalesHistory from "./pages/SalesHistory";
 import Customers from "./pages/Customers";
 import Branches from "./pages/Branches";
 import Suppliers from "./pages/Suppliers";
+import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -32,6 +33,7 @@ const App = () => (
                 <Route path="/customers" element={<Customers />} />
                 <Route path="/branches" element={<Branches />} />
                 <Route path="/suppliers" element={<Suppliers />} />
+                <Route path="/settings" element={<Settings />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>

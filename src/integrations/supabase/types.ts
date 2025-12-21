@@ -758,6 +758,41 @@ export type Database = {
           },
         ]
       }
+      staff_permissions: {
+        Row: {
+          created_at: string
+          id: string
+          is_granted: boolean
+          permission_key: string
+          staff_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_granted?: boolean
+          permission_key: string
+          staff_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_granted?: boolean
+          permission_key?: string
+          staff_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_permissions_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacy_staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stock_transfers: {
         Row: {
           approved_by: string | null
@@ -1014,6 +1049,10 @@ export type Database = {
       }
       is_pharmacy_staff: {
         Args: { check_pharmacy_id: string; check_user_id: string }
+        Returns: boolean
+      }
+      staff_has_permission: {
+        Args: { _permission_key: string; _user_id: string }
         Returns: boolean
       }
     }
