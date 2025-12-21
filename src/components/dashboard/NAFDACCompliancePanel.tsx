@@ -203,18 +203,18 @@ export const NAFDACCompliancePanel = ({ medications }: NAFDACCompliancePanelProp
       </div>
 
       {/* Quick Stats */}
-      <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-4">
-        <div className="text-center p-2 sm:p-3 rounded-xl bg-destructive/10 border border-destructive/20">
-          <p className="text-lg sm:text-2xl font-bold text-destructive">{complianceData.criticalCount}</p>
-          <p className="text-[10px] sm:text-xs text-muted-foreground">Critical</p>
+      <div className="grid grid-cols-3 gap-3 sm:gap-6 mb-6">
+        <div className="text-center p-4 sm:p-5 rounded-xl bg-destructive/10 border border-destructive/20">
+          <p className="text-2xl sm:text-3xl font-bold text-destructive">{complianceData.criticalCount}</p>
+          <p className="text-xs sm:text-sm text-muted-foreground mt-1">Critical</p>
         </div>
-        <div className="text-center p-2 sm:p-3 rounded-xl bg-warning/10 border border-warning/20">
-          <p className="text-lg sm:text-2xl font-bold text-warning">{complianceData.warningCount}</p>
-          <p className="text-[10px] sm:text-xs text-muted-foreground">Warning</p>
+        <div className="text-center p-4 sm:p-5 rounded-xl bg-warning/10 border border-warning/20">
+          <p className="text-2xl sm:text-3xl font-bold text-warning">{complianceData.warningCount}</p>
+          <p className="text-xs sm:text-sm text-muted-foreground mt-1">Warning</p>
         </div>
-        <div className="text-center p-2 sm:p-3 rounded-xl bg-primary/10 border border-primary/20">
-          <p className="text-lg sm:text-2xl font-bold text-primary">{complianceData.infoCount}</p>
-          <p className="text-[10px] sm:text-xs text-muted-foreground">Monitor</p>
+        <div className="text-center p-4 sm:p-5 rounded-xl bg-primary/10 border border-primary/20">
+          <p className="text-2xl sm:text-3xl font-bold text-primary">{complianceData.infoCount}</p>
+          <p className="text-xs sm:text-sm text-muted-foreground mt-1">Monitor</p>
         </div>
       </div>
 
