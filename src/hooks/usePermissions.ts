@@ -2,62 +2,86 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
-// Available permission keys - organized by feature area
-export type PermissionKey = 
-  // Navigation access
-  | 'access_dashboard'
-  | 'access_inventory'
-  | 'access_customers'
-  | 'access_branches'
-  | 'access_sales_history'
-  | 'access_suppliers'
-  // Data visibility
+// Permission keys
+// NOTE: We keep legacy keys (e.g. view_dashboard) to avoid breaking existing staff accounts.
+export type PermissionKey =
+  // Dashboard / reporting
+  | 'view_dashboard'
   | 'view_reports'
   | 'view_analytics'
   | 'view_financial_data'
-  // Management
+
+  // Feature access (navigation)
+  | 'access_inventory'
+  | 'access_customers'
+  | 'access_branches'
+  | 'access_suppliers'
+
+  // Actions
   | 'manage_stock_transfers'
+
+  // Admin/management (may still be restricted by role screens)
   | 'manage_staff'
   | 'manage_settings';
+
+export const PERMISSION_KEYS: PermissionKey[] = [
+  'view_dashboard',
+  'view_reports',
+  'view_analytics',
+  'view_financial_data',
+  'access_inventory',
+  'access_customers',
+  'access_branches',
+  'access_suppliers',
+  'manage_stock_transfers',
+  'manage_staff',
+  'manage_settings',
+];
+
+// Map old/new keys → current keys (backwards compatibility)
+const PERMISSION_KEY_ALIASES: Record<string, PermissionKey> = {
+  // Older/alternate naming we shipped briefly
+  access_dashboard: 'view_dashboard',
+  access_sales_history: 'view_reports',
+};
+
+export const normalizePermissionKey = (key: string): PermissionKey | null => {
+  const normalized = (PERMISSION_KEY_ALIASES[key] ?? key) as PermissionKey;
+  return PERMISSION_KEYS.includes(normalized) ? normalized : null;
+};
 
 // Predefined role templates
 export const ROLE_TEMPLATES: Record<string, { name: string; description: string; permissions: PermissionKey[] }> = {
   cashier: {
     name: 'Cashier',
-    description: 'POS access only, no reports or analytics',
+    description: 'POS access only',
     permissions: [],
   },
   inventory_clerk: {
     name: 'Inventory Clerk',
-    description: 'POS + Inventory management, can transfer stock between branches',
-    permissions: ['access_inventory', 'access_branches', 'manage_stock_transfers'],
+    description: 'Inventory + branches, can transfer stock',
+    permissions: ['view_dashboard', 'access_inventory', 'access_branches', 'manage_stock_transfers'],
   },
   senior_staff: {
     name: 'Senior Staff',
-    description: 'Full access to most features, can view reports and analytics',
+    description: 'Most features + reports/analytics (no billing/settings)',
     permissions: [
-      'access_dashboard', 'access_inventory', 'access_customers', 
-      'access_branches', 'access_sales_history', 'view_reports', 
-      'view_analytics', 'manage_stock_transfers'
-    ],
-  },
-  full_access: {
-    name: 'Full Access',
-    description: 'Same access as manager (except staff management & settings)',
-    permissions: [
-      'access_dashboard', 'access_inventory', 'access_customers', 
-      'access_branches', 'access_sales_history', 'access_suppliers',
-      'view_reports', 'view_analytics', 'view_financial_data', 
-      'manage_stock_transfers'
+      'view_dashboard',
+      'access_inventory',
+      'access_customers',
+      'access_branches',
+      'view_reports',
+      'view_analytics',
+      'manage_stock_transfers',
     ],
   },
 };
 
 // Permission labels for UI
 export const PERMISSION_LABELS: Record<PermissionKey, { label: string; description: string; category: string }> = {
-  access_dashboard: {
+  view_dashboard: {
     label: 'Access Dashboard',
-    description: 'View main dashboard with overview metrics',
+    description: 'View the main dashboard overview',
     category: 'Navigation',
   },
   access_inventory: {
@@ -75,24 +99,19 @@ export const PERMISSION_LABELS: Record<PermissionKey, { label: string; descripti
     description: 'View branches and request stock transfers',
     category: 'Navigation',
   },
-  access_sales_history: {
-    label: 'Access Sales History',
-    description: 'View sales history and transactions',
-    category: 'Navigation',
-  },
   access_suppliers: {
     label: 'Access Suppliers',
-    description: 'View and manage supplier information',
+    description: 'View supplier information',
     category: 'Navigation',
   },
   view_reports: {
     label: 'View Reports',
-    description: 'Access to sales reports and summaries',
+    description: 'Access to sales history and reports',
     category: 'Data Access',
   },
   view_analytics: {
     label: 'View Analytics',
-    description: 'Access to detailed analytics and charts',
+    description: 'Access to analytics and charts',
     category: 'Data Access',
   },
   view_financial_data: {
@@ -102,7 +121,7 @@ export const PERMISSION_LABELS: Record<PermissionKey, { label: string; descripti
   },
   manage_stock_transfers: {
     label: 'Manage Stock Transfers',
-    description: 'Create and approve stock transfers between branches',
+    description: 'Create stock transfers between branches',
     category: 'Management',
   },
   manage_staff: {
@@ -147,7 +166,9 @@ export const usePermissions = (): UsePermissionsReturn => {
         .select('id, role')
         .eq('user_id', user.id)
         .eq('is_active', true)
-        .single();
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
       if (staffError || !staffData) {
         setPermissions(new Set());
@@ -182,7 +203,8 @@ export const usePermissions = (): UsePermissionsReturn => {
       const grantedPermissions = new Set<PermissionKey>(
         (permData || [])
           .filter(p => p.is_granted)
-          .map(p => p.permission_key as PermissionKey)
+          .map(p => normalizePermissionKey(p.permission_key))
+          .filter((p): p is PermissionKey => Boolean(p))
       );
 
       setPermissions(grantedPermissions);

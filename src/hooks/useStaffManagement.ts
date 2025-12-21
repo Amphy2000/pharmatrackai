@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { usePharmacy } from '@/hooks/usePharmacy';
 import { useToast } from '@/hooks/use-toast';
 import type { PermissionKey } from './usePermissions';
+import { normalizePermissionKey } from './usePermissions';
 
 interface StaffMember {
   id: string;
@@ -63,7 +64,9 @@ export const useStaffManagement = () => {
               .eq('staff_id', s.id)
               .eq('is_granted', true);
 
-            permissions = (permData || []).map(p => p.permission_key as PermissionKey);
+            permissions = (permData || [])
+              .map(p => normalizePermissionKey(p.permission_key))
+              .filter((p): p is PermissionKey => Boolean(p));
           }
 
           return {
