@@ -109,6 +109,56 @@ export type Database = {
           },
         ]
       }
+      customers: {
+        Row: {
+          address: string | null
+          created_at: string
+          date_of_birth: string | null
+          email: string | null
+          full_name: string
+          id: string
+          loyalty_points: number | null
+          notes: string | null
+          pharmacy_id: string
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string
+          date_of_birth?: string | null
+          email?: string | null
+          full_name: string
+          id?: string
+          loyalty_points?: number | null
+          notes?: string | null
+          pharmacy_id: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          created_at?: string
+          date_of_birth?: string | null
+          email?: string | null
+          full_name?: string
+          id?: string
+          loyalty_points?: number | null
+          notes?: string | null
+          pharmacy_id?: string
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "customers_pharmacy_id_fkey"
+            columns: ["pharmacy_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       medications: {
         Row: {
           barcode_id: string | null
@@ -265,6 +315,135 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "pharmacy_staff_pharmacy_id_fkey"
+            columns: ["pharmacy_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      prescription_items: {
+        Row: {
+          created_at: string
+          dosage: string
+          duration: string | null
+          frequency: string
+          id: string
+          instructions: string | null
+          medication_id: string | null
+          medication_name: string
+          prescription_id: string
+          quantity: number
+        }
+        Insert: {
+          created_at?: string
+          dosage: string
+          duration?: string | null
+          frequency: string
+          id?: string
+          instructions?: string | null
+          medication_id?: string | null
+          medication_name: string
+          prescription_id: string
+          quantity?: number
+        }
+        Update: {
+          created_at?: string
+          dosage?: string
+          duration?: string | null
+          frequency?: string
+          id?: string
+          instructions?: string | null
+          medication_id?: string | null
+          medication_name?: string
+          prescription_id?: string
+          quantity?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prescription_items_medication_id_fkey"
+            columns: ["medication_id"]
+            isOneToOne: false
+            referencedRelation: "medications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prescription_items_prescription_id_fkey"
+            columns: ["prescription_id"]
+            isOneToOne: false
+            referencedRelation: "prescriptions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      prescriptions: {
+        Row: {
+          created_at: string
+          customer_id: string
+          diagnosis: string | null
+          expiry_date: string | null
+          id: string
+          issue_date: string
+          last_refill_date: string | null
+          max_refills: number | null
+          next_refill_reminder: string | null
+          notes: string | null
+          pharmacy_id: string
+          prescriber_name: string | null
+          prescriber_phone: string | null
+          prescription_number: string
+          refill_count: number | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          customer_id: string
+          diagnosis?: string | null
+          expiry_date?: string | null
+          id?: string
+          issue_date?: string
+          last_refill_date?: string | null
+          max_refills?: number | null
+          next_refill_reminder?: string | null
+          notes?: string | null
+          pharmacy_id: string
+          prescriber_name?: string | null
+          prescriber_phone?: string | null
+          prescription_number: string
+          refill_count?: number | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          customer_id?: string
+          diagnosis?: string | null
+          expiry_date?: string | null
+          id?: string
+          issue_date?: string
+          last_refill_date?: string | null
+          max_refills?: number | null
+          next_refill_reminder?: string | null
+          notes?: string | null
+          pharmacy_id?: string
+          prescriber_name?: string | null
+          prescriber_phone?: string | null
+          prescription_number?: string
+          refill_count?: number | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prescriptions_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prescriptions_pharmacy_id_fkey"
             columns: ["pharmacy_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"

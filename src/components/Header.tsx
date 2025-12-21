@@ -13,7 +13,8 @@ import {
   Sparkles,
   LayoutDashboard,
   ShoppingCart,
-  History
+  History,
+  Users
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -44,7 +45,8 @@ export const Header = () => {
   const navLinks = [
     { href: '/', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/checkout', label: 'POS', icon: ShoppingCart },
-    { href: '/sales-history', label: 'Sales History', icon: History },
+    { href: '/customers', label: 'Customers', icon: Users },
+    { href: '/sales-history', label: 'Sales', icon: History },
   ];
 
   return (
