@@ -1,17 +1,20 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { Pill, Loader2 } from 'lucide-react';
+import { Sparkles, Loader2, Mail, Lock, User, ArrowLeft, Check, Zap } from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 const Auth = () => {
+  const [searchParams] = useSearchParams();
+  const defaultTab = searchParams.get('tab') === 'signup' ? 'signup' : 'login';
+  
   const [isLoading, setIsLoading] = useState(false);
-  const { signIn, signUp } = useAuth();
+  const { user, isLoading: authLoading, signIn, signUp } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
 
@@ -23,6 +26,12 @@ const Auth = () => {
   const [signupEmail, setSignupEmail] = useState('');
   const [signupPassword, setSignupPassword] = useState('');
   const [signupName, setSignupName] = useState('');
+
+  useEffect(() => {
+    if (!authLoading && user) {
+      navigate('/dashboard');
+    }
+  }, [user, authLoading, navigate]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,7 +50,7 @@ const Auth = () => {
         title: 'Welcome back!',
         description: 'You have successfully logged in.',
       });
-      navigate('/');
+      navigate('/dashboard');
     }
 
     setIsLoading(false);
@@ -70,106 +79,236 @@ const Auth = () => {
     setIsLoading(false);
   };
 
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md shadow-elegant">
-        <CardHeader className="text-center">
-          <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-primary text-primary-foreground">
-            <Pill className="h-8 w-8" />
+    <div className="min-h-screen bg-background flex relative overflow-hidden">
+      {/* Background Effects */}
+      <div className="absolute inset-0 bg-gradient-mesh opacity-50"></div>
+      <div className="absolute top-1/3 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl animate-float"></div>
+      <div className="absolute bottom-1/3 right-1/4 w-80 h-80 bg-secondary/10 rounded-full blur-3xl animate-float" style={{ animationDelay: '2s' }}></div>
+
+      {/* Left Side - Branding (Hidden on mobile) */}
+      <div className="hidden lg:flex lg:w-1/2 relative z-10 flex-col justify-between p-12">
+        <div>
+          <Link to="/" className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
+            <ArrowLeft className="h-4 w-4" />
+            <span className="text-sm">Back to home</span>
+          </Link>
+        </div>
+        
+        <div className="max-w-md">
+          <div className="flex items-center gap-3 mb-8">
+            <div className="h-14 w-14 rounded-2xl bg-gradient-primary flex items-center justify-center shadow-glow-primary">
+              <Sparkles className="h-7 w-7 text-primary-foreground" />
+            </div>
+            <span className="font-display font-bold text-3xl">PharmaTrack</span>
           </div>
-          <CardTitle className="text-2xl font-display">PharmaTrack</CardTitle>
-          <CardDescription>Inventory & Expiry Management System</CardDescription>
-        </CardHeader>
+          
+          <h1 className="text-4xl font-display font-bold mb-4">
+            The Intelligence Layer for <span className="text-gradient-premium">Your Pharmacy</span>
+          </h1>
+          <p className="text-lg text-muted-foreground mb-8">
+            Join 500+ pharmacies using AI to eliminate waste and maximize profit.
+          </p>
+          
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="h-8 w-8 rounded-lg bg-success/20 flex items-center justify-center">
+                <Check className="h-4 w-4 text-success" />
+              </div>
+              <span className="text-muted-foreground">Reduce expiry waste by up to 10%</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="h-8 w-8 rounded-lg bg-success/20 flex items-center justify-center">
+                <Check className="h-4 w-4 text-success" />
+              </div>
+              <span className="text-muted-foreground">Track staff performance & accountability</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="h-8 w-8 rounded-lg bg-success/20 flex items-center justify-center">
+                <Check className="h-4 w-4 text-success" />
+              </div>
+              <span className="text-muted-foreground">NAFDAC, MHRA & FDA compliant</span>
+            </div>
+          </div>
+        </div>
+        
+        <div className="text-sm text-muted-foreground">
+          © {new Date().getFullYear()} PharmaTrack. All rights reserved.
+        </div>
+      </div>
 
-        <Tabs defaultValue="login" className="w-full">
-          <TabsList className="grid w-full grid-cols-2 mx-4" style={{ width: 'calc(100% - 32px)' }}>
-            <TabsTrigger value="login">Login</TabsTrigger>
-            <TabsTrigger value="signup">Sign Up</TabsTrigger>
-          </TabsList>
+      {/* Right Side - Auth Form */}
+      <div className="flex-1 flex items-center justify-center p-6 lg:p-12 relative z-10">
+        <div className="w-full max-w-md">
+          {/* Mobile Back Link */}
+          <div className="lg:hidden mb-8">
+            <Link to="/" className="inline-flex items-center gap-2 text-muted-foreground hover:text-foreground transition-colors">
+              <ArrowLeft className="h-4 w-4" />
+              <span className="text-sm">Back to home</span>
+            </Link>
+          </div>
 
-          <TabsContent value="login">
-            <form onSubmit={handleLogin}>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="login-email">Email</Label>
-                  <Input
-                    id="login-email"
-                    type="email"
-                    placeholder="you@example.com"
-                    value={loginEmail}
-                    onChange={(e) => setLoginEmail(e.target.value)}
-                    required
-                  />
+          {/* Glassmorphism Card */}
+          <div className="relative rounded-3xl overflow-hidden">
+            {/* Glass Background */}
+            <div className="absolute inset-0 bg-card/60 backdrop-blur-xl border border-border/50"></div>
+            
+            {/* Content */}
+            <div className="relative p-8 sm:p-10">
+              {/* Mobile Logo */}
+              <div className="lg:hidden flex items-center justify-center gap-3 mb-8">
+                <div className="h-12 w-12 rounded-xl bg-gradient-primary flex items-center justify-center shadow-glow-primary">
+                  <Sparkles className="h-6 w-6 text-primary-foreground" />
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="login-password">Password</Label>
-                  <Input
-                    id="login-password"
-                    type="password"
-                    placeholder="••••••••"
-                    value={loginPassword}
-                    onChange={(e) => setLoginPassword(e.target.value)}
-                    required
-                  />
-                </div>
-              </CardContent>
-              <CardFooter>
-                <Button type="submit" className="w-full bg-gradient-primary" disabled={isLoading}>
-                  {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Sign In
-                </Button>
-              </CardFooter>
-            </form>
-          </TabsContent>
+                <span className="font-display font-bold text-2xl">PharmaTrack</span>
+              </div>
 
-          <TabsContent value="signup">
-            <form onSubmit={handleSignup}>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="signup-name">Full Name</Label>
-                  <Input
-                    id="signup-name"
-                    type="text"
-                    placeholder="John Doe"
-                    value={signupName}
-                    onChange={(e) => setSignupName(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="signup-email">Email</Label>
-                  <Input
-                    id="signup-email"
-                    type="email"
-                    placeholder="you@example.com"
-                    value={signupEmail}
-                    onChange={(e) => setSignupEmail(e.target.value)}
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="signup-password">Password</Label>
-                  <Input
-                    id="signup-password"
-                    type="password"
-                    placeholder="••••••••"
-                    value={signupPassword}
-                    onChange={(e) => setSignupPassword(e.target.value)}
-                    required
-                    minLength={6}
-                  />
-                </div>
-              </CardContent>
-              <CardFooter>
-                <Button type="submit" className="w-full bg-gradient-primary" disabled={isLoading}>
-                  {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Create Account
-                </Button>
-              </CardFooter>
-            </form>
-          </TabsContent>
-        </Tabs>
-      </Card>
+              <Tabs defaultValue={defaultTab} className="w-full">
+                <TabsList className="grid w-full grid-cols-2 bg-muted/50 p-1 rounded-xl mb-8">
+                  <TabsTrigger 
+                    value="login" 
+                    className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm"
+                  >
+                    Login
+                  </TabsTrigger>
+                  <TabsTrigger 
+                    value="signup"
+                    className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm"
+                  >
+                    Sign Up
+                  </TabsTrigger>
+                </TabsList>
+
+                <TabsContent value="login" className="mt-0">
+                  <div className="mb-6">
+                    <h2 className="text-2xl font-display font-bold">Welcome back</h2>
+                    <p className="text-sm text-muted-foreground">Enter your credentials to access your dashboard</p>
+                  </div>
+                  
+                  <form onSubmit={handleLogin} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="login-email" className="text-sm">Email</Label>
+                      <div className="relative">
+                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          id="login-email"
+                          type="email"
+                          placeholder="you@example.com"
+                          value={loginEmail}
+                          onChange={(e) => setLoginEmail(e.target.value)}
+                          required
+                          className="pl-10 h-12 bg-background/50 border-border/50 focus:border-primary"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="login-password" className="text-sm">Password</Label>
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          id="login-password"
+                          type="password"
+                          placeholder="••••••••"
+                          value={loginPassword}
+                          onChange={(e) => setLoginPassword(e.target.value)}
+                          required
+                          className="pl-10 h-12 bg-background/50 border-border/50 focus:border-primary"
+                        />
+                      </div>
+                    </div>
+                    <Button 
+                      type="submit" 
+                      className="w-full h-12 bg-gradient-primary hover:opacity-90 shadow-glow-primary text-base font-semibold" 
+                      disabled={isLoading}
+                    >
+                      {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      Sign In
+                    </Button>
+                  </form>
+                </TabsContent>
+
+                <TabsContent value="signup" className="mt-0">
+                  <div className="mb-6">
+                    <h2 className="text-2xl font-display font-bold">Start your free trial</h2>
+                    <p className="text-sm text-muted-foreground">7 days free, no credit card required</p>
+                  </div>
+                  
+                  <form onSubmit={handleSignup} className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="signup-name" className="text-sm">Full Name</Label>
+                      <div className="relative">
+                        <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          id="signup-name"
+                          type="text"
+                          placeholder="John Doe"
+                          value={signupName}
+                          onChange={(e) => setSignupName(e.target.value)}
+                          required
+                          className="pl-10 h-12 bg-background/50 border-border/50 focus:border-primary"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="signup-email" className="text-sm">Email</Label>
+                      <div className="relative">
+                        <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          id="signup-email"
+                          type="email"
+                          placeholder="you@example.com"
+                          value={signupEmail}
+                          onChange={(e) => setSignupEmail(e.target.value)}
+                          required
+                          className="pl-10 h-12 bg-background/50 border-border/50 focus:border-primary"
+                        />
+                      </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="signup-password" className="text-sm">Password</Label>
+                      <div className="relative">
+                        <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Input
+                          id="signup-password"
+                          type="password"
+                          placeholder="••••••••"
+                          value={signupPassword}
+                          onChange={(e) => setSignupPassword(e.target.value)}
+                          required
+                          minLength={6}
+                          className="pl-10 h-12 bg-background/50 border-border/50 focus:border-primary"
+                        />
+                      </div>
+                      <p className="text-xs text-muted-foreground">Minimum 6 characters</p>
+                    </div>
+                    <Button 
+                      type="submit" 
+                      className="w-full h-12 bg-gradient-primary hover:opacity-90 shadow-glow-primary text-base font-semibold" 
+                      disabled={isLoading}
+                    >
+                      {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                      Create Account
+                    </Button>
+                    
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground justify-center pt-2">
+                      <Zap className="h-3 w-3 text-primary" />
+                      <span>Powered by AI intelligence</span>
+                    </div>
+                  </form>
+                </TabsContent>
+              </Tabs>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 };
