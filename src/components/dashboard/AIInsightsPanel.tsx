@@ -274,7 +274,7 @@ export const AIInsightsPanel = ({ medications }: AIInsightsPanelProps) => {
             </p>
           </div>
         ) : (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
             {insights.map((insight, index) => (
               <div
                 key={insight.id}
@@ -294,7 +294,7 @@ export const AIInsightsPanel = ({ medications }: AIInsightsPanelProps) => {
                     <insight.icon className="h-4 w-4" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                    <div className="flex items-center gap-2 mb-2 flex-wrap">
                       <span className={cn(
                         'text-[10px] font-semibold px-1.5 py-0.5 rounded border uppercase tracking-wide',
                         priorityBadge[insight.priority]
@@ -307,12 +307,12 @@ export const AIInsightsPanel = ({ medications }: AIInsightsPanelProps) => {
                         </span>
                       )}
                     </div>
-                    <p className="text-sm text-foreground leading-relaxed line-clamp-3 mb-2">{insight.message}</p>
+                    <p className="text-sm text-foreground leading-relaxed mb-2">{insight.message}</p>
                     
                     {insight.action && (
-                      <p className="text-xs text-muted-foreground flex items-center gap-1 pt-2 border-t border-border/30">
-                        <ArrowRight className="h-3 w-3 flex-shrink-0" />
-                        <span className="line-clamp-2">{insight.action}</span>
+                      <p className="text-xs text-muted-foreground flex items-start gap-1.5 pt-2 border-t border-border/30">
+                        <ArrowRight className="h-3 w-3 flex-shrink-0 mt-0.5" />
+                        <span>{insight.action}</span>
                       </p>
                     )}
                   </div>
