@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useCurrency } from '@/contexts/CurrencyContext';
+import { usePlatformAdmin } from '@/hooks/usePlatformAdmin';
 import { Header } from '@/components/Header';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -10,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import {
   Dialog,
@@ -31,21 +34,21 @@ import {
   Building2,
   Users,
   Package,
-  TrendingUp,
   DollarSign,
-  Activity,
   Settings,
   Plus,
   Loader2,
   Shield,
   Crown,
-  Clock,
   AlertCircle,
   CheckCircle,
   Search,
   BarChart3,
-  Database,
   Zap,
+  Edit,
+  TrendingUp,
+  CreditCard,
+  Lock,
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -57,9 +60,10 @@ interface PharmacyWithMetrics {
   address: string | null;
   subscription_plan: string;
   subscription_status: string;
+  subscription_ends_at: string | null;
+  trial_ends_at: string | null;
   created_at: string;
   owner_id: string;
-  // Metrics
   staff_count: number;
   medication_count: number;
   sales_count: number;
@@ -80,23 +84,42 @@ interface CustomFeature {
 }
 
 const AdminDashboard = () => {
+  const navigate = useNavigate();
   const { formatPrice } = useCurrency();
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { isAdmin, isSuperAdmin, isLoading: adminLoading, isDevEmail, bootstrapAdmin, isBootstrapping } = usePlatformAdmin();
+  
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedPharmacy, setSelectedPharmacy] = useState<PharmacyWithMetrics | null>(null);
   const [featureDialogOpen, setFeatureDialogOpen] = useState(false);
+  const [subscriptionDialogOpen, setSubscriptionDialogOpen] = useState(false);
   const [newFeature, setNewFeature] = useState({
     feature_key: '',
     feature_name: '',
     description: '',
   });
+  const [subscriptionEdit, setSubscriptionEdit] = useState({
+    plan: 'starter' as string,
+    status: 'trial' as string,
+  });
+
+  // Redirect non-admins (unless they're the dev who can bootstrap)
+  useEffect(() => {
+    if (!adminLoading && !isAdmin && !isDevEmail) {
+      toast({
+        title: 'Access Denied',
+        description: 'You do not have permission to access the admin dashboard',
+        variant: 'destructive',
+      });
+      navigate('/dashboard');
+    }
+  }, [adminLoading, isAdmin, isDevEmail, navigate, toast]);
 
   // Fetch all pharmacies with metrics
   const { data: pharmacies = [], isLoading: loadingPharmacies } = useQuery({
     queryKey: ['admin-pharmacies'],
     queryFn: async () => {
-      // Fetch pharmacies
       const { data: pharmaciesData, error: pharmaciesError } = await supabase
         .from('pharmacies')
         .select('*')
@@ -104,23 +127,19 @@ const AdminDashboard = () => {
 
       if (pharmaciesError) throw pharmaciesError;
 
-      // Fetch metrics for each pharmacy
       const pharmaciesWithMetrics: PharmacyWithMetrics[] = await Promise.all(
         (pharmaciesData || []).map(async (pharmacy) => {
-          // Staff count
           const { count: staffCount } = await supabase
             .from('pharmacy_staff')
             .select('*', { count: 'exact', head: true })
             .eq('pharmacy_id', pharmacy.id)
             .eq('is_active', true);
 
-          // Medication count
           const { count: medicationCount } = await supabase
             .from('medications')
             .select('*', { count: 'exact', head: true })
             .eq('pharmacy_id', pharmacy.id);
 
-          // Sales count and revenue
           const { data: salesData } = await supabase
             .from('sales')
             .select('total_price')
@@ -128,7 +147,6 @@ const AdminDashboard = () => {
 
           const totalRevenue = salesData?.reduce((sum, sale) => sum + sale.total_price, 0) || 0;
 
-          // Customers count
           const { count: customersCount } = await supabase
             .from('customers')
             .select('*', { count: 'exact', head: true })
@@ -147,6 +165,7 @@ const AdminDashboard = () => {
 
       return pharmaciesWithMetrics;
     },
+    enabled: isAdmin || isDevEmail,
   });
 
   // Fetch custom features for selected pharmacy
@@ -164,7 +183,7 @@ const AdminDashboard = () => {
       if (error) throw error;
       return data as CustomFeature[];
     },
-    enabled: !!selectedPharmacy,
+    enabled: !!selectedPharmacy && isAdmin,
   });
 
   // Add custom feature
@@ -208,6 +227,33 @@ const AdminDashboard = () => {
     },
   });
 
+  // Update subscription
+  const updateSubscriptionMutation = useMutation({
+    mutationFn: async ({ pharmacyId, plan, status }: { pharmacyId: string; plan: 'starter' | 'pro' | 'enterprise'; status: 'trial' | 'active' | 'expired' | 'cancelled' }) => {
+      const { data, error } = await supabase
+        .from('pharmacies')
+        .update({ 
+          subscription_plan: plan,
+          subscription_status: status,
+          subscription_ends_at: status === 'active' ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() : null,
+        })
+        .eq('id', pharmacyId)
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-pharmacies'] });
+      setSubscriptionDialogOpen(false);
+      toast({ title: 'Subscription updated successfully' });
+    },
+    onError: (error: Error) => {
+      toast({ title: 'Failed to update subscription', description: error.message, variant: 'destructive' });
+    },
+  });
+
   // Platform metrics
   const totalPharmacies = pharmacies.length;
   const activeSubscriptions = pharmacies.filter(p => p.subscription_status === 'active' || p.subscription_status === 'trial').length;
@@ -215,6 +261,9 @@ const AdminDashboard = () => {
   const totalStaff = pharmacies.reduce((sum, p) => sum + p.staff_count, 0);
   const totalMedications = pharmacies.reduce((sum, p) => sum + p.medication_count, 0);
   const totalSales = pharmacies.reduce((sum, p) => sum + p.sales_count, 0);
+
+  // Platform revenue (this would be subscription revenue - for demo purposes we show pharmacy sales)
+  const platformRevenue = pharmacies.filter(p => p.subscription_plan !== 'starter').length * 50000; // Simulated subscription revenue
 
   const filteredPharmacies = pharmacies.filter(p =>
     p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -247,24 +296,108 @@ const AdminDashboard = () => {
     }
   };
 
+  const openSubscriptionDialog = (pharmacy: PharmacyWithMetrics) => {
+    setSelectedPharmacy(pharmacy);
+    setSubscriptionEdit({
+      plan: pharmacy.subscription_plan,
+      status: pharmacy.subscription_status,
+    });
+    setSubscriptionDialogOpen(true);
+  };
+
+  // Loading state
+  if (adminLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // Bootstrap screen for dev who isn't admin yet
+  if (!isAdmin && isDevEmail) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <main className="container mx-auto px-4 py-16">
+          <Card className="max-w-md mx-auto glass-card">
+            <CardHeader className="text-center">
+              <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center mx-auto mb-4">
+                <Shield className="h-8 w-8 text-white" />
+              </div>
+              <CardTitle>Platform Admin Access</CardTitle>
+              <CardDescription>
+                You're recognized as the platform developer. Click below to activate your super admin privileges.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="text-center">
+              <Button 
+                size="lg" 
+                onClick={bootstrapAdmin}
+                disabled={isBootstrapping}
+                className="gap-2"
+              >
+                {isBootstrapping ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Activating...
+                  </>
+                ) : (
+                  <>
+                    <Crown className="h-4 w-4" />
+                    Activate Super Admin
+                  </>
+                )}
+              </Button>
+            </CardContent>
+          </Card>
+        </main>
+      </div>
+    );
+  }
+
+  // Access denied for non-admins
+  if (!isAdmin) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Card className="max-w-md glass-card">
+          <CardContent className="py-12 text-center">
+            <Lock className="h-16 w-16 text-destructive mx-auto mb-4" />
+            <h2 className="text-xl font-bold mb-2">Access Denied</h2>
+            <p className="text-muted-foreground">You don't have permission to access this page.</p>
+            <Button className="mt-6" onClick={() => navigate('/dashboard')}>
+              Return to Dashboard
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <Header />
       
       <main className="container mx-auto px-4 sm:px-6 py-6 sm:py-8 space-y-6 sm:space-y-8">
         {/* Admin Header */}
-        <div className="flex items-center gap-3">
-          <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
-            <Shield className="h-6 w-6 text-white" />
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="h-12 w-12 rounded-2xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
+              <Shield className="h-6 w-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-2xl sm:text-3xl font-bold font-display">Admin Dashboard</h1>
+              <p className="text-muted-foreground text-sm">Platform-wide metrics & pharmacy management</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold font-display">Admin Dashboard</h1>
-            <p className="text-muted-foreground text-sm">Platform-wide metrics & pharmacy management</p>
-          </div>
+          <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white border-0 gap-1">
+            <Crown className="h-3 w-3" />
+            Super Admin
+          </Badge>
         </div>
 
         {/* Platform Metrics */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
           <Card className="glass-card">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
@@ -329,10 +462,22 @@ const AdminDashboard = () => {
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs text-muted-foreground">Revenue</p>
-                  <p className="text-xl font-bold text-success">{formatPrice(totalRevenue)}</p>
+                  <p className="text-xs text-muted-foreground">Pharmacy Revenue</p>
+                  <p className="text-lg font-bold">{formatPrice(totalRevenue)}</p>
                 </div>
-                <DollarSign className="h-8 w-8 text-success opacity-50" />
+                <TrendingUp className="h-8 w-8 text-primary opacity-50" />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="glass-card border-success/30 bg-success/5">
+            <CardContent className="pt-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs text-muted-foreground">Platform Revenue</p>
+                  <p className="text-lg font-bold text-success">{formatPrice(platformRevenue)}</p>
+                </div>
+                <CreditCard className="h-8 w-8 text-success opacity-50" />
               </div>
             </CardContent>
           </Card>
@@ -369,7 +514,7 @@ const AdminDashboard = () => {
             <Card className="glass-card">
               <CardHeader>
                 <CardTitle className="text-lg">All Pharmacies</CardTitle>
-                <CardDescription>Click a pharmacy to manage custom features</CardDescription>
+                <CardDescription>Click a pharmacy to manage custom features, or use the edit button to manage subscription</CardDescription>
               </CardHeader>
               <CardContent>
                 {loadingPharmacies ? (
@@ -389,6 +534,7 @@ const AdminDashboard = () => {
                           <TableHead className="text-center">Sales</TableHead>
                           <TableHead className="text-right">Revenue</TableHead>
                           <TableHead>Joined</TableHead>
+                          <TableHead className="text-center">Actions</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -412,6 +558,18 @@ const AdminDashboard = () => {
                             <TableCell className="text-right font-medium">{formatPrice(pharmacy.total_revenue)}</TableCell>
                             <TableCell className="text-muted-foreground text-sm">
                               {format(new Date(pharmacy.created_at), 'MMM dd, yyyy')}
+                            </TableCell>
+                            <TableCell className="text-center">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openSubscriptionDialog(pharmacy);
+                                }}
+                              >
+                                <Edit className="h-4 w-4" />
+                              </Button>
                             </TableCell>
                           </TableRow>
                         ))}
@@ -453,7 +611,9 @@ const AdminDashboard = () => {
                     <div className="flex items-center justify-between">
                       <div>
                         <CardTitle className="text-lg">Custom Features</CardTitle>
-                        <CardDescription>Manage pharmacy-specific features and configurations</CardDescription>
+                        <CardDescription>
+                          Manage pharmacy-specific features. These are feature flags that can enable special functionality for this pharmacy.
+                        </CardDescription>
                       </div>
                       <Button onClick={() => setFeatureDialogOpen(true)} className="gap-2">
                         <Plus className="h-4 w-4" />
@@ -470,7 +630,11 @@ const AdminDashboard = () => {
                       <div className="text-center py-12 text-muted-foreground">
                         <Settings className="h-12 w-12 mx-auto mb-3 opacity-50" />
                         <p>No custom features configured</p>
-                        <p className="text-sm">Add features specific to this pharmacy's needs</p>
+                        <p className="text-sm mt-2">
+                          Add feature flags to enable/disable specific functionality for this pharmacy.
+                          <br />
+                          Example: "sms_notifications", "advanced_reports", "custom_branding"
+                        </p>
                       </div>
                     ) : (
                       <div className="space-y-3">
@@ -521,7 +685,8 @@ const AdminDashboard = () => {
           <DialogHeader>
             <DialogTitle>Add Custom Feature</DialogTitle>
             <DialogDescription>
-              Create a new custom feature for {selectedPharmacy?.name}
+              Create a new custom feature flag for {selectedPharmacy?.name}. 
+              You can check for this feature in code using the pharmacy_custom_features table.
             </DialogDescription>
           </DialogHeader>
 
@@ -533,7 +698,7 @@ const AdminDashboard = () => {
                 value={newFeature.feature_key}
                 onChange={(e) => setNewFeature({ ...newFeature, feature_key: e.target.value.toLowerCase().replace(/\s+/g, '_') })}
               />
-              <p className="text-xs text-muted-foreground mt-1">Unique identifier (snake_case)</p>
+              <p className="text-xs text-muted-foreground mt-1">Unique identifier (snake_case) - use this in code to check if feature is enabled</p>
             </div>
 
             <div>
@@ -579,6 +744,82 @@ const AdminDashboard = () => {
                 </>
               ) : (
                 'Add Feature'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Subscription Management Dialog */}
+      <Dialog open={subscriptionDialogOpen} onOpenChange={setSubscriptionDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Manage Subscription</DialogTitle>
+            <DialogDescription>
+              Update subscription plan and status for {selectedPharmacy?.name}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div>
+              <label className="text-sm font-medium mb-2 block">Subscription Plan</label>
+              <Select
+                value={subscriptionEdit.plan}
+                onValueChange={(value) => setSubscriptionEdit({ ...subscriptionEdit, plan: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="starter">Starter</SelectItem>
+                  <SelectItem value="pro">Pro</SelectItem>
+                  <SelectItem value="enterprise">Enterprise</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div>
+              <label className="text-sm font-medium mb-2 block">Subscription Status</label>
+              <Select
+                value={subscriptionEdit.status}
+                onValueChange={(value) => setSubscriptionEdit({ ...subscriptionEdit, status: value })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="trial">Trial</SelectItem>
+                  <SelectItem value="active">Active</SelectItem>
+                  <SelectItem value="expired">Expired</SelectItem>
+                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSubscriptionDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (selectedPharmacy) {
+                  updateSubscriptionMutation.mutate({
+                    pharmacyId: selectedPharmacy.id,
+                    plan: subscriptionEdit.plan as 'starter' | 'pro' | 'enterprise',
+                    status: subscriptionEdit.status as 'trial' | 'active' | 'expired' | 'cancelled',
+                  });
+                }
+              }}
+              disabled={updateSubscriptionMutation.isPending}
+            >
+              {updateSubscriptionMutation.isPending ? (
+                <>
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                'Save Changes'
               )}
             </Button>
           </DialogFooter>

@@ -22,7 +22,8 @@ import {
   CheckCheck,
   AlertCircle,
   AlertTriangle,
-  Info
+  Info,
+  Crown
 } from 'lucide-react';
 import {
   Tooltip,
@@ -48,6 +49,7 @@ import {
 import { usePermissions } from '@/hooks/usePermissions';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePlatformAdmin } from '@/hooks/usePlatformAdmin';
 
 export const Header = () => {
   const location = useLocation();
@@ -55,7 +57,11 @@ export const Header = () => {
   const { signOut } = useAuth();
   const { isOwnerOrManager, userRole } = usePermissions();
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
+  const { isAdmin, isDevEmail } = usePlatformAdmin();
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  
+  // Show admin link for admins or the dev email
+  const showAdminLink = isAdmin || isDevEmail;
 
   // Staff-accessible navigation
   const staffNavLinks = [
@@ -177,6 +183,27 @@ export const Header = () => {
                     </TooltipContent>
                   </Tooltip>
                 )}
+                {/* Admin Link - Only for platform admins/dev */}
+                {showAdminLink && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Link
+                        to="/admin"
+                        className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
+                          location.pathname === '/admin'
+                            ? 'bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-amber-500' 
+                            : 'text-amber-500/70 hover:text-amber-500 hover:bg-amber-500/10'
+                        }`}
+                      >
+                        <Crown className="h-4 w-4" />
+                        Admin
+                      </Link>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Platform Admin Dashboard</p>
+                    </TooltipContent>
+                  </Tooltip>
+                )}
               </div>
             </nav>
 
@@ -232,6 +259,26 @@ export const Header = () => {
                   </TooltipTrigger>
                   <TooltipContent>
                     <p>Settings</p>
+                  </TooltipContent>
+                </Tooltip>
+              )}
+              {/* Admin icon for mobile */}
+              {showAdminLink && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Link
+                      to="/admin"
+                      className={`flex items-center justify-center h-8 w-8 rounded-lg transition-all flex-shrink-0 ${
+                        location.pathname === '/admin'
+                          ? 'bg-amber-500/10 text-amber-500' 
+                          : 'text-amber-500/70 hover:text-amber-500 hover:bg-amber-500/10'
+                      }`}
+                    >
+                      <Crown className="h-4 w-4" />
+                    </Link>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Admin Dashboard</p>
                   </TooltipContent>
                 </Tooltip>
               )}
