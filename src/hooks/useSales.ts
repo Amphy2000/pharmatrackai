@@ -7,6 +7,7 @@ import { usePharmacy } from '@/hooks/usePharmacy';
 interface CompleteSaleParams {
   items: CartItem[];
   customerName?: string;
+  shiftId?: string;
 }
 
 export const useSales = () => {
@@ -15,17 +16,22 @@ export const useSales = () => {
   const { pharmacyId } = usePharmacy();
 
   const completeSale = useMutation({
-    mutationFn: async ({ items, customerName }: CompleteSaleParams) => {
+    mutationFn: async ({ items, customerName, shiftId }: CompleteSaleParams) => {
       if (!pharmacyId) {
         throw new Error('No pharmacy associated with your account. Please complete onboarding first.');
       }
+
+      // Get current user for sold_by
+      const { data: { user } } = await supabase.auth.getUser();
+      let totalSaleAmount = 0;
 
       // Process each item in the cart
       const salePromises = items.map(async (item) => {
         const price = item.medication.selling_price || item.medication.unit_price;
         const totalPrice = price * item.quantity;
+        totalSaleAmount += totalPrice;
 
-        // Insert sale record
+        // Insert sale record with shift_id and sold_by
         const { error: saleError } = await supabase.from('sales').insert({
           medication_id: item.medication.id,
           quantity: item.quantity,
@@ -33,6 +39,8 @@ export const useSales = () => {
           total_price: totalPrice,
           customer_name: customerName || null,
           pharmacy_id: pharmacyId,
+          sold_by: user?.id || null,
+          shift_id: shiftId || null,
         });
 
         if (saleError) throw saleError;
@@ -49,7 +57,28 @@ export const useSales = () => {
         return { item, newStock };
       });
 
-      return Promise.all(salePromises);
+      const results = await Promise.all(salePromises);
+
+      // Update shift stats if we have a shift
+      if (shiftId) {
+        const { data: currentShift } = await supabase
+          .from('staff_shifts')
+          .select('total_sales, total_transactions')
+          .eq('id', shiftId)
+          .single();
+
+        if (currentShift) {
+          await supabase
+            .from('staff_shifts')
+            .update({
+              total_sales: (currentShift.total_sales || 0) + totalSaleAmount,
+              total_transactions: (currentShift.total_transactions || 0) + 1,
+            })
+            .eq('id', shiftId);
+        }
+      }
+
+      return results;
     },
     onSuccess: (results) => {
       queryClient.invalidateQueries({ queryKey: ['medications'] });

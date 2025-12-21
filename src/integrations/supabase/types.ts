@@ -668,6 +668,7 @@ export type Database = {
           pharmacy_id: string
           quantity: number
           sale_date: string
+          shift_id: string | null
           sold_by: string | null
           total_price: number
           unit_price: number
@@ -680,6 +681,7 @@ export type Database = {
           pharmacy_id: string
           quantity: number
           sale_date?: string
+          shift_id?: string | null
           sold_by?: string | null
           total_price: number
           unit_price: number
@@ -692,6 +694,7 @@ export type Database = {
           pharmacy_id?: string
           quantity?: number
           sale_date?: string
+          shift_id?: string | null
           sold_by?: string | null
           total_price?: number
           unit_price?: number
@@ -709,6 +712,13 @@ export type Database = {
             columns: ["pharmacy_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_shift_id_fkey"
+            columns: ["shift_id"]
+            isOneToOne: false
+            referencedRelation: "staff_shifts"
             referencedColumns: ["id"]
           },
         ]
@@ -786,6 +796,60 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "staff_permissions_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacy_staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      staff_shifts: {
+        Row: {
+          clock_in: string
+          clock_out: string | null
+          created_at: string
+          id: string
+          notes: string | null
+          pharmacy_id: string
+          staff_id: string
+          total_sales: number | null
+          total_transactions: number | null
+          updated_at: string
+        }
+        Insert: {
+          clock_in?: string
+          clock_out?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          pharmacy_id: string
+          staff_id: string
+          total_sales?: number | null
+          total_transactions?: number | null
+          updated_at?: string
+        }
+        Update: {
+          clock_in?: string
+          clock_out?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          pharmacy_id?: string
+          staff_id?: string
+          total_sales?: number | null
+          total_transactions?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_shifts_pharmacy_id_fkey"
+            columns: ["pharmacy_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_shifts_staff_id_fkey"
             columns: ["staff_id"]
             isOneToOne: false
             referencedRelation: "pharmacy_staff"
