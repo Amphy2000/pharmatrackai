@@ -32,27 +32,43 @@ export const usePlatformAdmin = () => {
     }
 
     try {
-      const { data, error } = await supabase
-        .from('platform_admins')
-        .select('*')
-        .eq('user_id', user.id)
-        .maybeSingle();
+      // IMPORTANT: Do not rely on direct SELECT from platform_admins (RLS may block it).
+      // Use backend functions that can safely determine admin status.
+      const [{ data: isPlatformAdmin, error: adminErr }, { data: isPlatformSuperAdmin, error: superErr }] =
+        await Promise.all([
+          supabase.rpc('is_platform_admin', { _user_id: user.id }),
+          supabase.rpc('is_super_admin', { _user_id: user.id }),
+        ]);
 
-      if (error && error.code !== 'PGRST116') {
-        console.error('Error checking admin status:', error);
-      }
+      if (adminErr) console.error('Error checking platform admin status:', adminErr);
+      if (superErr) console.error('Error checking super admin status:', superErr);
 
-      if (data) {
-        setIsAdmin(true);
-        setIsSuperAdmin(data.role === 'super_admin');
-        setAdminRecord(data as PlatformAdmin);
+      const admin = Boolean(isPlatformAdmin);
+      const superAdmin = Boolean(isPlatformSuperAdmin);
+
+      setIsAdmin(admin);
+      setIsSuperAdmin(superAdmin);
+
+      // Best-effort fetch of admin record (may still be blocked by RLS)
+      if (admin) {
+        try {
+          const { data } = await supabase
+            .from('platform_admins')
+            .select('*')
+            .eq('user_id', user.id)
+            .maybeSingle();
+          setAdminRecord((data as PlatformAdmin) ?? null);
+        } catch {
+          setAdminRecord(null);
+        }
       } else {
-        setIsAdmin(false);
-        setIsSuperAdmin(false);
         setAdminRecord(null);
       }
     } catch (error) {
       console.error('Error checking admin status:', error);
+      setIsAdmin(false);
+      setIsSuperAdmin(false);
+      setAdminRecord(null);
     } finally {
       setIsLoading(false);
     }
