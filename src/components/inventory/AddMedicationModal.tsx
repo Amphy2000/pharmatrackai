@@ -1,11 +1,12 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format } from 'date-fns';
-import { CalendarIcon, Plus, Save } from 'lucide-react';
+import { CalendarIcon, Plus, Save, X, Truck } from 'lucide-react';
 import { Medication, MedicationFormData, MedicationCategory } from '@/types/medication';
 import { useMedications } from '@/hooks/useMedications';
+import { useSuppliers } from '@/hooks/useSuppliers';
 import { cn } from '@/lib/utils';
 import {
   Dialog,
@@ -37,6 +38,10 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import { Card } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 const categories: MedicationCategory[] = [
   'Tablet',
@@ -64,6 +69,14 @@ const formSchema = z.object({
 
 type FormValues = z.infer<typeof formSchema>;
 
+interface SupplierEntry {
+  id?: string;
+  name: string;
+  unit_price: number;
+  lead_time_days: number;
+  isNew: boolean;
+}
+
 interface AddMedicationModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -76,7 +89,13 @@ export const AddMedicationModal = ({
   editingMedication,
 }: AddMedicationModalProps) => {
   const { addMedication, updateMedication } = useMedications();
+  const { suppliers, addSupplier, addSupplierProduct } = useSuppliers();
   const isEditing = !!editingMedication;
+
+  const [supplierEntries, setSupplierEntries] = useState<SupplierEntry[]>([]);
+  const [showSupplierForm, setShowSupplierForm] = useState(false);
+  const [newSupplier, setNewSupplier] = useState({ name: '', unit_price: 0, lead_time_days: 3 });
+  const [selectedExistingSupplier, setSelectedExistingSupplier] = useState('');
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -105,6 +124,7 @@ export const AddMedicationModal = ({
         unit_price: Number(editingMedication.unit_price),
         selling_price: editingMedication.selling_price ? Number(editingMedication.selling_price) : undefined,
       });
+      setSupplierEntries([]);
     } else {
       form.reset({
         name: '',
@@ -116,10 +136,56 @@ export const AddMedicationModal = ({
         unit_price: 0,
         selling_price: undefined,
       });
+      setSupplierEntries([]);
     }
-  }, [editingMedication, form]);
+  }, [editingMedication, form, open]);
 
-  const onSubmit = (values: FormValues) => {
+  const handleAddExistingSupplier = () => {
+    if (!selectedExistingSupplier) return;
+    const supplier = suppliers.find(s => s.id === selectedExistingSupplier);
+    if (!supplier) return;
+    
+    // Check if already added
+    if (supplierEntries.some(e => e.id === supplier.id)) return;
+    
+    const unitPrice = form.getValues('unit_price');
+    setSupplierEntries([...supplierEntries, {
+      id: supplier.id,
+      name: supplier.name,
+      unit_price: unitPrice,
+      lead_time_days: 3,
+      isNew: false,
+    }]);
+    setSelectedExistingSupplier('');
+  };
+
+  const handleAddNewSupplier = () => {
+    if (!newSupplier.name) return;
+    
+    // Check if name already exists
+    if (supplierEntries.some(e => e.name.toLowerCase() === newSupplier.name.toLowerCase())) return;
+    
+    setSupplierEntries([...supplierEntries, {
+      name: newSupplier.name,
+      unit_price: newSupplier.unit_price || form.getValues('unit_price'),
+      lead_time_days: newSupplier.lead_time_days,
+      isNew: true,
+    }]);
+    setNewSupplier({ name: '', unit_price: 0, lead_time_days: 3 });
+    setShowSupplierForm(false);
+  };
+
+  const removeSupplierEntry = (index: number) => {
+    setSupplierEntries(supplierEntries.filter((_, i) => i !== index));
+  };
+
+  const updateSupplierPrice = (index: number, price: number) => {
+    const updated = [...supplierEntries];
+    updated[index].unit_price = price;
+    setSupplierEntries(updated);
+  };
+
+  const onSubmit = async (values: FormValues) => {
     const medicationData: MedicationFormData = {
       name: values.name,
       category: values.category,
@@ -132,18 +198,58 @@ export const AddMedicationModal = ({
       expiry_date: format(values.expiry_date, 'yyyy-MM-dd'),
     };
 
-    if (isEditing && editingMedication) {
-      updateMedication.mutate({ id: editingMedication.id, ...medicationData });
-    } else {
-      addMedication.mutate(medicationData);
+    try {
+      if (isEditing && editingMedication) {
+        await updateMedication.mutateAsync({ id: editingMedication.id, ...medicationData });
+      } else {
+        const result = await addMedication.mutateAsync(medicationData);
+        
+        // Link suppliers to the new medication
+        for (const entry of supplierEntries) {
+          let supplierId = entry.id;
+          
+          // Create new supplier if needed
+          if (entry.isNew) {
+            const newSupplierResult = await addSupplier.mutateAsync({
+              name: entry.name,
+              is_active: true,
+              contact_person: null,
+              email: null,
+              phone: null,
+              address: null,
+              website: null,
+              payment_terms: null,
+              notes: null,
+            });
+            supplierId = newSupplierResult.id;
+          }
+          
+          // Link supplier to medication
+          if (supplierId) {
+            await addSupplierProduct.mutateAsync({
+              supplier_id: supplierId,
+              medication_id: result.id,
+              product_name: values.name,
+              unit_price: entry.unit_price,
+              lead_time_days: entry.lead_time_days,
+              min_order_quantity: 1,
+              is_available: true,
+              sku: null,
+            });
+          }
+        }
+      }
+      onOpenChange(false);
+    } catch (error) {
+      // Error handled in mutation
     }
-
-    onOpenChange(false);
   };
+
+  const activeSuppliers = suppliers.filter(s => s.is_active);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-[95vw] sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-[95vw] sm:max-w-[550px] max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="font-display text-xl">
             {isEditing ? 'Edit Medication' : 'Add New Medication'}
@@ -328,6 +434,142 @@ export const AddMedicationModal = ({
                 </FormItem>
               )}
             />
+
+            {/* Supplier Section - Only for new medications */}
+            {!isEditing && (
+              <>
+                <Separator />
+                <Collapsible defaultOpen={false}>
+                  <CollapsibleTrigger asChild>
+                    <Button type="button" variant="ghost" className="w-full justify-between gap-2 p-0 h-auto">
+                      <span className="flex items-center gap-2 text-sm font-medium">
+                        <Truck className="h-4 w-4" />
+                        Link Suppliers (Optional)
+                      </span>
+                      <Badge variant="secondary" className="text-xs">
+                        {supplierEntries.length} added
+                      </Badge>
+                    </Button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="pt-4 space-y-3">
+                    {/* Added suppliers */}
+                    {supplierEntries.length > 0 && (
+                      <div className="space-y-2">
+                        {supplierEntries.map((entry, index) => (
+                          <Card key={index} className="p-2 flex items-center justify-between gap-2">
+                            <div className="flex-1">
+                              <span className="font-medium text-sm">{entry.name}</span>
+                              {entry.isNew && (
+                                <Badge variant="outline" className="ml-2 text-xs">New</Badge>
+                              )}
+                            </div>
+                            <Input
+                              type="number"
+                              min={0}
+                              step="0.01"
+                              value={entry.unit_price}
+                              onChange={(e) => updateSupplierPrice(index, parseFloat(e.target.value) || 0)}
+                              className="w-24 h-8"
+                              placeholder="Price"
+                            />
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => removeSupplierEntry(index)}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          </Card>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Add existing supplier */}
+                    <div className="flex gap-2">
+                      <Select value={selectedExistingSupplier} onValueChange={setSelectedExistingSupplier}>
+                        <SelectTrigger className="flex-1">
+                          <SelectValue placeholder="Select existing supplier" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {activeSuppliers
+                            .filter(s => !supplierEntries.some(e => e.id === s.id))
+                            .map(supplier => (
+                              <SelectItem key={supplier.id} value={supplier.id}>
+                                {supplier.name}
+                              </SelectItem>
+                            ))}
+                        </SelectContent>
+                      </Select>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={handleAddExistingSupplier}
+                        disabled={!selectedExistingSupplier}
+                      >
+                        Add
+                      </Button>
+                    </div>
+
+                    {/* Add new supplier */}
+                    {!showSupplierForm ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="w-full gap-1 text-xs"
+                        onClick={() => setShowSupplierForm(true)}
+                      >
+                        <Plus className="h-3 w-3" />
+                        Add New Supplier
+                      </Button>
+                    ) : (
+                      <Card className="p-3 space-y-2">
+                        <div className="flex gap-2">
+                          <Input
+                            placeholder="Supplier name"
+                            value={newSupplier.name}
+                            onChange={(e) => setNewSupplier({ ...newSupplier, name: e.target.value })}
+                            className="flex-1"
+                          />
+                          <Input
+                            type="number"
+                            min={0}
+                            step="0.01"
+                            placeholder="Price"
+                            value={newSupplier.unit_price || ''}
+                            onChange={(e) => setNewSupplier({ ...newSupplier, unit_price: parseFloat(e.target.value) || 0 })}
+                            className="w-24"
+                          />
+                        </div>
+                        <div className="flex gap-2">
+                          <Button
+                            type="button"
+                            size="sm"
+                            onClick={handleAddNewSupplier}
+                            disabled={!newSupplier.name}
+                          >
+                            Add Supplier
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setShowSupplierForm(false);
+                              setNewSupplier({ name: '', unit_price: 0, lead_time_days: 3 });
+                            }}
+                          >
+                            Cancel
+                          </Button>
+                        </div>
+                      </Card>
+                    )}
+                  </CollapsibleContent>
+                </Collapsible>
+              </>
+            )}
 
             <div className="flex justify-end gap-3 pt-4">
               <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>

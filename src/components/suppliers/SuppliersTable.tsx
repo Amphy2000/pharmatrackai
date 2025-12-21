@@ -8,7 +8,7 @@ import { useSuppliers } from '@/hooks/useSuppliers';
 import type { Supplier } from '@/types/supplier';
 
 interface SuppliersTableProps {
-  onEdit: (supplier: Supplier) => void;
+  onEdit?: (supplier: Supplier) => void;
 }
 
 export const SuppliersTable = ({ onEdit }: SuppliersTableProps) => {
@@ -82,10 +82,12 @@ export const SuppliersTable = ({ onEdit }: SuppliersTableProps) => {
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent align="end">
-                    <DropdownMenuItem onClick={() => onEdit(supplier)}>
-                      <Edit className="h-4 w-4 mr-2" /> Edit
-                    </DropdownMenuItem>
-                    <DropdownMenuItem 
+                    {onEdit && (
+                      <DropdownMenuItem onClick={() => onEdit(supplier)}>
+                        <Edit className="h-4 w-4 mr-2" /> Edit
+                      </DropdownMenuItem>
+                    )}
+                    <DropdownMenuItem
                       className="text-destructive"
                       onClick={() => deleteSupplier.mutate(supplier.id)}
                     >
