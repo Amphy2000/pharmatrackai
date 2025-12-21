@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Header } from '@/components/Header';
 import { useCurrency } from '@/contexts/CurrencyContext';
+import { usePermissions } from '@/hooks/usePermissions';
 import { format, parseISO, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import { 
   Search, 
@@ -60,6 +61,7 @@ interface SaleWithMedication {
 
 const SalesHistory = () => {
   const { formatPrice } = useCurrency();
+  const { isOwnerOrManager } = usePermissions();
   const [searchQuery, setSearchQuery] = useState('');
   const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({
     from: startOfMonth(new Date()),
@@ -184,17 +186,25 @@ const SalesHistory = () => {
   };
 
   const exportToCSV = () => {
-    const headers = ['Date', 'Transaction ID', 'Medication', 'Category', 'Quantity', 'Unit Price', 'Total', 'Customer'];
-    const rows = filteredSales.map(sale => [
-      format(parseISO(sale.sale_date), 'yyyy-MM-dd HH:mm'),
-      sale.id.slice(0, 8),
-      sale.medications?.name || 'Unknown',
-      sale.medications?.category || 'Unknown',
-      sale.quantity,
-      sale.unit_price,
-      sale.total_price,
-      sale.customer_name || 'Walk-in'
-    ]);
+    // Staff export excludes price data
+    const headers = isOwnerOrManager 
+      ? ['Date', 'Transaction ID', 'Medication', 'Category', 'Quantity', 'Unit Price', 'Total', 'Customer']
+      : ['Date', 'Transaction ID', 'Medication', 'Category', 'Quantity', 'Customer'];
+    
+    const rows = filteredSales.map(sale => {
+      const baseRow = [
+        format(parseISO(sale.sale_date), 'yyyy-MM-dd HH:mm'),
+        sale.id.slice(0, 8),
+        sale.medications?.name || 'Unknown',
+        sale.medications?.category || 'Unknown',
+        sale.quantity,
+      ];
+      
+      if (isOwnerOrManager) {
+        return [...baseRow, sale.unit_price, sale.total_price, sale.customer_name || 'Walk-in'];
+      }
+      return [...baseRow, sale.customer_name || 'Walk-in'];
+    });
 
     const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });
@@ -223,18 +233,21 @@ const SalesHistory = () => {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <div className="glass-card p-4 rounded-xl">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-primary/10">
-                <TrendingUp className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Total Revenue</p>
-                <p className="text-xl font-bold text-primary">{formatPrice(stats.totalRevenue)}</p>
+        <div className={`grid gap-4 mb-8 ${isOwnerOrManager ? 'grid-cols-2 lg:grid-cols-4' : 'grid-cols-2'}`}>
+          {/* Revenue - Manager/Owner only */}
+          {isOwnerOrManager && (
+            <div className="glass-card p-4 rounded-xl">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-primary/10">
+                  <TrendingUp className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Total Revenue</p>
+                  <p className="text-xl font-bold text-primary">{formatPrice(stats.totalRevenue)}</p>
+                </div>
               </div>
             </div>
-          </div>
+          )}
           <div className="glass-card p-4 rounded-xl">
             <div className="flex items-center gap-3">
               <div className="p-2 rounded-lg bg-secondary/10">
@@ -257,17 +270,20 @@ const SalesHistory = () => {
               </div>
             </div>
           </div>
-          <div className="glass-card p-4 rounded-xl">
-            <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-warning/10">
-                <User className="h-5 w-5 text-warning" />
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Avg Order Value</p>
-                <p className="text-xl font-bold">{formatPrice(stats.avgOrderValue)}</p>
+          {/* Avg Order Value - Manager/Owner only */}
+          {isOwnerOrManager && (
+            <div className="glass-card p-4 rounded-xl">
+              <div className="flex items-center gap-3">
+                <div className="p-2 rounded-lg bg-warning/10">
+                  <User className="h-5 w-5 text-warning" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Avg Order Value</p>
+                  <p className="text-xl font-bold">{formatPrice(stats.avgOrderValue)}</p>
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Period Filter Buttons */}
@@ -386,15 +402,15 @@ const SalesHistory = () => {
                 <TableHead>Medication</TableHead>
                 <TableHead>Category</TableHead>
                 <TableHead className="text-center">Qty</TableHead>
-                <TableHead className="text-right">Unit Price</TableHead>
-                <TableHead className="text-right">Total</TableHead>
+                {isOwnerOrManager && <TableHead className="text-right">Unit Price</TableHead>}
+                {isOwnerOrManager && <TableHead className="text-right">Total</TableHead>}
                 <TableHead>Customer</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8">
+                  <TableCell colSpan={isOwnerOrManager ? 8 : 6} className="text-center py-8">
                     <div className="flex items-center justify-center gap-2">
                       <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-primary" />
                       Loading sales...
@@ -403,7 +419,7 @@ const SalesHistory = () => {
                 </TableRow>
               ) : paginatedSales.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={isOwnerOrManager ? 8 : 6} className="text-center py-8 text-muted-foreground">
                     No sales found for the selected filters
                   </TableCell>
                 </TableRow>
@@ -428,10 +444,14 @@ const SalesHistory = () => {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-center">{sale.quantity}</TableCell>
-                    <TableCell className="text-right">{formatPrice(sale.unit_price)}</TableCell>
-                    <TableCell className="text-right font-semibold text-primary">
-                      {formatPrice(sale.total_price)}
-                    </TableCell>
+                    {isOwnerOrManager && (
+                      <TableCell className="text-right">{formatPrice(sale.unit_price)}</TableCell>
+                    )}
+                    {isOwnerOrManager && (
+                      <TableCell className="text-right font-semibold text-primary">
+                        {formatPrice(sale.total_price)}
+                      </TableCell>
+                    )}
                     <TableCell>
                       {sale.customer_name || <span className="text-muted-foreground">Walk-in</span>}
                     </TableCell>
