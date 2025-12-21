@@ -2,30 +2,61 @@ import { useState } from 'react';
 import { Header } from '@/components/Header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Package, AlertTriangle, PackagePlus, ClipboardList, FileImage, Zap, Clock } from 'lucide-react';
+import { Package, AlertTriangle, PackagePlus, ClipboardList, FileImage, Zap, Clock, FileSpreadsheet, TrendingDown, Calendar } from 'lucide-react';
 import { useMedications } from '@/hooks/useMedications';
 import { ReceiveStockModal } from '@/components/inventory/ReceiveStockModal';
 import { StockCountModal } from '@/components/inventory/StockCountModal';
 import { InvoiceScannerModal } from '@/components/inventory/InvoiceScannerModal';
+import { StockCSVImportModal } from '@/components/inventory/StockCSVImportModal';
+import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
+import { differenceInDays, parseISO, format } from 'date-fns';
 
 const Inventory = () => {
   const { medications } = useMedications();
   const [showReceiveStockModal, setShowReceiveStockModal] = useState(false);
   const [showStockCountModal, setShowStockCountModal] = useState(false);
   const [showInvoiceScannerModal, setShowInvoiceScannerModal] = useState(false);
+  const [showCSVImportModal, setShowCSVImportModal] = useState(false);
 
+  const today = new Date();
   const lowStockCount = medications.filter(m => m.current_stock <= m.reorder_level).length;
   const totalProducts = medications.length;
-  const expiringSoon = medications.filter(m => {
-    const expiryDate = new Date(m.expiry_date);
-    const thirtyDaysFromNow = new Date();
-    thirtyDaysFromNow.setDate(thirtyDaysFromNow.getDate() + 30);
-    return expiryDate <= thirtyDaysFromNow && expiryDate > new Date();
-  }).length;
-
+  
+  // Calculate expiring items with more detail
+  const expiringItems = medications.filter(m => {
+    const expiryDate = parseISO(m.expiry_date);
+    const daysToExpiry = differenceInDays(expiryDate, today);
+    return daysToExpiry > 0 && daysToExpiry <= 30;
+  });
+  
+  const expiredItems = medications.filter(m => parseISO(m.expiry_date) <= today);
+  
   const lowStockMedications = medications
     .filter(m => m.current_stock <= m.reorder_level)
     .slice(0, 10);
+  
+  // Items expiring soon sorted by urgency
+  const expiryUrgentItems = medications
+    .map(m => ({
+      ...m,
+      daysToExpiry: differenceInDays(parseISO(m.expiry_date), today)
+    }))
+    .filter(m => m.daysToExpiry > 0 && m.daysToExpiry <= 90)
+    .sort((a, b) => a.daysToExpiry - b.daysToExpiry)
+    .slice(0, 8);
+
+  const getExpiryColor = (days: number) => {
+    if (days <= 7) return 'destructive';
+    if (days <= 30) return 'warning';
+    return 'secondary';
+  };
+
+  const getExpiryProgress = (days: number) => {
+    if (days <= 0) return 100;
+    if (days >= 90) return 0;
+    return Math.round(100 - (days / 90) * 100);
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -34,7 +65,7 @@ const Inventory = () => {
       <main className="container mx-auto px-4 py-8">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
           <div>
-            <h1 className="font-display text-3xl font-bold text-primary">
+            <h1 className="font-display text-3xl font-bold text-gradient">
               Inventory Operations
             </h1>
             <p className="text-muted-foreground mt-1">
@@ -44,10 +75,12 @@ const Inventory = () => {
         </div>
 
         {/* Rapid Stock Entry Section */}
-        <Card className="mb-8 border-primary/20 bg-gradient-to-r from-primary/5 to-transparent">
+        <Card className="mb-8 border-primary/20 glass-card">
           <CardHeader className="pb-3">
             <CardTitle className="flex items-center gap-2 text-lg">
-              <Zap className="h-5 w-5 text-primary" />
+              <div className="p-2 rounded-lg bg-gradient-primary">
+                <Zap className="h-5 w-5 text-primary-foreground" />
+              </div>
               Rapid Stock Entry
             </CardTitle>
           </CardHeader>
@@ -56,61 +89,79 @@ const Inventory = () => {
               Fast inventory management tools to save time during stocking
             </p>
             <div className="flex flex-wrap gap-3">
-              <Button onClick={() => setShowReceiveStockModal(true)} variant="default" size="lg" className="gap-2">
+              <Button onClick={() => setShowReceiveStockModal(true)} variant="default" size="lg" className="gap-2 btn-glow">
                 <PackagePlus className="h-5 w-5" />
                 Receive Stock
-                <span className="text-xs opacity-70 ml-1">Rapid Scan</span>
+                <Badge variant="secondary" className="ml-1 text-xs">Scan</Badge>
               </Button>
               <Button onClick={() => setShowStockCountModal(true)} variant="secondary" size="lg" className="gap-2">
                 <ClipboardList className="h-5 w-5" />
                 Stock Count
-                <span className="text-xs opacity-70 ml-1">Quick Entry</span>
+                <Badge variant="outline" className="ml-1 text-xs">Quick</Badge>
+              </Button>
+              <Button onClick={() => setShowCSVImportModal(true)} variant="outline" size="lg" className="gap-2">
+                <FileSpreadsheet className="h-5 w-5" />
+                CSV Import
+                <Badge variant="outline" className="ml-1 text-xs">Bulk</Badge>
               </Button>
               <Button onClick={() => setShowInvoiceScannerModal(true)} variant="outline" size="lg" className="gap-2">
                 <FileImage className="h-5 w-5" />
                 Scan Invoice
-                <span className="text-xs opacity-70 ml-1">AI Powered</span>
+                <Badge variant="outline" className="ml-1 text-xs bg-gradient-premium text-white border-0">AI</Badge>
               </Button>
             </div>
           </CardContent>
         </Card>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-          <Card>
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+          <Card className="metric-card group">
             <CardContent className="pt-6">
               <div className="flex items-center gap-4">
-                <div className="p-3 rounded-full bg-destructive/10">
+                <div className="metric-card-icon bg-destructive/20 group-hover:shadow-glow-danger">
                   <AlertTriangle className="h-6 w-6 text-destructive" />
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Low Stock Items</p>
+                  <p className="text-sm text-muted-foreground">Low Stock</p>
                   <p className="text-2xl font-bold">{lowStockCount}</p>
                 </div>
               </div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="metric-card group">
             <CardContent className="pt-6">
               <div className="flex items-center gap-4">
-                <div className="p-3 rounded-full bg-warning/10">
+                <div className="metric-card-icon bg-warning/20 group-hover:shadow-glow-warning">
                   <Clock className="h-6 w-6 text-warning" />
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Expiring Soon</p>
-                  <p className="text-2xl font-bold">{expiringSoon}</p>
+                  <p className="text-sm text-muted-foreground">Expiring (30d)</p>
+                  <p className="text-2xl font-bold">{expiringItems.length}</p>
                 </div>
               </div>
             </CardContent>
           </Card>
-          <Card>
+          <Card className="metric-card group">
             <CardContent className="pt-6">
               <div className="flex items-center gap-4">
-                <div className="p-3 rounded-full bg-green-500/10">
-                  <Package className="h-6 w-6 text-green-500" />
+                <div className="metric-card-icon bg-destructive/20 group-hover:shadow-glow-danger">
+                  <TrendingDown className="h-6 w-6 text-destructive" />
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Total Products</p>
+                  <p className="text-sm text-muted-foreground">Expired</p>
+                  <p className="text-2xl font-bold">{expiredItems.length}</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card className="metric-card group">
+            <CardContent className="pt-6">
+              <div className="flex items-center gap-4">
+                <div className="metric-card-icon bg-success/20 group-hover:shadow-glow-success">
+                  <Package className="h-6 w-6 text-success" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Total SKUs</p>
                   <p className="text-2xl font-bold">{totalProducts}</p>
                 </div>
               </div>
@@ -118,49 +169,119 @@ const Inventory = () => {
           </Card>
         </div>
 
-        {/* Low Stock Alerts - View Only */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-destructive" />
-              Low Stock Alerts
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            {lowStockMedications.length === 0 ? (
-              <p className="text-muted-foreground text-center py-8">
-                All items are well stocked!
-              </p>
-            ) : (
-              <div className="space-y-3">
-                {lowStockMedications.map((medication) => (
-                  <div
-                    key={medication.id}
-                    className="flex items-center justify-between p-3 rounded-lg border border-border/50 bg-muted/30"
-                  >
-                    <div>
-                      <p className="font-medium">{medication.name}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {medication.category} • Batch: {medication.batch_number}
-                      </p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-bold text-destructive">{medication.current_stock} left</p>
-                      <p className="text-xs text-muted-foreground">
-                        Reorder at: {medication.reorder_level}
-                      </p>
-                    </div>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          {/* Expiry Timeline */}
+          <Card className="glass-card">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Calendar className="h-5 w-5 text-warning" />
+                Expiry Timeline
+                <Badge variant="outline" className="ml-auto">FEFO Tracking</Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {expiryUrgentItems.length === 0 ? (
+                <div className="text-center py-8">
+                  <div className="p-4 rounded-full bg-success/10 inline-block mb-3">
+                    <Package className="h-8 w-8 text-success" />
                   </div>
-                ))}
-                {lowStockCount > 10 && (
-                  <p className="text-sm text-muted-foreground text-center pt-2">
-                    And {lowStockCount - 10} more items...
-                  </p>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                  <p className="text-muted-foreground">No items expiring within 90 days</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {expiryUrgentItems.map((item) => (
+                    <div
+                      key={item.id}
+                      className="flex items-center gap-4 p-3 rounded-lg border border-border/50 bg-muted/20 hover:bg-muted/40 transition-colors"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">{item.name}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <Badge variant={getExpiryColor(item.daysToExpiry) as any} className="text-xs">
+                            {item.daysToExpiry <= 7 ? 'Critical' : item.daysToExpiry <= 30 ? 'Soon' : 'Upcoming'}
+                          </Badge>
+                          <span className="text-xs text-muted-foreground">
+                            Batch: {item.batch_number}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className={`font-bold ${item.daysToExpiry <= 7 ? 'text-destructive' : item.daysToExpiry <= 30 ? 'text-warning' : 'text-muted-foreground'}`}>
+                          {item.daysToExpiry}d
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          {format(parseISO(item.expiry_date), 'MMM d')}
+                        </p>
+                      </div>
+                      <div className="w-16">
+                        <Progress 
+                          value={getExpiryProgress(item.daysToExpiry)} 
+                          className="h-2"
+                        />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Low Stock Alerts */}
+          <Card className="glass-card">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <AlertTriangle className="h-5 w-5 text-destructive" />
+                Low Stock Alerts
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {lowStockMedications.length === 0 ? (
+                <div className="text-center py-8">
+                  <div className="p-4 rounded-full bg-success/10 inline-block mb-3">
+                    <Package className="h-8 w-8 text-success" />
+                  </div>
+                  <p className="text-muted-foreground">All items are well stocked!</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {lowStockMedications.map((medication) => {
+                    const stockPercentage = Math.round((medication.current_stock / medication.reorder_level) * 100);
+                    return (
+                      <div
+                        key={medication.id}
+                        className="flex items-center gap-4 p-3 rounded-lg border border-border/50 bg-muted/20 hover:bg-muted/40 transition-colors"
+                      >
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium truncate">{medication.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {medication.category} • Batch: {medication.batch_number}
+                          </p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className="font-bold text-destructive">{medication.current_stock}</p>
+                          <p className="text-xs text-muted-foreground">
+                            / {medication.reorder_level}
+                          </p>
+                        </div>
+                        <div className="w-16">
+                          <Progress 
+                            value={Math.min(stockPercentage, 100)} 
+                            className="h-2"
+                          />
+                        </div>
+                      </div>
+                    );
+                  })}
+                  {lowStockCount > 10 && (
+                    <p className="text-sm text-muted-foreground text-center pt-2">
+                      And {lowStockCount - 10} more items...
+                    </p>
+                  )}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       </main>
       
       <ReceiveStockModal
@@ -176,6 +297,11 @@ const Inventory = () => {
       <InvoiceScannerModal
         open={showInvoiceScannerModal}
         onOpenChange={setShowInvoiceScannerModal}
+      />
+      
+      <StockCSVImportModal
+        open={showCSVImportModal}
+        onOpenChange={setShowCSVImportModal}
       />
     </div>
   );

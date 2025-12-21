@@ -8,6 +8,8 @@ import { Header } from '@/components/Header';
 import { MetricCard } from '@/components/dashboard/MetricCard';
 import { AIInsightsPanel } from '@/components/dashboard/AIInsightsPanel';
 import { InventoryCharts } from '@/components/dashboard/InventoryCharts';
+import { StaffQuickActions } from '@/components/dashboard/StaffQuickActions';
+import { ManagerKPIPanel } from '@/components/dashboard/ManagerKPIPanel';
 import { FinancialSummary } from '@/components/dashboard/FinancialSummary';
 import { NAFDACCompliancePanel } from '@/components/dashboard/NAFDACCompliancePanel';
 import { SalesAnalytics } from '@/components/dashboard/SalesAnalytics';
@@ -159,7 +161,10 @@ const Index = () => {
           </div>
         </section>
 
-        {/* Dashboard Metrics - Always visible to all staff */}
+        {/* Staff Quick Actions - Visible to all */}
+        <section className="mb-8 sm:mb-10 animate-slide-up" style={{ animationDelay: '50ms' }}>
+          <StaffQuickActions />
+        </section>
         <section className="mb-8 sm:mb-10">
           {isLoading ? (
             <div className="grid gap-4 sm:gap-6 grid-cols-2 lg:grid-cols-4">
@@ -209,6 +214,13 @@ const Index = () => {
         {!isLoading && medications.length > 0 && isOwnerOrManager && (
           <section className="mb-8 sm:mb-10 animate-slide-up" style={{ animationDelay: '100ms' }}>
             <FinancialSummary medications={medications} />
+          </section>
+        )}
+
+        {/* Manager KPI Panel - Only visible to owners/managers */}
+        {!isLoading && isOwnerOrManager && (
+          <section className="mb-8 sm:mb-10 animate-slide-up" style={{ animationDelay: '110ms' }}>
+            <ManagerKPIPanel />
           </section>
         )}
 

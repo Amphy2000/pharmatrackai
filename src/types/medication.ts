@@ -1,7 +1,46 @@
+// Product type groupings
+export type ProductType = 'Pharmaceuticals' | 'Health & Wellness' | 'Beauty & Personal Care' | 'General Provisions';
+
+// Pharmaceutical categories
+export type PharmaceuticalCategory = 'Tablet' | 'Syrup' | 'Capsule' | 'Injection' | 'Cream' | 'Drops' | 'Inhaler' | 'Powder';
+
+// Health & Wellness categories
+export type HealthWellnessCategory = 'Vitamins' | 'Supplements' | 'First Aid' | 'Medical Devices' | 'Baby Care' | 'Herbal Products';
+
+// Beauty & Personal Care categories
+export type BeautyCategory = 'Skincare' | 'Cosmetics' | 'Toiletries' | 'Hygiene' | 'Hair Care' | 'Oral Care';
+
+// General Provisions categories  
+export type ProvisionsCategory = 'Beverages' | 'Snacks' | 'Household' | 'Pet Care' | 'Stationery';
+
+// All categories combined
+export type MedicationCategory = 
+  | PharmaceuticalCategory 
+  | HealthWellnessCategory 
+  | BeautyCategory 
+  | ProvisionsCategory 
+  | 'Other';
+
+// Category groupings for UI
+export const CATEGORY_GROUPS: Record<ProductType, MedicationCategory[]> = {
+  'Pharmaceuticals': ['Tablet', 'Syrup', 'Capsule', 'Injection', 'Cream', 'Drops', 'Inhaler', 'Powder'],
+  'Health & Wellness': ['Vitamins', 'Supplements', 'First Aid', 'Medical Devices', 'Baby Care', 'Herbal Products'],
+  'Beauty & Personal Care': ['Skincare', 'Cosmetics', 'Toiletries', 'Hygiene', 'Hair Care', 'Oral Care'],
+  'General Provisions': ['Beverages', 'Snacks', 'Household', 'Pet Care', 'Stationery'],
+};
+
+export const ALL_CATEGORIES: MedicationCategory[] = [
+  ...CATEGORY_GROUPS['Pharmaceuticals'],
+  ...CATEGORY_GROUPS['Health & Wellness'],
+  ...CATEGORY_GROUPS['Beauty & Personal Care'],
+  ...CATEGORY_GROUPS['General Provisions'],
+  'Other',
+];
+
 export interface Medication {
   id: string;
   name: string;
-  category: 'Tablet' | 'Syrup' | 'Capsule' | 'Injection' | 'Cream' | 'Drops' | 'Inhaler' | 'Powder' | 'Other';
+  category: MedicationCategory;
   batch_number: string;
   current_stock: number;
   reorder_level: number;
@@ -17,8 +56,6 @@ export interface Medication {
   created_at: string;
   updated_at: string;
 }
-
-export type MedicationCategory = Medication['category'];
 
 export interface MedicationFormData {
   name: string;
