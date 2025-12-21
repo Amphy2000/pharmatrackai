@@ -16,6 +16,7 @@ import {
   Users,
   Building2,
   Truck,
+  PackageSearch,
   Settings
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -50,6 +51,7 @@ export const Header = () => {
     { href: '/checkout', label: 'POS', icon: ShoppingCart },
     { href: '/customers', label: 'Customers', icon: Users },
     { href: '/branches', label: 'Branches', icon: Building2 },
+    { href: '/inventory', label: 'Inventory', icon: PackageSearch },
     { href: '/sales-history', label: 'Sales', icon: History },
   ];
 
