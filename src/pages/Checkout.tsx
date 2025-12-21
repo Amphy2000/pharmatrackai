@@ -15,6 +15,7 @@ import {
 import { useMedications } from '@/hooks/useMedications';
 import { useCart } from '@/hooks/useCart';
 import { useSales } from '@/hooks/useSales';
+import { useShifts } from '@/hooks/useShifts';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { useRegionalSettings } from '@/contexts/RegionalSettingsContext';
 import { useHeldTransactions } from '@/hooks/useHeldTransactions';
@@ -39,6 +40,7 @@ import { generateReceipt, generateReceiptNumber } from '@/utils/receiptGenerator
 const Checkout = () => {
   const { medications, isLoading } = useMedications();
   const { completeSale } = useSales();
+  const { activeShift } = useShifts();
   const cart = useCart();
   const { formatPrice, currency } = useCurrency();
   const { isSimpleMode, regulatory } = useRegionalSettings();
@@ -98,6 +100,7 @@ const Checkout = () => {
       await completeSale.mutateAsync({
         items: cart.items,
         customerName: customerName || undefined,
+        shiftId: activeShift?.id,
       });
 
       // Generate and print receipt

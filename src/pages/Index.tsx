@@ -13,6 +13,8 @@ import { ManagerKPIPanel } from '@/components/dashboard/ManagerKPIPanel';
 import { FinancialSummary } from '@/components/dashboard/FinancialSummary';
 import { NAFDACCompliancePanel } from '@/components/dashboard/NAFDACCompliancePanel';
 import { SalesAnalytics } from '@/components/dashboard/SalesAnalytics';
+import { ShiftClock } from '@/components/dashboard/ShiftClock';
+import { StaffPerformancePanel } from '@/components/dashboard/StaffPerformancePanel';
 import { MedicationsTable } from '@/components/inventory/MedicationsTable';
 import { AddMedicationModal } from '@/components/inventory/AddMedicationModal';
 import { CSVImportModal } from '@/components/inventory/CSVImportModal';
@@ -161,10 +163,24 @@ const Index = () => {
           </div>
         </section>
 
-        {/* Staff Quick Actions - Visible to all */}
+        {/* Shift Clock and Staff Quick Actions */}
         <section className="mb-8 sm:mb-10 animate-slide-up" style={{ animationDelay: '50ms' }}>
-          <StaffQuickActions />
+          <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-3">
+            <div className="lg:col-span-1">
+              <ShiftClock />
+            </div>
+            <div className="lg:col-span-2">
+              <StaffQuickActions />
+            </div>
+          </div>
         </section>
+
+        {/* Staff Performance Panel - Only visible to owners/managers */}
+        {!isLoading && isOwnerOrManager && (
+          <section className="mb-8 sm:mb-10 animate-slide-up" style={{ animationDelay: '75ms' }}>
+            <StaffPerformancePanel />
+          </section>
+        )}
         <section className="mb-8 sm:mb-10">
           {isLoading ? (
             <div className="grid gap-4 sm:gap-6 grid-cols-2 lg:grid-cols-4">
