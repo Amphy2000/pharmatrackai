@@ -389,29 +389,24 @@ const ProfileSettings = () => {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <a 
-                    href="https://docs.google.com/document/d/1pharmatrack-user-guide" 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="block"
+                  <Card 
+                    className="p-4 hover:bg-muted/50 transition-colors cursor-pointer h-full"
+                    onClick={() => navigate('/guide')}
                   >
-                    <Card className="p-4 hover:bg-muted/50 transition-colors cursor-pointer h-full">
-                      <div className="flex items-start gap-3">
-                        <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                          <Book className="h-5 w-5 text-primary" />
-                        </div>
-                        <div>
-                          <h4 className="font-medium flex items-center gap-2">
-                            User Guide
-                            <ExternalLink className="h-3 w-3 text-muted-foreground" />
-                          </h4>
-                          <p className="text-sm text-muted-foreground">
-                            Learn how to use all features
-                          </p>
-                        </div>
+                    <div className="flex items-start gap-3">
+                      <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                        <Book className="h-5 w-5 text-primary" />
                       </div>
-                    </Card>
-                  </a>
+                      <div>
+                        <h4 className="font-medium">
+                          User Guide
+                        </h4>
+                        <p className="text-sm text-muted-foreground">
+                          Learn how to use all features
+                        </p>
+                      </div>
+                    </div>
+                  </Card>
 
                   <a 
                     href="mailto:pharmatrackai@gmail.com?subject=Support Request"
