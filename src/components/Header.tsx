@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { TrialBanner } from '@/components/subscription';
 import { 
   Pill, 
   Activity, 
@@ -115,6 +116,8 @@ export const Header = () => {
 
   return (
     <TooltipProvider delayDuration={200}>
+      <>
+      <TrialBanner />
       <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
         <div className="container mx-auto px-4 sm:px-6">
           <div className="flex h-16 sm:h-20 items-center justify-between gap-4 lg:gap-6">
@@ -360,6 +363,7 @@ export const Header = () => {
         </div>
       </div>
     </header>
+    </>
     </TooltipProvider>
   );
 };
