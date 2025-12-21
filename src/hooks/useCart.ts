@@ -1,24 +1,31 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { Medication, CartItem } from '@/types/medication';
 
 const CART_STORAGE_KEY = 'pharmatrack_cart';
 
-export const useCart = () => {
-  const [items, setItems] = useState<CartItem[]>(() => {
-    // Initialize from localStorage
-    try {
-      const saved = localStorage.getItem(CART_STORAGE_KEY);
-      if (saved) {
-        return JSON.parse(saved);
-      }
-    } catch (e) {
-      console.error('Failed to load cart from storage:', e);
+// Helper to load cart from storage (called only once during init)
+const loadCartFromStorage = (): CartItem[] => {
+  try {
+    const saved = localStorage.getItem(CART_STORAGE_KEY);
+    if (saved) {
+      return JSON.parse(saved);
     }
-    return [];
-  });
+  } catch (e) {
+    console.error('Failed to load cart from storage:', e);
+  }
+  return [];
+};
 
-  // Persist to localStorage whenever items change
+export const useCart = () => {
+  const [items, setItems] = useState<CartItem[]>(loadCartFromStorage);
+  const isInitialMount = useRef(true);
+
+  // Persist to localStorage whenever items change (skip initial mount)
   useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      return;
+    }
     try {
       localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(items));
     } catch (e) {
