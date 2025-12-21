@@ -3,7 +3,6 @@ import { Sparkles, TrendingUp, AlertTriangle, Lightbulb, Loader2, Brain, Zap, Ta
 import { Medication } from '@/types/medication';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
-import { Button } from '@/components/ui/button';
 import { useCurrency } from '@/contexts/CurrencyContext';
 
 interface AIInsightsPanelProps {
@@ -24,7 +23,6 @@ interface Insight {
 export const AIInsightsPanel = ({ medications }: AIInsightsPanelProps) => {
   const [insights, setInsights] = useState<Insight[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [expandedInsight, setExpandedInsight] = useState<string | null>(null);
   const { formatPrice } = useCurrency();
 
   useEffect(() => {
@@ -276,7 +274,7 @@ export const AIInsightsPanel = ({ medications }: AIInsightsPanelProps) => {
             </p>
           </div>
         ) : (
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1">
             {insights.map((insight, index) => (
               <div
                 key={insight.id}
@@ -284,51 +282,45 @@ export const AIInsightsPanel = ({ medications }: AIInsightsPanelProps) => {
                   'relative p-4 rounded-xl border transition-all duration-300 group',
                   typeStyles[insight.type].bg,
                   typeStyles[insight.type].border,
-                  'animate-fade-in',
-                  expandedInsight === insight.id && 'ring-2 ring-primary/50'
+                  'animate-fade-in'
                 )}
                 style={{ animationDelay: `${index * 50}ms` }}
               >
                 <div className="flex items-start gap-3">
                   <div className={cn(
-                    'flex h-10 w-10 items-center justify-center rounded-xl flex-shrink-0 transition-all duration-300',
+                    'flex h-9 w-9 items-center justify-center rounded-lg flex-shrink-0',
                     typeStyles[insight.type].icon
                   )}>
-                    <insight.icon className="h-5 w-5" />
+                    <insight.icon className="h-4 w-4" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-2 flex-wrap">
+                    <div className="flex items-center gap-2 mb-1.5 flex-wrap">
                       <span className={cn(
-                        'text-xs font-medium px-2 py-0.5 rounded-full border',
+                        'text-[10px] font-semibold px-1.5 py-0.5 rounded border uppercase tracking-wide',
                         priorityBadge[insight.priority]
                       )}>
-                        {insight.priority.toUpperCase()}
+                        {insight.priority}
                       </span>
                       {insight.category && (
-                        <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-background/50 text-muted-foreground">
+                        <span className="text-[10px] font-medium px-1.5 py-0.5 rounded bg-background/50 text-muted-foreground">
                           {categoryLabels[insight.category] || insight.category}
                         </span>
                       )}
                       {insight.impact && (
-                        <span className="text-xs font-bold text-foreground ml-auto">
+                        <span className="text-xs font-bold text-success ml-auto">
                           {insight.impact}
                         </span>
                       )}
                     </div>
-                    <p className="text-sm text-foreground leading-relaxed mb-3">{insight.message}</p>
+                    <p className="text-sm text-foreground leading-relaxed line-clamp-3">{insight.message}</p>
                     
                     {insight.action && (
-                      <Button 
-                        size="sm" 
-                        className={cn(
-                          'w-full text-xs gap-2',
-                          typeStyles[insight.type].action
-                        )}
-                        onClick={() => setExpandedInsight(expandedInsight === insight.id ? null : insight.id)}
-                      >
-                        {insight.action}
-                        <ArrowRight className="h-3 w-3" />
-                      </Button>
+                      <div className="mt-2 pt-2 border-t border-border/30">
+                        <p className="text-xs text-muted-foreground flex items-center gap-1">
+                          <ArrowRight className="h-3 w-3" />
+                          {insight.action}
+                        </p>
+                      </div>
                     )}
                   </div>
                 </div>
