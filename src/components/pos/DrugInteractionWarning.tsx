@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import type { Medication } from '@/types/medication';
-import type { Medication } from '@/types/medication';
 
 interface DrugInteraction {
   drugs: string[];
