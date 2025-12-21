@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { TrialBanner } from '@/components/subscription';
 import { 
@@ -57,7 +57,7 @@ export const Header = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { signOut } = useAuth();
-  const { isOwnerOrManager, userRole, hasPermission } = usePermissions();
+  const { isOwnerOrManager, userRole, hasPermission, isLoading: permissionsLoading } = usePermissions();
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
   const { isAdmin, isDevEmail } = usePlatformAdmin();
   const { currentBranchId, setCurrentBranchId } = useBranchContext();
@@ -69,42 +69,57 @@ export const Header = () => {
   // Only owners can see Settings
   const canSeeSettings = userRole === 'owner';
 
-  // Build navigation links based on permissions
-  // POS is always accessible to all staff
-  const navLinks: { href: string; label: string; icon: typeof LayoutDashboard }[] = [];
+  // Build navigation links based on permissions - memoized to prevent flicker
+  // Use a stable default during loading to prevent UI flicker
+  const navLinks = useMemo(() => {
+    const links: { href: string; label: string; icon: typeof LayoutDashboard }[] = [];
 
-  // Dashboard
-  if (isOwnerOrManager || hasPermission('view_dashboard')) {
-    navLinks.push({ href: '/', label: 'Dashboard', icon: LayoutDashboard });
-  }
+    // During loading, show a stable set based on role (prevents flicker)
+    if (permissionsLoading) {
+      // Always show Dashboard and POS during loading for smooth UX
+      links.push({ href: '/', label: 'Dashboard', icon: LayoutDashboard });
+      links.push({ href: '/checkout', label: 'POS', icon: ShoppingCart });
+      links.push({ href: '/inventory', label: 'Inventory', icon: PackageSearch });
+      links.push({ href: '/customers', label: 'Customers', icon: Users });
+      links.push({ href: '/branches', label: 'Branches', icon: Building2 });
+      return links;
+    }
 
-  // POS - always accessible
-  navLinks.push({ href: '/checkout', label: 'POS', icon: ShoppingCart });
+    // Dashboard
+    if (isOwnerOrManager || hasPermission('view_dashboard')) {
+      links.push({ href: '/', label: 'Dashboard', icon: LayoutDashboard });
+    }
 
-  // Inventory
-  if (isOwnerOrManager || hasPermission('access_inventory') || hasPermission('view_dashboard')) {
-    navLinks.push({ href: '/inventory', label: 'Inventory', icon: PackageSearch });
-  }
+    // POS - always accessible
+    links.push({ href: '/checkout', label: 'POS', icon: ShoppingCart });
 
-  // Customers
-  if (isOwnerOrManager || hasPermission('access_customers') || hasPermission('view_dashboard')) {
-    navLinks.push({ href: '/customers', label: 'Customers', icon: Users });
-  }
+    // Inventory
+    if (isOwnerOrManager || hasPermission('access_inventory') || hasPermission('view_dashboard')) {
+      links.push({ href: '/inventory', label: 'Inventory', icon: PackageSearch });
+    }
 
-  // Branches
-  if (isOwnerOrManager || hasPermission('access_branches') || hasPermission('view_dashboard')) {
-    navLinks.push({ href: '/branches', label: 'Branches', icon: Building2 });
-  }
+    // Customers
+    if (isOwnerOrManager || hasPermission('access_customers') || hasPermission('view_dashboard')) {
+      links.push({ href: '/customers', label: 'Customers', icon: Users });
+    }
 
-  // Sales / Reports
-  if (isOwnerOrManager || hasPermission('view_reports')) {
-    navLinks.push({ href: '/sales', label: 'Sales', icon: History });
-  }
+    // Branches
+    if (isOwnerOrManager || hasPermission('access_branches') || hasPermission('view_dashboard')) {
+      links.push({ href: '/branches', label: 'Branches', icon: Building2 });
+    }
 
-  // Suppliers
-  if (isOwnerOrManager || hasPermission('access_suppliers')) {
-    navLinks.push({ href: '/suppliers', label: 'Suppliers', icon: Truck });
-  }
+    // Sales / Reports
+    if (isOwnerOrManager || hasPermission('view_reports')) {
+      links.push({ href: '/sales', label: 'Sales', icon: History });
+    }
+
+    // Suppliers
+    if (isOwnerOrManager || hasPermission('access_suppliers')) {
+      links.push({ href: '/suppliers', label: 'Suppliers', icon: Truck });
+    }
+
+    return links;
+  }, [permissionsLoading, isOwnerOrManager, hasPermission]);
 
   const roleLabel = userRole === 'owner' ? 'Owner' : userRole === 'manager' ? 'Manager' : 'Staff';
 

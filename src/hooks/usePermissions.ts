@@ -57,6 +57,17 @@ export const ROLE_TEMPLATES: Record<string, { name: string; description: string;
     description: 'POS access only',
     permissions: [],
   },
+  pharmacist: {
+    name: 'Pharmacist',
+    description: 'Full clinical access: inventory, customers, prescriptions',
+    permissions: [
+      'view_dashboard',
+      'access_inventory',
+      'access_customers',
+      'access_branches',
+      'view_reports',
+    ],
+  },
   inventory_clerk: {
     name: 'Inventory Clerk',
     description: 'Inventory + branches, can transfer stock',
@@ -70,6 +81,7 @@ export const ROLE_TEMPLATES: Record<string, { name: string; description: string;
       'access_inventory',
       'access_customers',
       'access_branches',
+      'access_suppliers',
       'view_reports',
       'view_analytics',
       'manage_stock_transfers',
