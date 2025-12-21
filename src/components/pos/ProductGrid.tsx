@@ -118,14 +118,14 @@ export const ProductGrid = ({ medications, onAddToCart, isLoading }: ProductGrid
         </Button>
       </div>
 
-      <ScrollArea className="h-[calc(100vh-320px)]">
+      <ScrollArea className="h-[calc(100vh-280px)]">
         {filteredMedications.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-60 text-muted-foreground">
             <Search className="h-12 w-12 mb-4 opacity-30" />
             <p>No medications found</p>
           </div>
         ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 pr-4">
+          <div className="grid gap-3 grid-cols-2 lg:grid-cols-3 pr-4">
             {filteredMedications.map((medication) => {
               const expired = isExpired(medication.expiry_date);
               const lowStock = isLowStock(medication.current_stock, medication.reorder_level);
