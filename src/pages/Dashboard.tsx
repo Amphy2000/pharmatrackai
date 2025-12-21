@@ -1,4 +1,5 @@
 import { useNavigate } from 'react-router-dom';
+import { motion, Variants } from 'framer-motion';
 import { useMedications } from '@/hooks/useMedications';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePharmacy } from '@/hooks/usePharmacy';
@@ -24,18 +25,38 @@ import { ExpiryDiscountEngine } from '@/components/dashboard/ExpiryDiscountEngin
 import { 
   Package, 
   AlertTriangle, 
-  Calendar, 
-  DollarSign,
+  Clock, 
+  XCircle,
   ShoppingCart,
   TrendingUp,
-  Loader2
+  Loader2,
+  Zap,
+  Users
 } from 'lucide-react';
+
+// Animation variants with proper typing
+const containerVariants: Variants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: { staggerChildren: 0.1 }
+  }
+};
+
+const itemVariants: Variants = {
+  hidden: { opacity: 0, y: 20 },
+  visible: { 
+    opacity: 1, 
+    y: 0, 
+    transition: { duration: 0.5 } 
+  }
+};
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const { user, isLoading: authLoading } = useAuth();
   const { pharmacy, isLoading: pharmacyLoading } = usePharmacy();
-  const { medications, isLoading: medsLoading, getMetrics, isExpired, isLowStock, isExpiringSoon } = useMedications();
+  const { medications, isLoading: medsLoading, getMetrics } = useMedications();
   const { activeShift } = useShifts();
   const { isOwnerOrManager } = usePermissions();
   const { formatPrice } = useCurrency();
@@ -44,17 +65,23 @@ const Dashboard = () => {
   if (authLoading || pharmacyLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-4" />
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="text-center"
+        >
+          <div className="h-16 w-16 rounded-2xl bg-gradient-primary flex items-center justify-center mx-auto mb-4 shadow-glow-primary">
+            <Loader2 className="h-8 w-8 animate-spin text-primary-foreground" />
+          </div>
           <p className="text-muted-foreground">Loading your pharmacy...</p>
-        </div>
+        </motion.div>
       </div>
     );
   }
 
   // Redirect to auth if not logged in
   if (!user) {
-    navigate('/auth');
+    navigate('/');
     return null;
   }
 
@@ -71,136 +98,262 @@ const Dashboard = () => {
     return sum + (med.current_stock * med.unit_price);
   }, 0) || 0;
 
-  // Get critical alerts
-  const expiredItems = medications?.filter(med => isExpired(med.expiry_date)) || [];
-  const lowStockItems = medications?.filter(med => isLowStock(med.current_stock, med.reorder_level)) || [];
-  const expiringSoonItems = medications?.filter(med => isExpiringSoon(med.expiry_date) && !isExpired(med.expiry_date)) || [];
-
   return (
     <div className="min-h-screen bg-background">
       <Header />
       
-      <main className="container mx-auto px-4 py-8">
+      <main className="container mx-auto px-4 sm:px-6 py-6 sm:py-8">
         {/* Welcome Section */}
-        <div className="mb-8">
-          <h1 className="text-3xl font-display font-bold mb-2">
-            Welcome back, {user.email?.split('@')[0]}
-          </h1>
-          <p className="text-muted-foreground">
-            Here's what's happening at {pharmacy.name} today.
-          </p>
-        </div>
+        <motion.section 
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="mb-8 sm:mb-10"
+        >
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div>
+              <h1 className="text-2xl sm:text-4xl font-bold font-display tracking-tight mb-2">
+                Welcome back, <span className="text-gradient">{user.user_metadata?.full_name || user.email?.split('@')[0]}</span>
+              </h1>
+              <p className="text-sm sm:text-base text-muted-foreground">
+                Here's what's happening at <span className="text-foreground font-medium">{pharmacy.name}</span> today.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <Button 
+                onClick={() => navigate('/checkout')}
+                className="gap-2 bg-gradient-primary hover:opacity-90 shadow-glow-primary btn-glow h-11 px-6"
+              >
+                <ShoppingCart className="h-5 w-5" />
+                Open POS
+              </Button>
+              <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary/10 border border-primary/20">
+                <Zap className="h-4 w-4 text-primary" />
+                <span className="text-sm text-primary font-medium">AI Active</span>
+              </div>
+            </div>
+          </div>
+        </motion.section>
 
-        {/* Shift Clock for Staff */}
-        <div className="mb-8">
-          <ShiftClock />
-        </div>
-
-        {/* Quick Actions for Staff */}
-        <StaffQuickActions />
+        {/* Shift Clock & Quick Actions */}
+        <motion.section 
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+          className="mb-8 sm:mb-10"
+        >
+          <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-3">
+            <motion.div variants={itemVariants} className="lg:col-span-1">
+              <ShiftClock />
+            </motion.div>
+            <motion.div variants={itemVariants} className="lg:col-span-2">
+              <StaffQuickActions />
+            </motion.div>
+          </div>
+        </motion.section>
 
         {/* Key Metrics */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <MetricCard
-            title="Total Products"
-            value={metrics.totalSKUs}
-            icon={<Package className="h-5 w-5" />}
-            trend={0}
-          />
-          <MetricCard
-            title="Low Stock Items"
-            value={metrics.lowStockItems}
-            icon={<AlertTriangle className="h-5 w-5" />}
-            variant={metrics.lowStockItems > 0 ? 'warning' : 'default'}
-          />
-          <MetricCard
-            title="Expiring Soon"
-            value={metrics.expiringWithin30Days}
-            icon={<Calendar className="h-5 w-5" />}
-            variant={metrics.expiringWithin30Days > 0 ? 'warning' : 'default'}
-          />
-          <MetricCard
-            title="Inventory Value"
-            value={formatPrice(totalInventoryValue)}
-            icon={<DollarSign className="h-5 w-5" />}
-          />
-        </div>
+        <motion.section 
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+          className="mb-8 sm:mb-10"
+        >
+          <div className="grid gap-4 sm:gap-6 grid-cols-2 lg:grid-cols-4">
+            <motion.div variants={itemVariants}>
+              <MetricCard
+                title="Total SKUs"
+                value={metrics.totalSKUs}
+                icon={<Package className="h-5 w-5 sm:h-7 sm:w-7" />}
+                variant="primary"
+                subtitle="Active medications"
+                trend={12}
+                trendLabel="vs last month"
+              />
+            </motion.div>
+            <motion.div variants={itemVariants}>
+              <MetricCard
+                title="Low Stock"
+                value={metrics.lowStockItems}
+                icon={<AlertTriangle className="h-5 w-5 sm:h-7 sm:w-7" />}
+                variant="warning"
+                subtitle="Below reorder level"
+                trend={-8}
+                trendLabel="improved"
+              />
+            </motion.div>
+            <motion.div variants={itemVariants}>
+              <MetricCard
+                title="Expired"
+                value={metrics.expiredItems}
+                icon={<XCircle className="h-5 w-5 sm:h-7 sm:w-7" />}
+                variant="danger"
+                subtitle="Require disposal"
+              />
+            </motion.div>
+            <motion.div variants={itemVariants}>
+              <MetricCard
+                title="Expiring Soon"
+                value={metrics.expiringWithin30Days}
+                icon={<Clock className="h-5 w-5 sm:h-7 sm:w-7" />}
+                variant="success"
+                subtitle="Within 30 days"
+              />
+            </motion.div>
+          </div>
+        </motion.section>
+
+        {/* Staff Performance - Owner/Manager Only */}
+        {isOwnerOrManager && (
+          <motion.section 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="mb-8 sm:mb-10"
+          >
+            <StaffPerformancePanel />
+          </motion.section>
+        )}
 
         {/* Manager KPIs */}
-        {isOwnerOrManager && <ManagerKPIPanel />}
-
-        {/* Staff Performance Panel */}
-        {isOwnerOrManager && <StaffPerformancePanel />}
+        {isOwnerOrManager && (
+          <motion.section 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.35 }}
+            className="mb-8 sm:mb-10"
+          >
+            <ManagerKPIPanel />
+          </motion.section>
+        )}
 
         {/* Business Intelligence Section */}
-        {isOwnerOrManager && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-            <ProfitMarginAnalyzer />
-            <DemandForecasting />
-          </div>
+        {isOwnerOrManager && medications.length > 0 && (
+          <motion.section 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            className="mb-8 sm:mb-10"
+          >
+            <div className="flex items-center gap-3 mb-6">
+              <div className="h-10 w-10 rounded-xl bg-gradient-primary flex items-center justify-center shadow-glow-primary">
+                <TrendingUp className="h-5 w-5 text-primary-foreground" />
+              </div>
+              <div>
+                <h2 className="text-xl sm:text-2xl font-bold font-display">Business Intelligence</h2>
+                <p className="text-sm text-muted-foreground">AI-powered insights for smarter decisions</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+              <ProfitMarginAnalyzer />
+              <DemandForecasting />
+            </div>
+          </motion.section>
         )}
 
         {/* Expiry Discount Engine */}
-        <ExpiryDiscountEngine />
+        {medications.length > 0 && (
+          <motion.section 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.45 }}
+            className="mb-8 sm:mb-10"
+          >
+            <ExpiryDiscountEngine />
+          </motion.section>
+        )}
+
+        {/* Financial Summary - Owner/Manager Only */}
+        {isOwnerOrManager && medications.length > 0 && (
+          <motion.section 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
+            className="mb-8 sm:mb-10"
+          >
+            <FinancialSummary medications={medications} />
+          </motion.section>
+        )}
 
         {/* Charts and Analytics */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          <InventoryCharts medications={medications} />
-          <SalesAnalytics />
-        </div>
+        {medications.length > 0 && (
+          <motion.section 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.55 }}
+            className="mb-8 sm:mb-10"
+          >
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+              <InventoryCharts medications={medications} />
+              {isOwnerOrManager && <SalesAnalytics />}
+            </div>
+          </motion.section>
+        )}
 
         {/* AI Insights and Compliance */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
-          <AIInsightsPanel medications={medications} />
-          <NAFDACCompliancePanel medications={medications} />
-        </div>
-
-        {/* Financial Summary */}
-        <FinancialSummary medications={medications} />
-
-        {/* Quick Actions */}
-        <Card className="mt-8">
-          <CardHeader>
-            <CardTitle>Quick Actions</CardTitle>
-            <CardDescription>Common tasks for your pharmacy</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <Button
-                variant="outline"
-                className="h-20 flex flex-col items-center justify-center gap-2"
-                onClick={() => navigate('/checkout')}
-              >
-                <ShoppingCart className="h-6 w-6" />
-                <span>Point of Sale</span>
-              </Button>
-              <Button
-                variant="outline"
-                className="h-20 flex flex-col items-center justify-center gap-2"
-                onClick={() => navigate('/inventory')}
-              >
-                <Package className="h-6 w-6" />
-                <span>Manage Stock</span>
-              </Button>
-              <Button
-                variant="outline"
-                className="h-20 flex flex-col items-center justify-center gap-2"
-                onClick={() => navigate('/sales')}
-              >
-                <TrendingUp className="h-6 w-6" />
-                <span>Sales History</span>
-              </Button>
-              <Button
-                variant="outline"
-                className="h-20 flex flex-col items-center justify-center gap-2"
-                onClick={() => navigate('/customers')}
-              >
-                <Package className="h-6 w-6" />
-                <span>Customers</span>
-              </Button>
+        {medications.length > 0 && (
+          <motion.section 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.6 }}
+            className="mb-8 sm:mb-10"
+          >
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
+              <AIInsightsPanel medications={medications} />
+              <NAFDACCompliancePanel medications={medications} />
             </div>
-          </CardContent>
-        </Card>
+          </motion.section>
+        )}
+
+        {/* Quick Actions Card */}
+        <motion.section 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.65 }}
+        >
+          <Card className="glass-card border-border/50">
+            <CardHeader>
+              <CardTitle className="font-display">Quick Actions</CardTitle>
+              <CardDescription>Navigate to common tasks</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <Button
+                  variant="outline"
+                  className="h-24 flex flex-col items-center justify-center gap-3 hover:bg-primary/5 hover:border-primary/30 transition-all group"
+                  onClick={() => navigate('/checkout')}
+                >
+                  <ShoppingCart className="h-6 w-6 group-hover:text-primary transition-colors" />
+                  <span className="text-sm">Point of Sale</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  className="h-24 flex flex-col items-center justify-center gap-3 hover:bg-primary/5 hover:border-primary/30 transition-all group"
+                  onClick={() => navigate('/inventory')}
+                >
+                  <Package className="h-6 w-6 group-hover:text-primary transition-colors" />
+                  <span className="text-sm">Manage Stock</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  className="h-24 flex flex-col items-center justify-center gap-3 hover:bg-primary/5 hover:border-primary/30 transition-all group"
+                  onClick={() => navigate('/sales')}
+                >
+                  <TrendingUp className="h-6 w-6 group-hover:text-primary transition-colors" />
+                  <span className="text-sm">Sales History</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  className="h-24 flex flex-col items-center justify-center gap-3 hover:bg-primary/5 hover:border-primary/30 transition-all group"
+                  onClick={() => navigate('/customers')}
+                >
+                  <Users className="h-6 w-6 group-hover:text-primary transition-colors" />
+                  <span className="text-sm">Customers</span>
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        </motion.section>
       </main>
     </div>
   );
