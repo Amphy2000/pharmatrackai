@@ -1,15 +1,14 @@
 import { Header } from '@/components/Header';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Settings as SettingsIcon, Users, DollarSign } from 'lucide-react';
+import { Settings as SettingsIcon, Users, Globe } from 'lucide-react';
 import { StaffManagement } from '@/components/settings/StaffManagement';
-import { CurrencySettings } from '@/components/settings/CurrencySettings';
+import { RegionCurrencySettings } from '@/components/settings/RegionCurrencySettings';
 import { usePermissions } from '@/hooks/usePermissions';
 
 const Settings = () => {
-  const { isOwnerOrManager, hasPermission } = usePermissions();
+  const { hasPermission } = usePermissions();
   const canManageStaff = hasPermission('manage_staff');
-  const canManageSettings = hasPermission('manage_settings');
 
   return (
     <div className="min-h-screen bg-background">
@@ -26,39 +25,39 @@ const Settings = () => {
           </p>
         </div>
 
-        <Tabs defaultValue={canManageStaff ? "staff" : "currency"} className="space-y-6">
+        <Tabs defaultValue="general" className="space-y-6">
           <TabsList>
+            <TabsTrigger value="general" className="gap-2">
+              <Globe className="h-4 w-4" />
+              General
+            </TabsTrigger>
             {canManageStaff && (
               <TabsTrigger value="staff" className="gap-2">
                 <Users className="h-4 w-4" />
                 Staff
               </TabsTrigger>
             )}
-            <TabsTrigger value="currency" className="gap-2">
-              <DollarSign className="h-4 w-4" />
-              Currency
-            </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="general">
+            <Card>
+              <CardHeader>
+                <CardTitle>General Settings</CardTitle>
+                <CardDescription>
+                  Configure region, currency, and POS mode
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <RegionCurrencySettings />
+              </CardContent>
+            </Card>
+          </TabsContent>
 
           {canManageStaff && (
             <TabsContent value="staff">
               <StaffManagement />
             </TabsContent>
           )}
-
-          <TabsContent value="currency">
-            <Card>
-              <CardHeader>
-                <CardTitle>Currency Settings</CardTitle>
-                <CardDescription>
-                  Configure your preferred currency for the pharmacy
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <CurrencySettings />
-              </CardContent>
-            </Card>
-          </TabsContent>
         </Tabs>
       </main>
     </div>
