@@ -15,49 +15,62 @@ import { format } from 'date-fns';
 const plans = [
   {
     id: 'starter',
-    name: 'Starter',
-    price: 15000,
-    priceDisplay: '₦15,000',
-    period: '/month',
+    name: 'Starter (Ownership)',
+    price: 150000,
+    priceDisplay: '₦150,000',
+    priceLabel: 'Setup',
+    subtext: '+ ₦10,000/month for cloud maintenance',
+    monthlyFee: 10000,
+    isHybrid: true,
+    period: '',
     features: [
-      'Up to 500 medications',
+      'Up to 1,000 medications',
       '1 user account',
       'Basic POS',
-      'Email support',
+      'Data Migration Support',
+      'Cloud Backups',
     ],
     popular: false,
+    buttonText: 'Get Started',
   },
   {
     id: 'pro',
     name: 'Pro',
     price: 35000,
     priceDisplay: '₦35,000',
+    priceLabel: '',
+    subtext: '₦0 Setup Fee',
+    monthlyFee: 35000,
+    isHybrid: false,
     period: '/month',
     features: [
       'Unlimited medications',
       'Up to 5 users',
-      'Advanced analytics',
+      'AI Expiry Insights',
+      'Advanced Analytics',
       'Multi-branch support',
-      'Priority support',
-      'AI insights',
     ],
     popular: true,
+    buttonText: 'Subscribe',
   },
   {
     id: 'enterprise',
     name: 'Enterprise',
-    price: 100000,
-    priceDisplay: '₦100,000',
-    period: '/month',
+    price: 1000000,
+    priceDisplay: '₦1,000,000+',
+    priceLabel: '',
+    subtext: 'Custom pricing',
+    monthlyFee: 0,
+    isHybrid: false,
+    period: '',
     features: [
-      'Everything in Pro',
       'Unlimited users',
       'Custom integrations',
-      'Dedicated support',
-      'SLA guarantee',
-      'On-premise option',
+      'Dedicated account manager',
+      'On-premise installation option',
     ],
     popular: false,
+    buttonText: 'Contact Sales',
   },
 ];
 
@@ -242,8 +255,16 @@ export const SubscriptionManagement = () => {
                     <CardTitle className="text-base">{planOption.name}</CardTitle>
                     <div className="mt-2">
                       <span className="text-2xl font-bold">{planOption.priceDisplay}</span>
-                      <span className="text-sm text-muted-foreground">{planOption.period}</span>
+                      {planOption.priceLabel && (
+                        <span className="text-sm text-muted-foreground ml-1">{planOption.priceLabel}</span>
+                      )}
+                      {planOption.period && (
+                        <span className="text-sm text-muted-foreground">{planOption.period}</span>
+                      )}
                     </div>
+                    {planOption.subtext && (
+                      <p className="text-xs text-muted-foreground mt-1">{planOption.subtext}</p>
+                    )}
                   </CardHeader>
                   <CardContent className="space-y-2 text-sm">
                     {planOption.features.map((feature) => (
@@ -257,8 +278,11 @@ export const SubscriptionManagement = () => {
                     <Button 
                       className="w-full gap-2" 
                       variant={isCurrentPlan ? 'outline' : planOption.popular ? 'default' : 'outline'}
-                      disabled={isCurrentPlan || isProcessing !== null}
-                      onClick={() => handleUpgrade(planOption.id)}
+                      disabled={isCurrentPlan || isProcessing !== null || planOption.id === 'enterprise'}
+                      onClick={() => planOption.id === 'enterprise' 
+                        ? window.open('mailto:sales@pharmatrack.com?subject=Enterprise%20Plan%20Inquiry', '_blank')
+                        : handleUpgrade(planOption.id)
+                      }
                     >
                       {isProcessing === planOption.id ? (
                         <>
@@ -270,7 +294,7 @@ export const SubscriptionManagement = () => {
                       ) : (
                         <>
                           <Zap className="h-4 w-4" />
-                          {planOption.id === 'enterprise' ? 'Contact Sales' : 'Upgrade'}
+                          {planOption.buttonText}
                         </>
                       )}
                     </Button>

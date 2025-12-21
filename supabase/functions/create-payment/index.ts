@@ -6,10 +6,23 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const PLAN_PRICES = {
-  starter: 1500000, // ₦15,000 in kobo
-  pro: 3500000, // ₦35,000 in kobo
-  enterprise: 10000000, // ₦100,000 in kobo
+// Plan pricing in kobo (1 Naira = 100 kobo)
+const PLAN_CONFIG = {
+  starter: { 
+    setupFee: 15000000,   // ₦150,000 one-time setup
+    monthlyFee: 1000000,  // ₦10,000/month maintenance
+    isHybrid: true,
+  },
+  pro: { 
+    setupFee: 0,
+    monthlyFee: 3500000,  // ₦35,000/month
+    isHybrid: false,
+  },
+  enterprise: { 
+    setupFee: 100000000,  // ₦1,000,000+ (contact sales)
+    monthlyFee: 0,
+    isHybrid: false,
+  },
 };
 
 serve(async (req) => {
@@ -55,7 +68,8 @@ serve(async (req) => {
 
     const { plan, callback_url } = await req.json();
 
-    if (!plan || !PLAN_PRICES[plan as keyof typeof PLAN_PRICES]) {
+    const planConfig = PLAN_CONFIG[plan as keyof typeof PLAN_CONFIG];
+    if (!plan || !planConfig) {
       throw new Error("Invalid plan selected");
     }
 
@@ -74,6 +88,15 @@ serve(async (req) => {
     const pharmacyEmail = (staff.pharmacies as any)?.email || user.email;
     const pharmacyName = (staff.pharmacies as any)?.name || "Pharmacy";
 
+    // Determine amount based on plan type
+    // For hybrid plans (starter): charge setup fee first, then set up recurring
+    // For subscription plans (pro): charge monthly fee
+    const chargeAmount = planConfig.isHybrid ? planConfig.setupFee : planConfig.monthlyFee;
+
+    if (chargeAmount === 0) {
+      throw new Error("Enterprise plan requires contacting sales");
+    }
+
     // Create Paystack transaction
     const response = await fetch("https://api.paystack.co/transaction/initialize", {
       method: "POST",
@@ -83,12 +106,14 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         email: pharmacyEmail,
-        amount: PLAN_PRICES[plan as keyof typeof PLAN_PRICES],
+        amount: chargeAmount,
         callback_url: callback_url || `${req.headers.get("origin")}/settings`,
         metadata: {
           pharmacy_id: staff.pharmacy_id,
           plan: plan,
           pharmacy_name: pharmacyName,
+          is_hybrid: planConfig.isHybrid,
+          monthly_fee: planConfig.monthlyFee,
         },
       }),
     });
@@ -102,7 +127,7 @@ serve(async (req) => {
     // Create pending payment record
     await supabase.from("subscription_payments").insert({
       pharmacy_id: staff.pharmacy_id,
-      amount: PLAN_PRICES[plan as keyof typeof PLAN_PRICES] / 100,
+      amount: chargeAmount / 100, // Convert from kobo to naira
       plan: plan,
       status: "pending",
       paystack_reference: result.data.reference,
