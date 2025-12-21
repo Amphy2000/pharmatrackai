@@ -38,69 +38,30 @@ export const AddStaffModal = ({ isOpen, onClose, onSuccess }: AddStaffModalProps
     setIsLoading(true);
 
     try {
-      // 1. Create the user account in Supabase Auth
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password,
-        options: {
-          data: {
-            full_name: formData.fullName,
-          },
-          emailRedirectTo: `${window.location.origin}/auth`,
+      // Call edge function to create staff (avoids session switching)
+      const response = await supabase.functions.invoke('create-staff', {
+        body: {
+          email: formData.email,
+          password: formData.password,
+          fullName: formData.fullName,
+          phone: formData.phone,
+          role: formData.role,
+          pharmacyId: pharmacy.id,
+          permissions: formData.role === 'staff' ? selectedPermissions : [],
         },
       });
 
-      if (authError) throw authError;
-      if (!authData.user) throw new Error('Failed to create user account');
-
-      // 2. Create profile for the new user
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert({
-          user_id: authData.user.id,
-          full_name: formData.fullName,
-          phone: formData.phone || null,
-        });
-
-      if (profileError) {
-        console.error('Profile creation error:', profileError);
-        // Continue even if profile fails - it might already exist from trigger
+      if (response.error) {
+        throw new Error(response.error.message || 'Failed to create staff member');
       }
 
-      // 3. Add as pharmacy staff
-      const { data: staffData, error: staffError } = await supabase
-        .from('pharmacy_staff')
-        .insert({
-          pharmacy_id: pharmacy.id,
-          user_id: authData.user.id,
-          role: formData.role,
-          is_active: true,
-        })
-        .select()
-        .single();
-
-      if (staffError) throw staffError;
-
-      // 4. If staff role and has permissions, add them
-      if (formData.role === 'staff' && selectedPermissions.length > 0) {
-        const { error: permError } = await supabase
-          .from('staff_permissions')
-          .insert(
-            selectedPermissions.map(perm => ({
-              staff_id: staffData.id,
-              permission_key: perm,
-              is_granted: true,
-            }))
-          );
-
-        if (permError) {
-          console.error('Permission creation error:', permError);
-        }
+      if (response.data?.error) {
+        throw new Error(response.data.error);
       }
 
       toast({
         title: 'Staff Member Added',
-        description: `${formData.fullName} has been added to your team. They will receive an email to verify their account.`,
+        description: `${formData.fullName} has been added to your team. They can now log in with their credentials.`,
       });
 
       // Reset form

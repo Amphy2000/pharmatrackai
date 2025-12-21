@@ -99,10 +99,10 @@ const Dashboard = () => {
   }, 0) || 0;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background overflow-x-hidden">
       <Header />
       
-      <main className="container mx-auto px-4 sm:px-6 py-6 sm:py-8">
+      <main className="container mx-auto px-4 sm:px-6 py-6 sm:py-8 max-w-[1600px]">
         {/* Welcome Section */}
         <motion.section 
           initial={{ opacity: 0, y: -20 }}

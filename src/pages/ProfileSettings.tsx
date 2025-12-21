@@ -23,7 +23,8 @@ import {
   ExternalLink,
   MessageCircle,
   Book,
-  FileText
+  FileText,
+  AlertCircle
 } from 'lucide-react';
 
 const ProfileSettings = () => {
@@ -35,6 +36,7 @@ const ProfileSettings = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [showCurrentPassword, setShowCurrentPassword] = useState(false);
   const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showFAQ, setShowFAQ] = useState(false);
   
   const [profile, setProfile] = useState({
     fullName: '',
@@ -387,35 +389,56 @@ const ProfileSettings = () => {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid gap-4 sm:grid-cols-2">
-                  <Card className="p-4 hover:bg-muted/50 transition-colors cursor-pointer">
-                    <div className="flex items-start gap-3">
-                      <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
-                        <Book className="h-5 w-5 text-primary" />
+                  <a 
+                    href="https://docs.google.com/document/d/1pharmatrack-user-guide" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="block"
+                  >
+                    <Card className="p-4 hover:bg-muted/50 transition-colors cursor-pointer h-full">
+                      <div className="flex items-start gap-3">
+                        <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                          <Book className="h-5 w-5 text-primary" />
+                        </div>
+                        <div>
+                          <h4 className="font-medium flex items-center gap-2">
+                            User Guide
+                            <ExternalLink className="h-3 w-3 text-muted-foreground" />
+                          </h4>
+                          <p className="text-sm text-muted-foreground">
+                            Learn how to use all features
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <h4 className="font-medium">User Guide</h4>
-                        <p className="text-sm text-muted-foreground">
-                          Learn how to use all features
-                        </p>
-                      </div>
-                    </div>
-                  </Card>
+                    </Card>
+                  </a>
 
-                  <Card className="p-4 hover:bg-muted/50 transition-colors cursor-pointer">
-                    <div className="flex items-start gap-3">
-                      <div className="h-10 w-10 rounded-lg bg-success/10 flex items-center justify-center flex-shrink-0">
-                        <MessageCircle className="h-5 w-5 text-success" />
+                  <a 
+                    href="mailto:pharmatrackai@gmail.com?subject=Support Request"
+                    className="block"
+                  >
+                    <Card className="p-4 hover:bg-muted/50 transition-colors cursor-pointer h-full">
+                      <div className="flex items-start gap-3">
+                        <div className="h-10 w-10 rounded-lg bg-success/10 flex items-center justify-center flex-shrink-0">
+                          <MessageCircle className="h-5 w-5 text-success" />
+                        </div>
+                        <div>
+                          <h4 className="font-medium flex items-center gap-2">
+                            Contact Support
+                            <Mail className="h-3 w-3 text-muted-foreground" />
+                          </h4>
+                          <p className="text-sm text-muted-foreground">
+                            pharmatrackai@gmail.com
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <h4 className="font-medium">Contact Support</h4>
-                        <p className="text-sm text-muted-foreground">
-                          Get help from our team
-                        </p>
-                      </div>
-                    </div>
-                  </Card>
+                    </Card>
+                  </a>
 
-                  <Card className="p-4 hover:bg-muted/50 transition-colors cursor-pointer">
+                  <Card 
+                    className="p-4 hover:bg-muted/50 transition-colors cursor-pointer"
+                    onClick={() => setShowFAQ(!showFAQ)}
+                  >
                     <div className="flex items-start gap-3">
                       <div className="h-10 w-10 rounded-lg bg-warning/10 flex items-center justify-center flex-shrink-0">
                         <FileText className="h-5 w-5 text-warning" />
@@ -429,27 +452,77 @@ const ProfileSettings = () => {
                     </div>
                   </Card>
 
-                  <Card className="p-4 hover:bg-muted/50 transition-colors cursor-pointer">
-                    <div className="flex items-start gap-3">
-                      <div className="h-10 w-10 rounded-lg bg-secondary/10 flex items-center justify-center flex-shrink-0">
-                        <ExternalLink className="h-5 w-5 text-secondary-foreground" />
+                  <a 
+                    href="mailto:pharmatrackai@gmail.com?subject=Bug Report&body=Please describe the issue you encountered:%0A%0A1. What were you trying to do?%0A%0A2. What happened instead?%0A%0A3. Steps to reproduce:%0A"
+                    className="block"
+                  >
+                    <Card className="p-4 hover:bg-muted/50 transition-colors cursor-pointer h-full">
+                      <div className="flex items-start gap-3">
+                        <div className="h-10 w-10 rounded-lg bg-destructive/10 flex items-center justify-center flex-shrink-0">
+                          <AlertCircle className="h-5 w-5 text-destructive" />
+                        </div>
+                        <div>
+                          <h4 className="font-medium flex items-center gap-2">
+                            Report an Issue
+                            <Mail className="h-3 w-3 text-muted-foreground" />
+                          </h4>
+                          <p className="text-sm text-muted-foreground">
+                            Let us know about bugs
+                          </p>
+                        </div>
                       </div>
-                      <div>
-                        <h4 className="font-medium">Report an Issue</h4>
-                        <p className="text-sm text-muted-foreground">
-                          Let us know about bugs
+                    </Card>
+                  </a>
+                </div>
+
+                {/* FAQ Section */}
+                {showFAQ && (
+                  <div className="mt-6 space-y-4 border-t pt-6">
+                    <h4 className="font-semibold">Frequently Asked Questions</h4>
+                    <div className="space-y-3">
+                      <div className="p-4 rounded-lg bg-muted/30">
+                        <p className="font-medium text-sm">How do I add inventory items?</p>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Go to Inventory → Click "Add Item" → Fill in the medication details including name, batch number, expiry date, and stock quantity.
+                        </p>
+                      </div>
+                      <div className="p-4 rounded-lg bg-muted/30">
+                        <p className="font-medium text-sm">How do I process a sale?</p>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Navigate to POS → Search or scan items → Add to cart → Click "Complete Sale" to finish the transaction.
+                        </p>
+                      </div>
+                      <div className="p-4 rounded-lg bg-muted/30">
+                        <p className="font-medium text-sm">How do I add staff members?</p>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Go to Settings → Staff tab → Click "Add Staff" → Enter their details and assign permissions.
+                        </p>
+                      </div>
+                      <div className="p-4 rounded-lg bg-muted/30">
+                        <p className="font-medium text-sm">How do I track expiring medications?</p>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          The Dashboard shows expiry alerts. You can also go to Inventory and filter by "Expiring Soon" to see medications nearing expiry.
+                        </p>
+                      </div>
+                      <div className="p-4 rounded-lg bg-muted/30">
+                        <p className="font-medium text-sm">How do I generate reports?</p>
+                        <p className="text-sm text-muted-foreground mt-1">
+                          Go to Sales History for transaction reports, or use the Dashboard analytics for inventory and financial insights.
                         </p>
                       </div>
                     </div>
-                  </Card>
-                </div>
+                  </div>
+                )}
 
                 <div className="pt-4 border-t">
                   <p className="text-sm text-muted-foreground">
                     <strong>PharmaTrack</strong> - Enterprise Pharmacy Management System
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
-                    Version 1.0.0 • © 2024 All rights reserved
+                    Version 1.0.0 • © {new Date().getFullYear()} All rights reserved
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-2">
+                    Support: <a href="mailto:pharmatrackai@gmail.com" className="text-primary hover:underline">pharmatrackai@gmail.com</a>
                   </p>
                 </div>
               </CardContent>

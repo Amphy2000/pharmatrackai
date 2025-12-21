@@ -128,7 +128,7 @@ export const InventoryCharts = ({ medications }: InventoryChartsProps) => {
   }
 
   return (
-    <div className="grid gap-6 md:grid-cols-2">
+    <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-2">
       {/* Expiry Timeline */}
       <div className="chart-container">
         <div className="section-header">
@@ -231,44 +231,42 @@ export const InventoryCharts = ({ medications }: InventoryChartsProps) => {
       </div>
 
       {/* Financial Impact */}
-      <div className="chart-container">
+      <div className="chart-container overflow-hidden">
         <div className="section-header">
-          <div className="section-icon">
+          <div className="section-icon flex-shrink-0">
             <TrendingUp className="h-5 w-5 text-primary-foreground" />
           </div>
-          <div>
+          <div className="min-w-0">
             <h3 className="text-lg font-semibold font-display">Financial Impact</h3>
             <p className="text-sm text-muted-foreground">Inventory value at risk</p>
           </div>
         </div>
-        <div className="h-64 flex items-center justify-between">
-          <div className="flex-1 space-y-4">
-            <div className="text-center">
-              <p className="text-4xl font-bold font-display text-gradient">{formatPrice(totalValue)}</p>
-              <p className="text-sm text-muted-foreground mt-1">Total Inventory Value</p>
-            </div>
-            <div className="space-y-3">
-              {financialData.map((item, index) => (
-                <div key={index} className="space-y-1">
-                  <div className="flex items-center justify-between text-sm">
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
-                      <span className="text-muted-foreground">{item.name}</span>
-                    </div>
-                    <span className="font-semibold" style={{ color: item.color }}>{formatPrice(item.value)}</span>
+        <div className="space-y-4">
+          <div className="text-center py-2">
+            <p className="text-2xl sm:text-3xl font-bold font-display text-gradient truncate">{formatPrice(totalValue)}</p>
+            <p className="text-xs text-muted-foreground mt-1">Total Inventory Value</p>
+          </div>
+          <div className="space-y-3">
+            {financialData.map((item, index) => (
+              <div key={index} className="space-y-1.5">
+                <div className="flex items-center justify-between text-sm gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ backgroundColor: item.color }} />
+                    <span className="text-muted-foreground truncate">{item.name}</span>
                   </div>
-                  <div className="h-2 bg-muted rounded-full overflow-hidden">
-                    <div 
-                      className="h-full rounded-full transition-all duration-500"
-                      style={{ 
-                        width: `${totalValue > 0 ? (item.value / totalValue) * 100 : 0}%`,
-                        backgroundColor: item.color 
-                      }}
-                    />
-                  </div>
+                  <span className="font-semibold flex-shrink-0 text-xs sm:text-sm" style={{ color: item.color }}>{formatPrice(item.value)}</span>
                 </div>
-              ))}
-            </div>
+                <div className="h-2 bg-muted rounded-full overflow-hidden">
+                  <div 
+                    className="h-full rounded-full transition-all duration-500"
+                    style={{ 
+                      width: `${totalValue > 0 ? (item.value / totalValue) * 100 : 0}%`,
+                      backgroundColor: item.color 
+                    }}
+                  />
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </div>
