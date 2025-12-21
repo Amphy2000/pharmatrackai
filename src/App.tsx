@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { CurrencyProvider } from "@/contexts/CurrencyContext";
 import { RegionalSettingsProvider } from "@/contexts/RegionalSettingsContext";
+import { BranchProvider } from "@/contexts/BranchContext";
 import { ManagerRoute } from "@/components/ManagerRoute";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Landing from "./pages/Landing";
@@ -32,7 +33,8 @@ const App = () => (
     <AuthProvider>
       <RegionalSettingsProvider>
         <CurrencyProvider>
-          <TooltipProvider>
+          <BranchProvider>
+            <TooltipProvider>
             <Toaster />
             <Sonner />
             <BrowserRouter>
@@ -58,7 +60,8 @@ const App = () => (
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </BrowserRouter>
-          </TooltipProvider>
+            </TooltipProvider>
+          </BranchProvider>
         </CurrencyProvider>
       </RegionalSettingsProvider>
     </AuthProvider>

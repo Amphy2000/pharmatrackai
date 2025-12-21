@@ -1,18 +1,23 @@
 import { Header } from '@/components/Header';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Settings as SettingsIcon, Users, Globe, CreditCard } from 'lucide-react';
+import { Settings as SettingsIcon, Users, Globe, CreditCard, Building2 } from 'lucide-react';
 import { StaffManagement } from '@/components/settings/StaffManagement';
 import { RegionCurrencySettings } from '@/components/settings/RegionCurrencySettings';
 import { SubscriptionManagement } from '@/components/settings/SubscriptionManagement';
 import { usePermissions } from '@/hooks/usePermissions';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, Navigate } from 'react-router-dom';
 
 const Settings = () => {
-  const { hasPermission } = usePermissions();
+  const { hasPermission, userRole, isLoading } = usePermissions();
   const canManageStaff = hasPermission('manage_staff');
   const [searchParams] = useSearchParams();
   const defaultTab = searchParams.get('tab') || 'general';
+
+  // Only owners can access settings page
+  if (!isLoading && userRole !== 'owner') {
+    return <Navigate to="/dashboard" replace />;
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -25,7 +30,7 @@ const Settings = () => {
             Settings
           </h1>
           <p className="text-muted-foreground mt-1">
-            Manage your pharmacy settings and staff
+            Manage your pharmacy settings, staff, and billing
           </p>
         </div>
 
