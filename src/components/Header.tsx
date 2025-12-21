@@ -24,6 +24,12 @@ import {
   AlertTriangle,
   Info
 } from 'lucide-react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -64,8 +70,10 @@ export const Header = () => {
   // Manager/Owner only navigation
   const managerNavLinks = [
     { href: '/suppliers', label: 'Suppliers', icon: Truck },
-    { href: '/settings', label: 'Settings', icon: Settings },
   ];
+
+  // Settings - always visible to owner/manager
+  const settingsLink = { href: '/settings', label: 'Settings', icon: Settings };
 
   const navLinks = isOwnerOrManager 
     ? [...staffNavLinks, ...managerNavLinks]
@@ -100,49 +108,77 @@ export const Header = () => {
   };
 
   return (
-    <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
-      <div className="container mx-auto px-4 sm:px-6 overflow-hidden">
-        <div className="flex h-16 sm:h-20 items-center justify-between gap-4 lg:gap-6">
-          {/* Logo & Brand */}
-          <Link to="/dashboard" className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
-            <div className="relative">
-              <div className="flex h-9 w-9 sm:h-11 sm:w-11 items-center justify-center rounded-xl bg-gradient-primary shadow-glow-primary">
-                <Pill className="h-4 w-4 sm:h-5 sm:w-5 text-primary-foreground" />
+    <TooltipProvider delayDuration={200}>
+      <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
+        <div className="container mx-auto px-4 sm:px-6 overflow-hidden">
+          <div className="flex h-16 sm:h-20 items-center justify-between gap-4 lg:gap-6">
+            {/* Logo & Brand */}
+            <Link to="/dashboard" className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+              <div className="relative">
+                <div className="flex h-9 w-9 sm:h-11 sm:w-11 items-center justify-center rounded-xl bg-gradient-primary shadow-glow-primary">
+                  <Pill className="h-4 w-4 sm:h-5 sm:w-5 text-primary-foreground" />
+                </div>
+                <div className="absolute -bottom-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-success">
+                  <Activity className="h-2 w-2 text-success-foreground" />
+                </div>
               </div>
-              <div className="absolute -bottom-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-success">
-                <Activity className="h-2 w-2 text-success-foreground" />
+              <div className="hidden sm:block">
+                <h1 className="text-lg font-bold font-display tracking-tight">
+                  <span className="text-foreground">Pharma</span>
+                  <span className="text-gradient">Track</span>
+                </h1>
               </div>
-            </div>
-            <div className="hidden sm:block">
-              <h1 className="text-lg font-bold font-display tracking-tight">
-                <span className="text-foreground">Pharma</span>
-                <span className="text-gradient">Track</span>
-              </h1>
-            </div>
-          </Link>
+            </Link>
 
-          {/* Navigation Links */}
-          <nav className="hidden xl:flex items-center flex-1 justify-center">
-            <div className="flex items-center gap-0.5">
-              {navLinks.map((link) => {
-                const isActive = location.pathname === link.href || (link.href === '/' && location.pathname === '/dashboard');
-                return (
-                  <Link
-                    key={link.href}
-                    to={link.href === '/' ? '/dashboard' : link.href}
-                    className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
-                      isActive 
-                        ? 'bg-primary/10 text-primary' 
-                        : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-                    }`}
-                  >
-                    <link.icon className="h-4 w-4" />
-                    {link.label}
-                  </Link>
-                );
-              })}
-            </div>
-          </nav>
+            {/* Navigation Links */}
+            <nav className="hidden xl:flex items-center flex-1 justify-center">
+              <div className="flex items-center gap-1">
+                {navLinks.map((link) => {
+                  const isActive = location.pathname === link.href || (link.href === '/' && location.pathname === '/dashboard');
+                  return (
+                    <Tooltip key={link.href}>
+                      <TooltipTrigger asChild>
+                        <Link
+                          to={link.href === '/' ? '/dashboard' : link.href}
+                          className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
+                            isActive 
+                              ? 'bg-primary/10 text-primary' 
+                              : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                          }`}
+                        >
+                          <link.icon className="h-4 w-4" />
+                          {link.label}
+                        </Link>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        <p>{link.label}</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  );
+                })}
+                {/* Settings Link - Always visible */}
+                {isOwnerOrManager && (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Link
+                        to="/settings"
+                        className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium transition-all whitespace-nowrap ${
+                          location.pathname === '/settings'
+                            ? 'bg-primary/10 text-primary' 
+                            : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                        }`}
+                      >
+                        <Settings className="h-4 w-4" />
+                        Settings
+                      </Link>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Settings</p>
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+              </div>
+            </nav>
 
           {/* Right Section */}
           <div className="flex items-center gap-2 flex-shrink-0">
@@ -160,19 +196,45 @@ export const Header = () => {
               {navLinks.slice(0, 5).map((link) => {
                 const isActive = location.pathname === link.href || (link.href === '/' && location.pathname === '/dashboard');
                 return (
-                  <Link
-                    key={link.href}
-                    to={link.href === '/' ? '/dashboard' : link.href}
-                    className={`flex items-center justify-center h-8 w-8 rounded-lg transition-all flex-shrink-0 ${
-                      isActive 
-                        ? 'bg-primary/10 text-primary' 
-                        : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
-                    }`}
-                  >
-                    <link.icon className="h-4 w-4" />
-                  </Link>
+                  <Tooltip key={link.href}>
+                    <TooltipTrigger asChild>
+                      <Link
+                        to={link.href === '/' ? '/dashboard' : link.href}
+                        className={`flex items-center justify-center h-8 w-8 rounded-lg transition-all flex-shrink-0 ${
+                          isActive 
+                            ? 'bg-primary/10 text-primary' 
+                            : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                        }`}
+                      >
+                        <link.icon className="h-4 w-4" />
+                      </Link>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>{link.label}</p>
+                    </TooltipContent>
+                  </Tooltip>
                 );
               })}
+              {/* Settings icon for mobile */}
+              {isOwnerOrManager && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Link
+                      to="/settings"
+                      className={`flex items-center justify-center h-8 w-8 rounded-lg transition-all flex-shrink-0 ${
+                        location.pathname === '/settings'
+                          ? 'bg-primary/10 text-primary' 
+                          : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
+                      }`}
+                    >
+                      <Settings className="h-4 w-4" />
+                    </Link>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Settings</p>
+                  </TooltipContent>
+                </Tooltip>
+              )}
             </div>
 
             {/* Notifications */}
@@ -292,5 +354,6 @@ export const Header = () => {
         </div>
       </div>
     </header>
+    </TooltipProvider>
   );
 };
