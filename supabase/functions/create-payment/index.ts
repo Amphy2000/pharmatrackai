@@ -40,8 +40,15 @@ serve(async (req) => {
     // Verify user with the JWT token
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     if (authError || !user) {
+      const code = (authError as any)?.code || (authError as any)?.error_code || 'unauthorized';
       console.error("Auth error:", authError);
-      throw new Error("Unauthorized");
+      const message = code === 'session_not_found'
+        ? 'Session expired. Please sign in again.'
+        : 'Unauthorized';
+      return new Response(JSON.stringify({ error: message, code }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
     
     console.log("Authenticated user:", user.id);

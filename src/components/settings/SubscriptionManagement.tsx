@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -8,7 +9,7 @@ import { usePharmacy } from '@/hooks/usePharmacy';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
-import { Crown, Check, Zap, Calendar, CreditCard, Loader2, ExternalLink } from 'lucide-react';
+import { Crown, Check, Zap, Calendar, CreditCard, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 
 const plans = [
@@ -61,6 +62,7 @@ const plans = [
 ];
 
 export const SubscriptionManagement = () => {
+  const navigate = useNavigate();
   const { state, plan: currentPlan, daysRemaining, isTrial, isExpired } = useSubscription();
   const { pharmacy } = usePharmacy();
   const { toast } = useToast();
@@ -90,25 +92,54 @@ export const SubscriptionManagement = () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) {
         toast({
-          title: 'Error',
-          description: 'Please log in to upgrade your subscription.',
+          title: 'Login required',
+          description: 'Please sign in to upgrade your subscription.',
           variant: 'destructive',
         });
+        navigate('/auth');
+        return;
+      }
+
+      // Validate session with backend (fixes "session_not_found" stale sessions)
+      const { data: userData, error: userError } = await supabase.auth.getUser();
+      if (userError || !userData.user) {
+        await supabase.auth.signOut();
+        toast({
+          title: 'Session expired',
+          description: 'Please sign in again to continue.',
+          variant: 'destructive',
+        });
+        navigate('/auth');
         return;
       }
 
       const response = await supabase.functions.invoke('create-payment', {
-        body: { 
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: {
           plan: planId,
           callback_url: `${window.location.origin}/settings?tab=subscription`,
         },
       });
 
       if (response.error) {
-        throw new Error(response.error.message);
+        const msg = response.error.message || 'Failed to initialize payment.';
+        // If backend still says session expired/unauthorized, force re-login.
+        if (msg.toLowerCase().includes('unauthorized') || msg.toLowerCase().includes('session expired')) {
+          await supabase.auth.signOut();
+          toast({
+            title: 'Session expired',
+            description: 'Please sign in again to upgrade.',
+            variant: 'destructive',
+          });
+          navigate('/auth');
+          return;
+        }
+        throw new Error(msg);
       }
 
-      const { authorization_url } = response.data;
+      const { authorization_url } = response.data || {};
       if (authorization_url) {
         window.location.href = authorization_url;
       } else {
