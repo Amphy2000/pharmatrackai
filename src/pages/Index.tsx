@@ -8,6 +8,8 @@ import { MetricCard } from '@/components/dashboard/MetricCard';
 import { AIInsightsPanel } from '@/components/dashboard/AIInsightsPanel';
 import { InventoryCharts } from '@/components/dashboard/InventoryCharts';
 import { FinancialSummary } from '@/components/dashboard/FinancialSummary';
+import { NAFDACCompliancePanel } from '@/components/dashboard/NAFDACCompliancePanel';
+import { SalesAnalytics } from '@/components/dashboard/SalesAnalytics';
 import { MedicationsTable } from '@/components/inventory/MedicationsTable';
 import { AddMedicationModal } from '@/components/inventory/AddMedicationModal';
 import { CSVImportModal } from '@/components/inventory/CSVImportModal';
@@ -204,6 +206,20 @@ const Index = () => {
         {!isLoading && medications.length > 0 && (
           <section className="mb-8 sm:mb-10 animate-slide-up" style={{ animationDelay: '100ms' }}>
             <FinancialSummary medications={medications} />
+          </section>
+        )}
+
+        {/* Sales Analytics */}
+        {!isLoading && (
+          <section className="mb-8 sm:mb-10 animate-slide-up" style={{ animationDelay: '125ms' }}>
+            <SalesAnalytics />
+          </section>
+        )}
+
+        {/* NAFDAC Compliance */}
+        {!isLoading && medications.length > 0 && (
+          <section className="mb-8 sm:mb-10 animate-slide-up" style={{ animationDelay: '150ms' }}>
+            <NAFDACCompliancePanel medications={medications} />
           </section>
         )}
 
