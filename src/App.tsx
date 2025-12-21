@@ -12,6 +12,7 @@ import Checkout from "./pages/Checkout";
 import SalesHistory from "./pages/SalesHistory";
 import Customers from "./pages/Customers";
 import Branches from "./pages/Branches";
+import Inventory from "./pages/Inventory";
 import Suppliers from "./pages/Suppliers";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
@@ -33,8 +34,9 @@ const App = () => (
                 <Route path="/sales-history" element={<SalesHistory />} />
                 <Route path="/customers" element={<Customers />} />
                 <Route path="/branches" element={<Branches />} />
+                <Route path="/inventory" element={<Inventory />} />
                 <Route path="/suppliers" element={<ManagerRoute><Suppliers /></ManagerRoute>} />
-                <Route path="/settings" element={<ManagerRoute><Settings /></ManagerRoute>} />
+                <Route path="/settings" element={<Settings />} />
                 {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
