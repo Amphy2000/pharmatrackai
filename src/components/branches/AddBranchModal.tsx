@@ -1,11 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { useBranches } from '@/hooks/useBranches';
+import { usePharmacy } from '@/hooks/usePharmacy';
 import { Branch } from '@/types/branch';
+import { useToast } from '@/hooks/use-toast';
 
 interface AddBranchModalProps {
   open: boolean;
@@ -15,24 +17,54 @@ interface AddBranchModalProps {
 
 export const AddBranchModal = ({ open, onOpenChange, editingBranch }: AddBranchModalProps) => {
   const { addBranch, updateBranch } = useBranches();
+  const { pharmacyId, isLoading: pharmacyLoading } = usePharmacy();
+  const { toast } = useToast();
+  
   const [formData, setFormData] = useState({
-    name: editingBranch?.name || '',
-    address: editingBranch?.address || '',
-    phone: editingBranch?.phone || '',
-    email: editingBranch?.email || '',
-    is_main_branch: editingBranch?.is_main_branch || false,
-    is_active: editingBranch?.is_active ?? true,
+    name: '',
+    address: '',
+    phone: '',
+    email: '',
+    is_main_branch: false,
+    is_active: true,
   });
+
+  // Reset form when editingBranch changes or modal opens
+  useEffect(() => {
+    if (open) {
+      setFormData({
+        name: editingBranch?.name || '',
+        address: editingBranch?.address || '',
+        phone: editingBranch?.phone || '',
+        email: editingBranch?.email || '',
+        is_main_branch: editingBranch?.is_main_branch || false,
+        is_active: editingBranch?.is_active ?? true,
+      });
+    }
+  }, [open, editingBranch]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (editingBranch) {
-      await updateBranch.mutateAsync({ id: editingBranch.id, ...formData });
-    } else {
-      await addBranch.mutateAsync(formData);
+    
+    if (!pharmacyId) {
+      toast({
+        title: 'Error',
+        description: 'Please complete pharmacy setup first before adding branches.',
+        variant: 'destructive',
+      });
+      return;
     }
-    onOpenChange(false);
-    setFormData({ name: '', address: '', phone: '', email: '', is_main_branch: false, is_active: true });
+    
+    try {
+      if (editingBranch) {
+        await updateBranch.mutateAsync({ id: editingBranch.id, ...formData });
+      } else {
+        await addBranch.mutateAsync(formData);
+      }
+      onOpenChange(false);
+    } catch (error) {
+      // Error handled in mutation
+    }
   };
 
   return (
@@ -101,10 +133,15 @@ export const AddBranchModal = ({ open, onOpenChange, editingBranch }: AddBranchM
           <Button
             type="submit"
             className="w-full"
-            disabled={addBranch.isPending || updateBranch.isPending}
+            disabled={addBranch.isPending || updateBranch.isPending || pharmacyLoading || !pharmacyId}
           >
             {editingBranch ? 'Update Branch' : 'Add Branch'}
           </Button>
+          {!pharmacyId && !pharmacyLoading && (
+            <p className="text-xs text-destructive text-center">
+              Please complete pharmacy onboarding first.
+            </p>
+          )}
         </form>
       </DialogContent>
     </Dialog>
