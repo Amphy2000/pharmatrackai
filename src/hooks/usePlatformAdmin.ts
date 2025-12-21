@@ -63,21 +63,27 @@ export const usePlatformAdmin = () => {
   }, [checkAdminStatus]);
 
   const bootstrapAdmin = async () => {
-    if (!isDevEmail) return { error: 'Not authorized' };
+    if (!isDevEmail) return { error: 'Not authorized', data: null };
     
     setIsBootstrapping(true);
     try {
       const { data, error } = await supabase.functions.invoke('bootstrap-admin');
       
-      if (error) throw error;
+      if (error) {
+        console.error('Bootstrap function error:', error);
+        throw error;
+      }
       
-      // Refresh admin status
+      console.log('Bootstrap response:', data);
+      
+      // Force refresh admin status after successful bootstrap
+      await new Promise(resolve => setTimeout(resolve, 500)); // Small delay for DB
       await checkAdminStatus();
       
       return { data, error: null };
     } catch (error: any) {
       console.error('Bootstrap error:', error);
-      return { error: error.message };
+      return { error: error.message, data: null };
     } finally {
       setIsBootstrapping(false);
     }
