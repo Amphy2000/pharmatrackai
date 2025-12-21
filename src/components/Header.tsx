@@ -52,7 +52,7 @@ export const Header = () => {
     { href: '/customers', label: 'Customers', icon: Users },
     { href: '/branches', label: 'Branches', icon: Building2 },
     { href: '/inventory', label: 'Inventory', icon: PackageSearch },
-    { href: '/sales-history', label: 'Sales', icon: History },
+    { href: '/sales', label: 'Sales', icon: History },
   ];
 
   // Manager/Owner only navigation
