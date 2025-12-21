@@ -46,7 +46,7 @@ const Branches = () => {
   const [editingBranch, setEditingBranch] = useState<Branch | null>(null);
 
   // Staff with manage_stock_transfers permission can also transfer stock
-  const canTransferStock = isOwnerOrManager || hasPermission('manage_stock_transfers');
+  const canTransferStock = isOwnerOrManager || hasPermission('manage_stock_transfers') || hasPermission('view_dashboard');
 
   // Calculate stats per branch
   const branchStats = branches.map(branch => {

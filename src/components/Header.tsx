@@ -73,35 +73,35 @@ export const Header = () => {
   // POS is always accessible to all staff
   const navLinks: { href: string; label: string; icon: typeof LayoutDashboard }[] = [];
 
-  // Dashboard - for owner/manager or staff with permission
-  if (isOwnerOrManager || hasPermission('access_dashboard')) {
+  // Dashboard
+  if (isOwnerOrManager || hasPermission('view_dashboard')) {
     navLinks.push({ href: '/', label: 'Dashboard', icon: LayoutDashboard });
   }
 
   // POS - always accessible
   navLinks.push({ href: '/checkout', label: 'POS', icon: ShoppingCart });
 
-  // Inventory - for owner/manager or staff with permission
-  if (isOwnerOrManager || hasPermission('access_inventory')) {
+  // Inventory
+  if (isOwnerOrManager || hasPermission('access_inventory') || hasPermission('view_dashboard')) {
     navLinks.push({ href: '/inventory', label: 'Inventory', icon: PackageSearch });
   }
 
-  // Customers - for owner/manager or staff with permission
-  if (isOwnerOrManager || hasPermission('access_customers')) {
+  // Customers
+  if (isOwnerOrManager || hasPermission('access_customers') || hasPermission('view_dashboard')) {
     navLinks.push({ href: '/customers', label: 'Customers', icon: Users });
   }
 
-  // Branches - for owner/manager or staff with permission
-  if (isOwnerOrManager || hasPermission('access_branches')) {
+  // Branches
+  if (isOwnerOrManager || hasPermission('access_branches') || hasPermission('view_dashboard')) {
     navLinks.push({ href: '/branches', label: 'Branches', icon: Building2 });
   }
 
-  // Sales History - for owner/manager or staff with permission
-  if (isOwnerOrManager || hasPermission('access_sales_history')) {
+  // Sales / Reports
+  if (isOwnerOrManager || hasPermission('view_reports')) {
     navLinks.push({ href: '/sales', label: 'Sales', icon: History });
   }
 
-  // Suppliers - only for owner/manager or staff with explicit permission
+  // Suppliers
   if (isOwnerOrManager || hasPermission('access_suppliers')) {
     navLinks.push({ href: '/suppliers', label: 'Suppliers', icon: Truck });
   }
