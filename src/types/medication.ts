@@ -13,6 +13,7 @@ export interface Medication {
   supplier?: string;
   location?: string;
   min_stock_alert?: number;
+  is_shelved?: boolean;
   created_at: string;
   updated_at: string;
 }
