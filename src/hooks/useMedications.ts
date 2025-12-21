@@ -50,15 +50,26 @@ export const useMedications = () => {
 
   const updateMedication = useMutation({
     mutationFn: async ({ id, ...updates }: Partial<Medication> & { id: string }) => {
+      // First verify the medication exists
+      const { data: existing, error: fetchError } = await supabase
+        .from('medications')
+        .select('id')
+        .eq('id', id)
+        .single();
+      
+      if (fetchError || !existing) {
+        throw new Error('Medication not found or you do not have access');
+      }
+
       const { data, error } = await supabase
         .from('medications')
         .update(updates)
         .eq('id', id)
-        .select();
+        .select()
+        .single();
 
       if (error) throw error;
-      if (!data || data.length === 0) throw new Error('Medication not found');
-      return data[0];
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['medications'] });
