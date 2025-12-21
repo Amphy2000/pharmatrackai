@@ -57,7 +57,7 @@ export const Header = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { signOut } = useAuth();
-  const { isOwnerOrManager, userRole } = usePermissions();
+  const { isOwnerOrManager, userRole, hasPermission } = usePermissions();
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
   const { isAdmin, isDevEmail } = usePlatformAdmin();
   const { currentBranchId, setCurrentBranchId } = useBranchContext();
@@ -69,28 +69,44 @@ export const Header = () => {
   // Only owners can see Settings
   const canSeeSettings = userRole === 'owner';
 
-  // Staff (Cashier) only sees POS
-  const staffNavLinks = userRole === 'staff' 
-    ? [
-        { href: '/checkout', label: 'POS', icon: ShoppingCart },
-      ]
-    : [
-        { href: '/', label: 'Dashboard', icon: LayoutDashboard },
-        { href: '/checkout', label: 'POS', icon: ShoppingCart },
-        { href: '/customers', label: 'Customers', icon: Users },
-        { href: '/branches', label: 'Branches', icon: Building2 },
-        { href: '/inventory', label: 'Inventory', icon: PackageSearch },
-        { href: '/sales', label: 'Sales', icon: History },
-      ];
+  // Build navigation links based on permissions
+  // POS is always accessible to all staff
+  const navLinks: { href: string; label: string; icon: typeof LayoutDashboard }[] = [];
 
-  // Manager/Owner only navigation
-  const managerNavLinks = isOwnerOrManager
-    ? [{ href: '/suppliers', label: 'Suppliers', icon: Truck }]
-    : [];
+  // Dashboard - for owner/manager or staff with permission
+  if (isOwnerOrManager || hasPermission('access_dashboard')) {
+    navLinks.push({ href: '/', label: 'Dashboard', icon: LayoutDashboard });
+  }
 
-  const navLinks = [...staffNavLinks, ...managerNavLinks];
+  // POS - always accessible
+  navLinks.push({ href: '/checkout', label: 'POS', icon: ShoppingCart });
 
-  const roleLabel = userRole === 'owner' ? 'Owner' : userRole === 'manager' ? 'Manager' : 'Cashier';
+  // Inventory - for owner/manager or staff with permission
+  if (isOwnerOrManager || hasPermission('access_inventory')) {
+    navLinks.push({ href: '/inventory', label: 'Inventory', icon: PackageSearch });
+  }
+
+  // Customers - for owner/manager or staff with permission
+  if (isOwnerOrManager || hasPermission('access_customers')) {
+    navLinks.push({ href: '/customers', label: 'Customers', icon: Users });
+  }
+
+  // Branches - for owner/manager or staff with permission
+  if (isOwnerOrManager || hasPermission('access_branches')) {
+    navLinks.push({ href: '/branches', label: 'Branches', icon: Building2 });
+  }
+
+  // Sales History - for owner/manager or staff with permission
+  if (isOwnerOrManager || hasPermission('access_sales_history')) {
+    navLinks.push({ href: '/sales', label: 'Sales', icon: History });
+  }
+
+  // Suppliers - only for owner/manager or staff with explicit permission
+  if (isOwnerOrManager || hasPermission('access_suppliers')) {
+    navLinks.push({ href: '/suppliers', label: 'Suppliers', icon: Truck });
+  }
+
+  const roleLabel = userRole === 'owner' ? 'Owner' : userRole === 'manager' ? 'Manager' : 'Staff';
 
   const getNotificationIcon = (type: string) => {
     switch (type) {

@@ -2,12 +2,21 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
-// Available permission keys
+// Available permission keys - organized by feature area
 export type PermissionKey = 
-  | 'view_dashboard'
+  // Navigation access
+  | 'access_dashboard'
+  | 'access_inventory'
+  | 'access_customers'
+  | 'access_branches'
+  | 'access_sales_history'
+  | 'access_suppliers'
+  // Data visibility
   | 'view_reports'
   | 'view_analytics'
   | 'view_financial_data'
+  // Management
+  | 'manage_stock_transfers'
   | 'manage_staff'
   | 'manage_settings';
 
@@ -18,48 +27,93 @@ export const ROLE_TEMPLATES: Record<string, { name: string; description: string;
     description: 'POS access only, no reports or analytics',
     permissions: [],
   },
-  inventory_manager: {
-    name: 'Inventory Manager',
-    description: 'Full inventory access, basic reports',
-    permissions: ['view_dashboard', 'view_reports'],
+  inventory_clerk: {
+    name: 'Inventory Clerk',
+    description: 'POS + Inventory management, can transfer stock between branches',
+    permissions: ['access_inventory', 'access_branches', 'manage_stock_transfers'],
   },
   senior_staff: {
     name: 'Senior Staff',
-    description: 'Full access to all reports and analytics',
-    permissions: ['view_dashboard', 'view_reports', 'view_analytics', 'view_financial_data'],
+    description: 'Full access to most features, can view reports and analytics',
+    permissions: [
+      'access_dashboard', 'access_inventory', 'access_customers', 
+      'access_branches', 'access_sales_history', 'view_reports', 
+      'view_analytics', 'manage_stock_transfers'
+    ],
   },
   full_access: {
     name: 'Full Access',
-    description: 'Same access as manager (except staff management)',
-    permissions: ['view_dashboard', 'view_reports', 'view_analytics', 'view_financial_data'],
+    description: 'Same access as manager (except staff management & settings)',
+    permissions: [
+      'access_dashboard', 'access_inventory', 'access_customers', 
+      'access_branches', 'access_sales_history', 'access_suppliers',
+      'view_reports', 'view_analytics', 'view_financial_data', 
+      'manage_stock_transfers'
+    ],
   },
 };
 
 // Permission labels for UI
-export const PERMISSION_LABELS: Record<PermissionKey, { label: string; description: string }> = {
-  view_dashboard: {
-    label: 'View Dashboard',
-    description: 'Access to main dashboard with overview metrics',
+export const PERMISSION_LABELS: Record<PermissionKey, { label: string; description: string; category: string }> = {
+  access_dashboard: {
+    label: 'Access Dashboard',
+    description: 'View main dashboard with overview metrics',
+    category: 'Navigation',
+  },
+  access_inventory: {
+    label: 'Access Inventory',
+    description: 'View and manage medication inventory',
+    category: 'Navigation',
+  },
+  access_customers: {
+    label: 'Access Customers',
+    description: 'View and manage customer records',
+    category: 'Navigation',
+  },
+  access_branches: {
+    label: 'Access Branches',
+    description: 'View branches and request stock transfers',
+    category: 'Navigation',
+  },
+  access_sales_history: {
+    label: 'Access Sales History',
+    description: 'View sales history and transactions',
+    category: 'Navigation',
+  },
+  access_suppliers: {
+    label: 'Access Suppliers',
+    description: 'View and manage supplier information',
+    category: 'Navigation',
   },
   view_reports: {
     label: 'View Reports',
-    description: 'Access to sales history and basic reports',
+    description: 'Access to sales reports and summaries',
+    category: 'Data Access',
   },
   view_analytics: {
     label: 'View Analytics',
     description: 'Access to detailed analytics and charts',
+    category: 'Data Access',
   },
   view_financial_data: {
     label: 'View Financial Data',
-    description: 'Access to revenue, profit, and financial summaries',
+    description: 'Access to revenue, profit margins, and costs',
+    category: 'Data Access',
+  },
+  manage_stock_transfers: {
+    label: 'Manage Stock Transfers',
+    description: 'Create and approve stock transfers between branches',
+    category: 'Management',
   },
   manage_staff: {
     label: 'Manage Staff',
     description: 'Add, edit, and remove staff members',
+    category: 'Management',
   },
   manage_settings: {
     label: 'Manage Settings',
     description: 'Access to pharmacy settings and configuration',
+    category: 'Management',
   },
 };
 

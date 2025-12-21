@@ -182,7 +182,7 @@ export const StaffManagement = () => {
                           <div className="font-medium flex items-center gap-2">
                             {member.profile?.full_name || 'Unnamed Staff'}
                             <Badge variant={getRoleBadgeVariant(member.role)}>
-                              {member.role === 'staff' ? 'Cashier' : member.role.charAt(0).toUpperCase() + member.role.slice(1)}
+                              {member.role === 'staff' ? 'Staff' : member.role.charAt(0).toUpperCase() + member.role.slice(1)}
                             </Badge>
                             {!member.is_active && (
                               <Badge variant="destructive">Inactive</Badge>
@@ -207,7 +207,7 @@ export const StaffManagement = () => {
                               </SelectTrigger>
                               <SelectContent>
                                 <SelectItem value="manager">Manager</SelectItem>
-                                <SelectItem value="staff">Cashier</SelectItem>
+                                <SelectItem value="staff">Staff</SelectItem>
                               </SelectContent>
                             </Select>
 
@@ -290,31 +290,46 @@ export const StaffManagement = () => {
                 </div>
               </div>
 
-              {/* Individual Permissions */}
+              {/* Individual Permissions - Grouped by Category */}
               <div>
                 <Label className="text-sm font-medium">Permissions</Label>
-                <ScrollArea className="h-64 mt-2 border rounded-lg p-3">
-                  <div className="space-y-3">
-                    {(Object.entries(PERMISSION_LABELS) as [PermissionKey, { label: string; description: string }][]).map(
-                      ([key, { label, description }]) => (
-                        <div
-                          key={key}
-                          className="flex items-start gap-3 p-2 rounded-lg hover:bg-muted/50"
-                        >
-                          <Checkbox
-                            id={key}
-                            checked={editPermissions.includes(key)}
-                            onCheckedChange={() => togglePermission(key)}
-                          />
-                          <div className="flex-1">
-                            <Label htmlFor={key} className="font-medium cursor-pointer">
-                              {label}
-                            </Label>
-                            <p className="text-xs text-muted-foreground">{description}</p>
+                <ScrollArea className="h-72 mt-2 border rounded-lg p-3">
+                  <div className="space-y-4">
+                    {['Navigation', 'Data Access', 'Management'].map(category => {
+                      const categoryPermissions = (Object.entries(PERMISSION_LABELS) as [PermissionKey, { label: string; description: string; category: string }][])
+                        .filter(([_, { category: cat }]) => cat === category);
+                      
+                      if (categoryPermissions.length === 0) return null;
+
+                      return (
+                        <div key={category}>
+                          <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                            {category}
+                          </h4>
+                          <div className="space-y-2">
+                            {categoryPermissions.map(([key, { label, description }]) => (
+                              <div
+                                key={key}
+                                className="flex items-start gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors"
+                              >
+                                <Checkbox
+                                  id={key}
+                                  checked={editPermissions.includes(key)}
+                                  onCheckedChange={() => togglePermission(key)}
+                                  className="mt-0.5"
+                                />
+                                <div className="flex-1">
+                                  <Label htmlFor={key} className="font-medium cursor-pointer text-sm">
+                                    {label}
+                                  </Label>
+                                  <p className="text-xs text-muted-foreground">{description}</p>
+                                </div>
+                              </div>
+                            ))}
                           </div>
                         </div>
-                      )
-                    )}
+                      );
+                    })}
                   </div>
                 </ScrollArea>
               </div>
