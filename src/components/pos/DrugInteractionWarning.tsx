@@ -129,17 +129,17 @@ export const DrugInteractionWarning = ({ cartItems }: DrugInteractionWarningProp
   const hasHighSeverity = interactions.some(i => i.severity === 'high' || i.severity === 'severe');
 
   return (
-    <Alert className={`${hasHighSeverity ? 'border-destructive/50 bg-destructive/5' : 'border-orange-500/50 bg-orange-500/5'}`}>
-      <div className="flex items-start justify-between">
-        <div className="flex items-start gap-2">
-          <AlertTriangle className={`h-4 w-4 mt-0.5 ${hasHighSeverity ? 'text-destructive' : 'text-orange-500'}`} />
-          <div className="space-y-2">
+    <Alert className={`w-full ${hasHighSeverity ? 'border-destructive/50 bg-destructive/5' : 'border-orange-500/50 bg-orange-500/5'}`}>
+      <div className="flex items-start justify-between w-full">
+        <div className="flex items-start gap-2 flex-1 min-w-0">
+          <AlertTriangle className={`h-4 w-4 mt-0.5 flex-shrink-0 ${hasHighSeverity ? 'text-destructive' : 'text-orange-500'}`} />
+          <div className="space-y-2 flex-1 min-w-0">
             <AlertTitle className="text-sm font-semibold">
               Drug Interaction{interactions.length > 1 ? 's' : ''} Detected
             </AlertTitle>
-            <AlertDescription>
-              <ScrollArea className="max-h-32">
-                <div className="space-y-2">
+            <AlertDescription className="w-full">
+              <ScrollArea className="max-h-40 w-full">
+                <div className="space-y-2 pr-2">
                   {interactions.map((interaction, index) => {
                     const config = severityConfig[interaction.severity];
                     const Icon = config.icon;
