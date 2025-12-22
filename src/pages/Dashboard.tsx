@@ -24,6 +24,7 @@ import { DemandForecasting } from '@/components/dashboard/DemandForecasting';
 import { ExpiryDiscountEngine } from '@/components/dashboard/ExpiryDiscountEngine';
 import { QuickGlancePanel } from '@/components/dashboard/QuickGlancePanel';
 import { ROIDashboard } from '@/components/dashboard/ROIDashboard';
+import { ProductTour } from '@/components/ProductTour';
 import { 
   Package, 
   AlertTriangle, 
@@ -116,6 +117,7 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">
+      <ProductTour />
       <Header />
       
       <main className="container mx-auto px-4 sm:px-6 py-6 sm:py-8 max-w-[1600px]">

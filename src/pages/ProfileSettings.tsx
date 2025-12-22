@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { useProductTour } from '@/hooks/useProductTour';
 import { supabase } from '@/integrations/supabase/client';
 import { 
   User, 
@@ -24,13 +25,15 @@ import {
   MessageCircle,
   Book,
   FileText,
-  AlertCircle
+  AlertCircle,
+  PlayCircle
 } from 'lucide-react';
 
 const ProfileSettings = () => {
   const navigate = useNavigate();
   const { user, isLoading: authLoading, signOut } = useAuth();
   const { toast } = useToast();
+  const { resetTour, hasCompletedTour } = useProductTour();
   
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -49,6 +52,15 @@ const ProfileSettings = () => {
     newPassword: '',
     confirmPassword: '',
   });
+
+  const handleRestartTour = () => {
+    resetTour();
+    navigate('/dashboard');
+    toast({
+      title: 'Tour Restarted',
+      description: 'The product tour will begin when you reach the dashboard.',
+    });
+  };
 
   useEffect(() => {
     if (!authLoading && !user) {
@@ -468,6 +480,26 @@ const ProfileSettings = () => {
                       </div>
                     </Card>
                   </a>
+
+                  {/* Restart Product Tour */}
+                  <Card 
+                    className="p-4 hover:bg-muted/50 transition-colors cursor-pointer h-full"
+                    onClick={handleRestartTour}
+                  >
+                    <div className="flex items-start gap-3">
+                      <div className="h-10 w-10 rounded-lg bg-accent/10 flex items-center justify-center flex-shrink-0">
+                        <PlayCircle className="h-5 w-5 text-accent" />
+                      </div>
+                      <div>
+                        <h4 className="font-medium">
+                          Restart Product Tour
+                        </h4>
+                        <p className="text-sm text-muted-foreground">
+                          {hasCompletedTour ? 'Watch the guided tour again' : 'Continue the product tour'}
+                        </p>
+                      </div>
+                    </div>
+                  </Card>
                 </div>
 
                 {/* FAQ Section */}

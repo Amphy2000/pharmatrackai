@@ -95,21 +95,43 @@ export const ProfitMarginAnalyzer = () => {
 
         {/* Chart */}
         {chartData.length > 0 && (
-          <div className="h-64">
+          <div className="h-72">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={chartData} layout="vertical" margin={{ left: 0, right: 20 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
-                <XAxis type="number" domain={[0, 'dataMax']} tickFormatter={(v) => `${v}%`} />
-                <YAxis type="category" dataKey="name" width={100} tick={{ fontSize: 12 }} />
+              <BarChart 
+                data={chartData} 
+                layout="vertical" 
+                margin={{ left: 10, right: 30, top: 10, bottom: 10 }}
+              >
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
+                <XAxis 
+                  type="number" 
+                  domain={[0, 'dataMax']} 
+                  tickFormatter={(v) => `${v}%`}
+                  tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                  axisLine={{ stroke: 'hsl(var(--border))' }}
+                  tickLine={{ stroke: 'hsl(var(--border))' }}
+                />
+                <YAxis 
+                  type="category" 
+                  dataKey="name" 
+                  width={130}
+                  tick={{ fontSize: 11, fill: 'hsl(var(--foreground))' }}
+                  axisLine={false}
+                  tickLine={false}
+                />
                 <Tooltip
-                  formatter={(value: number) => [`${value}%`, 'Margin']}
+                  formatter={(value: number) => [`${value}%`, 'Profit Margin']}
                   contentStyle={{
                     backgroundColor: 'hsl(var(--card))',
                     border: '1px solid hsl(var(--border))',
-                    borderRadius: '8px',
+                    borderRadius: '12px',
+                    boxShadow: '0 4px 24px -4px hsl(var(--foreground) / 0.1)',
+                    padding: '12px 16px',
                   }}
+                  labelStyle={{ fontWeight: 600, marginBottom: 4 }}
+                  cursor={{ fill: 'hsl(var(--muted) / 0.3)' }}
                 />
-                <Bar dataKey="margin" radius={[0, 4, 4, 0]}>
+                <Bar dataKey="margin" radius={[0, 6, 6, 0]} barSize={20}>
                   {chartData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={getMarginColor(entry.margin)} />
                   ))}
