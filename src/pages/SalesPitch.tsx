@@ -403,7 +403,7 @@ const SalesPitch = () => {
             <motion.div variants={fadeInUp} className="mb-8">
               <Badge variant="outline" className="text-xs sm:text-sm px-4 py-2 border-primary/30 text-primary">
                 <Zap className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
-                Join the Next Generation of 500+ Smart Pharmacies
+                Join the Next Generation of Smart Pharmacies
               </Badge>
             </motion.div>
           </motion.div>
