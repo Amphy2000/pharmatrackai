@@ -2,13 +2,14 @@ import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import {
-  Sparkles, TrendingUp, Clock, ShieldCheck, Users, BarChart3, Zap,
+  TrendingUp, Clock, ShieldCheck, Users, BarChart3, Zap,
   Check, X, ArrowRight, Star, DollarSign, AlertTriangle, Target,
   BadgeCheck, Globe, Smartphone, WifiOff, Database, Headphones,
   ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Play, Calculator,
   Building2, Award, LineChart, Package, Receipt, UserCog, Lock, Lightbulb,
-  Rocket, Crown
+  Rocket, Crown, Sparkles
 } from 'lucide-react';
+import { Logo } from '@/components/Logo';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -305,15 +306,7 @@ const SalesPitch = () => {
       {/* Fixed Navigation */}
       <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border/40 backdrop-blur-xl bg-background/90">
         <div className="container mx-auto px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
-          <div className="flex items-center gap-2 sm:gap-3">
-            <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-lg">
-              <Sparkles className="h-5 w-5 sm:h-6 sm:w-6 text-primary-foreground" />
-            </div>
-            <div>
-              <span className="font-display font-bold text-xl sm:text-2xl">PharmaTrack</span>
-              <p className="text-[10px] sm:text-xs text-muted-foreground hidden sm:block">AI Pharmacy Intelligence</p>
-            </div>
-          </div>
+          <Logo showText={true} linkTo="/pitch" size="lg" />
           <div className="flex items-center gap-2 sm:gap-4">
             <div className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-full bg-muted/50 border">
               <span className={`text-sm ${!isInternational ? 'text-primary font-semibold' : 'text-muted-foreground'}`}>🇳🇬 NGN</span>
@@ -901,11 +894,8 @@ const SalesPitch = () => {
       {/* Footer */}
       <footer className="py-8 sm:py-12 border-t bg-card/50">
         <div className="container mx-auto px-4 sm:px-6 text-center">
-          <div className="flex items-center justify-center gap-2 sm:gap-3 mb-4">
-            <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center">
-              <Sparkles className="h-4 w-4 sm:h-5 sm:w-5 text-primary-foreground" />
-            </div>
-            <span className="font-display font-bold text-lg sm:text-xl">PharmaTrack</span>
+          <div className="flex items-center justify-center mb-4">
+            <Logo showText={true} linkTo={undefined} size="md" />
           </div>
           <p className="text-muted-foreground text-sm mb-4">
             The AI Brain for Your Pharmacy
