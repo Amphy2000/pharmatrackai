@@ -108,6 +108,12 @@ export const useCart = () => {
     return items.reduce((total, item) => total + item.quantity, 0);
   }, [items]);
 
+  // Get last added item ID for keyboard shortcuts
+  const getLastItemId = useCallback(() => {
+    if (items.length === 0) return null;
+    return items[items.length - 1].medication.id;
+  }, [items]);
+
   return {
     items,
     addItem,
@@ -118,5 +124,6 @@ export const useCart = () => {
     clearCart,
     getTotal,
     getTotalItems,
+    getLastItemId,
   };
 };

@@ -22,6 +22,7 @@ import { StaffPerformancePanel } from '@/components/dashboard/StaffPerformancePa
 import { ProfitMarginAnalyzer } from '@/components/dashboard/ProfitMarginAnalyzer';
 import { DemandForecasting } from '@/components/dashboard/DemandForecasting';
 import { ExpiryDiscountEngine } from '@/components/dashboard/ExpiryDiscountEngine';
+import { QuickGlancePanel } from '@/components/dashboard/QuickGlancePanel';
 import { 
   Package, 
   AlertTriangle, 
@@ -149,7 +150,7 @@ const Dashboard = () => {
           </div>
         </motion.section>
 
-        {/* Shift Clock & Quick Actions */}
+        {/* Quick Glance & Shift Clock */}
         <motion.section 
           variants={containerVariants}
           initial="hidden"
@@ -158,9 +159,12 @@ const Dashboard = () => {
         >
           <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-3">
             <motion.div variants={itemVariants} className="lg:col-span-1">
+              <QuickGlancePanel />
+            </motion.div>
+            <motion.div variants={itemVariants} className="lg:col-span-1">
               <ShiftClock />
             </motion.div>
-            <motion.div variants={itemVariants} className="lg:col-span-2">
+            <motion.div variants={itemVariants} className="lg:col-span-1">
               <StaffQuickActions />
             </motion.div>
           </div>

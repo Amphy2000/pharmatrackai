@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -80,7 +80,7 @@ export const AddMedicationModal = ({
   onOpenChange,
   editingMedication,
 }: AddMedicationModalProps) => {
-  const { addMedication, updateMedication } = useMedications();
+  const { addMedication, updateMedication, medications } = useMedications();
   const { suppliers, addSupplier, addSupplierProduct } = useSuppliers();
   const isEditing = !!editingMedication;
 
@@ -88,6 +88,47 @@ export const AddMedicationModal = ({
   const [showSupplierForm, setShowSupplierForm] = useState(false);
   const [newSupplier, setNewSupplier] = useState({ name: '', unit_price: 0, lead_time_days: 3 });
   const [selectedExistingSupplier, setSelectedExistingSupplier] = useState('');
+
+  // Calculate smart defaults based on most frequent entries
+  const smartDefaults = useMemo(() => {
+    if (!medications || medications.length === 0) {
+      return { category: 'Tablet', dispensing_unit: 'unit', reorder_level: 10 };
+    }
+
+    // Count category frequency
+    const categoryCount: Record<string, number> = {};
+    const unitCount: Record<string, number> = {};
+    let totalReorder = 0;
+    let reorderCount = 0;
+
+    medications.forEach((med) => {
+      categoryCount[med.category] = (categoryCount[med.category] || 0) + 1;
+      if (med.dispensing_unit) {
+        unitCount[med.dispensing_unit] = (unitCount[med.dispensing_unit] || 0) + 1;
+      }
+      if (med.reorder_level) {
+        totalReorder += med.reorder_level;
+        reorderCount++;
+      }
+    });
+
+    // Get most frequent category
+    const topCategory = Object.entries(categoryCount)
+      .sort(([, a], [, b]) => b - a)[0]?.[0] || 'Tablet';
+
+    // Get most frequent dispensing unit
+    const topUnit = Object.entries(unitCount)
+      .sort(([, a], [, b]) => b - a)[0]?.[0] || 'unit';
+
+    // Average reorder level
+    const avgReorder = reorderCount > 0 ? Math.round(totalReorder / reorderCount) : 10;
+
+    return {
+      category: topCategory,
+      dispensing_unit: topUnit,
+      reorder_level: avgReorder,
+    };
+  }, [medications]);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -120,20 +161,21 @@ export const AddMedicationModal = ({
       });
       setSupplierEntries([]);
     } else {
+      // Use smart defaults for new medications
       form.reset({
         name: '',
-        category: 'Tablet',
+        category: smartDefaults.category,
         batch_number: '',
         barcode_id: '',
         current_stock: 0,
-        reorder_level: 10,
+        reorder_level: smartDefaults.reorder_level,
         unit_price: 0,
         selling_price: undefined,
-        dispensing_unit: 'unit',
+        dispensing_unit: smartDefaults.dispensing_unit,
       });
       setSupplierEntries([]);
     }
-  }, [editingMedication, form, open]);
+  }, [editingMedication, form, open, smartDefaults]);
 
   const handleAddExistingSupplier = () => {
     if (!selectedExistingSupplier) return;
