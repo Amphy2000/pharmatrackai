@@ -508,18 +508,6 @@ const Checkout = () => {
                   </div>
                 </div>
 
-                <div>
-                  <label className="text-sm font-medium mb-2 block">
-                    Customer Name {isSimpleMode ? '(Optional)' : '(Required for prescriptions)'}
-                  </label>
-                  <Input
-                    placeholder="Enter customer name"
-                    value={customerName}
-                    onChange={(e) => setCustomerName(e.target.value)}
-                    className="rounded-xl"
-                  />
-                </div>
-
                 {/* Payment Method Selector */}
                 <div>
                   <label className="text-sm font-medium mb-2 block">Payment Method</label>
