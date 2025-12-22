@@ -55,10 +55,8 @@ export const NAFDACCompliancePanel = ({ medications }: NAFDACCompliancePanelProp
           return daysUntilExpiry >= 0 && daysUntilExpiry <= 90;
         });
       case 'controlled':
-        const controlledCategories = ['controlled', 'narcotic', 'psychotropic', 'schedule_ii', 'schedule_iii'];
-        return medications.filter(med => 
-          controlledCategories.some(cat => med.category.toLowerCase().includes(cat))
-        );
+        // Filter for controlled drugs using the is_controlled flag
+        return medications.filter(med => med.is_controlled === true);
       default:
         return medications;
     }

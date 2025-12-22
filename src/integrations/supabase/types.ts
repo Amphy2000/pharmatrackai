@@ -261,9 +261,12 @@ export type Database = {
           dispensing_unit: string
           expiry_date: string
           id: string
+          is_controlled: boolean
           is_shelved: boolean
           location: string | null
+          manufacturing_date: string | null
           min_stock_alert: number | null
+          nafdac_reg_number: string | null
           name: string
           pharmacy_id: string | null
           reorder_level: number
@@ -281,9 +284,12 @@ export type Database = {
           dispensing_unit?: string
           expiry_date: string
           id?: string
+          is_controlled?: boolean
           is_shelved?: boolean
           location?: string | null
+          manufacturing_date?: string | null
           min_stock_alert?: number | null
+          nafdac_reg_number?: string | null
           name: string
           pharmacy_id?: string | null
           reorder_level?: number
@@ -301,9 +307,12 @@ export type Database = {
           dispensing_unit?: string
           expiry_date?: string
           id?: string
+          is_controlled?: boolean
           is_shelved?: boolean
           location?: string | null
+          manufacturing_date?: string | null
           min_stock_alert?: number | null
+          nafdac_reg_number?: string | null
           name?: string
           pharmacy_id?: string | null
           reorder_level?: number

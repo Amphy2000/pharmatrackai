@@ -55,6 +55,7 @@ export interface Medication {
   current_stock: number;
   reorder_level: number;
   expiry_date: string;
+  manufacturing_date?: string;
   unit_price: number;
   selling_price?: number;
   barcode_id?: string;
@@ -63,6 +64,8 @@ export interface Medication {
   location?: string;
   min_stock_alert?: number;
   is_shelved?: boolean;
+  is_controlled?: boolean;
+  nafdac_reg_number?: string;
   dispensing_unit?: DispensingUnit;
   created_at: string;
   updated_at: string;
@@ -75,9 +78,12 @@ export interface MedicationFormData {
   current_stock: number;
   reorder_level: number;
   expiry_date: string;
+  manufacturing_date?: string;
   unit_price: number;
   selling_price?: number;
   barcode_id?: string;
+  is_controlled?: boolean;
+  nafdac_reg_number?: string;
   dispensing_unit?: DispensingUnit;
 }
 

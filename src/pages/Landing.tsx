@@ -71,7 +71,7 @@ const Landing = () => {
       monthly: '₦35,000',
       setupLabel: 'Zero Setup Fee',
       target: 'Fast-growing pharmacies using AI to stop waste',
-      features: ['₦0 Setup Fee', 'Automated Expiry Discounting', 'Demand Forecasting AI', 'Unlimited Users', 'Multi-Branch Ready', 'Staff Clock-in Tracking', 'Priority Support', 'Mobile Barcode Scanning'],
+      features: ['₦0 Setup Fee', 'Automated Expiry Discounting', 'Demand Forecasting AI', 'Unlimited Users', 'Multi-Branch Ready', 'Staff Clock-in Tracking', 'NAFDAC Compliance Reports', 'Controlled Drugs Register', 'Manufacturing Date Tracking', 'Priority Support'],
       highlight: true
     },
     enterprise: { 
@@ -416,9 +416,9 @@ const Landing = () => {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {[
                 { icon: TrendingUp, label: 'Sales Analytics', desc: 'Real-time insights' },
-                { icon: ShieldCheck, label: 'NAFDAC Compliant', desc: 'Regulatory ready' },
+                { icon: ShieldCheck, label: 'NAFDAC Compliance', desc: 'Audit-ready reports' },
                 { icon: Calculator, label: 'Profit Tracking', desc: 'Margin analysis' },
-                { icon: Sparkles, label: 'AI Search', desc: 'Find any drug fast' },
+                { icon: Sparkles, label: 'Controlled Drugs', desc: 'Narcotics register' },
               ].map((feature, i) => (
                 <div key={i} className="p-4 rounded-xl bg-muted/30 border border-border/50 text-center hover:bg-muted/50 transition-colors">
                   <feature.icon className="h-6 w-6 mx-auto mb-2 text-primary" />

@@ -175,14 +175,14 @@ const SalesPitch = () => {
       ]
     },
     {
-      category: 'Staff & Security',
+      category: 'Compliance & Security',
       icon: ShieldCheck,
       color: 'from-amber-500 to-orange-600',
       items: [
-        { name: 'Clock-in/Clock-out', desc: 'Track every shift with accountability' },
-        { name: 'Role-Based Permissions', desc: 'Control who sees and does what' },
-        { name: 'Sales Attribution', desc: 'Know exactly who sold what' },
-        { name: 'Audit Trails', desc: 'Complete history of all actions' },
+        { name: 'NAFDAC Audit Reports', desc: 'Professional PDF compliance documents' },
+        { name: 'Controlled Drugs Register', desc: 'Track narcotics with full audit trail' },
+        { name: 'Manufacturing Date Tracking', desc: 'Complete product lifecycle visibility' },
+        { name: 'Staff Clock-in System', desc: 'Shift tracking with sales attribution' },
       ]
     },
   ];

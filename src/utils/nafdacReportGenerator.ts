@@ -212,14 +212,20 @@ export const generateNAFDACComplianceReport = (
     doc.text(med.batch_number.slice(0, 14), x, y);
     x += colWidths[2];
     
-    // NAFDAC Reg (using batch as placeholder - in real app would be separate field)
-    doc.text(med.batch_number.slice(0, 12), x, y);
+    // NAFDAC Reg (use actual field if available)
+    const nafdacReg = med.nafdac_reg_number || '-';
+    doc.text(nafdacReg.slice(0, 12), x, y);
     x += colWidths[3];
     
-    // Mfg Date (estimated as 2 years before expiry)
-    const mfgDate = new Date(expiryDate);
-    mfgDate.setFullYear(mfgDate.getFullYear() - 2);
-    doc.text(format(mfgDate, 'MM/yyyy'), x, y);
+    // Mfg Date (use actual manufacturing_date if available)
+    if (med.manufacturing_date) {
+      doc.text(format(parseISO(med.manufacturing_date), 'MM/yyyy'), x, y);
+    } else {
+      // Estimate as 2 years before expiry if not available
+      const mfgDate = new Date(expiryDate);
+      mfgDate.setFullYear(mfgDate.getFullYear() - 2);
+      doc.text(format(mfgDate, 'MM/yyyy'), x, y);
+    }
     x += colWidths[4];
     
     // Expiry Date
@@ -290,11 +296,8 @@ const filterMedications = (medications: Medication[], filter: string): Medicatio
         return daysUntilExpiry >= 0 && daysUntilExpiry <= 90;
       });
     case 'controlled':
-      // Filter for controlled/narcotic drugs (typically certain categories)
-      const controlledCategories = ['controlled', 'narcotic', 'psychotropic', 'schedule_ii', 'schedule_iii'];
-      return medications.filter(med => 
-        controlledCategories.some(cat => med.category.toLowerCase().includes(cat))
-      );
+      // Filter using the is_controlled flag
+      return medications.filter(med => med.is_controlled === true);
     default:
       return medications;
   }
