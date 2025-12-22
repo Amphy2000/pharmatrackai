@@ -24,7 +24,9 @@ import { DemandForecasting } from '@/components/dashboard/DemandForecasting';
 import { ExpiryDiscountEngine } from '@/components/dashboard/ExpiryDiscountEngine';
 import { QuickGlancePanel } from '@/components/dashboard/QuickGlancePanel';
 import { ROIDashboard } from '@/components/dashboard/ROIDashboard';
+import { LiveActivityFeed } from '@/components/dashboard/LiveActivityFeed';
 import { ProductTour } from '@/components/ProductTour';
+import { PWAInstallPrompt } from '@/components/pwa/PWAInstallPrompt';
 import { 
   Package, 
   AlertTriangle, 
@@ -118,6 +120,7 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">
       <ProductTour />
+      <PWAInstallPrompt />
       <Header />
       
       <main className="container mx-auto px-4 sm:px-6 py-6 sm:py-8 max-w-[1600px]">
@@ -153,19 +156,22 @@ const Dashboard = () => {
           </div>
         </motion.section>
 
-        {/* Quick Glance & Shift Clock - Side by Side */}
+        {/* Quick Glance, Shift Clock & Live Activity - Side by Side */}
         <motion.section 
           variants={containerVariants}
           initial="hidden"
           animate="visible"
           className="mb-6"
         >
-          <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-2">
+          <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-3">
             <motion.div variants={itemVariants}>
               <QuickGlancePanel />
             </motion.div>
             <motion.div variants={itemVariants}>
               <ShiftClock />
+            </motion.div>
+            <motion.div variants={itemVariants}>
+              <LiveActivityFeed />
             </motion.div>
           </div>
         </motion.section>

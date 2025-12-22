@@ -154,11 +154,11 @@ const Landing = () => {
         <div className="container mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
           <Logo size="sm" linkTo="/" />
           
-          {/* Desktop Navigation */}
+          {/* Desktop Navigation - Ordered by page sequence */}
           <div className="hidden md:flex items-center gap-6">
             <button onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })} className="text-sm text-muted-foreground hover:text-foreground transition-colors">Features</button>
-            <button onClick={() => document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' })} className="text-sm text-muted-foreground hover:text-foreground transition-colors">Pricing</button>
             <button onClick={() => document.getElementById('comparison')?.scrollIntoView({ behavior: 'smooth' })} className="text-sm text-muted-foreground hover:text-foreground transition-colors">Why PharmaTrack</button>
+            <button onClick={() => document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' })} className="text-sm text-muted-foreground hover:text-foreground transition-colors">Pricing</button>
             <button onClick={() => document.getElementById('testimonials')?.scrollIntoView({ behavior: 'smooth' })} className="text-sm text-muted-foreground hover:text-foreground transition-colors">Testimonials</button>
           </div>
 
@@ -185,11 +185,11 @@ const Landing = () => {
                 <DropdownMenuItem onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })}>
                   Features
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' })}>
-                  Pricing
-                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => document.getElementById('comparison')?.scrollIntoView({ behavior: 'smooth' })}>
                   Why PharmaTrack
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' })}>
+                  Pricing
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => document.getElementById('testimonials')?.scrollIntoView({ behavior: 'smooth' })}>
                   Testimonials
