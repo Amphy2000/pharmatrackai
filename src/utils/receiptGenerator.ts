@@ -38,7 +38,49 @@ const CURRENCY_LOCALES: Record<CurrencyCode, string> = {
 const formatCurrency = (amount: number, currency: CurrencyCode = 'NGN'): string => {
   const symbol = CURRENCY_SYMBOLS[currency];
   const locale = CURRENCY_LOCALES[currency];
+  // Thermal receipts are typically whole numbers; keep it simple and consistent.
   return `${symbol}${amount.toLocaleString(locale, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
+};
+
+const arrayBufferToBase64 = (buffer: ArrayBuffer): string => {
+  let binary = '';
+  const bytes = new Uint8Array(buffer);
+  const chunkSize = 0x8000;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+  }
+  return btoa(binary);
+};
+
+const ensureReceiptFonts = async (doc: jsPDF) => {
+  const anyDoc = doc as any;
+  if (anyDoc.__receiptFontsLoaded) return;
+
+  // Load fonts from /public/fonts to ensure ₦ renders correctly across browsers/PDF viewers.
+  const [regularRes, boldRes] = await Promise.all([
+    fetch('/fonts/NotoSans-Regular.ttf'),
+    fetch('/fonts/NotoSans-Bold.ttf'),
+  ]);
+
+  if (!regularRes.ok || !boldRes.ok) {
+    // Fallback to built-in fonts if fonts fail to load.
+    return;
+  }
+
+  const [regularBuf, boldBuf] = await Promise.all([
+    regularRes.arrayBuffer(),
+    boldRes.arrayBuffer(),
+  ]);
+
+  const regularB64 = arrayBufferToBase64(regularBuf);
+  const boldB64 = arrayBufferToBase64(boldBuf);
+
+  doc.addFileToVFS('NotoSans-Regular.ttf', regularB64);
+  doc.addFileToVFS('NotoSans-Bold.ttf', boldB64);
+  doc.addFont('NotoSans-Regular.ttf', 'NotoSans', 'normal');
+  doc.addFont('NotoSans-Bold.ttf', 'NotoSans', 'bold');
+
+  anyDoc.__receiptFontsLoaded = true;
 };
 
 export const generateReceipt = async ({
@@ -66,11 +108,19 @@ export const generateReceipt = async ({
   const customerHeight = customerName ? 5 : 0;
   const pharmacistHeight = pharmacistInCharge ? 5 : 0;
   const staffHeight = staffName ? 5 : 0;
-  
+
   const shouldShowLogo = isDigitalReceipt || (enableLogoOnPrint && pharmacyLogoUrl);
   const logoHeight = shouldShowLogo ? 16 : 0;
-  
-  const totalHeight = baseHeight + itemHeight + addressHeight + phoneHeight + customerHeight + logoHeight + pharmacistHeight + staffHeight;
+
+  const totalHeight =
+    baseHeight +
+    itemHeight +
+    addressHeight +
+    phoneHeight +
+    customerHeight +
+    logoHeight +
+    pharmacistHeight +
+    staffHeight;
 
   // Create PDF optimized for thermal printers (80mm width)
   const doc = new jsPDF({
@@ -78,6 +128,8 @@ export const generateReceipt = async ({
     format: [80, Math.max(totalHeight, 100)],
     orientation: 'portrait',
   });
+
+  await ensureReceiptFonts(doc);
 
   const pageWidth = 80;
   const margin = 4;
@@ -95,6 +147,9 @@ export const generateReceipt = async ({
     doc.text(text, pageWidth - margin - textWidth, yPos);
   };
 
+  // Prefer custom font (for ₦). If not loaded, jsPDF will silently use a default font.
+  doc.setFont('NotoSans', 'normal');
+
   // ============ HEADER ============
   if (shouldShowLogo && pharmacyLogoUrl) {
     try {
@@ -108,15 +163,15 @@ export const generateReceipt = async ({
   }
 
   // Pharmacy Name
-  doc.setFont('helvetica', 'bold');
+  doc.setFont('NotoSans', 'bold');
   centerText(pharmacyName.toUpperCase(), y, 11);
   y += 5;
 
   // Address
   if (pharmacyAddress) {
-    doc.setFont('helvetica', 'normal');
+    doc.setFont('NotoSans', 'normal');
     doc.setFontSize(7);
-    const addressLines = doc.splitTextToSize(pharmacyAddress, pageWidth - (margin * 2));
+    const addressLines = doc.splitTextToSize(pharmacyAddress, pageWidth - margin * 2);
     addressLines.forEach((line: string) => {
       centerText(line, y, 7);
       y += 3;
@@ -125,7 +180,7 @@ export const generateReceipt = async ({
 
   // Phone
   if (pharmacyPhone) {
-    doc.setFont('helvetica', 'normal');
+    doc.setFont('NotoSans', 'normal');
     centerText(`Tel: ${pharmacyPhone}`, y, 7);
     y += 4;
   }
@@ -139,10 +194,10 @@ export const generateReceipt = async ({
   y += 5;
 
   // Receipt info row
-  doc.setFont('helvetica', 'bold');
+  doc.setFont('NotoSans', 'bold');
   doc.setFontSize(7);
   doc.text(`#${receiptNumber}`, margin, y);
-  doc.setFont('helvetica', 'normal');
+  doc.setFont('NotoSans', 'normal');
   rightText(format(date, 'dd/MM/yy HH:mm'), y);
   y += 4;
 
@@ -153,7 +208,7 @@ export const generateReceipt = async ({
 
   // Payment Status
   const statusText = paymentStatus === 'paid' ? 'PAID' : 'UNPAID';
-  doc.setFont('helvetica', 'bold');
+  doc.setFont('NotoSans', 'bold');
   doc.setFontSize(9);
   if (paymentStatus === 'paid') {
     doc.setTextColor(0, 128, 0);
@@ -177,7 +232,7 @@ export const generateReceipt = async ({
   const colPrice = 54;
   const colTotal = pageWidth - margin;
 
-  doc.setFont('helvetica', 'bold');
+  doc.setFont('NotoSans', 'bold');
   doc.setFontSize(7);
   doc.text('S/N', colSN, y);
   doc.text('Item', colItem, y);
@@ -190,8 +245,8 @@ export const generateReceipt = async ({
   y += 3;
 
   // ============ TABLE ROWS ============
-  doc.setFont('helvetica', 'normal');
-  
+  doc.setFont('NotoSans', 'normal');
+
   items.forEach((item, index) => {
     const price = item.medication.selling_price || item.medication.unit_price;
     const itemTotal = price * item.quantity;
@@ -217,7 +272,7 @@ export const generateReceipt = async ({
     doc.text(formatCurrency(price, currency), colPrice, y);
     // Total
     rightText(formatCurrency(itemTotal, currency), y);
-    
+
     y += 5;
   });
 
@@ -227,7 +282,7 @@ export const generateReceipt = async ({
   doc.line(margin, y, pageWidth - margin, y);
   y += 5;
 
-  doc.setFont('helvetica', 'bold');
+  doc.setFont('NotoSans', 'bold');
   doc.setFontSize(10);
   doc.text('Total:', margin, y);
   rightText(formatCurrency(total, currency), y);
@@ -238,7 +293,7 @@ export const generateReceipt = async ({
   doc.line(margin, y, pageWidth - margin, y);
   y += 4;
 
-  doc.setFont('helvetica', 'normal');
+  doc.setFont('NotoSans', 'normal');
   doc.setFontSize(7);
   centerText('Thank you for your purchase!', y);
   y += 3;
