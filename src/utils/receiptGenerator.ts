@@ -268,6 +268,12 @@ export const generateReceiptNumber = (): string => {
   return `RX-${timestamp}-${random}`;
 };
 
+export const generateInvoiceNumber = (): string => {
+  const timestamp = Date.now().toString(36).toUpperCase();
+  const random = Math.random().toString(36).substring(2, 6).toUpperCase();
+  return `INV-${timestamp}-${random}`;
+};
+
 // Helper function to load image as base64
 const loadImage = (url: string): Promise<string> => {
   return new Promise((resolve, reject) => {

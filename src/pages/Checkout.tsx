@@ -41,8 +41,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { generateReceipt, generateReceiptNumber } from '@/utils/receiptGenerator';
+import { generateReceipt, generateReceiptNumber, generateInvoiceNumber } from '@/utils/receiptGenerator';
 import jsPDF from 'jspdf';
+import { FileText } from 'lucide-react';
 
 const Checkout = () => {
   const { medications, isLoading } = useMedications();
@@ -250,6 +251,54 @@ const Checkout = () => {
     setPreviewOpen(true);
   };
 
+  // Generate Invoice (credit sale - unpaid)
+  const handleGenerateInvoice = async () => {
+    if (cart.items.length === 0) return;
+
+    setIsProcessing(true);
+
+    // Store cart items
+    const currentItems = [...cart.items];
+    const currentTotal = cart.getTotal();
+    const currentCustomer = customerName;
+
+    try {
+      // Generate invoice number (different from receipt)
+      const invoiceNumber = generateInvoiceNumber();
+      setLastReceiptNumber(invoiceNumber);
+      setLastReceiptItems(currentItems);
+      setLastReceiptTotal(currentTotal);
+
+      // Generate unpaid invoice receipt (digital version)
+      const receipt = await generateReceipt({
+        items: currentItems,
+        total: currentTotal,
+        customerName: currentCustomer || undefined,
+        receiptNumber: invoiceNumber,
+        date: new Date(),
+        ...getReceiptParams(false, true), // isPaid=false, isDigital=true
+      });
+
+      setPreviewReceipt(receipt);
+      setPreviewOpen(true);
+      setCheckoutOpen(false);
+
+      toast({
+        title: 'Invoice Generated',
+        description: `Invoice ${invoiceNumber} created. Stock not deducted.`,
+      });
+    } catch (error) {
+      console.error('Invoice generation failed:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to generate invoice.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   const handlePreviewPrintComplete = () => {
     // Close preview after printing
     setPreviewOpen(false);
@@ -367,14 +416,25 @@ const Checkout = () => {
               <div className="space-y-2 mt-4 sm:mt-6">
                 {/* Hold Sale Button */}
                 {cart.items.length > 0 && (
-                  <Button
-                    onClick={handleHoldSale}
-                    variant="outline"
-                    className="w-full h-10 sm:h-11 gap-2 text-sm"
-                  >
-                    <Pause className="h-4 w-4" />
-                    Hold Sale
-                  </Button>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button
+                      onClick={handleHoldSale}
+                      variant="outline"
+                      className="h-10 sm:h-11 gap-2 text-sm"
+                    >
+                      <Pause className="h-4 w-4" />
+                      Hold Sale
+                    </Button>
+                    <Button
+                      onClick={handleGenerateInvoice}
+                      variant="outline"
+                      disabled={isProcessing}
+                      className="h-10 sm:h-11 gap-2 text-sm border-amber-500/50 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30"
+                    >
+                      <FileText className="h-4 w-4" />
+                      Invoice
+                    </Button>
+                  </div>
                 )}
 
                 {/* Checkout Button */}

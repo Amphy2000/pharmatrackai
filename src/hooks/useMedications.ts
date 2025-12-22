@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Medication, MedicationFormData, DashboardMetrics } from '@/types/medication';
 import { useToast } from '@/hooks/use-toast';
@@ -20,6 +21,29 @@ export const useMedications = () => {
       return data as Medication[];
     },
   });
+
+  // Real-time subscription for medications updates
+  useEffect(() => {
+    const channel = supabase
+      .channel('medications-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'medications',
+        },
+        () => {
+          // Invalidate and refetch medications on any change
+          queryClient.invalidateQueries({ queryKey: ['medications'] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [queryClient]);
 
   const addMedication = useMutation({
     mutationFn: async (newMedication: MedicationFormData) => {
