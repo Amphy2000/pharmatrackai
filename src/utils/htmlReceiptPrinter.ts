@@ -217,7 +217,13 @@ export const generateHtmlReceipt = ({
   <div style="text-align: center; margin-top: 10px; padding: 8px; background: #fff3cd; border-radius: 4px; font-weight: bold;">
     Please proceed to cashier for payment
   </div>
-  ` : ''}
+  ` : `
+  <div class="barcode-section" style="margin-top: 10px;">
+    ${barcodeDataUrl ? `<img src="${barcodeDataUrl}" class="barcode-img" alt="Barcode">` : ''}
+    ${shortCode ? `<div style="font-size: 12px; font-weight: bold; margin-top: 3px;">${shortCode}</div>` : ''}
+    <div style="font-size: 9px; color: #666; margin-top: 5px;">Official Transaction Record - PharmaTrack AI</div>
+  </div>
+  `}
 
   <div class="divider"></div>
 

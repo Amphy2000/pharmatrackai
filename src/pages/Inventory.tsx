@@ -40,7 +40,7 @@ import {
 } from '@/components/ui/alert-dialog';
 
 const Inventory = () => {
-  const { medications, deleteMedication } = useMedications();
+  const { medications, deleteMedication, updateMedication } = useMedications();
   const [showReceiveStockModal, setShowReceiveStockModal] = useState(false);
   const [showStockCountModal, setShowStockCountModal] = useState(false);
   const [showInvoiceScannerModal, setShowInvoiceScannerModal] = useState(false);
@@ -52,6 +52,8 @@ const Inventory = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [bulkShelveOpen, setBulkShelveOpen] = useState(false);
+  const [bulkUnshelveOpen, setBulkUnshelveOpen] = useState(false);
   const { pharmacy } = usePharmacy();
   const { currency } = useCurrency();
 
@@ -90,6 +92,24 @@ const Inventory = () => {
     setSelectedIds(new Set());
     setBulkDeleteOpen(false);
     toast.success(`Deleted ${selectedIds.size} items`);
+  };
+
+  const handleBulkShelve = async () => {
+    for (const id of selectedIds) {
+      await updateMedication.mutateAsync({ id, is_shelved: true });
+    }
+    setSelectedIds(new Set());
+    setBulkShelveOpen(false);
+    toast.success(`Shelved ${selectedIds.size} items`);
+  };
+
+  const handleBulkUnshelve = async () => {
+    for (const id of selectedIds) {
+      await updateMedication.mutateAsync({ id, is_shelved: false });
+    }
+    setSelectedIds(new Set());
+    setBulkUnshelveOpen(false);
+    toast.success(`Unshelved ${selectedIds.size} items`);
   };
 
   const handleEdit = (medication: Medication) => {
@@ -466,7 +486,7 @@ const Inventory = () => {
             </div>
             {/* Bulk Actions */}
             {selectedIds.size > 0 && (
-              <div className="flex items-center gap-2 mt-3 p-2 bg-primary/5 rounded-lg">
+              <div className="flex items-center gap-2 mt-3 p-2 bg-primary/5 rounded-lg flex-wrap">
                 <Checkbox
                   checked={selectedIds.size === filteredMedications.length}
                   onCheckedChange={selectAll}
@@ -474,6 +494,14 @@ const Inventory = () => {
                 <span className="text-sm font-medium">{selectedIds.size} selected</span>
                 <Button variant="outline" size="sm" onClick={() => setSelectedIds(new Set())}>
                   Clear
+                </Button>
+                <Button variant="secondary" size="sm" onClick={() => setBulkShelveOpen(true)}>
+                  <CheckSquare className="h-3 w-3 mr-1" />
+                  Shelve
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => setBulkUnshelveOpen(true)}>
+                  <Package className="h-3 w-3 mr-1" />
+                  Unshelve
                 </Button>
                 <Button variant="destructive" size="sm" onClick={() => setBulkDeleteOpen(true)}>
                   <Trash2 className="h-3 w-3 mr-1" />
@@ -549,6 +577,38 @@ const Inventory = () => {
             <AlertDialogAction onClick={handleBulkDelete} className="bg-destructive text-destructive-foreground">
               Delete All
             </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Bulk Shelve Dialog */}
+      <AlertDialog open={bulkShelveOpen} onOpenChange={setBulkShelveOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Shelve {selectedIds.size} items?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Selected medications will be marked as shelved and available for sale.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleBulkShelve}>Shelve All</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Bulk Unshelve Dialog */}
+      <AlertDialog open={bulkUnshelveOpen} onOpenChange={setBulkUnshelveOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Unshelve {selectedIds.size} items?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Selected medications will be marked as unshelved (e.g., expired or returned stock).
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleBulkUnshelve}>Unshelve All</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

@@ -803,9 +803,11 @@ export type Database = {
           medication_id: string
           pharmacy_id: string
           quantity: number
+          receipt_id: string | null
           sale_date: string
           shift_id: string | null
           sold_by: string | null
+          sold_by_name: string | null
           total_price: number
           unit_price: number
         }
@@ -816,9 +818,11 @@ export type Database = {
           medication_id: string
           pharmacy_id: string
           quantity: number
+          receipt_id?: string | null
           sale_date?: string
           shift_id?: string | null
           sold_by?: string | null
+          sold_by_name?: string | null
           total_price: number
           unit_price: number
         }
@@ -829,9 +833,11 @@ export type Database = {
           medication_id?: string
           pharmacy_id?: string
           quantity?: number
+          receipt_id?: string | null
           sale_date?: string
           shift_id?: string | null
           sold_by?: string | null
+          sold_by_name?: string | null
           total_price?: number
           unit_price?: number
         }
@@ -1235,6 +1241,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      generate_receipt_id: { Args: never; Returns: string }
       get_user_pharmacy_id: { Args: { user_uuid: string }; Returns: string }
       has_pharmacy_role: {
         Args: {
