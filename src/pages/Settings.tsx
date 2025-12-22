@@ -1,8 +1,9 @@
 import { Header } from '@/components/Header';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Settings as SettingsIcon, Users, Globe, CreditCard, Building2 } from 'lucide-react';
+import { Settings as SettingsIcon, Users, Globe, CreditCard, Shield } from 'lucide-react';
 import { StaffManagement } from '@/components/settings/StaffManagement';
+import { PermissionsManagement } from '@/components/settings/PermissionsManagement';
 import { RegionCurrencySettings } from '@/components/settings/RegionCurrencySettings';
 import { SubscriptionManagement } from '@/components/settings/SubscriptionManagement';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -35,7 +36,7 @@ const Settings = () => {
         </div>
 
         <Tabs defaultValue={defaultTab} className="space-y-6">
-          <TabsList>
+          <TabsList className="flex-wrap">
             <TabsTrigger value="general" className="gap-2">
               <Globe className="h-4 w-4" />
               General
@@ -48,6 +49,12 @@ const Settings = () => {
               <TabsTrigger value="staff" className="gap-2">
                 <Users className="h-4 w-4" />
                 Staff
+              </TabsTrigger>
+            )}
+            {canManageStaff && (
+              <TabsTrigger value="permissions" className="gap-2">
+                <Shield className="h-4 w-4" />
+                Permissions
               </TabsTrigger>
             )}
           </TabsList>
@@ -73,6 +80,12 @@ const Settings = () => {
           {canManageStaff && (
             <TabsContent value="staff">
               <StaffManagement />
+            </TabsContent>
+          )}
+
+          {canManageStaff && (
+            <TabsContent value="permissions">
+              <PermissionsManagement />
             </TabsContent>
           )}
         </Tabs>
