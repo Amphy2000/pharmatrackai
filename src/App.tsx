@@ -27,6 +27,7 @@ import OnboardingWizard from "./pages/OnboardingWizard";
 import ProfileSettings from "./pages/ProfileSettings";
 import UserGuide from "./pages/UserGuide";
 import AdminDashboard from "./pages/AdminDashboard";
+import SalesPitch from "./pages/SalesPitch";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -44,6 +45,7 @@ const App = () => (
               <Routes>
                 {/* Public Routes */}
                 <Route path="/" element={<Landing />} />
+                <Route path="/pitch" element={<SalesPitch />} />
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/onboarding" element={<OnboardingWizard />} />
                 
