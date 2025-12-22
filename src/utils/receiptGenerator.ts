@@ -11,6 +11,7 @@ interface ReceiptData {
   pharmacyName?: string;
   pharmacyAddress?: string;
   pharmacyPhone?: string;
+  pharmacyLogoUrl?: string;
   receiptNumber: string;
   date: Date;
   currency?: CurrencyCode;
@@ -34,24 +35,26 @@ const formatCurrency = (amount: number, currency: CurrencyCode = 'NGN'): string 
   return `${symbol}${amount.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 };
 
-export const generateReceipt = ({
+export const generateReceipt = async ({
   items,
   total,
   customerName,
   pharmacyName = 'PharmaTrack Pharmacy',
   pharmacyAddress,
   pharmacyPhone,
+  pharmacyLogoUrl,
   receiptNumber,
   date,
   currency = 'NGN',
-}: ReceiptData): jsPDF => {
+}: ReceiptData): Promise<jsPDF> => {
   // Calculate dynamic height based on items
   const baseHeight = 140;
   const itemHeight = items.length * 12;
   const addressHeight = pharmacyAddress ? 8 : 0;
   const phoneHeight = pharmacyPhone ? 6 : 0;
   const customerHeight = customerName ? 6 : 0;
-  const totalHeight = baseHeight + itemHeight + addressHeight + phoneHeight + customerHeight;
+  const logoHeight = pharmacyLogoUrl ? 20 : 0;
+  const totalHeight = baseHeight + itemHeight + addressHeight + phoneHeight + customerHeight + logoHeight;
 
   // Create PDF optimized for thermal printers (80mm width = ~226.77 points at 72 DPI)
   const doc = new jsPDF({
@@ -78,6 +81,18 @@ export const generateReceipt = ({
   };
 
   // ============ PHARMACY BRANDING HEADER ============
+  // Add logo if available
+  if (pharmacyLogoUrl) {
+    try {
+      const logoImg = await loadImage(pharmacyLogoUrl);
+      const logoSize = 15; // 15mm square
+      doc.addImage(logoImg, 'PNG', (pageWidth - logoSize) / 2, y, logoSize, logoSize);
+      y += logoSize + 3;
+    } catch (error) {
+      console.error('Failed to load logo for receipt:', error);
+    }
+  }
+
   doc.setFont('helvetica', 'bold');
   centerText(pharmacyName.toUpperCase(), y, 14);
   y += 6;
@@ -213,4 +228,26 @@ export const generateReceiptNumber = (): string => {
   const timestamp = Date.now().toString(36).toUpperCase();
   const random = Math.random().toString(36).substring(2, 6).toUpperCase();
   return `RX-${timestamp}-${random}`;
+};
+
+// Helper function to load image as base64
+const loadImage = (url: string): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        reject(new Error('Failed to get canvas context'));
+        return;
+      }
+      ctx.drawImage(img, 0, 0);
+      resolve(canvas.toDataURL('image/png'));
+    };
+    img.onerror = () => reject(new Error('Failed to load image'));
+    img.src = url;
+  });
 };

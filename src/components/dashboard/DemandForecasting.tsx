@@ -154,10 +154,11 @@ export const DemandForecasting = () => {
 
       const orderNumber = generateOrderNumber();
       
-      const pdf = generatePurchaseOrder({
+      const pdf = await generatePurchaseOrder({
         orders,
         pharmacyName: pharmacy?.name || 'Pharmacy',
         pharmacyPhone: pharmacy?.phone || undefined,
+        pharmacyLogoUrl: pharmacy?.logo_url || undefined,
         orderNumber,
         date: new Date(),
         currency: currency as 'USD' | 'NGN' | 'GBP',

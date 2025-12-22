@@ -138,7 +138,7 @@ export const BulkReorderModal = ({ open, onOpenChange }: BulkReorderModalProps) 
   }, [selectedItems]);
 
   // Print purchase orders (POS format)
-  const handlePrintPurchaseOrders = () => {
+  const handlePrintPurchaseOrders = async () => {
     if (selectedItems.size === 0) {
       toast({ title: 'No items selected', variant: 'destructive' });
       return;
@@ -192,10 +192,11 @@ export const BulkReorderModal = ({ open, onOpenChange }: BulkReorderModalProps) 
 
     // Generate POS receipt
     const orderNumber = generateOrderNumber();
-    const doc = generatePurchaseOrder({
+    const doc = await generatePurchaseOrder({
       orders: ordersForPrint,
       pharmacyName: pharmacy?.name || 'My Pharmacy',
       pharmacyPhone: pharmacy?.phone || undefined,
+      pharmacyLogoUrl: pharmacy?.logo_url || undefined,
       orderNumber,
       date: new Date(),
       currency: currency as 'NGN' | 'USD' | 'GBP',

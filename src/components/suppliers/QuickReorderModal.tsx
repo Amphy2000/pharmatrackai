@@ -50,7 +50,7 @@ export const QuickReorderModal = ({ open, onOpenChange, medication }: QuickReord
     setSelectedProduct(product);
   };
 
-  const handlePrint = () => {
+  const handlePrint = async () => {
     if (!selectedProduct || !medication) {
       toast({ title: 'Please select a supplier', variant: 'destructive' });
       return;
@@ -60,7 +60,7 @@ export const QuickReorderModal = ({ open, onOpenChange, medication }: QuickReord
     
     // Generate POS receipt
     const orderNumber = generateOrderNumber();
-    const doc = generatePurchaseOrder({
+    const doc = await generatePurchaseOrder({
       orders: [{
         supplierName: selectedProduct.supplier_name,
         items: [{
@@ -73,6 +73,7 @@ export const QuickReorderModal = ({ open, onOpenChange, medication }: QuickReord
       }],
       pharmacyName: pharmacy?.name || 'My Pharmacy',
       pharmacyPhone: pharmacy?.phone || undefined,
+      pharmacyLogoUrl: pharmacy?.logo_url || undefined,
       orderNumber,
       date: new Date(),
       currency: currency as 'NGN' | 'USD' | 'GBP',

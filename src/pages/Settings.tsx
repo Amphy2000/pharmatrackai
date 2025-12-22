@@ -1,11 +1,12 @@
 import { Header } from '@/components/Header';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Settings as SettingsIcon, Users, Globe, CreditCard, Shield } from 'lucide-react';
+import { Settings as SettingsIcon, Users, Globe, CreditCard, Shield, ImageIcon } from 'lucide-react';
 import { StaffManagement } from '@/components/settings/StaffManagement';
 import { PermissionsManagement } from '@/components/settings/PermissionsManagement';
 import { RegionCurrencySettings } from '@/components/settings/RegionCurrencySettings';
 import { SubscriptionManagement } from '@/components/settings/SubscriptionManagement';
+import { BrandingSettings } from '@/components/settings/BrandingSettings';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useSearchParams, Navigate } from 'react-router-dom';
 
@@ -45,6 +46,10 @@ const Settings = () => {
               <Globe className="h-4 w-4" />
               General
             </TabsTrigger>
+            <TabsTrigger value="branding" className="gap-2">
+              <ImageIcon className="h-4 w-4" />
+              Branding
+            </TabsTrigger>
             <TabsTrigger value="subscription" className="gap-2">
               <CreditCard className="h-4 w-4" />
               Subscription
@@ -75,6 +80,10 @@ const Settings = () => {
                 <RegionCurrencySettings />
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="branding">
+            <BrandingSettings />
           </TabsContent>
 
           <TabsContent value="subscription">

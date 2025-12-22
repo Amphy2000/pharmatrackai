@@ -95,14 +95,15 @@ const Checkout = () => {
     }
   };
 
-  const printReceipt = (items: typeof cart.items, total: number, receiptNumber: string, custName?: string) => {
-    const receipt = generateReceipt({
+  const printReceipt = async (items: typeof cart.items, total: number, receiptNumber: string, custName?: string) => {
+    const receipt = await generateReceipt({
       items,
       total,
       customerName: custName || undefined,
       pharmacyName: pharmacy?.name || 'PharmaTrack Pharmacy',
       pharmacyAddress: pharmacy?.address || undefined,
       pharmacyPhone: pharmacy?.phone || undefined,
+      pharmacyLogoUrl: pharmacy?.logo_url || undefined,
       receiptNumber,
       date: new Date(),
       currency: currency as 'USD' | 'NGN' | 'GBP',

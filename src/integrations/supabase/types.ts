@@ -326,6 +326,7 @@ export type Database = {
           email: string
           id: string
           license_number: string | null
+          logo_url: string | null
           max_users: number
           name: string
           owner_id: string
@@ -344,6 +345,7 @@ export type Database = {
           email: string
           id?: string
           license_number?: string | null
+          logo_url?: string | null
           max_users?: number
           name: string
           owner_id: string
@@ -362,6 +364,7 @@ export type Database = {
           email?: string
           id?: string
           license_number?: string | null
+          logo_url?: string | null
           max_users?: number
           name?: string
           owner_id?: string
