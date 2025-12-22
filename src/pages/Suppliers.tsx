@@ -2,14 +2,16 @@ import { useState } from 'react';
 import { Header } from '@/components/Header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Package, Users, AlertTriangle, ShoppingCart } from 'lucide-react';
+import { Package, Users, AlertTriangle, ShoppingCart, Plus } from 'lucide-react';
 import { useSuppliers } from '@/hooks/useSuppliers';
 import { useMedications } from '@/hooks/useMedications';
 import { SuppliersTable } from '@/components/suppliers/SuppliersTable';
 import { LowStockAlerts } from '@/components/suppliers/LowStockAlerts';
 import { QuickReorderModal } from '@/components/suppliers/QuickReorderModal';
 import { BulkReorderModal } from '@/components/suppliers/BulkReorderModal';
+import { AddSupplierModal } from '@/components/suppliers/AddSupplierModal';
 import type { Medication } from '@/types/medication';
+import type { Supplier } from '@/types/supplier';
 
 const Suppliers = () => {
   const { suppliers } = useSuppliers();
@@ -17,6 +19,8 @@ const Suppliers = () => {
   const [reorderMedication, setReorderMedication] = useState<Medication | null>(null);
   const [showReorderModal, setShowReorderModal] = useState(false);
   const [showBulkReorderModal, setShowBulkReorderModal] = useState(false);
+  const [showAddSupplierModal, setShowAddSupplierModal] = useState(false);
+  const [editingSupplier, setEditingSupplier] = useState<Supplier | null>(null);
 
   const activeSuppliers = suppliers.filter(s => s.is_active).length;
   const lowStockCount = medications.filter(m => m.current_stock <= m.reorder_level).length;
@@ -25,6 +29,18 @@ const Suppliers = () => {
   const handleReorder = (medication: Medication) => {
     setReorderMedication(medication);
     setShowReorderModal(true);
+  };
+
+  const handleEditSupplier = (supplier: Supplier) => {
+    setEditingSupplier(supplier);
+    setShowAddSupplierModal(true);
+  };
+
+  const handleAddSupplierClose = (open: boolean) => {
+    setShowAddSupplierModal(open);
+    if (!open) {
+      setEditingSupplier(null);
+    }
   };
 
   return (
@@ -42,7 +58,11 @@ const Suppliers = () => {
             </p>
           </div>
           <div className="flex gap-2 flex-wrap">
-            <Button onClick={() => setShowBulkReorderModal(true)} variant="default">
+            <Button onClick={() => setShowAddSupplierModal(true)} variant="default">
+              <Plus className="h-4 w-4 mr-2" />
+              Add Supplier
+            </Button>
+            <Button onClick={() => setShowBulkReorderModal(true)} variant="outline">
               <ShoppingCart className="h-4 w-4 mr-2" />
               Bulk Reorder
             </Button>
@@ -103,13 +123,14 @@ const Suppliers = () => {
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <CardTitle>Your Suppliers</CardTitle>
-                  <p className="text-sm text-muted-foreground">
-                    Suppliers are added when stocking medications
-                  </p>
+                  <Button variant="ghost" size="sm" onClick={() => setShowAddSupplierModal(true)}>
+                    <Plus className="h-4 w-4 mr-1" />
+                    Add New
+                  </Button>
                 </div>
               </CardHeader>
               <CardContent>
-                <SuppliersTable />
+                <SuppliersTable onEdit={handleEditSupplier} />
               </CardContent>
             </Card>
           </div>
@@ -132,6 +153,12 @@ const Suppliers = () => {
       <BulkReorderModal
         open={showBulkReorderModal}
         onOpenChange={setShowBulkReorderModal}
+      />
+
+      <AddSupplierModal
+        open={showAddSupplierModal}
+        onOpenChange={handleAddSupplierClose}
+        editingSupplier={editingSupplier}
       />
     </div>
   );

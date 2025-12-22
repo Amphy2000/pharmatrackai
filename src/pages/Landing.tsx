@@ -4,7 +4,8 @@ import { motion } from 'framer-motion';
 import { 
   Clock, ShieldCheck, Globe, Smartphone, Sparkles, Check, Calculator,
   ArrowRight, Star, Zap, TrendingUp, Lock, BadgeCheck, ChevronRight,
-  FileUp, Wand2, Timer, WifiOff, Database, Headphones, X, DollarSign, AlertTriangle
+  FileUp, Wand2, Timer, WifiOff, Database, Headphones, X, DollarSign, AlertTriangle,
+  Phone, MessageCircle, Menu
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/Logo';
@@ -18,6 +19,12 @@ import { useAuth } from '@/contexts/AuthContext';
 import { ProfitProtectorCalculator } from '@/components/landing/ProfitProtectorCalculator';
 import { FeatureDemo } from '@/components/landing/FeatureDemo';
 import { VideoShowcase } from '@/components/landing/VideoShowcase';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 // Animation variants
 const fadeInUp = {
@@ -146,17 +153,55 @@ const Landing = () => {
       >
         <div className="container mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
           <Logo size="sm" linkTo="/" />
+          
+          {/* Desktop Navigation */}
+          <div className="hidden md:flex items-center gap-6">
+            <a href="#features" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Features</a>
+            <a href="#pricing" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Pricing</a>
+            <a href="#comparison" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Why PharmaTrack</a>
+            <a href="#testimonials" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Testimonials</a>
+          </div>
+
           <div className="flex items-center gap-3">
             {/* International Toggle */}
-            <div className="hidden sm:flex items-center gap-2 mr-2 px-3 py-1.5 rounded-full bg-muted/50 border border-border/50">
+            <div className="hidden lg:flex items-center gap-2 mr-2 px-3 py-1.5 rounded-full bg-muted/50 border border-border/50">
               <span className={`text-xs ${!isInternational ? 'text-primary font-medium' : 'text-muted-foreground'}`}>🇳🇬 NGN</span>
               <Switch checked={isInternational} onCheckedChange={setIsInternational} className="scale-75" />
               <span className={`text-xs ${isInternational ? 'text-primary font-medium' : 'text-muted-foreground'}`}>🌍 USD</span>
             </div>
             <Link to="/auth"><Button variant="ghost" className="hidden sm:flex">Login</Button></Link>
             <Link to="/auth?tab=signup">
-              <Button className="bg-gradient-primary hover:opacity-90 shadow-glow-primary">Start Free Trial</Button>
+              <Button className="bg-gradient-primary hover:opacity-90 shadow-glow-primary hidden sm:flex">Start Free Trial</Button>
             </Link>
+            
+            {/* Mobile Menu */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild className="md:hidden">
+                <Button variant="ghost" size="icon">
+                  <Menu className="h-5 w-5" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem asChild>
+                  <a href="#features">Features</a>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <a href="#pricing">Pricing</a>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <a href="#comparison">Why PharmaTrack</a>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <a href="#testimonials">Testimonials</a>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/auth">Login</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link to="/auth?tab=signup">Start Free Trial</Link>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </div>
       </motion.nav>
@@ -1181,29 +1226,60 @@ const Landing = () => {
       {/* Footer */}
       <footer className="py-12 border-t border-border/40">
         <div className="container mx-auto px-4 sm:px-6">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
             <motion.div 
               initial={{ opacity: 0 }}
               whileInView={{ opacity: 1 }}
+              className="md:col-span-1"
             >
               <Logo size="sm" linkTo="/" />
+              <p className="text-sm text-muted-foreground mt-4">
+                The AI-powered pharmacy management system built by pharmacists, for pharmacists.
+              </p>
             </motion.div>
-            <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-muted-foreground">
-              <a href="mailto:pharmatrackai@gmail.com" className="flex items-center gap-2 hover:text-primary transition-colors">
-                <Headphones className="h-4 w-4" />
-                <span>Support: pharmatrackai@gmail.com</span>
-              </a>
+            
+            {/* Contact Section */}
+            <div className="md:col-span-2">
+              <h4 className="font-semibold mb-4">Contact Us</h4>
+              <div className="flex flex-col gap-3 text-sm text-muted-foreground">
+                <a href="mailto:pharmatrackai@gmail.com" className="flex items-center gap-2 hover:text-primary transition-colors">
+                  <Headphones className="h-4 w-4" />
+                  <span>pharmatrackai@gmail.com</span>
+                </a>
+                <a href="tel:+2349169153129" className="flex items-center gap-2 hover:text-primary transition-colors">
+                  <Phone className="h-4 w-4" />
+                  <span>+234 916 915 3129</span>
+                </a>
+                <a href="tel:+2349132424169" className="flex items-center gap-2 hover:text-primary transition-colors">
+                  <Phone className="h-4 w-4" />
+                  <span>+234 913 242 4169</span>
+                </a>
+                <a 
+                  href="https://wa.link/jsn5d9" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 hover:text-success transition-colors"
+                >
+                  <MessageCircle className="h-4 w-4" />
+                  <span>Chat on WhatsApp</span>
+                </a>
+              </div>
             </div>
-            <div className="flex flex-wrap items-center justify-center gap-4 text-sm text-muted-foreground">
-              {['NAFDAC', 'GDPR'].map((cert, i) => (
-                <div key={i} className="flex items-center gap-1">
-                  <BadgeCheck className="h-4 w-4" />
-                  <span>{cert} Compliant</span>
-                </div>
-              ))}
+
+            {/* Compliance */}
+            <div className="md:col-span-1">
+              <h4 className="font-semibold mb-4">Compliance</h4>
+              <div className="flex flex-col gap-2 text-sm text-muted-foreground">
+                {['NAFDAC', 'GDPR'].map((cert, i) => (
+                  <div key={i} className="flex items-center gap-2">
+                    <BadgeCheck className="h-4 w-4 text-success" />
+                    <span>{cert} Compliant</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
-          <div className="text-center mt-8 text-sm text-muted-foreground">
+          <div className="text-center pt-8 border-t border-border/40 text-sm text-muted-foreground">
             © {new Date().getFullYear()} PharmaTrack AI. All rights reserved.
           </div>
         </div>

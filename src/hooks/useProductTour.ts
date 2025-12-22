@@ -7,54 +7,124 @@ interface TourStep {
   id: string;
   title: string;
   description: string;
-  target?: string;
-  position: 'center' | 'top' | 'bottom' | 'left' | 'right';
-  action?: string;
+  features: string[];
+  icon: 'sparkles' | 'dashboard' | 'cart' | 'package' | 'zap' | 'users' | 'check' | 'shield' | 'chart';
+  animation?: 'fade' | 'slide' | 'scale' | 'bounce';
 }
 
 const tourSteps: TourStep[] = [
   {
     id: 'welcome',
     title: 'Welcome to PharmaTrack! 🎉',
-    description: 'Let us show you around your new pharmacy management system. This tour will help you get started quickly.',
-    position: 'center',
+    description: 'Let us show you around your new pharmacy management system. This interactive guide will help you master each feature step by step.',
+    features: [
+      'AI-powered inventory management',
+      'Real-time sales analytics',
+      'Multi-branch support',
+      'NAFDAC compliance tools'
+    ],
+    icon: 'sparkles',
+    animation: 'scale',
   },
   {
     id: 'dashboard',
-    title: 'Your Dashboard',
-    description: 'This is your command center. See real-time inventory metrics, sales data, and AI-powered insights at a glance.',
-    position: 'center',
+    title: 'Your Command Center',
+    description: 'The Dashboard gives you a bird\'s eye view of your entire pharmacy operation. Monitor performance, track trends, and make data-driven decisions.',
+    features: [
+      'Real-time revenue tracking',
+      'Low stock alerts at a glance',
+      'Expiry warnings dashboard',
+      'AI-powered insights panel',
+      'Staff performance metrics'
+    ],
+    icon: 'dashboard',
+    animation: 'fade',
   },
   {
     id: 'pos',
-    title: 'Point of Sale (POS)',
-    description: 'Click "Open POS" to start selling. Scan barcodes, search products, and process transactions in seconds.',
-    position: 'center',
-    action: 'Open POS →',
+    title: 'Lightning-Fast Point of Sale',
+    description: 'Process sales in seconds with our intuitive POS system. Built for speed and accuracy in high-traffic pharmacy environments.',
+    features: [
+      'Barcode scanning support',
+      'Smart product search',
+      'Hold & recall transactions',
+      'Multiple payment methods',
+      'Auto drug interaction warnings',
+      'Instant receipt printing'
+    ],
+    icon: 'cart',
+    animation: 'slide',
   },
   {
     id: 'inventory',
-    title: 'Inventory Management',
-    description: 'Add medications, track stock levels, and get alerts for low stock or expiring items. Use the AI-powered invoice scanner to add items faster!',
-    position: 'center',
+    title: 'Smart Inventory Management',
+    description: 'Never run out of stock or lose money to expiring drugs. Our AI helps you maintain optimal inventory levels automatically.',
+    features: [
+      'AI Invoice Scanner - add 50+ items in 10 seconds',
+      'Automatic expiry tracking',
+      'Smart reorder suggestions',
+      'Batch & lot number tracking',
+      'Controlled drugs register',
+      'Location/shelf mapping'
+    ],
+    icon: 'package',
+    animation: 'fade',
   },
   {
-    id: 'quick-actions',
-    title: 'Quick Actions',
-    description: 'These shortcuts give you instant access to your most-used features. Customize your workflow for maximum efficiency.',
-    position: 'center',
+    id: 'ai-features',
+    title: 'AI-Powered Intelligence',
+    description: 'Let artificial intelligence work for you. Predict demand, optimize pricing, and prevent losses before they happen.',
+    features: [
+      'Demand forecasting',
+      'Expiry discount recommendations',
+      'Profit margin analysis',
+      'Sales trend predictions',
+      'Smart restocking alerts'
+    ],
+    icon: 'chart',
+    animation: 'scale',
   },
   {
     id: 'staff',
-    title: 'Staff Management',
-    description: 'Add team members, assign roles, and control permissions. Track shifts and performance from the Settings page.',
-    position: 'center',
+    title: 'Team Management',
+    description: 'Manage your staff efficiently with role-based access, shift tracking, and performance monitoring.',
+    features: [
+      'Add unlimited staff members',
+      'Role-based permissions',
+      'Clock in/out tracking',
+      'Sales by cashier reports',
+      'Admin PIN protection',
+      'Activity audit logs'
+    ],
+    icon: 'users',
+    animation: 'slide',
+  },
+  {
+    id: 'compliance',
+    title: 'Stay NAFDAC Compliant',
+    description: 'Built-in compliance tools ensure you\'re always audit-ready. Generate reports instantly when inspectors arrive.',
+    features: [
+      'NAFDAC registration tracking',
+      'Batch traceability logs',
+      'Manufacturing date records',
+      'Controlled drugs register',
+      'One-click compliance reports'
+    ],
+    icon: 'shield',
+    animation: 'fade',
   },
   {
     id: 'complete',
     title: 'You\'re All Set! ✅',
-    description: 'You can restart this tour anytime from your Profile Settings. Need help? Check the User Guide or contact support.',
-    position: 'center',
+    description: 'You now know the key features of PharmaTrack. Explore at your own pace, and remember - we\'re here to help!',
+    features: [
+      'Restart this tour anytime from Settings',
+      'Check the User Guide for detailed help',
+      'Contact support: pharmatrackai@gmail.com',
+      'WhatsApp: +234 916 915 3129'
+    ],
+    icon: 'check',
+    animation: 'bounce',
   },
 ];
 
@@ -63,6 +133,7 @@ export const useProductTour = () => {
   const [isOpen, setIsOpen] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [hasCompletedTour, setHasCompletedTour] = useState(true); // Default to true to prevent flash
+  const [isPaused, setIsPaused] = useState(false);
 
   // Check if user has completed the tour
   useEffect(() => {
@@ -85,6 +156,7 @@ export const useProductTour = () => {
 
   const startTour = useCallback(() => {
     setCurrentStep(0);
+    setIsPaused(false);
     setIsOpen(true);
   }, []);
 
@@ -102,8 +174,22 @@ export const useProductTour = () => {
     }
   }, [currentStep]);
 
+  const goToStep = useCallback((step: number) => {
+    if (step >= 0 && step < tourSteps.length) {
+      setCurrentStep(step);
+    }
+  }, []);
+
   const skipTour = useCallback(() => {
     completeTour();
+  }, []);
+
+  const pauseTour = useCallback(() => {
+    setIsPaused(true);
+  }, []);
+
+  const resumeTour = useCallback(() => {
+    setIsPaused(false);
   }, []);
 
   const completeTour = useCallback(() => {
@@ -114,6 +200,7 @@ export const useProductTour = () => {
     setHasCompletedTour(true);
     setIsOpen(false);
     setCurrentStep(0);
+    setIsPaused(false);
   }, [user?.id]);
 
   const resetTour = useCallback(() => {
@@ -123,6 +210,7 @@ export const useProductTour = () => {
     }
     setHasCompletedTour(false);
     setCurrentStep(0);
+    setIsPaused(false);
     setIsOpen(true);
   }, [user?.id]);
 
@@ -131,11 +219,16 @@ export const useProductTour = () => {
     currentStep,
     totalSteps: tourSteps.length,
     currentStepData: tourSteps[currentStep],
+    allSteps: tourSteps,
     hasCompletedTour,
+    isPaused,
     startTour,
     nextStep,
     prevStep,
+    goToStep,
     skipTour,
+    pauseTour,
+    resumeTour,
     completeTour,
     resetTour,
   };
