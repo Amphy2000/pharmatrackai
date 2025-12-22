@@ -104,13 +104,16 @@ const Landing = () => {
     }
   };
 
-  // Competitor comparison data
+  // Competitor comparison data - comprehensive like the pitch page
   const comparisonData = [
-    { feature: 'Expiry Alerts', oldApp: 'You have to find them', pharmatrack: 'AI predicts them 60 days early' },
-    { feature: 'Stock Entry', oldApp: 'Manual Typing', pharmatrack: 'Mobile Barcode Scanning' },
-    { feature: 'Setup Fee', oldApp: 'Heavy Upfront Cost', pharmatrack: '₦0 Option Available' },
-    { feature: 'Insights', oldApp: 'Basic Totals', pharmatrack: '"What to Re-order" Predictions' },
-    { feature: 'Support', oldApp: '"Call the guy"', pharmatrack: '24/7 Priority Assistance' },
+    { feature: 'Expiry Management', oldApp: 'Manual checking', pharmatrack: 'AI predicts 60 days early', critical: true },
+    { feature: 'Stock Entry', oldApp: 'Typing everything', pharmatrack: 'Barcode + Invoice scan', critical: false },
+    { feature: 'Staff Tracking', oldApp: 'Trust-based', pharmatrack: 'Clock-in with sales audit', critical: true },
+    { feature: 'Reordering', oldApp: 'Guesswork', pharmatrack: 'AI demand forecasting', critical: false },
+    { feature: 'Multi-Branch', oldApp: 'Separate systems', pharmatrack: 'Unified dashboard', critical: false },
+    { feature: 'Support', oldApp: 'Call the vendor', pharmatrack: '24/7 Priority support', critical: false },
+    { feature: 'Setup Fee', oldApp: 'Heavy upfront', pharmatrack: '₦0 option available', critical: false },
+    { feature: 'Updates', oldApp: 'Pay per upgrade', pharmatrack: 'Always latest version', critical: false },
   ];
 
   if (isLoading) return (
@@ -245,9 +248,9 @@ const Landing = () => {
               className="mt-16 flex flex-wrap items-center justify-center gap-8"
             >
               {[
-                { icon: Star, text: 'Trusted by 500+ pharmacies', color: 'text-warning fill-warning' },
-                { icon: TrendingUp, text: isInternational ? '$2M+ recovered value' : '₦2.5B+ recovered value', color: 'text-success' },
-                { icon: Lock, text: 'Enterprise-grade security', color: 'text-primary' }
+                { icon: Zap, text: 'Built by Pharmacists, for Pharmacists', color: 'text-warning' },
+                { icon: Lock, text: 'Enterprise-grade security', color: 'text-primary' },
+                { icon: Headphones, text: '24/7 Priority support', color: 'text-success' }
               ].map((item, i) => (
                 <motion.div 
                   key={i}
@@ -472,7 +475,14 @@ const Landing = () => {
                   <TableBody>
                     {comparisonData.map((row, i) => (
                       <TableRow key={i} className="border-border/30">
-                        <TableCell className="font-medium">{row.feature}</TableCell>
+                        <TableCell className="font-medium">
+                          <span className="flex items-center gap-2">
+                            {row.feature}
+                            {row.critical && (
+                              <Badge variant="destructive" className="text-[10px] px-1.5 py-0">Critical</Badge>
+                            )}
+                          </span>
+                        </TableCell>
                         <TableCell className="text-center">
                           <span className="inline-flex items-center gap-2 text-muted-foreground">
                             <X className="h-4 w-4 text-destructive" />
