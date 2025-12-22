@@ -57,7 +57,7 @@ const fadeInUp = {
   }
 };
 export const VideoShowcase = () => {
-  return <section className="py-16 sm:py-24 relative bg-muted/30">
+  return <section id="testimonials" className="py-16 sm:py-24 relative bg-muted/30">
       <div className="container mx-auto px-4 sm:px-6">
         {/* Video Section */}
         <motion.div initial={{

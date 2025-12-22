@@ -472,7 +472,7 @@ const Landing = () => {
       </section>
 
       {/* Features Bento Grid */}
-      <section className="py-20 sm:py-32 relative">
+      <section id="features" className="py-20 sm:py-32 relative">
         <div className="container mx-auto px-4 sm:px-6">
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
@@ -638,7 +638,7 @@ const Landing = () => {
       </section>
 
       {/* ShopKite vs PharmaTrack Comparison Table Section */}
-      <section className="py-20 sm:py-32 relative bg-muted/20">
+      <section id="comparison" className="py-20 sm:py-32 relative bg-muted/20">
         <div className="container mx-auto px-4 sm:px-6">
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
@@ -931,7 +931,7 @@ const Landing = () => {
       </section>
 
       {/* Pricing Section */}
-      <section className="py-20 sm:py-32 relative">
+      <section id="pricing" className="py-20 sm:py-32 relative">
         <div className="container mx-auto px-4 sm:px-6">
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
