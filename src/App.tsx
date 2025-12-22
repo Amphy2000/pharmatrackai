@@ -28,6 +28,8 @@ import ProfileSettings from "./pages/ProfileSettings";
 import UserGuide from "./pages/UserGuide";
 import AdminDashboard from "./pages/AdminDashboard";
 import SalesPitch from "./pages/SalesPitch";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -47,6 +49,8 @@ const App = () => (
                 <Route path="/" element={<Landing />} />
                 <Route path="/pitch" element={<SalesPitch />} />
                 <Route path="/auth" element={<Auth />} />
+                <Route path="/forgot-password" element={<ForgotPassword />} />
+                <Route path="/reset-password" element={<ResetPassword />} />
                 <Route path="/onboarding" element={<OnboardingWizard />} />
                 
                 {/* Protected Routes */}
