@@ -4,7 +4,7 @@ import { motion } from 'framer-motion';
 import { 
   Clock, ShieldCheck, Globe, Smartphone, Sparkles, Check, Calculator,
   ArrowRight, Star, Zap, TrendingUp, Lock, BadgeCheck, ChevronRight,
-  FileUp, Wand2, Timer, WifiOff, Database, Headphones, X, DollarSign
+  FileUp, Wand2, Timer, WifiOff, Database, Headphones, X, DollarSign, AlertTriangle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/Logo';
@@ -114,6 +114,13 @@ const Landing = () => {
     { feature: 'Support', oldApp: 'Call the vendor', pharmatrack: '24/7 Priority support', critical: false },
     { feature: 'Setup Fee', oldApp: 'Heavy upfront', pharmatrack: '₦0 option available', critical: false },
     { feature: 'Updates', oldApp: 'Pay per upgrade', pharmatrack: 'Always latest version', critical: false },
+  ];
+
+  // Compliance badges for pharmacy-specific positioning
+  const complianceBadges = [
+    { icon: ShieldCheck, label: 'NAFDAC Ready', description: 'Audit-ready compliance reports' },
+    { icon: Lock, label: 'Controlled Drugs Register', description: 'Legal narcotics tracking' },
+    { icon: BadgeCheck, label: 'Drug Interaction Alerts', description: 'Patient safety at checkout' },
   ];
 
   if (isLoading) return (
@@ -264,6 +271,84 @@ const Landing = () => {
                 </motion.div>
               ))}
             </motion.div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Pharmacy-Specific Compliance Section */}
+      <section className="py-16 sm:py-24 relative bg-gradient-to-b from-background to-muted/20">
+        <div className="container mx-auto px-4 sm:px-6">
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mb-12"
+          >
+            <Badge variant="outline" className="mb-4 text-warning border-warning/30">
+              <AlertTriangle className="h-3 w-3 mr-2" />
+              Built for Pharmacies, Not Supermarkets
+            </Badge>
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-display font-bold mb-4">
+              Generic POS Apps <span className="text-destructive">Can't Do This</span>
+            </h2>
+            <p className="text-muted-foreground max-w-2xl mx-auto">
+              Retail apps like ShopKite are great for supermarkets, but pharmacies need legal compliance features that generic POS simply doesn't have.
+            </p>
+          </motion.div>
+
+          {/* Compliance Badges Grid */}
+          <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+            {complianceBadges.map((badge, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.1 }}
+              >
+                <Card className="h-full glass-card border-primary/20 overflow-hidden group hover:border-primary/40 transition-all">
+                  <CardContent className="p-6 text-center">
+                    <div className="h-14 w-14 rounded-2xl bg-gradient-primary flex items-center justify-center mx-auto mb-4 group-hover:shadow-glow-primary transition-all">
+                      <badge.icon className="h-7 w-7 text-primary-foreground" />
+                    </div>
+                    <Badge variant="destructive" className="mb-3 text-[10px]">Legal Requirement</Badge>
+                    <h3 className="font-display font-bold text-lg mb-2">{badge.label}</h3>
+                    <p className="text-sm text-muted-foreground">{badge.description}</p>
+                  </CardContent>
+                </Card>
+              </motion.div>
+            ))}
+          </div>
+
+          {/* Call-out Box */}
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="mt-12 max-w-3xl mx-auto"
+          >
+            <Card className="border-warning/30 bg-warning/5">
+              <CardContent className="p-6">
+                <div className="flex items-start gap-4">
+                  <div className="h-10 w-10 rounded-lg bg-warning/20 flex items-center justify-center flex-shrink-0">
+                    <AlertTriangle className="h-5 w-5 text-warning" />
+                  </div>
+                  <div>
+                    <h4 className="font-display font-bold mb-2">Ask Your Current App Provider</h4>
+                    <p className="text-sm text-muted-foreground mb-4">
+                      Can it generate NAFDAC compliance reports? Track controlled substances? Warn about drug interactions? 
+                      If not, you're using a supermarket app for a pharmacy.
+                    </p>
+                    <Link to="/pitch">
+                      <Button variant="outline" size="sm" className="border-warning/50 text-warning hover:bg-warning/10">
+                        See Full Comparison
+                        <ChevronRight className="h-4 w-4 ml-1" />
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </motion.div>
         </div>
       </section>
