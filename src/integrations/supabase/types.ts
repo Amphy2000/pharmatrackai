@@ -253,6 +253,7 @@ export type Database = {
       }
       medications: {
         Row: {
+          active_ingredients: string[] | null
           barcode_id: string | null
           batch_number: string
           category: string
@@ -276,6 +277,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          active_ingredients?: string[] | null
           barcode_id?: string | null
           batch_number: string
           category: string
@@ -299,6 +301,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          active_ingredients?: string[] | null
           barcode_id?: string | null
           batch_number?: string
           category?: string
@@ -390,7 +393,9 @@ export type Database = {
       pharmacies: {
         Row: {
           address: string | null
+          admin_pin_hash: string | null
           created_at: string
+          default_margin_percent: number | null
           email: string
           enable_logo_on_print: boolean | null
           id: string
@@ -403,6 +408,7 @@ export type Database = {
           paystack_subscription_code: string | null
           pharmacist_in_charge: string | null
           phone: string | null
+          price_lock_enabled: boolean | null
           subscription_ends_at: string | null
           subscription_plan: Database["public"]["Enums"]["subscription_plan"]
           subscription_status: Database["public"]["Enums"]["subscription_status"]
@@ -411,7 +417,9 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          admin_pin_hash?: string | null
           created_at?: string
+          default_margin_percent?: number | null
           email: string
           enable_logo_on_print?: boolean | null
           id?: string
@@ -424,6 +432,7 @@ export type Database = {
           paystack_subscription_code?: string | null
           pharmacist_in_charge?: string | null
           phone?: string | null
+          price_lock_enabled?: boolean | null
           subscription_ends_at?: string | null
           subscription_plan?: Database["public"]["Enums"]["subscription_plan"]
           subscription_status?: Database["public"]["Enums"]["subscription_status"]
@@ -432,7 +441,9 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          admin_pin_hash?: string | null
           created_at?: string
+          default_margin_percent?: number | null
           email?: string
           enable_logo_on_print?: boolean | null
           id?: string
@@ -445,6 +456,7 @@ export type Database = {
           paystack_subscription_code?: string | null
           pharmacist_in_charge?: string | null
           phone?: string | null
+          price_lock_enabled?: boolean | null
           subscription_ends_at?: string | null
           subscription_plan?: Database["public"]["Enums"]["subscription_plan"]
           subscription_status?: Database["public"]["Enums"]["subscription_status"]

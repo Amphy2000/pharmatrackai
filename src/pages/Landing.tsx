@@ -15,6 +15,7 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table';
 import { useAuth } from '@/contexts/AuthContext';
+import { ProfitProtectorCalculator } from '@/components/landing/ProfitProtectorCalculator';
 
 // Animation variants
 const fadeInUp = {
@@ -271,6 +272,16 @@ const Landing = () => {
                 </motion.div>
               ))}
             </motion.div>
+          </motion.div>
+
+          {/* Profit Protector Calculator */}
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.7, duration: 0.6 }}
+            className="mt-16 max-w-4xl mx-auto"
+          >
+            <ProfitProtectorCalculator isInternational={isInternational} />
           </motion.div>
         </div>
       </section>

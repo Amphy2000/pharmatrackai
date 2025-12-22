@@ -45,12 +45,18 @@ serve(async (req) => {
             role: 'system',
             content: `You are an expert at extracting product information from pharmaceutical invoices and receipts.
             
-Extract all products/medications from the invoice image. For each item, identify:
+Extract all products/medications from the invoice image. Pay special attention to:
+- EXP or Expiry Date markings (NAFDAC requirement)
+- BN or Batch Number markings (NAFDAC requirement)
+- MFG or Manufacturing Date if visible
+
+For each item, identify:
 - productName: The medication or product name
 - quantity: The quantity purchased (default to 1 if unclear)
-- unitPrice: Price per unit if visible (optional)
-- batchNumber: Batch/lot number if visible (optional)
-- expiryDate: Expiry date if visible in YYYY-MM-DD format (optional)
+- unitPrice: Price per unit/cost price if visible (optional)
+- batchNumber: Batch/lot number - look for "BN:", "Batch:", "Lot:" (optional but important)
+- expiryDate: Expiry date - look for "EXP:", "Expiry:" in YYYY-MM-DD format (optional but important)
+- manufacturingDate: Manufacturing date - look for "MFG:", "Mfg Date:" in YYYY-MM-DD format (optional)
 
 Return ONLY a valid JSON object with this structure:
 {
@@ -60,7 +66,8 @@ Return ONLY a valid JSON object with this structure:
       "quantity": number,
       "unitPrice": number or null,
       "batchNumber": "string or null",
-      "expiryDate": "string or null"
+      "expiryDate": "string or null",
+      "manufacturingDate": "string or null"
     }
   ]
 }
