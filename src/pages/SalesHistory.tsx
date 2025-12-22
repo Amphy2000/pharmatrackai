@@ -63,6 +63,9 @@ interface SaleWithMedication {
   total_price: number;
   customer_name: string | null;
   sale_date: string;
+  sold_by: string | null;
+  sold_by_name: string | null;
+  receipt_id: string | null;
   created_at: string;
   medications: {
     name: string;
@@ -99,6 +102,9 @@ const SalesHistory = () => {
           total_price,
           customer_name,
           sale_date,
+          sold_by,
+          sold_by_name,
+          receipt_id,
           created_at,
           medications (
             name,
@@ -130,12 +136,14 @@ const SalesHistory = () => {
   const filteredSales = useMemo(() => {
     let result = [...sales];
 
-    // Search filter
+    // Search filter - now includes receipt_id for barcode scanning
     if (searchQuery) {
-      const query = searchQuery.toLowerCase();
+      const query = searchQuery.toLowerCase().trim();
       result = result.filter(sale => 
         sale.medications?.name.toLowerCase().includes(query) ||
         sale.customer_name?.toLowerCase().includes(query) ||
+        sale.sold_by_name?.toLowerCase().includes(query) ||
+        sale.receipt_id?.toLowerCase().includes(query) ||
         sale.id.toLowerCase().includes(query)
       );
     }
@@ -340,13 +348,14 @@ const SalesHistory = () => {
             <div className="relative flex-1 min-w-[200px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search by medication, customer, or ID..."
+                placeholder="Scan barcode or search by ID, medication, staff..."
                 value={searchQuery}
                 onChange={(e) => {
                   setSearchQuery(e.target.value);
                   setCurrentPage(1);
                 }}
                 className="pl-10"
+                autoFocus
               />
             </div>
 
@@ -412,13 +421,13 @@ const SalesHistory = () => {
             <TableHeader>
               <TableRow className="hover:bg-transparent border-border/50">
                 <TableHead>Date & Time</TableHead>
-                <TableHead>Transaction ID</TableHead>
+                <TableHead>Receipt ID</TableHead>
                 <TableHead>Medication</TableHead>
                 <TableHead>Category</TableHead>
                 <TableHead className="text-center">Qty</TableHead>
                 {isOwnerOrManager && <TableHead className="text-right">Unit Price</TableHead>}
                 {isOwnerOrManager && <TableHead className="text-right">Total</TableHead>}
-                <TableHead>Customer</TableHead>
+                <TableHead>Served By</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -447,8 +456,8 @@ const SalesHistory = () => {
                       </span>
                     </TableCell>
                     <TableCell>
-                      <code className="text-xs bg-muted px-2 py-1 rounded">
-                        #{sale.id.slice(0, 8)}
+                      <code className="text-xs bg-primary/10 text-primary px-2 py-1 rounded font-semibold">
+                        {sale.receipt_id || `#${sale.id.slice(0, 8)}`}
                       </code>
                     </TableCell>
                     <TableCell className="font-medium">{sale.medications?.name || 'Unknown'}</TableCell>
@@ -467,7 +476,7 @@ const SalesHistory = () => {
                       </TableCell>
                     )}
                     <TableCell>
-                      {sale.customer_name || <span className="text-muted-foreground">Walk-in</span>}
+                      {sale.sold_by_name || <span className="text-muted-foreground">—</span>}
                     </TableCell>
                   </TableRow>
                 ))

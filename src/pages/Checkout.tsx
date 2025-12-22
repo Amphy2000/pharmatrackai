@@ -198,15 +198,16 @@ const Checkout = () => {
     const currentPaymentMethod = paymentMethod;
     
     try {
-      await completeSale.mutateAsync({
+      const result = await completeSale.mutateAsync({
         items: currentItems,
         customerName: currentCustomer || undefined,
         shiftId: activeShift?.id,
+        staffName: userProfile?.full_name || undefined,
       });
 
-      // Generate receipt number
-      const receiptNumber = generateReceiptNumber();
-      setLastReceiptNumber(receiptNumber);
+      // Use the receipt ID from the sale result
+      const receiptId = result.receiptId;
+      setLastReceiptNumber(receiptId);
       setLastReceiptItems(currentItems);
       setLastReceiptTotal(currentTotal);
       setLastPaymentMethod(currentPaymentMethod);
@@ -215,7 +216,7 @@ const Checkout = () => {
       const receipt = await generateReceipt({
         items: currentItems,
         total: currentTotal,
-        receiptNumber,
+        receiptNumber: receiptId,
         date: new Date(),
         ...getReceiptParams(true, true, currentPaymentMethod), // isPaid=true, isDigital=true for preview
       });

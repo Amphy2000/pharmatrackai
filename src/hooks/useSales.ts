@@ -9,6 +9,7 @@ interface CompleteSaleParams {
   items: CartItem[];
   customerName?: string;
   shiftId?: string;
+  staffName?: string;
 }
 
 interface SaleWithMedication {
@@ -20,6 +21,8 @@ interface SaleWithMedication {
   customer_name: string | null;
   sale_date: string;
   sold_by: string | null;
+  sold_by_name: string | null;
+  receipt_id: string | null;
   shift_id: string | null;
   created_at: string;
   medication: {
@@ -27,6 +30,16 @@ interface SaleWithMedication {
     category: string;
   } | null;
 }
+
+// Generate unique receipt ID like PH-ABC
+const generateReceiptId = (): string => {
+  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+  let result = 'PH-';
+  for (let i = 0; i < 3; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+};
 
 export const useSales = () => {
   const queryClient = useQueryClient();
@@ -50,6 +63,8 @@ export const useSales = () => {
           customer_name,
           sale_date,
           sold_by,
+          sold_by_name,
+          receipt_id,
           shift_id,
           created_at,
           medication:medications (
@@ -93,7 +108,7 @@ export const useSales = () => {
   }, [pharmacyId, queryClient]);
 
   const completeSale = useMutation({
-    mutationFn: async ({ items, customerName, shiftId }: CompleteSaleParams) => {
+    mutationFn: async ({ items, customerName, shiftId, staffName }: CompleteSaleParams) => {
       if (!pharmacyId) {
         throw new Error('No pharmacy associated with your account. Please complete onboarding first.');
       }
@@ -101,9 +116,12 @@ export const useSales = () => {
       // Get current user for sold_by
       const { data: { user } } = await supabase.auth.getUser();
       let totalSaleAmount = 0;
+      
+      // Generate a single receipt ID for this transaction batch
+      const receiptId = generateReceiptId();
 
       // Process each item in the cart
-      const salePromises = items.map(async (item) => {
+      const salePromises = items.map(async (item, index) => {
         const price = item.medication.selling_price || item.medication.unit_price;
         const totalPrice = price * item.quantity;
         totalSaleAmount += totalPrice;
@@ -120,8 +138,11 @@ export const useSales = () => {
         const currentStock = medicationData?.current_stock || 0;
         const newStock = Math.max(0, currentStock - item.quantity);
 
-        // Insert sale record with shift_id and sold_by
-        const { error: saleError } = await supabase.from('sales').insert({
+        // Generate unique receipt_id for each sale record (append index if multiple items)
+        const itemReceiptId = items.length > 1 ? `${receiptId}-${index + 1}` : receiptId;
+
+        // Insert sale record with receipt_id, shift_id, sold_by, and sold_by_name
+        const { data: saleData, error: saleError } = await supabase.from('sales').insert({
           medication_id: item.medication.id,
           quantity: item.quantity,
           unit_price: price,
@@ -129,8 +150,10 @@ export const useSales = () => {
           customer_name: customerName || null,
           pharmacy_id: pharmacyId,
           sold_by: user?.id || null,
+          sold_by_name: staffName || null,
+          receipt_id: itemReceiptId,
           shift_id: shiftId || null,
-        });
+        }).select('receipt_id').single();
 
         if (saleError) throw saleError;
 
@@ -142,7 +165,7 @@ export const useSales = () => {
 
         if (updateError) throw updateError;
 
-        return { item, newStock };
+        return { item, newStock, receiptId: saleData?.receipt_id || itemReceiptId };
       });
 
       const results = await Promise.all(salePromises);
@@ -166,9 +189,10 @@ export const useSales = () => {
         }
       }
 
-      return results;
+      // Return results with the main receipt ID for this transaction
+      return { results, receiptId };
     },
-    onSuccess: async (results) => {
+    onSuccess: async ({ results, receiptId }) => {
       // Force immediate refetch of medications to ensure UI updates
       await queryClient.refetchQueries({ queryKey: ['medications'], type: 'active' });
       queryClient.invalidateQueries({ queryKey: ['sales'] });
@@ -188,7 +212,7 @@ export const useSales = () => {
 
       toast({
         title: 'Sale Complete',
-        description: `Successfully processed ${results.length} item(s).`,
+        description: `Transaction ${receiptId}: ${results.length} item(s) processed.`,
       });
     },
     onError: (error) => {
