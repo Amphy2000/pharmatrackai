@@ -1,4 +1,4 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { CartItem } from '@/types/medication';
 import { useToast } from '@/hooks/use-toast';
@@ -10,10 +10,61 @@ interface CompleteSaleParams {
   shiftId?: string;
 }
 
+interface SaleWithMedication {
+  id: string;
+  medication_id: string;
+  quantity: number;
+  unit_price: number;
+  total_price: number;
+  customer_name: string | null;
+  sale_date: string;
+  sold_by: string | null;
+  shift_id: string | null;
+  created_at: string;
+  medication: {
+    name: string;
+    category: string;
+  } | null;
+}
+
 export const useSales = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { pharmacyId } = usePharmacy();
+
+  // Query to fetch sales
+  const { data: sales = [], isLoading } = useQuery({
+    queryKey: ['sales', pharmacyId],
+    queryFn: async () => {
+      if (!pharmacyId) return [];
+      
+      const { data, error } = await supabase
+        .from('sales')
+        .select(`
+          id,
+          medication_id,
+          quantity,
+          unit_price,
+          total_price,
+          customer_name,
+          sale_date,
+          sold_by,
+          shift_id,
+          created_at,
+          medication:medications (
+            name,
+            category
+          )
+        `)
+        .eq('pharmacy_id', pharmacyId)
+        .order('sale_date', { ascending: false })
+        .limit(500);
+      
+      if (error) throw error;
+      return data as SaleWithMedication[];
+    },
+    enabled: !!pharmacyId,
+  });
 
   const completeSale = useMutation({
     mutationFn: async ({ items, customerName, shiftId }: CompleteSaleParams) => {
@@ -110,5 +161,5 @@ export const useSales = () => {
     },
   });
 
-  return { completeSale };
+  return { sales, isLoading, completeSale };
 };

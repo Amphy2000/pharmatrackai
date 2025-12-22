@@ -70,47 +70,47 @@ export const Header = () => {
   const canSeeSettings = userRole === 'owner';
 
   // Build navigation links based on permissions - memoized to prevent flicker
-  // Use a stable default during loading to prevent UI flicker
   const navLinks = useMemo(() => {
     const links: { href: string; label: string; icon: typeof LayoutDashboard }[] = [];
 
-    // During loading, show a stable set based on role (prevents flicker)
+    // During loading, show minimal stable set
     if (permissionsLoading) {
-      // Always show Dashboard and POS during loading for smooth UX
-      links.push({ href: '/', label: 'Dashboard', icon: LayoutDashboard });
+      links.push({ href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard });
       links.push({ href: '/checkout', label: 'POS', icon: ShoppingCart });
-      links.push({ href: '/inventory', label: 'Inventory', icon: PackageSearch });
-      links.push({ href: '/customers', label: 'Customers', icon: Users });
-      links.push({ href: '/branches', label: 'Branches', icon: Building2 });
       return links;
     }
 
-    // Dashboard
-    if (isOwnerOrManager || hasPermission('view_dashboard')) {
-      links.push({ href: '/', label: 'Dashboard', icon: LayoutDashboard });
+    // Dashboard - route to appropriate dashboard based on role
+    if (isOwnerOrManager) {
+      links.push({ href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard });
+    } else if (hasPermission('view_dashboard')) {
+      links.push({ href: '/staff-dashboard', label: 'Dashboard', icon: LayoutDashboard });
     }
 
     // POS - always accessible
     links.push({ href: '/checkout', label: 'POS', icon: ShoppingCart });
 
     // Inventory
-    if (isOwnerOrManager || hasPermission('access_inventory') || hasPermission('view_dashboard')) {
+    if (isOwnerOrManager || hasPermission('access_inventory')) {
       links.push({ href: '/inventory', label: 'Inventory', icon: PackageSearch });
     }
 
     // Customers
-    if (isOwnerOrManager || hasPermission('access_customers') || hasPermission('view_dashboard')) {
+    if (isOwnerOrManager || hasPermission('access_customers')) {
       links.push({ href: '/customers', label: 'Customers', icon: Users });
     }
 
     // Branches
-    if (isOwnerOrManager || hasPermission('access_branches') || hasPermission('view_dashboard')) {
+    if (isOwnerOrManager || hasPermission('access_branches')) {
       links.push({ href: '/branches', label: 'Branches', icon: Building2 });
     }
 
-    // Sales / Reports
-    if (isOwnerOrManager || hasPermission('view_reports')) {
+    // Sales / Reports - for managers or those with view_reports/view_all_sales
+    if (isOwnerOrManager || hasPermission('view_reports') || hasPermission('view_all_sales')) {
       links.push({ href: '/sales', label: 'Sales', icon: History });
+    } else if (hasPermission('view_own_sales')) {
+      // Staff can see their own sales
+      links.push({ href: '/my-sales', label: 'My Sales', icon: History });
     }
 
     // Suppliers
@@ -188,12 +188,14 @@ export const Header = () => {
             <nav className="hidden lg:flex items-center flex-1 min-w-0 justify-center">
               <div className="flex items-center gap-0.5 2xl:gap-1">
                 {navLinks.map((link) => {
-                  const isActive = location.pathname === link.href || (link.href === '/' && location.pathname === '/dashboard');
+                  const isActive = location.pathname === link.href || 
+                    (link.href === '/dashboard' && location.pathname === '/') ||
+                    (link.href === '/staff-dashboard' && location.pathname === '/dashboard');
                   return (
                     <Tooltip key={link.href}>
                       <TooltipTrigger asChild>
                         <Link
-                          to={link.href === '/' ? '/dashboard' : link.href}
+                          to={link.href}
                           className={`flex items-center justify-center 2xl:justify-start gap-1.5 h-9 w-9 2xl:h-auto 2xl:w-auto 2xl:px-3 2xl:py-2 rounded-lg text-sm font-medium transition-all ${
                             isActive 
                               ? 'bg-primary/10 text-primary' 
