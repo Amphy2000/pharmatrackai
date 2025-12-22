@@ -61,6 +61,7 @@ const formSchema = z.object({
   dispensing_unit: z.string().optional(),
   is_controlled: z.boolean().optional(),
   nafdac_reg_number: z.string().max(50).optional(),
+  active_ingredients: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
