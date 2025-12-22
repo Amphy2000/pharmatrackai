@@ -23,6 +23,7 @@ import { useRegionalSettings } from '@/contexts/RegionalSettingsContext';
 import { useHeldTransactions } from '@/hooks/useHeldTransactions';
 import { usePharmacy } from '@/hooks/usePharmacy';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePendingTransactions } from '@/hooks/usePendingTransactions';
 import { supabase } from '@/integrations/supabase/client';
 import { ProductGrid } from '@/components/pos/ProductGrid';
 import { CartPanel } from '@/components/pos/CartPanel';
@@ -42,6 +43,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { generateReceipt, generateReceiptNumber, generateInvoiceNumber, PaymentMethod } from '@/utils/receiptGenerator';
+import { printHtmlReceipt } from '@/utils/htmlReceiptPrinter';
 import jsPDF from 'jspdf';
 import { FileText, Banknote, CreditCard as CreditCardIcon, Landmark } from 'lucide-react';
 
@@ -254,7 +256,9 @@ const Checkout = () => {
     setPreviewOpen(true);
   };
 
-  // Generate Invoice (credit sale - unpaid)
+  // Generate Invoice (credit sale - unpaid) - saves to pending_transactions
+  const { createPendingTransaction } = usePendingTransactions();
+  
   const handleGenerateInvoice = async () => {
     if (cart.items.length === 0) return;
 
@@ -263,31 +267,48 @@ const Checkout = () => {
     // Store cart items
     const currentItems = [...cart.items];
     const currentTotal = cart.getTotal();
-    const currentCustomer = customerName;
 
     try {
-      // Generate invoice number (different from receipt)
-      const invoiceNumber = generateInvoiceNumber();
+      // Create pending transaction in database
+      const pendingTx = await createPendingTransaction.mutateAsync({
+        items: currentItems,
+        total: currentTotal,
+      });
+      
+      if (!pendingTx) {
+        throw new Error('Failed to create pending transaction');
+      }
+
+      const invoiceNumber = `INV-${pendingTx.short_code}`;
       setLastReceiptNumber(invoiceNumber);
       setLastReceiptItems(currentItems);
       setLastReceiptTotal(currentTotal);
 
-      // Generate unpaid invoice receipt (digital version)
-      const receipt = await generateReceipt({
+      // Generate HTML and print invoice slip with barcode (instant)
+      const { generateHtmlReceipt } = await import('@/utils/htmlReceiptPrinter');
+      const html = generateHtmlReceipt({
         items: currentItems,
         total: currentTotal,
         receiptNumber: invoiceNumber,
         date: new Date(),
-        ...getReceiptParams(false, true), // isPaid=false, isDigital=true
+        pharmacyName: pharmacy?.name || 'PharmaTrack Pharmacy',
+        pharmacyAddress: pharmacy?.address || undefined,
+        pharmacyPhone: pharmacy?.phone || undefined,
+        currency: currency as 'USD' | 'NGN' | 'GBP',
+        paymentStatus: 'unpaid',
+        shortCode: pendingTx.short_code,
+        barcode: pendingTx.barcode,
       });
+      
+      await printHtmlReceipt(html);
 
-      setPreviewReceipt(receipt);
-      setPreviewOpen(true);
-      setCheckoutOpen(false);
+      // Clear cart after generating invoice
+      cart.clearCart();
+      setCustomerName('');
 
       toast({
         title: 'Invoice Generated',
-        description: `Invoice ${invoiceNumber} created. Stock not deducted.`,
+        description: `Invoice ${pendingTx.short_code} created. Customer can pay at cashier.`,
       });
     } catch (error) {
       console.error('Invoice generation failed:', error);

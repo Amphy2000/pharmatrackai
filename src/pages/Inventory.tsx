@@ -2,13 +2,14 @@ import { useState } from 'react';
 import { Header } from '@/components/Header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Package, AlertTriangle, PackagePlus, ClipboardList, FileImage, Zap, Clock, FileSpreadsheet, TrendingDown, Calendar, Download, FileText, ChevronDown, Plus } from 'lucide-react';
+import { Package, AlertTriangle, PackagePlus, ClipboardList, FileImage, Zap, Clock, FileSpreadsheet, TrendingDown, Calendar, Download, FileText, ChevronDown, Plus, DollarSign } from 'lucide-react';
 import { useMedications } from '@/hooks/useMedications';
 import { ReceiveStockModal } from '@/components/inventory/ReceiveStockModal';
 import { StockCountModal } from '@/components/inventory/StockCountModal';
 import { InvoiceScannerModal } from '@/components/inventory/InvoiceScannerModal';
 import { AddMedicationModal } from '@/components/inventory/AddMedicationModal';
 import { StockCSVImportModal } from '@/components/inventory/StockCSVImportModal';
+import { BulkPriceUpdateModal } from '@/components/inventory/BulkPriceUpdateModal';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { differenceInDays, parseISO, format } from 'date-fns';
@@ -30,6 +31,7 @@ const Inventory = () => {
   const [showInvoiceScannerModal, setShowInvoiceScannerModal] = useState(false);
   const [showCSVImportModal, setShowCSVImportModal] = useState(false);
   const [showAddMedicationModal, setShowAddMedicationModal] = useState(false);
+  const [showBulkPriceModal, setShowBulkPriceModal] = useState(false);
   const { pharmacy } = usePharmacy();
   const { currency } = useCurrency();
 
@@ -119,7 +121,11 @@ const Inventory = () => {
               Manage stock receiving, counting, and inventory tasks
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button onClick={() => setShowBulkPriceModal(true)} variant="outline" className="gap-2">
+              <DollarSign className="h-4 w-4" />
+              Bulk Pricing
+            </Button>
             <Button onClick={() => setShowAddMedicationModal(true)} className="gap-2 bg-gradient-primary hover:opacity-90 btn-glow">
               <Plus className="h-4 w-4" />
               Add New Medication
@@ -379,6 +385,11 @@ const Inventory = () => {
       <AddMedicationModal
         open={showAddMedicationModal}
         onOpenChange={setShowAddMedicationModal}
+      />
+      
+      <BulkPriceUpdateModal
+        open={showBulkPriceModal}
+        onOpenChange={setShowBulkPriceModal}
       />
     </div>
   );
