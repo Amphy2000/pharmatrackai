@@ -313,36 +313,6 @@ export const BrandingSettings = () => {
             />
           </div>
 
-          {/* Pharmacist in Charge */}
-          <div className="space-y-2">
-            <Label htmlFor="pharmacist-name" className="flex items-center gap-2">
-              <User className="h-4 w-4" />
-              Pharmacist in Charge (Optional)
-            </Label>
-            <div className="flex gap-2">
-              <Input
-                id="pharmacist-name"
-                placeholder="e.g., Pharm. John Doe"
-                value={pharmacistName}
-                onChange={(e) => setPharmacistName(e.target.value)}
-                className="flex-1"
-              />
-              <Button
-                variant="outline"
-                onClick={handlePharmacistNameSave}
-                disabled={updatePharmacySettings.isPending}
-              >
-                {updatePharmacySettings.isPending ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  'Save'
-                )}
-              </Button>
-            </div>
-            <p className="text-xs text-muted-foreground">
-              This name will appear on receipt headers
-            </p>
-          </div>
         </CardContent>
       </Card>
 

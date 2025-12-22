@@ -15,60 +15,43 @@ import { format } from 'date-fns';
 const plans = [
   {
     id: 'starter',
-    name: 'Starter (Ownership)',
-    price: 150000,
-    priceDisplay: '₦150,000',
-    priceLabel: 'Setup',
-    subtext: '+ ₦10,000/month for cloud maintenance',
-    monthlyFee: 10000,
-    isHybrid: true,
-    period: '',
-    features: [
-      'Up to 1,000 medications',
-      '1 user account',
-      'Basic POS',
-      'Data Migration Support',
-      'Cloud Backups',
-    ],
+    name: 'Switch & Save',
+    tagline: 'Lifetime License Feel',
+    setup: '₦150,000',
+    setupPrice: 150000,
+    monthly: '₦10,000',
+    monthlyPrice: 10000,
+    setupLabel: 'One-time Setup',
+    target: 'Single-branch pharmacies looking for stability',
+    features: ['Lifetime License Feel', 'Cloud Backups', '1 User Account', 'Unlimited SKUs', 'Basic POS System', 'Expiry Tracking', 'Email Support'],
     popular: false,
     buttonText: 'Get Started',
   },
   {
     id: 'pro',
-    name: 'Pro',
-    price: 35000,
-    priceDisplay: '₦35,000',
-    priceLabel: '',
-    subtext: '₦0 Setup Fee',
-    monthlyFee: 35000,
-    isHybrid: false,
-    period: '/month',
-    features: [
-      'Unlimited medications',
-      'Up to 5 users',
-      'AI Expiry Insights',
-      'Advanced Analytics',
-      'Multi-branch support',
-    ],
+    name: 'AI Powerhouse',
+    tagline: 'Stop Drug Waste with AI',
+    setup: '₦0',
+    setupPrice: 0,
+    monthly: '₦35,000',
+    monthlyPrice: 35000,
+    setupLabel: 'Zero Setup Fee',
+    target: 'Fast-growing pharmacies using AI to stop waste',
+    features: ['₦0 Setup Fee', 'Automated Expiry Discounting', 'Demand Forecasting AI', 'Unlimited Users', 'Multi-Branch Ready', 'Staff Clock-in Tracking', 'NAFDAC Compliance Reports', 'Priority Support'],
     popular: true,
     buttonText: 'Subscribe',
   },
   {
     id: 'enterprise',
     name: 'Enterprise',
-    price: 1000000,
-    priceDisplay: '₦1,000,000+',
-    priceLabel: '',
-    subtext: 'Custom pricing',
-    monthlyFee: 0,
-    isHybrid: false,
-    period: '',
-    features: [
-      'Unlimited users',
-      'Custom integrations',
-      'Dedicated account manager',
-      'On-premise installation option',
-    ],
+    tagline: 'Global Standard',
+    setup: 'Custom',
+    setupPrice: 0,
+    monthly: '₦1,000,000+',
+    monthlyPrice: 1000000,
+    setupLabel: 'Custom Quote',
+    target: 'Hospital chains & international clients',
+    features: ['Everything in Pro', 'White-label Options', 'Custom API Access', 'Dedicated Account Manager', '24/7 Priority Support', 'Custom Integrations'],
     popular: false,
     buttonText: 'Contact Sales',
   },
@@ -211,7 +194,7 @@ export const SubscriptionManagement = () => {
             </div>
             <div className="text-right">
               <p className="text-2xl font-bold">
-                {plans.find(p => p.id === currentPlan)?.priceDisplay || '₦0'}
+                {plans.find(p => p.id === currentPlan)?.monthly || '₦0'}
               </p>
               <p className="text-sm text-muted-foreground">/month</p>
             </div>
@@ -237,50 +220,59 @@ export const SubscriptionManagement = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid md:grid-cols-3 gap-4">
+          <div className="grid md:grid-cols-3 gap-6">
             {plans.map((planOption) => {
               const isCurrentPlan = planOption.id === currentPlan && !isTrial && !isExpired;
               
               return (
                 <Card 
                   key={planOption.id}
-                  className={`relative ${planOption.popular ? 'border-primary shadow-md' : ''} ${isCurrentPlan ? 'bg-muted/30' : ''}`}
+                  className={`relative overflow-hidden ${planOption.popular ? 'border-primary shadow-lg ring-1 ring-primary/20' : ''} ${isCurrentPlan ? 'bg-muted/30' : ''}`}
                 >
                   {planOption.popular && (
-                    <Badge className="absolute -top-2 left-1/2 -translate-x-1/2 text-xs">
+                    <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary to-primary/50" />
+                  )}
+                  {planOption.popular && (
+                    <Badge className="absolute -top-0 right-4 rounded-t-none text-xs bg-primary">
                       Most Popular
                     </Badge>
                   )}
-                  <CardHeader className="text-center pb-2 pt-6">
-                    <CardTitle className="text-base">{planOption.name}</CardTitle>
-                    <div className="mt-2">
-                      <span className="text-2xl font-bold">{planOption.priceDisplay}</span>
-                      {planOption.priceLabel && (
-                        <span className="text-sm text-muted-foreground ml-1">{planOption.priceLabel}</span>
-                      )}
-                      {planOption.period && (
-                        <span className="text-sm text-muted-foreground">{planOption.period}</span>
-                      )}
+                  <CardHeader className="pt-8 pb-4">
+                    <div className="space-y-1">
+                      <CardTitle className="text-xl font-bold">{planOption.name}</CardTitle>
+                      <p className="text-sm text-muted-foreground">{planOption.tagline}</p>
                     </div>
-                    {planOption.subtext && (
-                      <p className="text-xs text-muted-foreground mt-1">{planOption.subtext}</p>
-                    )}
+                    <div className="mt-4 space-y-1">
+                      {planOption.setupPrice > 0 && (
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-3xl font-bold">{planOption.setup}</span>
+                          <span className="text-sm text-muted-foreground">{planOption.setupLabel}</span>
+                        </div>
+                      )}
+                      <div className="flex items-baseline gap-1">
+                        <span className={`${planOption.setupPrice > 0 ? 'text-lg' : 'text-3xl font-bold'}`}>
+                          {planOption.monthly}
+                        </span>
+                        <span className="text-sm text-muted-foreground">/month</span>
+                      </div>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-2">{planOption.target}</p>
                   </CardHeader>
-                  <CardContent className="space-y-2 text-sm">
+                  <CardContent className="space-y-3">
                     {planOption.features.map((feature) => (
-                      <div key={feature} className="flex items-center gap-2">
-                        <Check className="h-3 w-3 text-green-500 flex-shrink-0" />
+                      <div key={feature} className="flex items-start gap-2 text-sm">
+                        <Check className="h-4 w-4 text-success flex-shrink-0 mt-0.5" />
                         <span>{feature}</span>
                       </div>
                     ))}
                   </CardContent>
-                  <CardFooter>
+                  <CardFooter className="pt-4">
                     <Button 
                       className="w-full gap-2" 
                       variant={isCurrentPlan ? 'outline' : planOption.popular ? 'default' : 'outline'}
                       disabled={isCurrentPlan || isProcessing !== null || planOption.id === 'enterprise'}
                       onClick={() => planOption.id === 'enterprise' 
-                        ? window.open('mailto:sales@pharmatrack.com?subject=Enterprise%20Plan%20Inquiry', '_blank')
+                        ? window.open('mailto:pharmatrackai@gmail.com?subject=Enterprise%20Plan%20Inquiry', '_blank')
                         : handleUpgrade(planOption.id)
                       }
                     >
