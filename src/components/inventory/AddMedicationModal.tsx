@@ -149,11 +149,13 @@ export const AddMedicationModal = ({
       dispensing_unit: 'unit',
       is_controlled: false,
       nafdac_reg_number: '',
+      active_ingredients: '',
     },
   });
 
   useEffect(() => {
     if (editingMedication) {
+      const ingredients = (editingMedication as any).active_ingredients;
       form.reset({
         name: editingMedication.name,
         category: editingMedication.category,
@@ -168,6 +170,7 @@ export const AddMedicationModal = ({
         dispensing_unit: editingMedication.dispensing_unit || 'unit',
         is_controlled: editingMedication.is_controlled || false,
         nafdac_reg_number: editingMedication.nafdac_reg_number || '',
+        active_ingredients: ingredients?.join(', ') || '',
       });
       setSupplierEntries([]);
     } else {
@@ -184,6 +187,7 @@ export const AddMedicationModal = ({
         dispensing_unit: smartDefaults.dispensing_unit,
         is_controlled: false,
         nafdac_reg_number: '',
+        active_ingredients: '',
       });
       setSupplierEntries([]);
     }
@@ -235,7 +239,12 @@ export const AddMedicationModal = ({
   };
 
   const onSubmit = async (values: FormValues) => {
-    const medicationData: MedicationFormData = {
+    // Parse active ingredients from comma-separated string to array
+    const activeIngredients = values.active_ingredients
+      ? values.active_ingredients.split(',').map(i => i.trim()).filter(i => i.length > 0)
+      : undefined;
+
+    const medicationData: MedicationFormData & { active_ingredients?: string[] } = {
       name: values.name,
       category: values.category as MedicationCategory,
       batch_number: values.batch_number,
@@ -249,6 +258,7 @@ export const AddMedicationModal = ({
       dispensing_unit: (values.dispensing_unit as DispensingUnit) || 'unit',
       is_controlled: values.is_controlled || false,
       nafdac_reg_number: values.nafdac_reg_number || undefined,
+      active_ingredients: activeIngredients,
     };
 
     try {
@@ -573,6 +583,27 @@ export const AddMedicationModal = ({
                 )}
               />
             </div>
+
+            {/* Active Ingredients for Clinical Search */}
+            <FormField
+              control={form.control}
+              name="active_ingredients"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Active Ingredients (for clinical search)</FormLabel>
+                  <FormControl>
+                    <Input 
+                      placeholder="e.g., Paracetamol, Caffeine (comma-separated)" 
+                      {...field} 
+                    />
+                  </FormControl>
+                  <p className="text-xs text-muted-foreground">
+                    Enter ingredient names separated by commas. This enables searching by ingredient name.
+                  </p>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
             {/* Markup-based Selling Price */}
             <div className="space-y-3 p-3 rounded-lg bg-muted/30 border">

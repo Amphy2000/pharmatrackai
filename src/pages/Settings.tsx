@@ -1,7 +1,7 @@
 import { Header } from '@/components/Header';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Settings as SettingsIcon, Users, Globe, CreditCard, Shield, ImageIcon, ShieldCheck } from 'lucide-react';
+import { Settings as SettingsIcon, Users, Globe, CreditCard, Shield, ImageIcon, ShieldCheck, FileText } from 'lucide-react';
 import { StaffManagement } from '@/components/settings/StaffManagement';
 import { PermissionsManagement } from '@/components/settings/PermissionsManagement';
 import { RegionCurrencySettings } from '@/components/settings/RegionCurrencySettings';
@@ -9,7 +9,8 @@ import { SubscriptionManagement } from '@/components/settings/SubscriptionManage
 import { BrandingSettings } from '@/components/settings/BrandingSettings';
 import { PriceShieldSettings } from '@/components/settings/PriceShieldSettings';
 import { usePermissions } from '@/hooks/usePermissions';
-import { useSearchParams, Navigate } from 'react-router-dom';
+import { useSearchParams, Navigate, Link } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
 
 const Settings = () => {
   const { hasPermission, userRole, isLoading } = usePermissions();
@@ -105,6 +106,24 @@ const Settings = () => {
               </CardHeader>
               <CardContent>
                 <PriceShieldSettings />
+                
+                {/* Link to Audit Log */}
+                <div className="mt-6 pt-6 border-t">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="font-medium flex items-center gap-2">
+                        <FileText className="h-4 w-4" />
+                        Audit Log
+                      </h3>
+                      <p className="text-sm text-muted-foreground">
+                        View all security events, price change attempts, and staff actions
+                      </p>
+                    </div>
+                    <Button variant="outline" asChild>
+                      <Link to="/audit-log">View Audit Log</Link>
+                    </Button>
+                  </div>
+                </div>
               </CardContent>
             </Card>
           </TabsContent>
