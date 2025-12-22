@@ -2,6 +2,17 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
+// Module-level cache to prevent UI flicker when components remount between routes
+// (e.g. Header living inside each page).
+let permissionsCache:
+  | {
+      userId: string;
+      initialized: true;
+      role: 'owner' | 'manager' | 'staff' | null;
+      permissions: string[]; // stored as strings to avoid Set serialization issues
+    }
+  | null = null;
+
 // Permission keys
 // NOTE: We keep legacy keys (e.g. view_dashboard) to avoid breaking existing staff accounts.
 export type PermissionKey =
@@ -197,17 +208,42 @@ interface UsePermissionsReturn {
 
 export const usePermissions = (): UsePermissionsReturn => {
   const { user } = useAuth();
-  const [permissions, setPermissions] = useState<Set<PermissionKey>>(new Set());
-  const [userRole, setUserRole] = useState<'owner' | 'manager' | 'staff' | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+
+  const cache = user && permissionsCache?.userId === user.id ? permissionsCache : null;
+  const cacheHit = Boolean(cache?.initialized);
+
+  const [permissions, setPermissions] = useState<Set<PermissionKey>>(() => {
+    if (!cacheHit) return new Set();
+    return new Set(
+      (cache?.permissions || [])
+        .map((p) => normalizePermissionKey(p))
+        .filter((p): p is PermissionKey => Boolean(p))
+    );
+  });
+  const [userRole, setUserRole] = useState<'owner' | 'manager' | 'staff' | null>(() => {
+    return cacheHit ? cache!.role : null;
+  });
+  const [isLoading, setIsLoading] = useState(() => {
+    // If we already have a warm cache for this user, avoid the loading flash.
+    if (!user) return false;
+    return !cacheHit;
+  });
 
   const fetchPermissions = useCallback(async () => {
     if (!user) {
+      permissionsCache = null;
       setPermissions(new Set());
       setUserRole(null);
       setIsLoading(false);
       return;
     }
+
+    const hasWarmCache = Boolean(
+      permissionsCache?.userId === user.id && permissionsCache.initialized
+    );
+
+    // Only show a loading state if we don't already have cached permissions.
+    if (!hasWarmCache) setIsLoading(true);
 
     try {
       // Get user's staff record with role
@@ -223,17 +259,30 @@ export const usePermissions = (): UsePermissionsReturn => {
       if (staffError || !staffData) {
         setPermissions(new Set());
         setUserRole(null);
-        setIsLoading(false);
+        permissionsCache = {
+          userId: user.id,
+          initialized: true,
+          role: null,
+          permissions: [],
+        };
         return;
       }
 
-      setUserRole(staffData.role as 'owner' | 'manager' | 'staff');
+      const role = staffData.role as 'owner' | 'manager' | 'staff';
+      setUserRole(role);
 
       // Owner and manager have all permissions
-      if (staffData.role === 'owner' || staffData.role === 'manager') {
-        const allPermissions = new Set<PermissionKey>(Object.keys(PERMISSION_LABELS) as PermissionKey[]);
+      if (role === 'owner' || role === 'manager') {
+        const allPermissions = new Set<PermissionKey>(
+          Object.keys(PERMISSION_LABELS) as PermissionKey[]
+        );
         setPermissions(allPermissions);
-        setIsLoading(false);
+        permissionsCache = {
+          userId: user.id,
+          initialized: true,
+          role,
+          permissions: Array.from(allPermissions),
+        };
         return;
       }
 
@@ -246,21 +295,40 @@ export const usePermissions = (): UsePermissionsReturn => {
       if (permError) {
         console.error('Error fetching permissions:', permError);
         setPermissions(new Set());
-        setIsLoading(false);
+        permissionsCache = {
+          userId: user.id,
+          initialized: true,
+          role,
+          permissions: [],
+        };
         return;
       }
 
       const grantedPermissions = new Set<PermissionKey>(
         (permData || [])
-          .filter(p => p.is_granted)
-          .map(p => normalizePermissionKey(p.permission_key))
+          .filter((p) => p.is_granted)
+          .map((p) => normalizePermissionKey(p.permission_key))
           .filter((p): p is PermissionKey => Boolean(p))
       );
 
       setPermissions(grantedPermissions);
+      permissionsCache = {
+        userId: user.id,
+        initialized: true,
+        role,
+        permissions: (permData || [])
+          .filter((p) => p.is_granted)
+          .map((p) => p.permission_key),
+      };
     } catch (error) {
       console.error('Error in fetchPermissions:', error);
       setPermissions(new Set());
+      permissionsCache = {
+        userId: user.id,
+        initialized: true,
+        role: null,
+        permissions: [],
+      };
     } finally {
       setIsLoading(false);
     }
