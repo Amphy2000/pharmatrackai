@@ -42,37 +42,63 @@ export const ReceiptPreviewModal = ({
   }, [receipt, open]);
 
   const handlePrint = () => {
-    if (!receipt) return;
+    if (!pdfUrl) return;
 
     setIsPrinting(true);
 
     try {
-      const blob = receipt.output('blob');
-      const url = URL.createObjectURL(blob);
-
-      // Open PDF in new tab - most reliable cross-browser print solution
-      const printWindow = window.open(url, '_blank');
+      // Create a hidden iframe to print the PDF
+      const iframe = document.createElement('iframe');
+      iframe.style.position = 'fixed';
+      iframe.style.right = '0';
+      iframe.style.bottom = '0';
+      iframe.style.width = '0';
+      iframe.style.height = '0';
+      iframe.style.border = 'none';
+      iframe.style.visibility = 'hidden';
+      iframe.src = pdfUrl;
       
-      if (printWindow) {
-        // Wait for PDF to load then trigger print
-        printWindow.onload = () => {
-          setTimeout(() => {
-            printWindow.print();
-            setIsPrinting(false);
-          }, 500);
-        };
-        
-        // Cleanup URL after a delay to allow printing
+      document.body.appendChild(iframe);
+      
+      // Wait for the iframe to load, then print
+      iframe.onload = () => {
         setTimeout(() => {
-          URL.revokeObjectURL(url);
-        }, 60000); // Keep URL valid for 1 minute
-      } else {
-        // Fallback: download the PDF if popup blocked
-        receipt.save(`receipt-${receiptNumber}.pdf`);
+          try {
+            iframe.contentWindow?.focus();
+            iframe.contentWindow?.print();
+          } catch (e) {
+            // If direct print fails (cross-origin), open in new tab
+            window.open(pdfUrl, '_blank');
+          }
+          setIsPrinting(false);
+          
+          // Clean up iframe after printing
+          setTimeout(() => {
+            try {
+              document.body.removeChild(iframe);
+            } catch {
+              // Ignore if already removed
+            }
+          }, 5000);
+        }, 500);
+      };
+      
+      iframe.onerror = () => {
+        // Fallback: open in new tab
+        window.open(pdfUrl, '_blank');
         setIsPrinting(false);
-      }
+        try {
+          document.body.removeChild(iframe);
+        } catch {
+          // Ignore
+        }
+      };
     } catch (e) {
       console.error('Print failed:', e);
+      // Ultimate fallback: download
+      if (receipt) {
+        receipt.save(`receipt-${receiptNumber}.pdf`);
+      }
       setIsPrinting(false);
     }
   };

@@ -258,6 +258,7 @@ export type Database = {
           category: string
           created_at: string
           current_stock: number
+          dispensing_unit: string
           expiry_date: string
           id: string
           is_shelved: boolean
@@ -277,6 +278,7 @@ export type Database = {
           category: string
           created_at?: string
           current_stock?: number
+          dispensing_unit?: string
           expiry_date: string
           id?: string
           is_shelved?: boolean
@@ -296,6 +298,7 @@ export type Database = {
           category?: string
           created_at?: string
           current_stock?: number
+          dispensing_unit?: string
           expiry_date?: string
           id?: string
           is_shelved?: boolean

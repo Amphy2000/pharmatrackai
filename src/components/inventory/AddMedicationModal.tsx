@@ -43,7 +43,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
-import { ALL_CATEGORIES, CATEGORY_GROUPS, ProductType, MedicationCategory } from '@/types/medication';
+import { ALL_CATEGORIES, CATEGORY_GROUPS, ProductType, MedicationCategory, DISPENSING_UNITS, DispensingUnit } from '@/types/medication';
 
 const formSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters').max(100),
@@ -55,6 +55,7 @@ const formSchema = z.object({
   expiry_date: z.date({ required_error: 'Expiry date is required' }),
   unit_price: z.coerce.number().min(0, 'Price cannot be negative'),
   selling_price: z.coerce.number().min(0, 'Price cannot be negative').optional(),
+  dispensing_unit: z.string().optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -98,6 +99,7 @@ export const AddMedicationModal = ({
       reorder_level: 10,
       unit_price: 0,
       selling_price: undefined,
+      dispensing_unit: 'unit',
     },
   });
 
@@ -113,6 +115,7 @@ export const AddMedicationModal = ({
         expiry_date: new Date(editingMedication.expiry_date),
         unit_price: Number(editingMedication.unit_price),
         selling_price: editingMedication.selling_price ? Number(editingMedication.selling_price) : undefined,
+        dispensing_unit: editingMedication.dispensing_unit || 'unit',
       });
       setSupplierEntries([]);
     } else {
@@ -125,6 +128,7 @@ export const AddMedicationModal = ({
         reorder_level: 10,
         unit_price: 0,
         selling_price: undefined,
+        dispensing_unit: 'unit',
       });
       setSupplierEntries([]);
     }
@@ -186,6 +190,7 @@ export const AddMedicationModal = ({
       unit_price: values.unit_price,
       selling_price: values.selling_price || undefined,
       expiry_date: format(values.expiry_date, 'yyyy-MM-dd'),
+      dispensing_unit: (values.dispensing_unit as DispensingUnit) || 'unit',
     };
 
     try {
@@ -325,6 +330,31 @@ export const AddMedicationModal = ({
                   <FormControl>
                     <Input placeholder="e.g., 5901234123457" {...field} />
                   </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="dispensing_unit"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Dispensing Unit</FormLabel>
+                  <Select onValueChange={field.onChange} value={field.value || 'unit'}>
+                    <FormControl>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select unit" />
+                      </SelectTrigger>
+                    </FormControl>
+                    <SelectContent>
+                      {DISPENSING_UNITS.map((unit) => (
+                        <SelectItem key={unit.value} value={unit.value}>
+                          {unit.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                   <FormMessage />
                 </FormItem>
               )}
