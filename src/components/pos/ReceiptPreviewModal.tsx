@@ -47,52 +47,24 @@ export const ReceiptPreviewModal = ({
     setIsPrinting(true);
 
     try {
-      // Download the PDF first
-      receipt.save(`receipt-${receiptNumber}.pdf`);
-      
-      // Then open print dialog for the blob URL
       const blob = receipt.output('blob');
       const url = URL.createObjectURL(blob);
       
-      // Create an invisible iframe for printing
-      const printFrame = document.createElement('iframe');
-      printFrame.style.position = 'fixed';
-      printFrame.style.right = '0';
-      printFrame.style.bottom = '0';
-      printFrame.style.width = '0';
-      printFrame.style.height = '0';
-      printFrame.style.border = 'none';
-      printFrame.src = url;
+      // Open in new tab and trigger print
+      const printWindow = window.open(url, '_blank');
       
-      document.body.appendChild(printFrame);
-      
-      printFrame.onload = () => {
-        setTimeout(() => {
-          try {
-            printFrame.contentWindow?.focus();
-            printFrame.contentWindow?.print();
-          } catch (e) {
-            // If iframe print fails, open in new tab
-            const printWindow = window.open(url, '_blank');
-            if (printWindow) {
-              printWindow.onload = () => {
-                printWindow.focus();
-                printWindow.print();
-              };
-            }
-          }
-          
-          // Cleanup after printing
-          setTimeout(() => {
-            document.body.removeChild(printFrame);
-            URL.revokeObjectURL(url);
-          }, 1000);
-        }, 500);
-      };
+      if (printWindow) {
+        printWindow.onload = () => {
+          printWindow.focus();
+          printWindow.print();
+        };
+        // Cleanup after a delay
+        setTimeout(() => URL.revokeObjectURL(url), 60000);
+      }
     } catch (e) {
       console.error('Print failed:', e);
     } finally {
-      setTimeout(() => setIsPrinting(false), 1500);
+      setTimeout(() => setIsPrinting(false), 1000);
     }
   };
 
