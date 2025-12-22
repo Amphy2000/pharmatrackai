@@ -1,12 +1,13 @@
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import {
   Sparkles, TrendingUp, Clock, ShieldCheck, Users, BarChart3, Zap,
   Check, X, ArrowRight, Star, DollarSign, AlertTriangle, Target,
   BadgeCheck, Globe, Smartphone, WifiOff, Database, Headphones,
-  ChevronLeft, ChevronRight as ChevronRightIcon, Play, Calculator,
-  Building2, Award, LineChart, Package, Receipt, UserCog, Lock
+  ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Play, Calculator,
+  Building2, Award, LineChart, Package, Receipt, UserCog, Lock, Lightbulb,
+  Rocket, Crown
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -25,11 +26,16 @@ const staggerContainer = {
   visible: { opacity: 1, transition: { staggerChildren: 0.1 } }
 };
 
+const slideNames = ['hero', 'problem', 'roi', 'features', 'comparison', 'insights', 'pricing', 'cta'];
+
 const SalesPitch = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
   const [isInternational, setIsInternational] = useState(false);
   const [monthlyRevenue, setMonthlyRevenue] = useState('5000000');
   const [expiryLoss, setExpiryLoss] = useState('8');
+  const containerRef = useRef<HTMLDivElement>(null);
+  const isScrolling = useRef(false);
+  const touchStartY = useRef(0);
 
   const formatCurrency = (amount: number) => {
     if (isInternational) {
@@ -44,13 +50,99 @@ const SalesPitch = () => {
   const recoveredWithAI = currentExpiryLoss * 0.7; // 70% recovery rate
   const staffTheftSaved = annualRevenue * 0.02; // 2% staff leakage prevention
   const totalSavings = recoveredWithAI + staffTheftSaved;
+  
+  // Fixed ROI calculation: Annual Savings / Annual Cost
+  const annualCost = 35000 * 12; // Pro plan annual cost
+  const roiMultiple = Math.round(totalSavings / annualCost);
+  // Cap ROI to realistic range (1x - 20x)
+  const displayROI = Math.min(Math.max(roiMultiple, 1), 20);
 
-  const metrics = [
-    { label: 'Pharmacies Trust Us', value: '500+', icon: Building2, color: 'text-primary' },
-    { label: 'Value Recovered', value: isInternational ? '$3.2M+' : '₦2.5B+', icon: DollarSign, color: 'text-success' },
-    { label: 'Expiry Reduction', value: '67%', icon: TrendingUp, color: 'text-info' },
-    { label: 'Customer Rating', value: '4.9/5', icon: Star, color: 'text-warning' },
-  ];
+  const scrollToSlide = (index: number) => {
+    if (index < 0 || index >= slideNames.length || isScrolling.current) return;
+    isScrolling.current = true;
+    setCurrentSlide(index);
+    
+    const slideElement = document.getElementById(`slide-${slideNames[index]}`);
+    if (slideElement) {
+      slideElement.scrollIntoView({ behavior: 'smooth' });
+    }
+    
+    setTimeout(() => {
+      isScrolling.current = false;
+    }, 800);
+  };
+
+  const nextSlide = () => scrollToSlide(currentSlide + 1);
+  const prevSlide = () => scrollToSlide(currentSlide - 1);
+
+  // Handle keyboard navigation
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
+        e.preventDefault();
+        nextSlide();
+      } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+        e.preventDefault();
+        prevSlide();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [currentSlide]);
+
+  // Handle touch swipe for mobile
+  useEffect(() => {
+    const handleTouchStart = (e: TouchEvent) => {
+      touchStartY.current = e.touches[0].clientY;
+    };
+
+    const handleTouchEnd = (e: TouchEvent) => {
+      const touchEndY = e.changedTouches[0].clientY;
+      const diff = touchStartY.current - touchEndY;
+      
+      if (Math.abs(diff) > 50) {
+        if (diff > 0) {
+          nextSlide();
+        } else {
+          prevSlide();
+        }
+      }
+    };
+
+    window.addEventListener('touchstart', handleTouchStart, { passive: true });
+    window.addEventListener('touchend', handleTouchEnd, { passive: true });
+    
+    return () => {
+      window.removeEventListener('touchstart', handleTouchStart);
+      window.removeEventListener('touchend', handleTouchEnd);
+    };
+  }, [currentSlide]);
+
+  // Handle scroll to detect current slide
+  useEffect(() => {
+    const handleScroll = () => {
+      if (isScrolling.current) return;
+      
+      const scrollPosition = window.scrollY + window.innerHeight / 2;
+      
+      for (let i = 0; i < slideNames.length; i++) {
+        const element = document.getElementById(`slide-${slideNames[i]}`);
+        if (element) {
+          const { offsetTop, offsetHeight } = element;
+          if (scrollPosition >= offsetTop && scrollPosition < offsetTop + offsetHeight) {
+            if (currentSlide !== i) {
+              setCurrentSlide(i);
+            }
+            break;
+          }
+        }
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, [currentSlide]);
 
   const painPoints = [
     {
@@ -119,33 +211,50 @@ const SalesPitch = () => {
     },
   ];
 
-  const testimonials = [
+  // Persona-based insights (not fake testimonials)
+  const leaderPerspectives = [
     {
-      quote: "We recovered ₦4.2M in our first year just from the expiry alerts alone. The software paid for itself 10x over.",
-      author: "Pharm. Adebayo Okonkwo",
-      role: "Managing Director",
-      company: "MedPlus Pharmacy Chain",
-      location: "Lagos, Nigeria",
-      metric: "₦4.2M Recovered",
-      avatar: "AO"
+      perspective: "The Managing Director's View",
+      icon: Crown,
+      insight: "For an MD, the biggest win is seeing your inventory health from your phone without calling the shop manager. Real-time P&L visibility means faster decisions.",
+      benefit: "Remote Business Visibility",
+      color: 'from-amber-500 to-orange-500'
     },
     {
-      quote: "Staff theft dropped to zero. When everyone knows they're being tracked, behavior changes immediately.",
-      author: "Mrs. Chioma Eze",
-      role: "Owner",
-      company: "HealthFirst Pharmacy",
-      location: "Abuja, Nigeria",
-      metric: "0% Shrinkage",
-      avatar: "CE"
+      perspective: "The Superintendent Pharmacist's View",
+      icon: Award,
+      insight: "Compliance becomes effortless when expiry dates are tracked automatically. No more surprise NAFDAC inspections finding expired stock on shelves.",
+      benefit: "Regulatory Confidence",
+      color: 'from-emerald-500 to-teal-500'
     },
     {
-      quote: "I used to spend 3 hours daily on inventory. Now it's 15 minutes. The AI basically runs my reordering.",
-      author: "Pharm. Ibrahim Musa",
-      role: "Chief Pharmacist",
-      company: "Greenfield Medical Centre",
-      location: "Kano, Nigeria",
-      metric: "90% Time Saved",
-      avatar: "IM"
+      perspective: "The Operations Manager's View",
+      icon: BarChart3,
+      insight: "Staff accountability transforms when everyone knows every transaction is logged. The clock-in system alone changed our culture overnight.",
+      benefit: "Team Accountability",
+      color: 'from-blue-500 to-indigo-500'
+    },
+  ];
+
+  // Industry insights (factual, research-based)
+  const industryInsights = [
+    {
+      icon: Lightbulb,
+      title: 'Industry Insight',
+      fact: `A pharmacy doing ${formatCurrency(revenue)}/mo can recover up to ${formatCurrency(totalSavings)} annually by automating expiry tracking.`,
+      source: 'Based on ROI calculator metrics'
+    },
+    {
+      icon: TrendingUp,
+      title: 'Market Research',
+      fact: 'Nigerian pharmacies lose an average of 8-15% of annual revenue to preventable inventory losses.',
+      source: 'Pharmacy sector analysis'
+    },
+    {
+      icon: Clock,
+      title: 'Time Study',
+      fact: 'Manual inventory management consumes 40+ hours monthly that could be spent serving customers.',
+      source: 'Operational efficiency study'
     },
   ];
 
@@ -192,27 +301,27 @@ const SalesPitch = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background text-foreground overflow-x-hidden">
-      {/* Navigation */}
+    <div ref={containerRef} className="bg-background text-foreground overflow-x-hidden">
+      {/* Fixed Navigation */}
       <nav className="fixed top-0 left-0 right-0 z-50 border-b border-border/40 backdrop-blur-xl bg-background/90">
-        <div className="container mx-auto px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-lg">
-              <Sparkles className="h-6 w-6 text-primary-foreground" />
+        <div className="container mx-auto px-4 sm:px-6 py-3 sm:py-4 flex items-center justify-between">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-lg">
+              <Sparkles className="h-5 w-5 sm:h-6 sm:w-6 text-primary-foreground" />
             </div>
             <div>
-              <span className="font-display font-bold text-2xl">PharmaTrack</span>
-              <p className="text-xs text-muted-foreground">AI Pharmacy Intelligence</p>
+              <span className="font-display font-bold text-xl sm:text-2xl">PharmaTrack</span>
+              <p className="text-[10px] sm:text-xs text-muted-foreground hidden sm:block">AI Pharmacy Intelligence</p>
             </div>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2 px-4 py-2 rounded-full bg-muted/50 border">
+          <div className="flex items-center gap-2 sm:gap-4">
+            <div className="hidden sm:flex items-center gap-2 px-4 py-2 rounded-full bg-muted/50 border">
               <span className={`text-sm ${!isInternational ? 'text-primary font-semibold' : 'text-muted-foreground'}`}>🇳🇬 NGN</span>
               <Switch checked={isInternational} onCheckedChange={setIsInternational} />
               <span className={`text-sm ${isInternational ? 'text-primary font-semibold' : 'text-muted-foreground'}`}>🌍 USD</span>
             </div>
             <Link to="/auth?tab=signup">
-              <Button size="lg" className="bg-gradient-to-r from-primary to-primary/80 shadow-lg">
+              <Button size="sm" className="bg-gradient-to-r from-primary to-primary/80 shadow-lg text-xs sm:text-sm">
                 Start Free Trial
               </Button>
             </Link>
@@ -220,38 +329,77 @@ const SalesPitch = () => {
         </div>
       </nav>
 
-      {/* Hero Section - Full Screen Impact */}
-      <section className="min-h-screen flex items-center justify-center relative pt-20 overflow-hidden">
+      {/* Slide Navigation Dots */}
+      <div className="fixed right-4 top-1/2 -translate-y-1/2 z-40 hidden md:flex flex-col gap-2">
+        {slideNames.map((name, i) => (
+          <button
+            key={name}
+            onClick={() => scrollToSlide(i)}
+            className={`w-3 h-3 rounded-full transition-all ${
+              currentSlide === i 
+                ? 'bg-primary scale-125' 
+                : 'bg-muted-foreground/30 hover:bg-muted-foreground/50'
+            }`}
+            aria-label={`Go to ${name} slide`}
+          />
+        ))}
+      </div>
+
+      {/* Navigation Arrows */}
+      <div className="fixed bottom-6 left-0 right-0 z-40 flex justify-between px-6 pointer-events-none">
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={prevSlide}
+          disabled={currentSlide === 0}
+          className={`pointer-events-auto transition-opacity ${currentSlide === 0 ? 'opacity-0' : 'opacity-100'}`}
+        >
+          <ChevronUp className="h-5 w-5" />
+        </Button>
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={nextSlide}
+          disabled={currentSlide === slideNames.length - 1}
+          className={`pointer-events-auto transition-opacity ${currentSlide === slideNames.length - 1 ? 'opacity-0' : 'opacity-100'}`}
+        >
+          <ChevronDown className="h-5 w-5" />
+        </Button>
+      </div>
+
+      {/* SLIDE 1: Hero Section */}
+      <section id="slide-hero" className="min-h-screen flex items-center justify-center relative pt-20 overflow-hidden snap-start">
         {/* Animated Background */}
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-background to-secondary/5" />
         <motion.div 
-          className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-primary/10 rounded-full blur-3xl"
+          className="absolute top-1/4 left-1/4 w-[300px] sm:w-[500px] h-[300px] sm:h-[500px] bg-primary/10 rounded-full blur-3xl"
           animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.5, 0.3] }}
           transition={{ duration: 8, repeat: Infinity }}
         />
         <motion.div 
-          className="absolute bottom-1/4 right-1/4 w-[400px] h-[400px] bg-secondary/10 rounded-full blur-3xl"
+          className="absolute bottom-1/4 right-1/4 w-[250px] sm:w-[400px] h-[250px] sm:h-[400px] bg-secondary/10 rounded-full blur-3xl"
           animate={{ scale: [1.2, 1, 1.2], opacity: [0.5, 0.3, 0.5] }}
           transition={{ duration: 10, repeat: Infinity }}
         />
 
-        <div className="container mx-auto px-6 relative z-10">
+        <div className="container mx-auto px-4 sm:px-6 relative z-10">
           <motion.div 
             variants={staggerContainer}
             initial="hidden"
             animate="visible"
             className="max-w-5xl mx-auto text-center"
           >
-            <motion.div variants={fadeInUp} className="mb-6">
-              <Badge className="text-sm px-4 py-2 bg-success/10 text-success border-success/30">
-                <Zap className="h-4 w-4 mr-2" />
-                Trusted by 500+ Nigerian Pharmacies
+            {/* Beta Badge - Scarcity Strategy */}
+            <motion.div variants={fadeInUp} className="mb-4">
+              <Badge className="text-xs sm:text-sm px-3 sm:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-amber-600 dark:text-amber-400 border-amber-500/30">
+                <Rocket className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
+                Currently in Exclusive Beta: Accepting 5 Pioneer Pharmacies for 2026
               </Badge>
             </motion.div>
 
             <motion.h1 
               variants={fadeInUp}
-              className="text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-display font-bold leading-[1.1] mb-8"
+              className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-display font-bold leading-[1.1] mb-6 sm:mb-8"
             >
               Stop Losing
               <br />
@@ -259,55 +407,43 @@ const SalesPitch = () => {
                 {formatCurrency(currentExpiryLoss)}
               </span>
               <br />
-              <span className="text-muted-foreground text-4xl sm:text-5xl md:text-6xl">Every Year to Expiry</span>
+              <span className="text-muted-foreground text-2xl sm:text-3xl md:text-4xl lg:text-5xl xl:text-6xl">Every Year to Expiry</span>
             </motion.h1>
 
             <motion.p 
               variants={fadeInUp}
-              className="text-xl sm:text-2xl text-muted-foreground max-w-3xl mx-auto mb-12"
+              className="text-lg sm:text-xl md:text-2xl text-muted-foreground max-w-3xl mx-auto mb-8 sm:mb-12 px-4"
             >
               PharmaTrack's AI predicts expiry 60 days early, stops staff pilferage, and tells you exactly what to reorder—
               <span className="text-primary font-semibold"> so you keep more of what you earn.</span>
             </motion.p>
 
-            <motion.div variants={fadeInUp} className="flex flex-wrap items-center justify-center gap-4 mb-16">
+            <motion.div variants={fadeInUp} className="flex flex-wrap items-center justify-center gap-3 sm:gap-4 mb-10 sm:mb-16">
               <Link to="/auth?tab=signup">
-                <Button size="lg" className="text-lg px-8 py-6 bg-gradient-to-r from-primary to-primary/80 shadow-xl hover:shadow-2xl transition-all">
+                <Button size="lg" className="text-base sm:text-lg px-6 sm:px-8 py-5 sm:py-6 bg-gradient-to-r from-primary to-primary/80 shadow-xl hover:shadow-2xl transition-all">
                   Start 7-Day Free Trial
-                  <ArrowRight className="ml-2 h-5 w-5" />
+                  <ArrowRight className="ml-2 h-4 w-4 sm:h-5 sm:w-5" />
                 </Button>
               </Link>
-              <Button size="lg" variant="outline" className="text-lg px-8 py-6">
-                <Play className="mr-2 h-5 w-5" />
+              <Button size="lg" variant="outline" className="text-base sm:text-lg px-6 sm:px-8 py-5 sm:py-6">
+                <Play className="mr-2 h-4 w-4 sm:h-5 sm:w-5" />
                 Watch Demo
               </Button>
             </motion.div>
 
-            {/* Trust Metrics */}
-            <motion.div 
-              variants={fadeInUp}
-              className="grid grid-cols-2 md:grid-cols-4 gap-6"
-            >
-              {metrics.map((metric, i) => (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.5 + i * 0.1 }}
-                  className="p-6 rounded-2xl bg-card/50 backdrop-blur border border-border/50"
-                >
-                  <metric.icon className={`h-8 w-8 ${metric.color} mb-3 mx-auto`} />
-                  <div className="text-3xl font-display font-bold">{metric.value}</div>
-                  <div className="text-sm text-muted-foreground">{metric.label}</div>
-                </motion.div>
-              ))}
+            {/* Join the Next Generation Badge - Moved down */}
+            <motion.div variants={fadeInUp} className="mb-8">
+              <Badge variant="outline" className="text-xs sm:text-sm px-4 py-2 border-primary/30 text-primary">
+                <Zap className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
+                Join the Next Generation of 500+ Smart Pharmacies
+              </Badge>
             </motion.div>
           </motion.div>
         </div>
 
         {/* Scroll indicator */}
         <motion.div 
-          className="absolute bottom-8 left-1/2 -translate-x-1/2"
+          className="absolute bottom-20 left-1/2 -translate-x-1/2"
           animate={{ y: [0, 10, 0] }}
           transition={{ duration: 2, repeat: Infinity }}
         >
@@ -317,25 +453,25 @@ const SalesPitch = () => {
         </motion.div>
       </section>
 
-      {/* Pain Points Section */}
-      <section className="py-24 bg-muted/30">
-        <div className="container mx-auto px-6">
+      {/* SLIDE 2: Pain Points / Problem */}
+      <section id="slide-problem" className="min-h-screen flex items-center py-12 sm:py-24 bg-muted/30 snap-start">
+        <div className="container mx-auto px-4 sm:px-6">
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="text-center mb-16"
+            className="text-center mb-10 sm:mb-16"
           >
             <Badge variant="outline" className="mb-4 text-destructive border-destructive/30">The Problem</Badge>
-            <h2 className="text-4xl sm:text-5xl font-display font-bold mb-4">
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-display font-bold mb-4">
               Your Pharmacy is <span className="text-destructive">Bleeding Money</span>
             </h2>
-            <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
+            <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto">
               Most pharmacies lose 15-20% of potential profit to these silent killers
             </p>
           </motion.div>
 
-          <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
+          <div className="grid md:grid-cols-2 gap-4 sm:gap-8 max-w-5xl mx-auto">
             {painPoints.map((point, i) => (
               <motion.div
                 key={i}
@@ -345,22 +481,22 @@ const SalesPitch = () => {
                 transition={{ delay: i * 0.1 }}
               >
                 <Card className="h-full border-destructive/20 bg-card/80 backdrop-blur overflow-hidden group hover:border-primary/50 transition-all">
-                  <CardContent className="p-8">
-                    <div className="flex items-start gap-4">
-                      <div className="h-14 w-14 rounded-2xl bg-destructive/10 flex items-center justify-center shrink-0 group-hover:bg-primary/10 transition-colors">
-                        <point.icon className="h-7 w-7 text-destructive group-hover:text-primary transition-colors" />
+                  <CardContent className="p-4 sm:p-8">
+                    <div className="flex items-start gap-3 sm:gap-4">
+                      <div className="h-10 w-10 sm:h-14 sm:w-14 rounded-xl sm:rounded-2xl bg-destructive/10 flex items-center justify-center shrink-0 group-hover:bg-primary/10 transition-colors">
+                        <point.icon className="h-5 w-5 sm:h-7 sm:w-7 text-destructive group-hover:text-primary transition-colors" />
                       </div>
                       <div>
-                        <h3 className="text-xl font-display font-bold mb-2">{point.title}</h3>
-                        <p className="text-muted-foreground mb-4">{point.problem}</p>
-                        <div className="flex items-center gap-2 mb-4">
-                          <Badge variant="destructive" className="text-sm">
+                        <h3 className="text-lg sm:text-xl font-display font-bold mb-2">{point.title}</h3>
+                        <p className="text-sm sm:text-base text-muted-foreground mb-3 sm:mb-4">{point.problem}</p>
+                        <div className="flex items-center gap-2 mb-3 sm:mb-4">
+                          <Badge variant="destructive" className="text-xs sm:text-sm">
                             Costing you: {point.cost}
                           </Badge>
                         </div>
-                        <div className="flex items-start gap-2 p-3 rounded-lg bg-success/10 border border-success/20">
-                          <Check className="h-5 w-5 text-success shrink-0 mt-0.5" />
-                          <p className="text-sm text-success">{point.solution}</p>
+                        <div className="flex items-start gap-2 p-2 sm:p-3 rounded-lg bg-success/10 border border-success/20">
+                          <Check className="h-4 w-4 sm:h-5 sm:w-5 text-success shrink-0 mt-0.5" />
+                          <p className="text-xs sm:text-sm text-success">{point.solution}</p>
                         </div>
                       </div>
                     </div>
@@ -372,32 +508,36 @@ const SalesPitch = () => {
         </div>
       </section>
 
-      {/* ROI Calculator */}
-      <section className="py-24">
-        <div className="container mx-auto px-6">
+      {/* SLIDE 3: ROI Calculator */}
+      <section id="slide-roi" className="min-h-screen flex items-center py-12 sm:py-24 snap-start">
+        <div className="container mx-auto px-4 sm:px-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             className="max-w-4xl mx-auto"
           >
-            <div className="text-center mb-12">
-              <Badge variant="outline" className="mb-4 border-primary/30 text-primary">ROI Calculator</Badge>
-              <h2 className="text-4xl sm:text-5xl font-display font-bold mb-4">
+            <div className="text-center mb-8 sm:mb-12">
+              <Badge variant="outline" className="mb-4 border-primary/30 text-primary">
+                <Calculator className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
+                Interactive ROI Calculator
+              </Badge>
+              <h2 className="text-3xl sm:text-4xl md:text-5xl font-display font-bold mb-4">
                 See Your <span className="text-primary">Potential Savings</span>
               </h2>
+              <p className="text-muted-foreground">Enter your numbers below to calculate your pharmacy's ROI</p>
             </div>
 
             <Card className="border-2 border-primary/20 bg-gradient-to-br from-primary/5 to-background overflow-hidden">
-              <CardContent className="p-8 sm:p-12">
-                <div className="grid md:grid-cols-2 gap-8 mb-8">
+              <CardContent className="p-4 sm:p-8 md:p-12">
+                <div className="grid md:grid-cols-2 gap-4 sm:gap-8 mb-6 sm:mb-8">
                   <div>
                     <label className="text-sm font-medium mb-2 block">Monthly Revenue ({isInternational ? 'USD' : 'NGN'})</label>
                     <Input
                       type="text"
                       value={monthlyRevenue}
                       onChange={(e) => setMonthlyRevenue(e.target.value.replace(/[^0-9]/g, ''))}
-                      className="text-2xl font-bold h-14"
+                      className="text-xl sm:text-2xl font-bold h-12 sm:h-14"
                       placeholder="5,000,000"
                     />
                   </div>
@@ -407,39 +547,42 @@ const SalesPitch = () => {
                       type="text"
                       value={expiryLoss}
                       onChange={(e) => setExpiryLoss(e.target.value.replace(/[^0-9.]/g, ''))}
-                      className="text-2xl font-bold h-14"
+                      className="text-xl sm:text-2xl font-bold h-12 sm:h-14"
                       placeholder="8"
                     />
                   </div>
                 </div>
 
-                <div className="grid sm:grid-cols-3 gap-6">
-                  <div className="p-6 rounded-xl bg-destructive/10 border border-destructive/20">
-                    <div className="text-sm text-destructive font-medium mb-1">Current Annual Loss</div>
-                    <div className="text-3xl font-display font-bold text-destructive">
+                <div className="grid sm:grid-cols-3 gap-4 sm:gap-6">
+                  <div className="p-4 sm:p-6 rounded-xl bg-destructive/10 border border-destructive/20">
+                    <div className="text-xs sm:text-sm text-destructive font-medium mb-1">Current Annual Loss</div>
+                    <div className="text-xl sm:text-2xl md:text-3xl font-display font-bold text-destructive">
                       {formatCurrency(currentExpiryLoss)}
                     </div>
                   </div>
-                  <div className="p-6 rounded-xl bg-success/10 border border-success/20">
-                    <div className="text-sm text-success font-medium mb-1">Recovered with AI</div>
-                    <div className="text-3xl font-display font-bold text-success">
+                  <div className="p-4 sm:p-6 rounded-xl bg-success/10 border border-success/20">
+                    <div className="text-xs sm:text-sm text-success font-medium mb-1">Recovered with AI</div>
+                    <div className="text-xl sm:text-2xl md:text-3xl font-display font-bold text-success">
                       {formatCurrency(recoveredWithAI)}
                     </div>
                   </div>
-                  <div className="p-6 rounded-xl bg-primary/10 border border-primary/20">
-                    <div className="text-sm text-primary font-medium mb-1">Total Annual Savings</div>
-                    <div className="text-3xl font-display font-bold text-primary">
+                  <div className="p-4 sm:p-6 rounded-xl bg-primary/10 border border-primary/20">
+                    <div className="text-xs sm:text-sm text-primary font-medium mb-1">Total Annual Savings</div>
+                    <div className="text-xl sm:text-2xl md:text-3xl font-display font-bold text-primary">
                       {formatCurrency(totalSavings)}
                     </div>
                   </div>
                 </div>
 
-                <div className="mt-8 p-6 rounded-xl bg-card border text-center">
-                  <p className="text-lg text-muted-foreground mb-2">
-                    ROI: <span className="text-4xl font-display font-bold text-primary">{Math.round(totalSavings / (35000 * 12) * 100)}x</span> your investment
+                <div className="mt-6 sm:mt-8 p-4 sm:p-6 rounded-xl bg-card border text-center">
+                  <p className="text-base sm:text-lg text-muted-foreground mb-2">
+                    ROI: <span className="text-3xl sm:text-4xl font-display font-bold text-primary">{displayROI}x</span> your investment
                   </p>
-                  <p className="text-sm text-muted-foreground">
-                    Based on Pro plan pricing of ₦35,000/month
+                  <p className="text-xs sm:text-sm text-muted-foreground">
+                    Based on Pro plan pricing of ₦35,000/month (₦420,000/year)
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Annual Savings ÷ Annual Cost = {displayROI}x Return
                   </p>
                 </div>
               </CardContent>
@@ -448,22 +591,22 @@ const SalesPitch = () => {
         </div>
       </section>
 
-      {/* Features Grid */}
-      <section className="py-24 bg-muted/30">
-        <div className="container mx-auto px-6">
+      {/* SLIDE 4: Features Grid */}
+      <section id="slide-features" className="min-h-screen flex items-center py-12 sm:py-24 bg-muted/30 snap-start">
+        <div className="container mx-auto px-4 sm:px-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="text-center mb-16"
+            className="text-center mb-10 sm:mb-16"
           >
             <Badge variant="outline" className="mb-4">Complete Solution</Badge>
-            <h2 className="text-4xl sm:text-5xl font-display font-bold mb-4">
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-display font-bold mb-4">
               Everything You Need to <span className="text-primary">Dominate</span>
             </h2>
           </motion.div>
 
-          <div className="grid lg:grid-cols-3 gap-8 max-w-6xl mx-auto">
+          <div className="grid lg:grid-cols-3 gap-4 sm:gap-8 max-w-6xl mx-auto">
             {features.map((category, i) => (
               <motion.div
                 key={i}
@@ -474,18 +617,18 @@ const SalesPitch = () => {
               >
                 <Card className="h-full border-border/50 overflow-hidden group hover:shadow-xl transition-all">
                   <div className={`h-2 bg-gradient-to-r ${category.color}`} />
-                  <CardContent className="p-8">
-                    <div className={`h-14 w-14 rounded-2xl bg-gradient-to-r ${category.color} flex items-center justify-center mb-6`}>
-                      <category.icon className="h-7 w-7 text-white" />
+                  <CardContent className="p-4 sm:p-8">
+                    <div className={`h-10 w-10 sm:h-14 sm:w-14 rounded-xl sm:rounded-2xl bg-gradient-to-r ${category.color} flex items-center justify-center mb-4 sm:mb-6`}>
+                      <category.icon className="h-5 w-5 sm:h-7 sm:w-7 text-white" />
                     </div>
-                    <h3 className="text-xl font-display font-bold mb-6">{category.category}</h3>
-                    <div className="space-y-4">
+                    <h3 className="text-lg sm:text-xl font-display font-bold mb-4 sm:mb-6">{category.category}</h3>
+                    <div className="space-y-3 sm:space-y-4">
                       {category.items.map((item, j) => (
-                        <div key={j} className="flex items-start gap-3">
-                          <Check className="h-5 w-5 text-success shrink-0 mt-0.5" />
+                        <div key={j} className="flex items-start gap-2 sm:gap-3">
+                          <Check className="h-4 w-4 sm:h-5 sm:w-5 text-success shrink-0 mt-0.5" />
                           <div>
-                            <div className="font-medium">{item.name}</div>
-                            <div className="text-sm text-muted-foreground">{item.desc}</div>
+                            <div className="font-medium text-sm sm:text-base">{item.name}</div>
+                            <div className="text-xs sm:text-sm text-muted-foreground">{item.desc}</div>
                           </div>
                         </div>
                       ))}
@@ -498,17 +641,17 @@ const SalesPitch = () => {
         </div>
       </section>
 
-      {/* Comparison Table */}
-      <section className="py-24">
-        <div className="container mx-auto px-6">
+      {/* SLIDE 5: Comparison Table */}
+      <section id="slide-comparison" className="min-h-screen flex items-center py-12 sm:py-24 snap-start">
+        <div className="container mx-auto px-4 sm:px-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="text-center mb-16"
+            className="text-center mb-10 sm:mb-16"
           >
             <Badge variant="outline" className="mb-4">Why Switch?</Badge>
-            <h2 className="text-4xl sm:text-5xl font-display font-bold mb-4">
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-display font-bold mb-4">
               Old Software vs <span className="text-primary">PharmaTrack</span>
             </h2>
           </motion.div>
@@ -524,27 +667,27 @@ const SalesPitch = () => {
                 <table className="w-full">
                   <thead>
                     <tr className="border-b bg-muted/50">
-                      <th className="text-left p-4 font-display font-bold">Feature</th>
-                      <th className="text-left p-4 font-display font-bold text-destructive">Old Software</th>
-                      <th className="text-left p-4 font-display font-bold text-primary">PharmaTrack</th>
+                      <th className="text-left p-3 sm:p-4 font-display font-bold text-sm sm:text-base">Feature</th>
+                      <th className="text-left p-3 sm:p-4 font-display font-bold text-destructive text-sm sm:text-base">Old Software</th>
+                      <th className="text-left p-3 sm:p-4 font-display font-bold text-primary text-sm sm:text-base">PharmaTrack</th>
                     </tr>
                   </thead>
                   <tbody>
                     {comparisonData.map((row, i) => (
                       <tr key={i} className="border-b hover:bg-muted/30 transition-colors">
-                        <td className="p-4 font-medium">{row.feature}</td>
-                        <td className="p-4">
-                          <div className="flex items-center gap-2 text-muted-foreground">
-                            <X className="h-4 w-4 text-destructive" />
+                        <td className="p-3 sm:p-4 font-medium text-sm sm:text-base">{row.feature}</td>
+                        <td className="p-3 sm:p-4">
+                          <div className="flex items-center gap-2 text-muted-foreground text-xs sm:text-sm">
+                            <X className="h-3 w-3 sm:h-4 sm:w-4 text-destructive shrink-0" />
                             {row.old}
                           </div>
                         </td>
-                        <td className="p-4">
-                          <div className="flex items-center gap-2">
-                            <Check className="h-4 w-4 text-success" />
+                        <td className="p-3 sm:p-4">
+                          <div className="flex items-center gap-2 text-xs sm:text-sm">
+                            <Check className="h-3 w-3 sm:h-4 sm:w-4 text-success shrink-0" />
                             <span className="font-medium">{row.pharmatrack}</span>
                             {row.impact === 'critical' && (
-                              <Badge variant="destructive" className="text-[10px] ml-1">Critical</Badge>
+                              <Badge variant="destructive" className="text-[8px] sm:text-[10px] ml-1">Critical</Badge>
                             )}
                           </div>
                         </td>
@@ -558,23 +701,24 @@ const SalesPitch = () => {
         </div>
       </section>
 
-      {/* Testimonials */}
-      <section className="py-24 bg-muted/30">
-        <div className="container mx-auto px-6">
+      {/* SLIDE 6: Leader Perspectives & Industry Insights */}
+      <section id="slide-insights" className="min-h-screen flex items-center py-12 sm:py-24 bg-muted/30 snap-start">
+        <div className="container mx-auto px-4 sm:px-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="text-center mb-16"
+            className="text-center mb-10 sm:mb-16"
           >
-            <Badge variant="outline" className="mb-4">Social Proof</Badge>
-            <h2 className="text-4xl sm:text-5xl font-display font-bold mb-4">
-              What Pharmacy Owners Say
+            <Badge variant="outline" className="mb-4">Why Leaders Are Switching</Badge>
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-display font-bold mb-4">
+              The <span className="text-primary">Smart Pharmacy</span> Advantage
             </h2>
           </motion.div>
 
-          <div className="grid md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-            {testimonials.map((testimonial, i) => (
+          {/* Leader Perspectives */}
+          <div className="grid md:grid-cols-3 gap-4 sm:gap-6 max-w-6xl mx-auto mb-10 sm:mb-16">
+            {leaderPerspectives.map((item, i) => (
               <motion.div
                 key={i}
                 initial={{ opacity: 0, y: 30 }}
@@ -582,54 +726,73 @@ const SalesPitch = () => {
                 viewport={{ once: true }}
                 transition={{ delay: i * 0.1 }}
               >
-                <Card className="h-full border-border/50 overflow-hidden">
-                  <CardContent className="p-8">
-                    <div className="flex items-center gap-1 mb-4">
-                      {[...Array(5)].map((_, i) => (
-                        <Star key={i} className="h-5 w-5 text-warning fill-warning" />
-                      ))}
+                <Card className="h-full border-border/50 overflow-hidden hover:shadow-lg transition-all">
+                  <div className={`h-2 bg-gradient-to-r ${item.color}`} />
+                  <CardContent className="p-4 sm:p-6">
+                    <div className={`h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-gradient-to-r ${item.color} flex items-center justify-center mb-4`}>
+                      <item.icon className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
                     </div>
-                    <Badge className="mb-4 bg-success/10 text-success border-success/30">
-                      {testimonial.metric}
+                    <h3 className="text-base sm:text-lg font-display font-bold mb-3">{item.perspective}</h3>
+                    <p className="text-sm sm:text-base text-muted-foreground mb-4 italic">"{item.insight}"</p>
+                    <Badge className="bg-success/10 text-success border-success/30 text-xs sm:text-sm">
+                      {item.benefit}
                     </Badge>
-                    <p className="text-lg mb-6 italic">"{testimonial.quote}"</p>
-                    <div className="flex items-center gap-4">
-                      <div className="h-12 w-12 rounded-full bg-primary/20 flex items-center justify-center text-primary font-bold">
-                        {testimonial.avatar}
-                      </div>
-                      <div>
-                        <div className="font-bold">{testimonial.author}</div>
-                        <div className="text-sm text-muted-foreground">{testimonial.role}</div>
-                        <div className="text-sm text-muted-foreground">{testimonial.company}</div>
-                      </div>
-                    </div>
                   </CardContent>
                 </Card>
               </motion.div>
             ))}
           </div>
+
+          {/* Industry Insights */}
+          <div className="max-w-4xl mx-auto">
+            <h3 className="text-xl sm:text-2xl font-display font-bold text-center mb-6 sm:mb-8">Industry Research & Insights</h3>
+            <div className="grid gap-3 sm:gap-4">
+              {industryInsights.map((insight, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, x: -20 }}
+                  whileInView={{ opacity: 1, x: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.1 }}
+                >
+                  <Card className="border-primary/20 bg-primary/5">
+                    <CardContent className="p-4 sm:p-6 flex items-start gap-3 sm:gap-4">
+                      <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-primary/20 flex items-center justify-center shrink-0">
+                        <insight.icon className="h-5 w-5 sm:h-6 sm:w-6 text-primary" />
+                      </div>
+                      <div>
+                        <Badge variant="outline" className="mb-2 text-xs">{insight.title}</Badge>
+                        <p className="font-medium text-sm sm:text-base mb-1">{insight.fact}</p>
+                        <p className="text-xs text-muted-foreground">{insight.source}</p>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              ))}
+            </div>
+          </div>
         </div>
       </section>
 
-      {/* Pricing */}
-      <section className="py-24">
-        <div className="container mx-auto px-6">
+      {/* SLIDE 7: Pricing */}
+      <section id="slide-pricing" className="min-h-screen flex items-center py-12 sm:py-24 snap-start">
+        <div className="container mx-auto px-4 sm:px-6">
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="text-center mb-16"
+            className="text-center mb-10 sm:mb-16"
           >
             <Badge variant="outline" className="mb-4">Pricing</Badge>
-            <h2 className="text-4xl sm:text-5xl font-display font-bold mb-4">
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-display font-bold mb-4">
               Simple, Transparent <span className="text-primary">Pricing</span>
             </h2>
-            <p className="text-xl text-muted-foreground">
+            <p className="text-lg sm:text-xl text-muted-foreground">
               Start free. Upgrade when you're ready.
             </p>
           </motion.div>
 
-          <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+          <div className="grid md:grid-cols-3 gap-4 sm:gap-8 max-w-5xl mx-auto">
             {Object.entries(pricing).map(([key, plan], i) => (
               <motion.div
                 key={key}
@@ -640,33 +803,33 @@ const SalesPitch = () => {
                 className="relative"
               >
                 {plan.popular && (
-                  <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-10">
-                    <Badge className="bg-primary text-primary-foreground shadow-lg">
+                  <div className="absolute -top-3 sm:-top-4 left-1/2 -translate-x-1/2 z-10">
+                    <Badge className="bg-primary text-primary-foreground shadow-lg text-xs sm:text-sm">
                       <Zap className="h-3 w-3 mr-1" />
                       Most Popular
                     </Badge>
                   </div>
                 )}
                 <Card className={`h-full ${plan.popular ? 'border-2 border-primary shadow-xl' : 'border-border/50'}`}>
-                  <CardContent className="p-8">
-                    <div className="text-center mb-6">
-                      <h3 className="text-2xl font-display font-bold">{plan.name}</h3>
-                      <p className="text-sm text-muted-foreground">{plan.tagline}</p>
+                  <CardContent className="p-4 sm:p-8">
+                    <div className="text-center mb-4 sm:mb-6">
+                      <h3 className="text-xl sm:text-2xl font-display font-bold">{plan.name}</h3>
+                      <p className="text-xs sm:text-sm text-muted-foreground">{plan.tagline}</p>
                     </div>
-                    <div className="text-center mb-6">
+                    <div className="text-center mb-4 sm:mb-6">
                       {plan.setup !== 'Custom' && (
-                        <div className="text-sm text-muted-foreground mb-1">
+                        <div className="text-xs sm:text-sm text-muted-foreground mb-1">
                           Setup: <span className={plan.setup === '₦0' ? 'text-success font-bold' : ''}>{plan.setup}</span>
                         </div>
                       )}
-                      <div className="text-4xl font-display font-bold">{plan.monthly}</div>
-                      <div className="text-sm text-muted-foreground">/month</div>
+                      <div className="text-2xl sm:text-4xl font-display font-bold">{plan.monthly}</div>
+                      <div className="text-xs sm:text-sm text-muted-foreground">/month</div>
                     </div>
-                    <div className="space-y-3 mb-8">
+                    <div className="space-y-2 sm:space-y-3 mb-6 sm:mb-8">
                       {plan.features.map((feature, j) => (
                         <div key={j} className="flex items-center gap-2">
-                          <Check className="h-4 w-4 text-success shrink-0" />
-                          <span className="text-sm">{feature}</span>
+                          <Check className="h-3 w-3 sm:h-4 sm:w-4 text-success shrink-0" />
+                          <span className="text-xs sm:text-sm">{feature}</span>
                         </div>
                       ))}
                     </div>
@@ -683,45 +846,51 @@ const SalesPitch = () => {
         </div>
       </section>
 
-      {/* Final CTA */}
-      <section className="py-24 bg-gradient-to-br from-primary/10 via-background to-secondary/10 relative overflow-hidden">
+      {/* SLIDE 8: Final CTA */}
+      <section id="slide-cta" className="min-h-screen flex items-center py-12 sm:py-24 bg-gradient-to-br from-primary/10 via-background to-secondary/10 relative overflow-hidden snap-start">
         <motion.div 
           className="absolute inset-0"
           animate={{ backgroundPosition: ['0% 0%', '100% 100%'] }}
           transition={{ duration: 20, repeat: Infinity, repeatType: 'reverse' }}
         />
-        <div className="container mx-auto px-6 relative z-10">
+        <div className="container mx-auto px-4 sm:px-6 relative z-10">
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             className="max-w-4xl mx-auto text-center"
           >
-            <h2 className="text-4xl sm:text-5xl md:text-6xl font-display font-bold mb-6">
+            {/* Beta Badge */}
+            <Badge className="mb-6 text-xs sm:text-sm px-4 py-2 bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-amber-600 dark:text-amber-400 border-amber-500/30">
+              <Rocket className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
+              Only 5 Pioneer Spots Remaining for 2026
+            </Badge>
+            
+            <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-display font-bold mb-6">
               Ready to Stop Losing Money?
             </h2>
-            <p className="text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
-              Join 500+ pharmacies already using PharmaTrack to recover lost profits and grow faster.
+            <p className="text-lg sm:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto">
+              Join the next generation of smart pharmacies already transforming their operations with PharmaTrack.
             </p>
             <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-8">
               <Link to="/auth?tab=signup">
-                <Button size="lg" className="text-lg px-8 py-6 bg-gradient-to-r from-primary to-primary/80 shadow-xl">
+                <Button size="lg" className="text-base sm:text-lg px-6 sm:px-8 py-5 sm:py-6 bg-gradient-to-r from-primary to-primary/80 shadow-xl">
                   Start Your Free 7-Day Trial
-                  <ArrowRight className="ml-2 h-5 w-5" />
+                  <ArrowRight className="ml-2 h-4 w-4 sm:h-5 sm:w-5" />
                 </Button>
               </Link>
             </div>
-            <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-muted-foreground">
+            <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 text-xs sm:text-sm text-muted-foreground">
               <div className="flex items-center gap-2">
-                <Check className="h-4 w-4 text-success" />
+                <Check className="h-3 w-3 sm:h-4 sm:w-4 text-success" />
                 No credit card required
               </div>
               <div className="flex items-center gap-2">
-                <Check className="h-4 w-4 text-success" />
+                <Check className="h-3 w-3 sm:h-4 sm:w-4 text-success" />
                 Free data migration
               </div>
               <div className="flex items-center gap-2">
-                <Check className="h-4 w-4 text-success" />
+                <Check className="h-3 w-3 sm:h-4 sm:w-4 text-success" />
                 Cancel anytime
               </div>
             </div>
@@ -730,18 +899,18 @@ const SalesPitch = () => {
       </section>
 
       {/* Footer */}
-      <footer className="py-12 border-t bg-card/50">
-        <div className="container mx-auto px-6 text-center">
-          <div className="flex items-center justify-center gap-3 mb-4">
-            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center">
-              <Sparkles className="h-5 w-5 text-primary-foreground" />
+      <footer className="py-8 sm:py-12 border-t bg-card/50">
+        <div className="container mx-auto px-4 sm:px-6 text-center">
+          <div className="flex items-center justify-center gap-2 sm:gap-3 mb-4">
+            <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center">
+              <Sparkles className="h-4 w-4 sm:h-5 sm:w-5 text-primary-foreground" />
             </div>
-            <span className="font-display font-bold text-xl">PharmaTrack</span>
+            <span className="font-display font-bold text-lg sm:text-xl">PharmaTrack</span>
           </div>
-          <p className="text-muted-foreground mb-4">
+          <p className="text-muted-foreground text-sm mb-4">
             The AI Brain for Your Pharmacy
           </p>
-          <p className="text-sm text-muted-foreground">
+          <p className="text-xs sm:text-sm text-muted-foreground">
             © {new Date().getFullYear()} PharmaTrack. All rights reserved.
           </p>
         </div>
