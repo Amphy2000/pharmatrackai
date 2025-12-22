@@ -22,7 +22,8 @@ import {
   AlertCircle,
   AlertTriangle,
   Info,
-  Crown
+  Crown,
+  CreditCard
 } from 'lucide-react';
 import {
   Tooltip,
@@ -90,7 +91,12 @@ export const Header = () => {
     // POS - always accessible
     links.push({ href: '/checkout', label: 'POS', icon: ShoppingCart });
 
-    // Inventory
+    // Payment Terminal - show for staff role (cashiers)
+    if (userRole === 'staff') {
+      links.push({ href: '/payment-terminal', label: 'Quick Pay', icon: CreditCard });
+    }
+
+    // Inventory - hide for cashiers (staff without special permissions)
     if (isOwnerOrManager || hasPermission('access_inventory')) {
       links.push({ href: '/inventory', label: 'Inventory', icon: PackageSearch });
     }
@@ -100,7 +106,7 @@ export const Header = () => {
       links.push({ href: '/customers', label: 'Customers', icon: Users });
     }
 
-    // Branches
+    // Branches - hide for cashiers
     if (isOwnerOrManager || hasPermission('access_branches')) {
       links.push({ href: '/branches', label: 'Branches', icon: Building2 });
     }
@@ -113,13 +119,13 @@ export const Header = () => {
       links.push({ href: '/my-sales', label: 'My Sales', icon: History });
     }
 
-    // Suppliers
+    // Suppliers - hide for cashiers
     if (isOwnerOrManager || hasPermission('access_suppliers')) {
       links.push({ href: '/suppliers', label: 'Suppliers', icon: Truck });
     }
 
     return links;
-  }, [permissionsLoading, isOwnerOrManager, hasPermission]);
+  }, [permissionsLoading, isOwnerOrManager, hasPermission, userRole]);
 
   const roleLabel = userRole === 'owner' ? 'Owner' : userRole === 'manager' ? 'Manager' : 'Staff';
 
