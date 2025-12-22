@@ -121,8 +121,8 @@ export default {
           to: { opacity: "1", transform: "scale(1)" },
         },
         "glow-pulse": {
-          "0%, 100%": { boxShadow: "0 0 20px hsl(186 100% 50% / 0.2)" },
-          "50%": { boxShadow: "0 0 40px hsl(186 100% 50% / 0.4)" },
+          "0%, 100%": { boxShadow: "0 0 20px hsl(220 70% 45% / 0.2)" },
+          "50%": { boxShadow: "0 0 40px hsl(220 70% 45% / 0.4)" },
         },
         "float": {
           "0%, 100%": { transform: "translateY(0)" },

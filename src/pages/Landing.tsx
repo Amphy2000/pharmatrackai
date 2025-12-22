@@ -105,16 +105,14 @@ const Landing = () => {
     }
   };
 
-  // Competitor comparison data - comprehensive like the pitch page
+  // ShopKite vs PharmaTrack AI - Comprehensive Comparison Table
   const comparisonData = [
-    { feature: 'Expiry Management', oldApp: 'Manual checking', pharmatrack: 'AI predicts 60 days early', critical: true },
-    { feature: 'Stock Entry', oldApp: 'Typing everything', pharmatrack: 'Barcode + Invoice scan', critical: false },
-    { feature: 'Staff Tracking', oldApp: 'Trust-based', pharmatrack: 'Clock-in with sales audit', critical: true },
-    { feature: 'Reordering', oldApp: 'Guesswork', pharmatrack: 'AI demand forecasting', critical: false },
-    { feature: 'Multi-Branch', oldApp: 'Separate systems', pharmatrack: 'Unified dashboard', critical: false },
-    { feature: 'Support', oldApp: 'Call the vendor', pharmatrack: '24/7 Priority support', critical: false },
-    { feature: 'Setup Fee', oldApp: 'Heavy upfront', pharmatrack: '₦0 option available', critical: false },
-    { feature: 'Updates', oldApp: 'Pay per upgrade', pharmatrack: 'Always latest version', critical: false },
+    { feature: 'Inventory Entry', oldApp: 'Manual search of 100k items', pharmatrack: 'AI Invoice Scanner: Snap & Stock 50+ items in 10 secs', critical: true },
+    { feature: 'Compliance', oldApp: 'Generic Expiry alerts only', pharmatrack: '2025 NAFDAC Ready: Auto-generates Batch/BN Traceability logs', critical: true },
+    { feature: 'Anti-Theft', oldApp: 'Staff can edit prices easily', pharmatrack: 'Locked Pricing: Zero-Price-Manipulation (Admin Only)', critical: true },
+    { feature: 'Clinical Care', oldApp: 'Basic grocery-style receipt', pharmatrack: 'Digital Dispensing: Integrated Dosage & Ingredient Search', critical: true },
+    { feature: 'Performance', oldApp: 'Bloated app; lags on older phones', pharmatrack: 'High-Speed Lite: Instant login on all Nigerian networks', critical: false },
+    { feature: 'Hardware', oldApp: '₦300k "Stella" Device needed', pharmatrack: 'Zero Hardware: Runs on the phone/laptop you already own', critical: false },
   ];
 
   // Compliance badges for pharmacy-specific positioning
@@ -286,8 +284,8 @@ const Landing = () => {
         </div>
       </section>
 
-      {/* Pharmacy-Specific Compliance Section */}
-      <section className="py-16 sm:py-24 relative bg-gradient-to-b from-background to-muted/20">
+      {/* Stop the Leakage Pitch Section */}
+      <section className="py-16 sm:py-24 relative bg-gradient-hero hero-medical">
         <div className="container mx-auto px-4 sm:px-6">
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
@@ -295,17 +293,77 @@ const Landing = () => {
             viewport={{ once: true }}
             className="text-center mb-12"
           >
-            <Badge variant="outline" className="mb-4 text-warning border-warning/30">
+            <Badge className="mb-4 bg-destructive/20 text-destructive border-destructive/30">
               <AlertTriangle className="h-3 w-3 mr-2" />
-              Built for Pharmacies, Not Supermarkets
+              The Truth About General POS Apps
             </Badge>
-            <h2 className="text-2xl sm:text-3xl md:text-4xl font-display font-bold mb-4">
-              Generic POS Apps <span className="text-destructive">Can't Do This</span>
+            <h2 className="text-2xl sm:text-3xl md:text-4xl font-display font-bold mb-4 text-white">
+              General apps like ShopKite are built to sell <span className="text-warning">bread and soap</span>.
             </h2>
-            <p className="text-muted-foreground max-w-2xl mx-auto">
-              Retail apps like ShopKite are great for supermarkets, but pharmacies need legal compliance features that generic POS simply doesn't have.
+            <p className="text-xl text-white/90 font-medium">
+              PharmaTrack AI is built to <span className="text-success">protect a Pharmacy's license and profit</span>.
             </p>
           </motion.div>
+
+          {/* Stop the Leakage Points */}
+          <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto mb-12">
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.1 }}
+            >
+              <Card className="h-full bg-white/10 backdrop-blur-xl border-white/20 overflow-hidden">
+                <CardContent className="p-6">
+                  <div className="h-12 w-12 rounded-xl bg-destructive/20 flex items-center justify-center mb-4">
+                    <Lock className="h-6 w-6 text-destructive" />
+                  </div>
+                  <h3 className="text-lg font-display font-bold text-white mb-2">Stop Staff Fraud</h3>
+                  <p className="text-white/80 text-sm">
+                    ShopKite allows staff to change prices during a sale—that's where your profit disappears. <span className="text-success font-medium">We lock your prices so only the Pharmacist has control.</span>
+                  </p>
+                </CardContent>
+              </Card>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.2 }}
+            >
+              <Card className="h-full bg-white/10 backdrop-blur-xl border-white/20 overflow-hidden">
+                <CardContent className="p-6">
+                  <div className="h-12 w-12 rounded-xl bg-primary/20 flex items-center justify-center mb-4">
+                    <ShieldCheck className="h-6 w-6 text-primary" />
+                  </div>
+                  <h3 className="text-lg font-display font-bold text-white mb-2">Audit-Ready in Seconds</h3>
+                  <p className="text-white/80 text-sm">
+                    When NAFDAC walks in, don't scramble for paper. <span className="text-success font-medium">Our AI has already logged every Batch Number and Expiry from your wholesale invoices.</span>
+                  </p>
+                </CardContent>
+              </Card>
+            </motion.div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.3 }}
+            >
+              <Card className="h-full bg-white/10 backdrop-blur-xl border-white/20 overflow-hidden">
+                <CardContent className="p-6">
+                  <div className="h-12 w-12 rounded-xl bg-success/20 flex items-center justify-center mb-4">
+                    <Zap className="h-6 w-6 text-success" />
+                  </div>
+                  <h3 className="text-lg font-display font-bold text-white mb-2">Faster Than Your Network</h3>
+                  <p className="text-white/80 text-sm">
+                    We know Nigerian internet is unpredictable. <span className="text-success font-medium">Our app is optimized to load instantly, even when other apps are spinning.</span>
+                  </p>
+                </CardContent>
+              </Card>
+            </motion.div>
+          </div>
 
           {/* Compliance Badges Grid */}
           <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
@@ -315,16 +373,16 @@ const Landing = () => {
                 initial={{ opacity: 0, y: 30 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{ delay: i * 0.1 }}
+                transition={{ delay: 0.4 + i * 0.1 }}
               >
-                <Card className="h-full glass-card border-primary/20 overflow-hidden group hover:border-primary/40 transition-all">
+                <Card className="h-full bg-white/5 backdrop-blur-xl border-white/10 overflow-hidden group hover:bg-white/10 transition-all">
                   <CardContent className="p-6 text-center">
                     <div className="h-14 w-14 rounded-2xl bg-gradient-primary flex items-center justify-center mx-auto mb-4 group-hover:shadow-glow-primary transition-all">
                       <badge.icon className="h-7 w-7 text-primary-foreground" />
                     </div>
                     <Badge variant="destructive" className="mb-3 text-[10px]">Legal Requirement</Badge>
-                    <h3 className="font-display font-bold text-lg mb-2">{badge.label}</h3>
-                    <p className="text-sm text-muted-foreground">{badge.description}</p>
+                    <h3 className="font-display font-bold text-lg mb-2 text-white">{badge.label}</h3>
+                    <p className="text-sm text-white/70">{badge.description}</p>
                   </CardContent>
                 </Card>
               </motion.div>
@@ -338,21 +396,20 @@ const Landing = () => {
             viewport={{ once: true }}
             className="mt-12 max-w-3xl mx-auto"
           >
-            <Card className="border-warning/30 bg-warning/5">
+            <Card className="border-warning/50 bg-warning/10 backdrop-blur-xl">
               <CardContent className="p-6">
                 <div className="flex items-start gap-4">
                   <div className="h-10 w-10 rounded-lg bg-warning/20 flex items-center justify-center flex-shrink-0">
                     <AlertTriangle className="h-5 w-5 text-warning" />
                   </div>
                   <div>
-                    <h4 className="font-display font-bold mb-2">Ask Your Current App Provider</h4>
-                    <p className="text-sm text-muted-foreground mb-4">
-                      Can it generate NAFDAC compliance reports? Track controlled substances? Warn about drug interactions? 
-                      If not, you're using a supermarket app for a pharmacy.
+                    <h4 className="font-display font-bold mb-2 text-white">The "I've Seen Apps Like This" Response</h4>
+                    <p className="text-sm text-white/80 mb-4">
+                      "Sir, those apps are 'General POS.' They tell you what you sold. <span className="text-success font-medium">PharmaTrack AI tells you what you are losing.</span> Can those apps take a photo of your wholesale invoice and stock 50 drugs in 10 seconds? No. Can they generate a NAFDAC Batch Traceability report? No. Those apps are for supermarkets. <span className="text-primary font-medium">You are a Healthcare Professional—you deserve a tool built for your license.</span>"
                     </p>
                     <Link to="/pitch">
                       <Button variant="outline" size="sm" className="border-warning/50 text-warning hover:bg-warning/10">
-                        See Full Comparison
+                        See Full Battle Card
                         <ChevronRight className="h-4 w-4 ml-1" />
                       </Button>
                     </Link>
@@ -530,7 +587,7 @@ const Landing = () => {
         </div>
       </section>
 
-      {/* Competitor Comparison Section */}
+      {/* ShopKite vs PharmaTrack Comparison Table Section */}
       <section className="py-20 sm:py-32 relative bg-muted/20">
         <div className="container mx-auto px-4 sm:px-6">
           <motion.div 
@@ -539,12 +596,12 @@ const Landing = () => {
             viewport={{ once: true }}
             className="text-center mb-16"
           >
-            <Badge variant="outline" className="mb-4 border-destructive/30 text-destructive">Why Switch?</Badge>
+            <Badge variant="outline" className="mb-4 border-destructive/30 text-destructive">Why Pharmacies Are Switching</Badge>
             <h2 className="text-3xl sm:text-4xl md:text-5xl font-display font-bold mb-4">
-              Old Apps vs <span className="text-gradient">PharmaTrack AI</span>
+              ShopKite (General POS) vs <span className="text-gradient">PharmaTrack AI</span>
             </h2>
             <p className="text-lg text-muted-foreground max-w-xl mx-auto">
-              See why pharmacies are ditching outdated inventory systems
+              See why pharmacy-specific software beats general retail apps
             </p>
           </motion.div>
 
@@ -552,26 +609,32 @@ const Landing = () => {
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="max-w-4xl mx-auto"
+            className="max-w-5xl mx-auto"
           >
-            <Card className="glass-card border-border/50 overflow-hidden">
+            <Card className="comparison-table overflow-hidden shadow-elevated">
               <div className="overflow-x-auto">
                 <Table>
                   <TableHeader>
-                    <TableRow className="border-border/50">
-                      <TableHead className="font-display text-foreground">Feature</TableHead>
-                      <TableHead className="text-center">
-                        <span className="text-muted-foreground">Traditional Apps</span>
+                    <TableRow className="bg-gradient-hero">
+                      <TableHead className="font-display text-white text-base py-4">Feature</TableHead>
+                      <TableHead className="text-center text-white/90">
+                        <div className="flex flex-col items-center gap-1">
+                          <X className="h-5 w-5 text-destructive" />
+                          <span>ShopKite (General POS)</span>
+                        </div>
                       </TableHead>
-                      <TableHead className="text-center">
-                        <span className="text-gradient font-bold">PharmaTrack AI</span>
+                      <TableHead className="text-center text-white">
+                        <div className="flex flex-col items-center gap-1">
+                          <Check className="h-5 w-5 text-success" />
+                          <span className="font-bold">PharmaTrack AI (Specialist)</span>
+                        </div>
                       </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {comparisonData.map((row, i) => (
-                      <TableRow key={i} className="border-border/30">
-                        <TableCell className="font-medium">
+                      <TableRow key={i} className="border-border/30 hover:bg-muted/50 transition-colors">
+                        <TableCell className="font-semibold py-4">
                           <span className="flex items-center gap-2">
                             {row.feature}
                             {row.critical && (
@@ -579,15 +642,15 @@ const Landing = () => {
                             )}
                           </span>
                         </TableCell>
-                        <TableCell className="text-center">
-                          <span className="inline-flex items-center gap-2 text-muted-foreground">
-                            <X className="h-4 w-4 text-destructive" />
+                        <TableCell className="text-center py-4">
+                          <span className="inline-flex items-center gap-2 text-muted-foreground text-sm">
+                            <X className="h-4 w-4 text-destructive shrink-0" />
                             {row.oldApp}
                           </span>
                         </TableCell>
-                        <TableCell className="text-center">
-                          <span className="inline-flex items-center gap-2 text-success">
-                            <Check className="h-4 w-4" />
+                        <TableCell className="text-center py-4 bg-success/5">
+                          <span className="inline-flex items-center gap-2 text-success font-medium text-sm">
+                            <Check className="h-4 w-4 shrink-0" />
                             {row.pharmatrack}
                           </span>
                         </TableCell>
@@ -597,6 +660,43 @@ const Landing = () => {
                 </Table>
               </div>
             </Card>
+
+            {/* Key Differentiators */}
+            <div className="grid md:grid-cols-3 gap-4 mt-8">
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: 0.1 }}
+                className="p-4 rounded-xl bg-destructive/5 border border-destructive/20 text-center"
+              >
+                <DollarSign className="h-6 w-6 mx-auto mb-2 text-destructive" />
+                <p className="text-sm font-medium">The "Stella" Device Trap</p>
+                <p className="text-xs text-muted-foreground">ShopKite wants ₦300k hardware. We give you freedom.</p>
+              </motion.div>
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: 0.2 }}
+                className="p-4 rounded-xl bg-primary/5 border border-primary/20 text-center"
+              >
+                <ShieldCheck className="h-6 w-6 mx-auto mb-2 text-primary" />
+                <p className="text-sm font-medium">The "Batch Number" Hero</p>
+                <p className="text-xs text-muted-foreground">We automate the most annoying part of pharmacy work.</p>
+              </motion.div>
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: 0.3 }}
+                className="p-4 rounded-xl bg-success/5 border border-success/20 text-center"
+              >
+                <Zap className="h-6 w-6 mx-auto mb-2 text-success" />
+                <p className="text-sm font-medium">The Speed Advantage</p>
+                <p className="text-xs text-muted-foreground">When they see your app open in 1 second, the sale is 80% done.</p>
+              </motion.div>
+            </div>
           </motion.div>
         </div>
       </section>

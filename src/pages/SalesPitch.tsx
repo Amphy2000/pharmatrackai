@@ -234,15 +234,14 @@ const SalesPitch = () => {
     },
   ];
 
+  // ShopKite vs PharmaTrack AI - Premium Comparison Table
   const comparisonData = [
-    { feature: 'Expiry Management', old: 'Manual checking', pharmatrack: 'AI predicts 60 days early', impact: 'critical' },
-    { feature: 'Stock Entry', old: 'Typing everything', pharmatrack: 'Barcode + Invoice scan', impact: 'high' },
-    { feature: 'Staff Tracking', old: 'Trust-based', pharmatrack: 'Clock-in with sales audit', impact: 'critical' },
-    { feature: 'Reordering', old: 'Guesswork', pharmatrack: 'AI demand forecasting', impact: 'high' },
-    { feature: 'Multi-Branch', old: 'Separate systems', pharmatrack: 'Unified dashboard', impact: 'medium' },
-    { feature: 'Support', old: 'Call the vendor', pharmatrack: '24/7 Priority support', impact: 'high' },
-    { feature: 'Setup Fee', old: 'Heavy upfront', pharmatrack: '₦0 option available', impact: 'high' },
-    { feature: 'Updates', old: 'Pay per upgrade', pharmatrack: 'Always latest version', impact: 'medium' },
+    { feature: 'Inventory Entry', old: 'Manual search of 100k items', pharmatrack: 'AI Invoice Scanner: Snap & Stock 50+ items in 10 secs', impact: 'critical' },
+    { feature: 'Compliance', old: 'Generic Expiry alerts only', pharmatrack: '2025 NAFDAC Ready: Auto-generates Batch/BN Traceability logs', impact: 'critical' },
+    { feature: 'Anti-Theft', old: 'Staff can edit prices easily', pharmatrack: 'Locked Pricing: Zero-Price-Manipulation (Admin Only)', impact: 'critical' },
+    { feature: 'Clinical Care', old: 'Basic grocery-style receipt', pharmatrack: 'Digital Dispensing: Integrated Dosage & Ingredient Search', impact: 'critical' },
+    { feature: 'Performance', old: 'Bloated app; lags on older phones', pharmatrack: 'High-Speed Lite: Instant login on all Nigerian networks', impact: 'high' },
+    { feature: 'Hardware', old: '₦300k "Stella" Device needed', pharmatrack: 'Zero Hardware: Runs on the phone/laptop you already own', impact: 'high' },
   ];
 
   // Generic POS vs PharmaTrack comparison (for battle card)
@@ -256,6 +255,33 @@ const SalesPitch = () => {
     { category: 'NAFDAC Reg Numbers', generic: 'Not supported', pharmatrack: 'Stored and printed on compliance reports', critical: false },
     { category: 'Batch Tracking', generic: 'Basic or none', pharmatrack: 'Full batch-level traceability for recalls', critical: false },
   ];
+
+  // "Stop the Leakage" pitch content
+  const stopLeakagePitch = {
+    headline: "General apps like ShopKite are built to sell bread and soap.",
+    subline: "PharmaTrack AI is built to protect a Pharmacy's license and profit.",
+    points: [
+      {
+        title: 'Stop Staff Fraud',
+        description: "ShopKite allows staff to change prices during a sale—that's where your profit disappears. We lock your prices so only the Pharmacist has control.",
+        icon: Lock,
+        color: 'destructive'
+      },
+      {
+        title: 'Audit-Ready in Seconds',
+        description: "When NAFDAC walks in, don't scramble for paper. Our AI has already logged every Batch Number and Expiry from your wholesale invoices.",
+        icon: ShieldCheck,
+        color: 'primary'
+      },
+      {
+        title: 'Faster than your Network',
+        description: "We know Nigerian internet is unpredictable. Our app is optimized to load instantly, even when other apps are spinning.",
+        icon: Zap,
+        color: 'success'
+      }
+    ],
+    objectionResponse: `"Sir, those apps are 'General POS.' They tell you what you sold. PharmaTrack AI tells you what you are losing. Can those apps take a photo of your wholesale invoice and stock 50 drugs in 10 seconds? No. Can they generate a NAFDAC Batch Traceability report for the 2024/2025 regulations? No. Those apps are for supermarkets. You are a Healthcare Professional—you deserve a tool built for your license."`
+  };
 
   // Killer questions for sales conversations
   const killerQuestions = [

@@ -4,128 +4,174 @@
 
 @layer base {
   :root {
-    /* Premium Dark Theme - Enterprise Healthcare */
-    --background: 222 47% 6%;
-    --foreground: 210 40% 98%;
+    /* Premium Medical Theme - Deep Blue & White */
+    --background: 220 25% 97%;
+    --foreground: 220 45% 12%;
 
-    --card: 222 47% 9%;
-    --card-foreground: 210 40% 98%;
+    --card: 0 0% 100%;
+    --card-foreground: 220 45% 12%;
 
-    --popover: 222 47% 11%;
-    --popover-foreground: 210 40% 98%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 45% 12%;
 
-    /* Vibrant Cyan - Primary */
-    --primary: 186 100% 50%;
-    --primary-foreground: 222 47% 6%;
+    /* Medical Deep Blue - Primary */
+    --primary: 220 70% 45%;
+    --primary-foreground: 0 0% 100%;
 
-    /* Electric Purple - Secondary */
-    --secondary: 265 90% 65%;
+    /* Trust Blue - Secondary */
+    --secondary: 210 50% 55%;
     --secondary-foreground: 0 0% 100%;
 
-    --muted: 222 40% 15%;
-    --muted-foreground: 215 20% 55%;
+    --muted: 220 20% 92%;
+    --muted-foreground: 220 15% 45%;
 
-    /* Accent - Glowing Teal */
-    --accent: 175 80% 40%;
+    /* Healthcare Teal - Accent */
+    --accent: 175 65% 40%;
     --accent-foreground: 0 0% 100%;
 
     /* Status Colors */
-    --destructive: 0 90% 60%;
+    --destructive: 0 75% 55%;
     --destructive-foreground: 0 0% 100%;
 
-    --warning: 38 100% 55%;
-    --warning-foreground: 222 47% 6%;
+    --warning: 38 95% 50%;
+    --warning-foreground: 220 45% 12%;
 
-    --success: 152 82% 45%;
-    --success-foreground: 222 47% 6%;
+    --success: 150 70% 40%;
+    --success-foreground: 0 0% 100%;
 
-    --info: 217 91% 60%;
+    --info: 205 85% 50%;
     --info-foreground: 0 0% 100%;
 
-    --border: 222 30% 18%;
-    --input: 222 30% 18%;
-    --ring: 186 100% 50%;
+    --border: 220 20% 88%;
+    --input: 220 20% 88%;
+    --ring: 220 70% 45%;
 
     --radius: 0.75rem;
 
     /* Premium Design Tokens */
-    --glow-primary: 0 0 40px hsl(186 100% 50% / 0.3);
-    --glow-secondary: 0 0 40px hsl(265 90% 65% / 0.3);
-    --glow-success: 0 0 30px hsl(152 82% 45% / 0.3);
-    --glow-warning: 0 0 30px hsl(38 100% 55% / 0.3);
-    --glow-danger: 0 0 30px hsl(0 90% 60% / 0.3);
+    --glow-primary: 0 0 40px hsl(220 70% 45% / 0.2);
+    --glow-secondary: 0 0 40px hsl(210 50% 55% / 0.2);
+    --glow-success: 0 0 30px hsl(150 70% 40% / 0.2);
+    --glow-warning: 0 0 30px hsl(38 95% 50% / 0.2);
+    --glow-danger: 0 0 30px hsl(0 75% 55% / 0.2);
 
     /* Glass Effects */
-    --glass-bg: hsl(222 47% 11% / 0.7);
-    --glass-border: hsl(222 30% 25% / 0.5);
+    --glass-bg: hsl(0 0% 100% / 0.9);
+    --glass-border: hsl(220 20% 88% / 0.8);
 
     /* Gradients */
-    --gradient-primary: linear-gradient(135deg, hsl(186 100% 50%) 0%, hsl(175 80% 40%) 100%);
-    --gradient-secondary: linear-gradient(135deg, hsl(265 90% 65%) 0%, hsl(280 80% 55%) 100%);
-    --gradient-premium: linear-gradient(135deg, hsl(186 100% 50%) 0%, hsl(265 90% 65%) 50%, hsl(330 80% 60%) 100%);
-    --gradient-dark: linear-gradient(180deg, hsl(222 47% 9%) 0%, hsl(222 47% 6%) 100%);
-    --gradient-card: linear-gradient(145deg, hsl(222 47% 12% / 0.8) 0%, hsl(222 47% 8% / 0.9) 100%);
-    --gradient-mesh: radial-gradient(at 40% 20%, hsl(186 100% 50% / 0.08) 0%, transparent 50%), radial-gradient(at 80% 0%, hsl(265 90% 65% / 0.08) 0%, transparent 50%), radial-gradient(at 0% 50%, hsl(175 80% 40% / 0.06) 0%, transparent 50%);
+    --gradient-primary: linear-gradient(135deg, hsl(220 70% 45%) 0%, hsl(210 50% 55%) 100%);
+    --gradient-secondary: linear-gradient(135deg, hsl(210 50% 55%) 0%, hsl(200 60% 50%) 100%);
+    --gradient-premium: linear-gradient(135deg, hsl(220 70% 45%) 0%, hsl(175 65% 40%) 50%, hsl(200 60% 50%) 100%);
+    --gradient-dark: linear-gradient(180deg, hsl(220 45% 15%) 0%, hsl(220 45% 10%) 100%);
+    --gradient-card: linear-gradient(145deg, hsl(0 0% 100%) 0%, hsl(220 25% 98%) 100%);
+    --gradient-mesh: radial-gradient(at 40% 20%, hsl(220 70% 45% / 0.04) 0%, transparent 50%), radial-gradient(at 80% 0%, hsl(175 65% 40% / 0.04) 0%, transparent 50%), radial-gradient(at 0% 50%, hsl(210 50% 55% / 0.03) 0%, transparent 50%);
+    --gradient-hero: linear-gradient(135deg, hsl(220 45% 12%) 0%, hsl(220 50% 18%) 50%, hsl(220 45% 15%) 100%);
+
+    /* Shadows */
+    --shadow-sm: 0 2px 8px -2px hsl(220 45% 12% / 0.08);
+    --shadow-md: 0 8px 24px -4px hsl(220 45% 12% / 0.12);
+    --shadow-lg: 0 16px 48px -8px hsl(220 45% 12% / 0.15);
+    --shadow-card: 0 4px 24px -1px hsl(220 45% 12% / 0.08), 0 2px 8px -2px hsl(220 45% 12% / 0.04);
+    --shadow-elevated: 0 24px 48px -12px hsl(220 45% 12% / 0.18), 0 8px 16px -4px hsl(220 45% 12% / 0.1);
+    --shadow-glow: 0 0 60px -10px hsl(220 70% 45% / 0.1);
+
+    /* Chart Colors */
+    --chart-1: 220 70% 45%;
+    --chart-2: 175 65% 40%;
+    --chart-3: 150 70% 40%;
+    --chart-4: 38 95% 50%;
+    --chart-5: 0 75% 55%;
+
+    --sidebar-background: 220 45% 12%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 210 50% 55%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 220 40% 20%;
+    --sidebar-accent-foreground: 210 50% 70%;
+    --sidebar-border: 220 30% 25%;
+    --sidebar-ring: 210 50% 55%;
+  }
+
+  .dark {
+    /* Premium Dark Medical Theme */
+    --background: 220 45% 8%;
+    --foreground: 210 40% 98%;
+
+    --card: 220 45% 11%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 220 45% 13%;
+    --popover-foreground: 210 40% 98%;
+
+    /* Medical Deep Blue - Primary */
+    --primary: 210 80% 55%;
+    --primary-foreground: 220 45% 8%;
+
+    /* Trust Blue - Secondary */
+    --secondary: 200 70% 50%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 220 40% 16%;
+    --muted-foreground: 215 20% 60%;
+
+    /* Healthcare Teal - Accent */
+    --accent: 175 70% 45%;
+    --accent-foreground: 0 0% 100%;
+
+    /* Status Colors */
+    --destructive: 0 85% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --warning: 38 100% 55%;
+    --warning-foreground: 220 45% 8%;
+
+    --success: 152 75% 45%;
+    --success-foreground: 220 45% 8%;
+
+    --info: 210 90% 60%;
+    --info-foreground: 0 0% 100%;
+
+    --border: 220 30% 20%;
+    --input: 220 30% 20%;
+    --ring: 210 80% 55%;
+
+    /* Premium Design Tokens */
+    --glow-primary: 0 0 40px hsl(210 80% 55% / 0.3);
+    --glow-secondary: 0 0 40px hsl(200 70% 50% / 0.3);
+    --glow-success: 0 0 30px hsl(152 75% 45% / 0.3);
+    --glow-warning: 0 0 30px hsl(38 100% 55% / 0.3);
+    --glow-danger: 0 0 30px hsl(0 85% 60% / 0.3);
+
+    /* Glass Effects */
+    --glass-bg: hsl(220 45% 13% / 0.7);
+    --glass-border: hsl(220 30% 25% / 0.5);
+
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(210 80% 55%) 0%, hsl(175 70% 45%) 100%);
+    --gradient-secondary: linear-gradient(135deg, hsl(200 70% 50%) 0%, hsl(210 80% 55%) 100%);
+    --gradient-premium: linear-gradient(135deg, hsl(210 80% 55%) 0%, hsl(175 70% 45%) 50%, hsl(150 75% 45%) 100%);
+    --gradient-dark: linear-gradient(180deg, hsl(220 45% 11%) 0%, hsl(220 45% 8%) 100%);
+    --gradient-card: linear-gradient(145deg, hsl(220 45% 14% / 0.8) 0%, hsl(220 45% 10% / 0.9) 100%);
+    --gradient-mesh: radial-gradient(at 40% 20%, hsl(210 80% 55% / 0.08) 0%, transparent 50%), radial-gradient(at 80% 0%, hsl(175 70% 45% / 0.08) 0%, transparent 50%), radial-gradient(at 0% 50%, hsl(200 70% 50% / 0.06) 0%, transparent 50%);
+    --gradient-hero: linear-gradient(135deg, hsl(220 45% 8%) 0%, hsl(220 50% 12%) 50%, hsl(220 45% 10%) 100%);
 
     /* Shadows */
     --shadow-sm: 0 2px 8px -2px hsl(0 0% 0% / 0.3);
     --shadow-md: 0 8px 24px -4px hsl(0 0% 0% / 0.4);
     --shadow-lg: 0 16px 48px -8px hsl(0 0% 0% / 0.5);
-    --shadow-card: 0 4px 24px -1px hsl(0 0% 0% / 0.3), 0 2px 8px -2px hsl(0 0% 0% / 0.2), inset 0 1px 0 hsl(222 30% 25% / 0.2);
+    --shadow-card: 0 4px 24px -1px hsl(0 0% 0% / 0.3), 0 2px 8px -2px hsl(0 0% 0% / 0.2), inset 0 1px 0 hsl(220 30% 25% / 0.2);
     --shadow-elevated: 0 24px 48px -12px hsl(0 0% 0% / 0.6), 0 8px 16px -4px hsl(0 0% 0% / 0.4);
-    --shadow-glow: 0 0 60px -10px hsl(186 100% 50% / 0.15);
+    --shadow-glow: 0 0 60px -10px hsl(210 80% 55% / 0.15);
 
-    /* Chart Colors */
-    --chart-1: 186 100% 50%;
-    --chart-2: 265 90% 65%;
-    --chart-3: 152 82% 45%;
-    --chart-4: 38 100% 55%;
-    --chart-5: 330 80% 60%;
-
-    --sidebar-background: 222 47% 8%;
+    --sidebar-background: 220 45% 10%;
     --sidebar-foreground: 210 40% 98%;
-    --sidebar-primary: 186 100% 50%;
-    --sidebar-primary-foreground: 222 47% 6%;
-    --sidebar-accent: 222 40% 15%;
-    --sidebar-accent-foreground: 186 100% 50%;
-    --sidebar-border: 222 30% 18%;
-    --sidebar-ring: 186 100% 50%;
-  }
-
-  .light {
-    --background: 210 20% 98%;
-    --foreground: 222 47% 11%;
-
-    --card: 0 0% 100%;
-    --card-foreground: 222 47% 11%;
-
-    --popover: 0 0% 100%;
-    --popover-foreground: 222 47% 11%;
-
-    --primary: 186 85% 40%;
-    --primary-foreground: 0 0% 100%;
-
-    --secondary: 265 70% 55%;
-    --secondary-foreground: 0 0% 100%;
-
-    --muted: 210 20% 94%;
-    --muted-foreground: 215 16% 47%;
-
-    --accent: 175 60% 45%;
-    --accent-foreground: 0 0% 100%;
-
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
-    --ring: 186 85% 40%;
-
-    --glass-bg: hsl(0 0% 100% / 0.8);
-    --glass-border: hsl(214 32% 91% / 0.8);
-
-    --gradient-primary: linear-gradient(135deg, hsl(186 85% 40%) 0%, hsl(175 60% 45%) 100%);
-    --gradient-card: linear-gradient(145deg, hsl(0 0% 100%) 0%, hsl(210 20% 98%) 100%);
-    --gradient-mesh: radial-gradient(at 40% 20%, hsl(186 85% 40% / 0.05) 0%, transparent 50%), radial-gradient(at 80% 0%, hsl(265 70% 55% / 0.05) 0%, transparent 50%);
-
-    --shadow-card: 0 1px 3px 0 hsl(0 0% 0% / 0.08), 0 1px 2px -1px hsl(0 0% 0% / 0.06);
+    --sidebar-primary: 210 80% 55%;
+    --sidebar-primary-foreground: 220 45% 8%;
+    --sidebar-accent: 220 40% 18%;
+    --sidebar-accent-foreground: 210 80% 55%;
+    --sidebar-border: 220 30% 20%;
+    --sidebar-ring: 210 80% 55%;
   }
 }
 
@@ -174,7 +220,7 @@
   .glass-card::before {
     content: '';
     @apply absolute inset-0 pointer-events-none;
-    background: linear-gradient(135deg, hsl(0 0% 100% / 0.03) 0%, transparent 50%);
+    background: linear-gradient(135deg, hsl(0 0% 100% / 0.05) 0%, transparent 50%);
   }
 
   /* Premium Metric Card */
@@ -289,6 +335,40 @@
     background: conic-gradient(from 0deg, hsl(var(--primary)) var(--progress, 0%), transparent var(--progress, 0%));
     mask: radial-gradient(farthest-side, transparent calc(100% - 4px), black calc(100% - 4px));
   }
+
+  /* Premium Hero Section */
+  .hero-medical {
+    background: var(--gradient-hero);
+    @apply text-white;
+  }
+
+  /* Medical Professional Card */
+  .medical-card {
+    @apply bg-card border border-border/50 rounded-2xl shadow-card transition-all duration-300;
+  }
+
+  .medical-card:hover {
+    @apply shadow-elevated border-primary/20;
+    transform: translateY(-2px);
+  }
+
+  /* Comparison Table Premium Styling */
+  .comparison-table {
+    @apply rounded-2xl overflow-hidden border border-border;
+    box-shadow: var(--shadow-card);
+  }
+
+  .comparison-table th {
+    @apply bg-primary text-primary-foreground font-semibold;
+  }
+
+  .comparison-table td {
+    @apply border-t border-border/50;
+  }
+
+  .comparison-table tr:hover td {
+    @apply bg-muted/50;
+  }
 }
 
 @layer utilities {
@@ -324,6 +404,10 @@
 
   .bg-gradient-mesh {
     background-image: var(--gradient-mesh);
+  }
+
+  .bg-gradient-hero {
+    background: var(--gradient-hero);
   }
 
   .shadow-glow {
@@ -414,10 +498,10 @@
 
   @keyframes glowPulse {
     0%, 100% {
-      box-shadow: 0 0 20px hsl(186 100% 50% / 0.2);
+      box-shadow: 0 0 20px hsl(220 70% 45% / 0.2);
     }
     50% {
-      box-shadow: 0 0 40px hsl(186 100% 50% / 0.4);
+      box-shadow: 0 0 40px hsl(220 70% 45% / 0.4);
     }
   }
 
