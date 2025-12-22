@@ -42,44 +42,40 @@ export const ReceiptPreviewModal = ({
   }, [receipt, open]);
 
   const handlePrint = () => {
-    if (!pdfUrl || !receipt) return;
-    
+    if (!receipt) return;
+
     setIsPrinting(true);
-    
-    // Create an invisible iframe to handle printing
-    const iframe = document.createElement('iframe');
-    iframe.style.cssText = 'position:absolute;width:0;height:0;border:0;left:-9999px;top:-9999px;';
-    iframe.src = pdfUrl;
-    
-    document.body.appendChild(iframe);
-    
-    // Wait for iframe to load, then print
-    iframe.onload = () => {
-      try {
-        // Focus the iframe window and trigger print
-        iframe.contentWindow?.focus();
-        iframe.contentWindow?.print();
-      } catch (e) {
-        console.error('Print failed, falling back to download:', e);
-        // Fallback: download the PDF instead
+
+    try {
+      const blob = receipt.output('blob');
+      const url = URL.createObjectURL(blob);
+
+      // Open the PDF in a new tab/window (same-origin blob URL), then trigger the system print dialog.
+      // This avoids cross-origin iframe access issues.
+      const printWindow = window.open(url, '_blank', 'noopener,noreferrer');
+
+      if (!printWindow) {
+        // Popup blocked – fall back to download.
         receipt.save(`receipt-${receiptNumber}.pdf`);
+        return;
       }
-      
-      // Clean up after a delay
+
+      // Give the browser a moment to load the PDF plugin/viewer before printing.
       setTimeout(() => {
-        document.body.removeChild(iframe);
-        setIsPrinting(false);
-        onPrint();
-      }, 1000);
-    };
-    
-    iframe.onerror = () => {
-      // Fallback: download the PDF
-      receipt.save(`receipt-${receiptNumber}.pdf`);
-      document.body.removeChild(iframe);
-      setIsPrinting(false);
-      onPrint();
-    };
+        try {
+          printWindow.focus();
+          printWindow.print();
+        } catch (e) {
+          console.error('Print failed:', e);
+          receipt.save(`receipt-${receiptNumber}.pdf`);
+        }
+      }, 700);
+
+      // Revoke after a while (not immediately) to avoid breaking the opened tab.
+      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+    } finally {
+      setTimeout(() => setIsPrinting(false), 900);
+    }
   };
 
   const handleDownload = () => {
