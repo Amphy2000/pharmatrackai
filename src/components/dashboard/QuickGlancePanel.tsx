@@ -70,7 +70,7 @@ export const QuickGlancePanel = () => {
       bgColor: 'bg-primary/10',
     },
     {
-      label: 'Expired Stock',
+      label: 'Unshelved Expired',
       value: metrics.expiredCount,
       subValue: formatPrice(metrics.expiredValue),
       icon: XCircle,
@@ -80,7 +80,7 @@ export const QuickGlancePanel = () => {
     {
       label: 'Low Stock',
       value: metrics.lowStockCount,
-      subValue: 'items below reorder',
+      subValue: 'non-expired items',
       icon: AlertTriangle,
       color: 'text-warning',
       bgColor: 'bg-warning/10',
