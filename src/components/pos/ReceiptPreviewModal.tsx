@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Printer, X, Download, Loader2 } from 'lucide-react';
+import { Printer, X, Download, Loader2, Share2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -41,63 +41,73 @@ export const ReceiptPreviewModal = ({
     }
   }, [receipt, open]);
 
-  const handlePrint = async () => {
-    if (!receipt) return;
+  const handlePrint = () => {
+    if (!pdfUrl || !receipt) return;
     
     setIsPrinting(true);
     
-    try {
-      // Use data URL approach to avoid cross-origin issues
-      const pdfDataUri = receipt.output('datauristring');
-      
-      // Create a new window with the PDF embedded
-      const printWindow = window.open('', '_blank', 'width=800,height=600');
-      
-      if (printWindow) {
-        printWindow.document.write(`
-          <!DOCTYPE html>
-          <html>
-            <head>
-              <title>Print Receipt</title>
-              <style>
-                body { margin: 0; padding: 0; }
-                iframe { width: 100%; height: 100vh; border: none; }
-                @media print {
-                  body { margin: 0; }
-                  iframe { width: 100%; height: auto; }
-                }
-              </style>
-            </head>
-            <body>
-              <iframe src="${pdfDataUri}" onload="setTimeout(function() { window.print(); }, 500);"></iframe>
-            </body>
-          </html>
-        `);
-        printWindow.document.close();
-        
-        // Close the window after a delay to allow printing
-        setTimeout(() => {
-          setIsPrinting(false);
-          onPrint();
-        }, 2000);
-      } else {
-        // Fallback: just download the PDF
+    // Create an invisible iframe to handle printing
+    const iframe = document.createElement('iframe');
+    iframe.style.cssText = 'position:absolute;width:0;height:0;border:0;left:-9999px;top:-9999px;';
+    iframe.src = pdfUrl;
+    
+    document.body.appendChild(iframe);
+    
+    // Wait for iframe to load, then print
+    iframe.onload = () => {
+      try {
+        // Focus the iframe window and trigger print
+        iframe.contentWindow?.focus();
+        iframe.contentWindow?.print();
+      } catch (e) {
+        console.error('Print failed, falling back to download:', e);
+        // Fallback: download the PDF instead
         receipt.save(`receipt-${receiptNumber}.pdf`);
+      }
+      
+      // Clean up after a delay
+      setTimeout(() => {
+        document.body.removeChild(iframe);
         setIsPrinting(false);
         onPrint();
-      }
-    } catch (error) {
-      console.error('Print failed:', error);
-      // Fallback to download
+      }, 1000);
+    };
+    
+    iframe.onerror = () => {
+      // Fallback: download the PDF
       receipt.save(`receipt-${receiptNumber}.pdf`);
+      document.body.removeChild(iframe);
       setIsPrinting(false);
       onPrint();
-    }
+    };
   };
 
   const handleDownload = () => {
     if (!receipt) return;
     receipt.save(`receipt-${receiptNumber}.pdf`);
+  };
+
+  const handleShare = async () => {
+    if (!receipt) return;
+    
+    try {
+      const blob = receipt.output('blob');
+      const file = new File([blob], `receipt-${receiptNumber}.pdf`, { type: 'application/pdf' });
+      
+      if (navigator.share && navigator.canShare({ files: [file] })) {
+        await navigator.share({
+          title: `Receipt ${receiptNumber}`,
+          text: 'Your pharmacy receipt',
+          files: [file],
+        });
+      } else {
+        // Fallback to download
+        handleDownload();
+      }
+    } catch (error) {
+      console.error('Share failed:', error);
+      handleDownload();
+    }
   };
 
   return (
@@ -135,11 +145,19 @@ export const ReceiptPreviewModal = ({
           </Button>
           <Button
             variant="outline"
+            onClick={handleShare}
+            disabled={!receipt}
+            title="Share via WhatsApp"
+          >
+            <Share2 className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="outline"
             onClick={handleDownload}
             disabled={!receipt}
           >
             <Download className="h-4 w-4 mr-2" />
-            Download
+            Save
           </Button>
           <Button
             onClick={handlePrint}

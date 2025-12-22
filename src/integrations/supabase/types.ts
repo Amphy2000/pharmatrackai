@@ -324,6 +324,7 @@ export type Database = {
           address: string | null
           created_at: string
           email: string
+          enable_logo_on_print: boolean | null
           id: string
           license_number: string | null
           logo_url: string | null
@@ -332,6 +333,7 @@ export type Database = {
           owner_id: string
           paystack_customer_code: string | null
           paystack_subscription_code: string | null
+          pharmacist_in_charge: string | null
           phone: string | null
           subscription_ends_at: string | null
           subscription_plan: Database["public"]["Enums"]["subscription_plan"]
@@ -343,6 +345,7 @@ export type Database = {
           address?: string | null
           created_at?: string
           email: string
+          enable_logo_on_print?: boolean | null
           id?: string
           license_number?: string | null
           logo_url?: string | null
@@ -351,6 +354,7 @@ export type Database = {
           owner_id: string
           paystack_customer_code?: string | null
           paystack_subscription_code?: string | null
+          pharmacist_in_charge?: string | null
           phone?: string | null
           subscription_ends_at?: string | null
           subscription_plan?: Database["public"]["Enums"]["subscription_plan"]
@@ -362,6 +366,7 @@ export type Database = {
           address?: string | null
           created_at?: string
           email?: string
+          enable_logo_on_print?: boolean | null
           id?: string
           license_number?: string | null
           logo_url?: string | null
@@ -370,6 +375,7 @@ export type Database = {
           owner_id?: string
           paystack_customer_code?: string | null
           paystack_subscription_code?: string | null
+          pharmacist_in_charge?: string | null
           phone?: string | null
           subscription_ends_at?: string | null
           subscription_plan?: Database["public"]["Enums"]["subscription_plan"]
