@@ -43,6 +43,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Label } from '@/components/ui/label';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Switch } from '@/components/ui/switch';
 
 import { ALL_CATEGORIES, CATEGORY_GROUPS, ProductType, MedicationCategory, DISPENSING_UNITS, DispensingUnit } from '@/types/medication';
 
@@ -54,9 +55,12 @@ const formSchema = z.object({
   current_stock: z.coerce.number().min(0, 'Stock cannot be negative'),
   reorder_level: z.coerce.number().min(0, 'Reorder level cannot be negative'),
   expiry_date: z.date({ required_error: 'Expiry date is required' }),
+  manufacturing_date: z.date().optional(),
   unit_price: z.coerce.number().min(0, 'Price cannot be negative'),
   selling_price: z.coerce.number().min(0, 'Price cannot be negative').optional(),
   dispensing_unit: z.string().optional(),
+  is_controlled: z.boolean().optional(),
+  nafdac_reg_number: z.string().max(50).optional(),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -142,6 +146,8 @@ export const AddMedicationModal = ({
       unit_price: 0,
       selling_price: undefined,
       dispensing_unit: 'unit',
+      is_controlled: false,
+      nafdac_reg_number: '',
     },
   });
 
@@ -155,9 +161,12 @@ export const AddMedicationModal = ({
         current_stock: editingMedication.current_stock,
         reorder_level: editingMedication.reorder_level,
         expiry_date: new Date(editingMedication.expiry_date),
+        manufacturing_date: editingMedication.manufacturing_date ? new Date(editingMedication.manufacturing_date) : undefined,
         unit_price: Number(editingMedication.unit_price),
         selling_price: editingMedication.selling_price ? Number(editingMedication.selling_price) : undefined,
         dispensing_unit: editingMedication.dispensing_unit || 'unit',
+        is_controlled: editingMedication.is_controlled || false,
+        nafdac_reg_number: editingMedication.nafdac_reg_number || '',
       });
       setSupplierEntries([]);
     } else {
@@ -172,6 +181,8 @@ export const AddMedicationModal = ({
         unit_price: 0,
         selling_price: undefined,
         dispensing_unit: smartDefaults.dispensing_unit,
+        is_controlled: false,
+        nafdac_reg_number: '',
       });
       setSupplierEntries([]);
     }
@@ -233,7 +244,10 @@ export const AddMedicationModal = ({
       unit_price: values.unit_price,
       selling_price: values.selling_price || undefined,
       expiry_date: format(values.expiry_date, 'yyyy-MM-dd'),
+      manufacturing_date: values.manufacturing_date ? format(values.manufacturing_date, 'yyyy-MM-dd') : undefined,
       dispensing_unit: (values.dispensing_unit as DispensingUnit) || 'unit',
+      is_controlled: values.is_controlled || false,
+      nafdac_reg_number: values.nafdac_reg_number || undefined,
     };
 
     try {
@@ -436,6 +450,42 @@ export const AddMedicationModal = ({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FormField
                 control={form.control}
+                name="manufacturing_date"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col">
+                    <FormLabel>Manufacturing Date (Optional)</FormLabel>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <FormControl>
+                          <Button
+                            variant="outline"
+                            className={cn(
+                              'pl-3 text-left font-normal',
+                              !field.value && 'text-muted-foreground'
+                            )}
+                          >
+                            {field.value ? format(field.value, 'PPP') : 'Pick a date'}
+                            <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                          </Button>
+                        </FormControl>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar
+                          mode="single"
+                          selected={field.value}
+                          onSelect={field.onChange}
+                          initialFocus
+                          className="pointer-events-auto"
+                        />
+                      </PopoverContent>
+                    </Popover>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
                 name="expiry_date"
                 render={({ field }) => (
                   <FormItem className="flex flex-col">
@@ -480,6 +530,44 @@ export const AddMedicationModal = ({
                       <Input type="number" min="0" step="0.01" {...field} />
                     </FormControl>
                     <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            {/* NAFDAC Registration & Controlled Drug */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="nafdac_reg_number"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>NAFDAC Reg No (Optional)</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g., A4-1234" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="is_controlled"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                    <div className="space-y-0.5">
+                      <FormLabel>Controlled Drug</FormLabel>
+                      <p className="text-xs text-muted-foreground">
+                        Narcotic/psychotropic substance
+                      </p>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
                   </FormItem>
                 )}
               />

@@ -171,21 +171,24 @@ const guideSections: GuideSection[] = [
   },
   {
     id: 'ai',
-    title: 'AI Features',
+    title: 'AI & Compliance Features',
     icon: Sparkles,
-    description: 'Leverage AI for smarter pharmacy operations',
+    description: 'Leverage AI for smarter pharmacy operations and regulatory compliance',
     steps: [
       'Use AI Search in inventory for smart product lookup',
       'Review AI insights on the dashboard for recommendations',
       'Check demand forecasting for stock planning',
       'Get automatic expiry discount suggestions',
       'Drug interaction checks happen automatically at checkout',
-      'NAFDAC compliance alerts keep you regulatory-ready',
+      'Generate NAFDAC compliance reports from the dashboard',
+      'Track controlled/narcotic drugs with the is_controlled flag',
+      'Record manufacturing dates for complete product lifecycle tracking',
     ],
     tips: [
       'AI learns from your sales patterns over time',
-      'Act on AI recommendations to optimize inventory',
-      'Review predictions weekly for best results',
+      'Download PDF compliance reports for NAFDAC inspections',
+      'Mark controlled substances when adding medications for easy filtering',
+      'Add NAFDAC registration numbers for official audit documents',
     ],
   },
 ];
@@ -214,6 +217,18 @@ const faqs = [
   {
     question: 'Can multiple staff work on POS simultaneously?',
     answer: 'Yes! Each staff member logs in with their own account and can process sales independently. All transactions are tracked per staff member.',
+  },
+  {
+    question: 'How do I generate NAFDAC compliance reports?',
+    answer: 'Go to Dashboard → Find the NAFDAC Compliance panel → Use filters to select "Full Inventory", "Expiring Soon", or "Controlled Drugs" → Click Download PDF or Print for official audit documents.',
+  },
+  {
+    question: 'How do I track controlled/narcotic drugs?',
+    answer: 'When adding or editing a medication, toggle the "Controlled Drug" switch. These items will appear in the Controlled Drugs filter in the NAFDAC Compliance panel for easy register generation.',
+  },
+  {
+    question: 'What is the Manufacturing Date field for?',
+    answer: 'The Manufacturing Date helps track complete product lifecycle for compliance. It appears in NAFDAC audit reports. If not provided, the system estimates it as 2 years before expiry.',
   },
 ];
 
