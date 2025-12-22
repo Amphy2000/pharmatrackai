@@ -49,18 +49,34 @@ export const ReceiptPreviewModal = ({
     try {
       const blob = receipt.output('blob');
       const url = URL.createObjectURL(blob);
-      
-      // Open in new tab and trigger print
-      const printWindow = window.open(url, '_blank');
-      
-      if (printWindow) {
-        printWindow.onload = () => {
-          printWindow.focus();
-          printWindow.print();
-        };
-        // Cleanup after a delay
-        setTimeout(() => URL.revokeObjectURL(url), 60000);
-      }
+
+      // Print via a hidden iframe (more reliable than window.open across browsers)
+      const iframe = document.createElement('iframe');
+      iframe.style.position = 'fixed';
+      iframe.style.right = '0';
+      iframe.style.bottom = '0';
+      iframe.style.width = '0';
+      iframe.style.height = '0';
+      iframe.style.border = '0';
+      iframe.src = url;
+
+      document.body.appendChild(iframe);
+
+      iframe.onload = () => {
+        try {
+          iframe.contentWindow?.focus();
+          iframe.contentWindow?.print();
+        } finally {
+          setTimeout(() => {
+            try {
+              document.body.removeChild(iframe);
+            } catch {
+              // ignore
+            }
+            URL.revokeObjectURL(url);
+          }, 1000);
+        }
+      };
     } catch (e) {
       console.error('Print failed:', e);
     } finally {
