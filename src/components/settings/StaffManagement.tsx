@@ -4,14 +4,11 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Progress } from '@/components/ui/progress';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Users, Shield, Settings2, UserCog, Crown, Briefcase, User, UserPlus, Lock, Zap } from 'lucide-react';
+import { Users, Shield, Crown, Briefcase, User, UserPlus, Lock, Zap, ChevronRight } from 'lucide-react';
 import { useStaffManagement } from '@/hooks/useStaffManagement';
 import { usePermissions, PERMISSION_LABELS, ROLE_TEMPLATES, PermissionKey } from '@/hooks/usePermissions';
 import { usePlanLimits } from '@/hooks/usePlanLimits';
@@ -22,9 +19,6 @@ export const StaffManagement = () => {
   const { staff, isLoading, refetch, updateStaffPermissions, updateStaffRole, toggleStaffActive } = useStaffManagement();
   const { isOwnerOrManager, userRole } = usePermissions();
   const { maxUsers, planName, plan } = usePlanLimits();
-  const [selectedStaff, setSelectedStaff] = useState<string | null>(null);
-  const [editPermissions, setEditPermissions] = useState<PermissionKey[]>([]);
-  const [showPermissionModal, setShowPermissionModal] = useState(false);
   const [showAddStaffModal, setShowAddStaffModal] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
@@ -52,32 +46,8 @@ export const StaffManagement = () => {
     }
   };
 
-  const handleEditPermissions = (staffId: string, currentPermissions: PermissionKey[]) => {
-    setSelectedStaff(staffId);
-    setEditPermissions([...currentPermissions]);
-    setShowPermissionModal(true);
-  };
-
-  const handleApplyTemplate = (templateKey: string) => {
-    const template = ROLE_TEMPLATES[templateKey];
-    if (template) {
-      setEditPermissions([...template.permissions]);
-    }
-  };
-
-  const handleSavePermissions = async () => {
-    if (!selectedStaff) return;
-    await updateStaffPermissions(selectedStaff, editPermissions);
-    setShowPermissionModal(false);
-    setSelectedStaff(null);
-  };
-
-  const togglePermission = (permission: PermissionKey) => {
-    setEditPermissions(prev => 
-      prev.includes(permission)
-        ? prev.filter(p => p !== permission)
-        : [...prev, permission]
-    );
+  const navigateToPermissions = (staffId: string) => {
+    navigate(`/settings?tab=permissions&staff=${staffId}`);
   };
 
   const getRoleIcon = (role: string) => {
@@ -215,10 +185,10 @@ export const StaffManagement = () => {
                               <Button
                                 variant="outline"
                                 size="sm"
-                                onClick={() => handleEditPermissions(member.id, member.permissions)}
+                                onClick={() => navigateToPermissions(member.id)}
                               >
-                                <Settings2 className="h-4 w-4 mr-1" />
                                 Permissions
+                                <ChevronRight className="h-4 w-4 ml-1" />
                               </Button>
                             )}
 
@@ -236,20 +206,33 @@ export const StaffManagement = () => {
                       </div>
                     </div>
 
-                    {/* Show current permissions for staff */}
-                    {member.role === 'staff' && member.permissions.length > 0 && (
-                      <div className="mt-3 flex flex-wrap gap-1">
-                        {member.permissions.map(perm => (
-                          <Badge key={perm} variant="secondary" className="text-xs">
-                            {PERMISSION_LABELS[perm]?.label || perm}
-                          </Badge>
-                        ))}
-                      </div>
-                    )}
-
-                    {member.role === 'staff' && member.permissions.length === 0 && (
-                      <div className="mt-3 text-xs text-muted-foreground">
-                        POS access only - basic cashier permissions
+                    {/* Show current permissions for staff - clickable to edit */}
+                    {member.role === 'staff' && (
+                      <div 
+                        className="mt-3 flex flex-wrap gap-1 cursor-pointer group"
+                        onClick={() => navigateToPermissions(member.id)}
+                      >
+                        {member.permissions.length > 0 ? (
+                          <>
+                            {member.permissions.slice(0, 4).map(perm => (
+                              <Badge key={perm} variant="secondary" className="text-xs">
+                                {PERMISSION_LABELS[perm]?.label || perm}
+                              </Badge>
+                            ))}
+                            {member.permissions.length > 4 && (
+                              <Badge variant="outline" className="text-xs">
+                                +{member.permissions.length - 4} more
+                              </Badge>
+                            )}
+                          </>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">
+                            POS access only - basic cashier permissions
+                          </span>
+                        )}
+                        <span className="text-xs text-primary opacity-0 group-hover:opacity-100 transition-opacity ml-2">
+                          Click to manage →
+                        </span>
                       </div>
                     )}
                   </div>
@@ -258,93 +241,6 @@ export const StaffManagement = () => {
             </div>
           </CardContent>
         </Card>
-
-        {/* Permission Edit Modal */}
-        <Dialog open={showPermissionModal} onOpenChange={setShowPermissionModal}>
-          <DialogContent className="max-w-lg">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <UserCog className="h-5 w-5 text-primary" />
-                Edit Staff Permissions
-              </DialogTitle>
-              <DialogDescription>
-                Configure what features this staff member can access
-              </DialogDescription>
-            </DialogHeader>
-
-            <div className="space-y-4">
-              {/* Role Templates */}
-              <div>
-                <Label className="text-sm font-medium">Quick Templates</Label>
-                <div className="flex flex-wrap gap-2 mt-2">
-                  {Object.entries(ROLE_TEMPLATES).map(([key, template]) => (
-                    <Button
-                      key={key}
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleApplyTemplate(key)}
-                    >
-                      {template.name}
-                    </Button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Individual Permissions - Grouped by Category */}
-              <div>
-                <Label className="text-sm font-medium">Permissions</Label>
-                <ScrollArea className="h-72 mt-2 border rounded-lg p-3">
-                  <div className="space-y-4">
-                    {['Navigation', 'Data Access', 'Management'].map(category => {
-                      const categoryPermissions = (Object.entries(PERMISSION_LABELS) as [PermissionKey, { label: string; description: string; category: string }][])
-                        .filter(([_, { category: cat }]) => cat === category);
-                      
-                      if (categoryPermissions.length === 0) return null;
-
-                      return (
-                        <div key={category}>
-                          <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                            {category}
-                          </h4>
-                          <div className="space-y-2">
-                            {categoryPermissions.map(([key, { label, description }]) => (
-                              <div
-                                key={key}
-                                className="flex items-start gap-3 p-2 rounded-lg hover:bg-muted/50 transition-colors"
-                              >
-                                <Checkbox
-                                  id={key}
-                                  checked={editPermissions.includes(key)}
-                                  onCheckedChange={() => togglePermission(key)}
-                                  className="mt-0.5"
-                                />
-                                <div className="flex-1">
-                                  <Label htmlFor={key} className="font-medium cursor-pointer text-sm">
-                                    {label}
-                                  </Label>
-                                  <p className="text-xs text-muted-foreground">{description}</p>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                </ScrollArea>
-              </div>
-            </div>
-
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setShowPermissionModal(false)}>
-                Cancel
-              </Button>
-              <Button onClick={handleSavePermissions}>
-                Save Permissions
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
 
         {/* Upgrade Modal */}
         <Dialog open={showUpgradeModal} onOpenChange={setShowUpgradeModal}>

@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -8,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
   Shield, 
   UserCog, 
@@ -21,13 +23,15 @@ import {
   ChevronRight,
   Users,
   LayoutGrid,
-  List
+  List,
+  Info
 } from 'lucide-react';
 import { useStaffManagement } from '@/hooks/useStaffManagement';
 import { usePermissions, PERMISSION_LABELS, ROLE_TEMPLATES, PermissionKey } from '@/hooks/usePermissions';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export const PermissionsManagement = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
   const { staff, isLoading, updateStaffPermissions } = useStaffManagement();
   const { isOwnerOrManager } = usePermissions();
   const [selectedStaff, setSelectedStaff] = useState<string | null>(null);
@@ -40,6 +44,22 @@ export const PermissionsManagement = () => {
   const staffMembers = useMemo(() => {
     return staff.filter(s => s.role === 'staff' && s.is_active);
   }, [staff]);
+
+  // Handle URL parameter to auto-open a specific staff member's permissions
+  useEffect(() => {
+    const staffId = searchParams.get('staff');
+    if (staffId && staff.length > 0 && !isLoading) {
+      const member = staff.find(s => s.id === staffId);
+      if (member && member.role === 'staff') {
+        setSelectedStaff(staffId);
+        setEditPermissions([...member.permissions]);
+        setShowPermissionModal(true);
+        // Clear the URL parameter after opening
+        searchParams.delete('staff');
+        setSearchParams(searchParams, { replace: true });
+      }
+    }
+  }, [searchParams, staff, isLoading, setSearchParams]);
 
   const filteredStaff = useMemo(() => {
     if (!searchQuery) return staffMembers;
@@ -136,6 +156,14 @@ export const PermissionsManagement = () => {
   return (
     <>
       <div className="space-y-6">
+        {/* Tip Banner */}
+        <Alert className="bg-primary/5 border-primary/20">
+          <Info className="h-4 w-4 text-primary" />
+          <AlertDescription className="text-sm">
+            <strong>Tip:</strong> Use the <strong>Staff</strong> tab to add new team members or change roles. Use this tab to configure <strong>what each staff member can access</strong>.
+          </AlertDescription>
+        </Alert>
+
         {/* Role Templates Overview */}
         <Card>
           <CardHeader>
