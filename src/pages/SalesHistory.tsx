@@ -16,8 +16,19 @@ import {
   Filter,
   ArrowUpDown,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  FileText,
+  FileSpreadsheet
 } from 'lucide-react';
+import { usePharmacy } from '@/hooks/usePharmacy';
+import { exportSalesToPDF, exportSalesToExcel, downloadFile } from '@/utils/reportExporter';
+import { useToast } from '@/hooks/use-toast';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -60,8 +71,10 @@ interface SaleWithMedication {
 }
 
 const SalesHistory = () => {
-  const { formatPrice } = useCurrency();
+  const { formatPrice, currency } = useCurrency();
   const { isOwnerOrManager } = usePermissions();
+  const { pharmacy } = usePharmacy();
+  const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState('');
   const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({
     from: startOfMonth(new Date()),
@@ -185,34 +198,21 @@ const SalesHistory = () => {
     setDatePreset(preset);
   };
 
-  const exportToCSV = () => {
-    // Staff export excludes price data
-    const headers = isOwnerOrManager 
-      ? ['Date', 'Transaction ID', 'Medication', 'Category', 'Quantity', 'Unit Price', 'Total', 'Customer']
-      : ['Date', 'Transaction ID', 'Medication', 'Category', 'Quantity', 'Customer'];
-    
-    const rows = filteredSales.map(sale => {
-      const baseRow = [
-        format(parseISO(sale.sale_date), 'yyyy-MM-dd HH:mm'),
-        sale.id.slice(0, 8),
-        sale.medications?.name || 'Unknown',
-        sale.medications?.category || 'Unknown',
-        sale.quantity,
-      ];
-      
-      if (isOwnerOrManager) {
-        return [...baseRow, sale.unit_price, sale.total_price, sale.customer_name || 'Walk-in'];
-      }
-      return [...baseRow, sale.customer_name || 'Walk-in'];
-    });
+  const exportToPDF = () => {
+    const pdf = exportSalesToPDF(
+      filteredSales,
+      dateRange,
+      pharmacy?.name || 'Pharmacy',
+      currency as 'USD' | 'NGN' | 'GBP'
+    );
+    pdf.save(`sales-report-${format(new Date(), 'yyyy-MM-dd')}.pdf`);
+    toast({ title: 'PDF exported', description: 'Sales report downloaded.' });
+  };
 
-    const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `sales-history-${format(new Date(), 'yyyy-MM-dd')}.csv`;
-    a.click();
+  const exportToExcel = () => {
+    const csv = exportSalesToExcel(filteredSales, currency as 'USD' | 'NGN' | 'GBP');
+    downloadFile(csv, `sales-report-${format(new Date(), 'yyyy-MM-dd')}.csv`, 'text/csv');
+    toast({ title: 'Excel exported', description: 'Sales report downloaded.' });
   };
 
   return (
@@ -226,10 +226,24 @@ const SalesHistory = () => {
             <h1 className="text-3xl font-bold font-display text-gradient">Sales History</h1>
             <p className="text-muted-foreground mt-1">Track and analyze your pharmacy transactions</p>
           </div>
-          <Button onClick={exportToCSV} variant="outline" className="gap-2">
-            <Download className="h-4 w-4" />
-            Export CSV
-          </Button>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="gap-2">
+                <Download className="h-4 w-4" />
+                Export
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={exportToPDF} className="gap-2">
+                <FileText className="h-4 w-4" />
+                Export as PDF
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={exportToExcel} className="gap-2">
+                <FileSpreadsheet className="h-4 w-4" />
+                Export as Excel (CSV)
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         {/* Stats Cards */}

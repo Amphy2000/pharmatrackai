@@ -63,17 +63,26 @@ const Auth = () => {
     const { error } = await signUp(signupEmail, signupPassword, signupName);
 
     if (error) {
-      toast({
-        title: 'Signup Failed',
-        description: error.message,
-        variant: 'destructive',
-      });
+      // Handle specific error cases
+      if (error.message.includes('already registered')) {
+        toast({
+          title: 'Account Exists',
+          description: 'This email is already registered. Please login instead.',
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: 'Signup Failed',
+          description: error.message,
+          variant: 'destructive',
+        });
+      }
     } else {
       toast({
-        title: 'Account created!',
-        description: 'Please set up your pharmacy to continue.',
+        title: 'Check your email!',
+        description: 'We sent you a verification link. Please verify your email to continue.',
       });
-      navigate('/onboarding');
+      // Don't navigate immediately - user needs to verify email first
     }
 
     setIsLoading(false);
@@ -232,6 +241,12 @@ const Auth = () => {
                       {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                       Sign In
                     </Button>
+                    
+                    <div className="text-center pt-2">
+                      <Link to="/forgot-password" className="text-sm text-primary hover:underline">
+                        Forgot your password?
+                      </Link>
+                    </div>
                   </form>
                 </TabsContent>
 
