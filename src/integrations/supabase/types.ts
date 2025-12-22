@@ -801,6 +801,7 @@ export type Database = {
           customer_name: string | null
           id: string
           medication_id: string
+          payment_method: string | null
           pharmacy_id: string
           quantity: number
           receipt_id: string | null
@@ -816,6 +817,7 @@ export type Database = {
           customer_name?: string | null
           id?: string
           medication_id: string
+          payment_method?: string | null
           pharmacy_id: string
           quantity: number
           receipt_id?: string | null
@@ -831,6 +833,7 @@ export type Database = {
           customer_name?: string | null
           id?: string
           medication_id?: string
+          payment_method?: string | null
           pharmacy_id?: string
           quantity?: number
           receipt_id?: string | null

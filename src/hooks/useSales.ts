@@ -10,6 +10,7 @@ interface CompleteSaleParams {
   customerName?: string;
   shiftId?: string;
   staffName?: string;
+  paymentMethod?: string;
 }
 
 interface SaleWithMedication {
@@ -108,7 +109,7 @@ export const useSales = () => {
   }, [pharmacyId, queryClient]);
 
   const completeSale = useMutation({
-    mutationFn: async ({ items, customerName, shiftId, staffName }: CompleteSaleParams) => {
+    mutationFn: async ({ items, customerName, shiftId, staffName, paymentMethod }: CompleteSaleParams) => {
       if (!pharmacyId) {
         throw new Error('No pharmacy associated with your account. Please complete onboarding first.');
       }
@@ -141,7 +142,7 @@ export const useSales = () => {
         // Generate unique receipt_id for each sale record (append index if multiple items)
         const itemReceiptId = items.length > 1 ? `${receiptId}-${index + 1}` : receiptId;
 
-        // Insert sale record with receipt_id, shift_id, sold_by, and sold_by_name
+        // Insert sale record with receipt_id, shift_id, sold_by, sold_by_name, and payment_method
         const { data: saleData, error: saleError } = await supabase.from('sales').insert({
           medication_id: item.medication.id,
           quantity: item.quantity,
@@ -153,6 +154,7 @@ export const useSales = () => {
           sold_by_name: staffName || null,
           receipt_id: itemReceiptId,
           shift_id: shiftId || null,
+          payment_method: paymentMethod || null,
         }).select('receipt_id').single();
 
         if (saleError) throw saleError;

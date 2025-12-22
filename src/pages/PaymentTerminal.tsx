@@ -25,7 +25,9 @@ import { useToast } from '@/hooks/use-toast';
 import { CartItem } from '@/types/medication';
 import { generateHtmlReceipt, printHtmlReceipt } from '@/utils/htmlReceiptPrinter';
 import { usePharmacy } from '@/hooks/usePharmacy';
-import { generateReceiptNumber } from '@/utils/receiptGenerator';
+import { useAuth } from '@/contexts/AuthContext';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
 type PaymentMethod = 'cash' | 'transfer' | 'pos';
 
@@ -51,7 +53,24 @@ const PaymentTerminal = () => {
   const { activeShift } = useShifts();
   const { formatPrice, currency } = useCurrency();
   const { pharmacy } = usePharmacy();
+  const { user } = useAuth();
   const { toast } = useToast();
+
+  // Get current user's profile for staff name
+  const { data: userProfile } = useQuery({
+    queryKey: ['user-profile', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return null;
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user?.id,
+  });
 
   // Focus search input on mount
   useEffect(() => {
@@ -97,10 +116,12 @@ const PaymentTerminal = () => {
 
     setIsProcessing(true);
     try {
-      // Complete the sale (deduct stock)
+      // Complete the sale (deduct stock) with staff name and payment method
       await completeSale.mutateAsync({
         items: foundTransaction.items,
         shiftId: activeShift?.id,
+        staffName: userProfile?.full_name || undefined,
+        paymentMethod: selectedPayment,
       });
 
       // Mark the pending transaction as completed
@@ -109,15 +130,16 @@ const PaymentTerminal = () => {
         paymentMethod: selectedPayment,
       });
 
-      // Print receipt
-      const receiptNumber = generateReceiptNumber();
+      // Print receipt using the transaction's short_code as the receipt ID
       const html = generateHtmlReceipt({
         items: foundTransaction.items,
         total: foundTransaction.total_amount,
         pharmacyName: pharmacy?.name,
         pharmacyAddress: pharmacy?.address || undefined,
         pharmacyPhone: pharmacy?.phone || undefined,
-        receiptNumber,
+        receiptNumber: foundTransaction.short_code,
+        shortCode: foundTransaction.short_code,
+        staffName: userProfile?.full_name || undefined,
         date: new Date(),
         currency: currency as 'USD' | 'NGN' | 'GBP',
         paymentStatus: 'paid',

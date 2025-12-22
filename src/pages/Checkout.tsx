@@ -203,6 +203,7 @@ const Checkout = () => {
         customerName: currentCustomer || undefined,
         shiftId: activeShift?.id,
         staffName: userProfile?.full_name || undefined,
+        paymentMethod: currentPaymentMethod || undefined,
       });
 
       // Use the receipt ID from the sale result

@@ -485,7 +485,7 @@ const Inventory = () => {
               </div>
             </div>
             {/* Bulk Actions */}
-            {selectedIds.size > 0 && (
+            {selectedIds.size > 0 ? (
               <div className="flex items-center gap-2 mt-3 p-2 bg-primary/5 rounded-lg flex-wrap">
                 <Checkbox
                   checked={selectedIds.size === filteredMedications.length}
@@ -506,6 +506,55 @@ const Inventory = () => {
                 <Button variant="destructive" size="sm" onClick={() => setBulkDeleteOpen(true)}>
                   <Trash2 className="h-3 w-3 mr-1" />
                   Delete
+                </Button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 mt-3 flex-wrap">
+                <span className="text-xs text-muted-foreground">Quick Select:</span>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => {
+                    const expiredIds = medications
+                      .filter(m => parseISO(m.expiry_date) <= new Date())
+                      .map(m => m.id);
+                    setSelectedIds(new Set(expiredIds));
+                  }}
+                  disabled={expiredItems.length === 0}
+                >
+                  <AlertTriangle className="h-3 w-3 mr-1" />
+                  Expired ({expiredItems.length})
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => {
+                    const lowStockIds = medications
+                      .filter(m => m.current_stock <= m.reorder_level)
+                      .map(m => m.id);
+                    setSelectedIds(new Set(lowStockIds));
+                  }}
+                  disabled={lowStockCount === 0}
+                >
+                  <TrendingDown className="h-3 w-3 mr-1" />
+                  Low Stock ({lowStockCount})
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => {
+                    const expiringIds = medications
+                      .filter(m => {
+                        const days = differenceInDays(parseISO(m.expiry_date), new Date());
+                        return days > 0 && days <= 30;
+                      })
+                      .map(m => m.id);
+                    setSelectedIds(new Set(expiringIds));
+                  }}
+                  disabled={expiringItems.length === 0}
+                >
+                  <Clock className="h-3 w-3 mr-1" />
+                  Expiring Soon ({expiringItems.length})
                 </Button>
               </div>
             )}

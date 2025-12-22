@@ -286,7 +286,7 @@ export const AddMedicationModal = ({
                           <SelectValue placeholder="Select category" />
                         </SelectTrigger>
                       </FormControl>
-                      <SelectContent className="max-h-60 overflow-y-auto z-[9999]">
+                      <SelectContent className="max-h-60 overflow-y-auto">
                         {(Object.keys(CATEGORY_GROUPS) as ProductType[]).map((group) => (
                           <div key={group}>
                             <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground bg-muted/50 sticky top-0">
