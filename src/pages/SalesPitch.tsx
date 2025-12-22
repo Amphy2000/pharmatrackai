@@ -92,33 +92,8 @@ const SalesPitch = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [currentSlide]);
 
-  // Handle touch swipe for mobile
-  useEffect(() => {
-    const handleTouchStart = (e: TouchEvent) => {
-      touchStartY.current = e.touches[0].clientY;
-    };
-
-    const handleTouchEnd = (e: TouchEvent) => {
-      const touchEndY = e.changedTouches[0].clientY;
-      const diff = touchStartY.current - touchEndY;
-      
-      if (Math.abs(diff) > 50) {
-        if (diff > 0) {
-          nextSlide();
-        } else {
-          prevSlide();
-        }
-      }
-    };
-
-    window.addEventListener('touchstart', handleTouchStart, { passive: true });
-    window.addEventListener('touchend', handleTouchEnd, { passive: true });
-    
-    return () => {
-      window.removeEventListener('touchstart', handleTouchStart);
-      window.removeEventListener('touchend', handleTouchEnd);
-    };
-  }, [currentSlide]);
+  // Removed aggressive touch swipe - allow natural scrolling on mobile
+  // Users can use navigation arrows or dots to move between slides
 
   // Handle scroll to detect current slide
   useEffect(() => {
@@ -384,7 +359,7 @@ const SalesPitch = () => {
           >
             {/* Beta Badge - Scarcity Strategy */}
             <motion.div variants={fadeInUp} className="mb-4 mt-6 sm:mt-8">
-              <Badge className="text-xs sm:text-sm px-3 sm:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-amber-600 dark:text-amber-400 border-amber-500/30">
+              <Badge className="text-xs sm:text-sm px-3 sm:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-emerald-600 to-teal-600 text-white border-emerald-500/50 shadow-lg">
                 <Rocket className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
                 Currently in Exclusive Beta: Accepting 5 Pioneer Pharmacies for 2026
               </Badge>
@@ -854,7 +829,7 @@ const SalesPitch = () => {
             className="max-w-4xl mx-auto text-center"
           >
             {/* Beta Badge */}
-            <Badge className="mb-6 text-xs sm:text-sm px-4 py-2 bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-amber-600 dark:text-amber-400 border-amber-500/30">
+            <Badge className="mb-6 text-xs sm:text-sm px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 text-white border-emerald-500/50 shadow-lg">
               <Rocket className="h-3 w-3 sm:h-4 sm:w-4 mr-2" />
               Only 5 Pioneer Spots Remaining for 2026
             </Badge>
