@@ -96,8 +96,6 @@ const Inventory = () => {
     setEditingMedication(medication);
     setShowAddMedicationModal(true);
   };
-  const { pharmacy } = usePharmacy();
-  const { currency } = useCurrency();
 
   const handleExportPDF = () => {
     if (medications.length === 0) {
