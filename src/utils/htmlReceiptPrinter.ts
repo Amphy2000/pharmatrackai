@@ -1,3 +1,4 @@
+import JsBarcode from 'jsbarcode';
 import { CartItem } from '@/types/medication';
 import { format } from 'date-fns';
 
@@ -46,6 +47,25 @@ export const generateBarcode = (): string => {
   return Date.now().toString(36).toUpperCase() + Math.random().toString(36).substring(2, 8).toUpperCase();
 };
 
+const generateBarcodeDataUrl = (value: string): string => {
+  try {
+    const canvas = document.createElement('canvas');
+    JsBarcode(canvas, value, {
+      format: 'CODE128',
+      width: 2,
+      height: 40,
+      displayValue: false,
+      margin: 5,
+      background: '#ffffff',
+      lineColor: '#000000',
+    });
+    return canvas.toDataURL('image/png');
+  } catch (error) {
+    console.error('Barcode generation error:', error);
+    return '';
+  }
+};
+
 export const generateHtmlReceipt = ({
   items,
   total,
@@ -62,8 +82,10 @@ export const generateHtmlReceipt = ({
   paymentStatus = 'paid',
   paymentMethod,
 }: ReceiptData): string => {
-  const statusColor = paymentStatus === 'paid' ? '#22c55e' : '#dc2626';
-  const statusText = paymentStatus === 'paid' ? 'PAID' : 'UNPAID - PAY AT CASHIER';
+  const statusColor = paymentStatus === 'paid' ? '#22c55e' : '#f59e0b';
+  const statusText = paymentStatus === 'paid' ? 'PAID' : 'UNPAID';
+  const barcodeValue = shortCode || barcode || receiptNumber;
+  const barcodeDataUrl = generateBarcodeDataUrl(barcodeValue);
 
   const itemsHtml = items.map((item, index) => {
     const price = item.medication.selling_price || item.medication.unit_price;
@@ -112,32 +134,35 @@ export const generateHtmlReceipt = ({
     .logo { max-width: 50px; max-height: 50px; margin-bottom: 5px; }
     .pharmacy-name { font-size: 14px; font-weight: bold; margin: 5px 0; }
     .divider { border-top: 1px dashed #000; margin: 8px 0; }
+    .barcode-section {
+      text-align: center;
+      padding: 8px 0;
+      margin: 8px 0;
+      background: #f9f9f9;
+      border-radius: 4px;
+    }
+    .barcode-img { max-width: 100%; height: auto; }
     .status { 
       text-align: center; 
       font-weight: bold; 
       font-size: 14px; 
-      padding: 5px; 
-      margin: 5px 0;
-      color: ${statusColor};
-      border: 2px solid ${statusColor};
+      padding: 5px 10px; 
+      margin: 5px auto;
+      display: inline-block;
+      color: white;
+      background: ${statusColor};
+      border-radius: 4px;
     }
     table { width: 100%; border-collapse: collapse; font-size: 11px; }
     th { text-align: left; padding: 4px 0; border-bottom: 1px solid #000; }
     .total-row { font-size: 14px; font-weight: bold; }
     .footer { text-align: center; margin-top: 10px; font-size: 10px; }
     .short-code { 
-      font-size: 24px; 
+      font-size: 20px; 
       font-weight: bold; 
       text-align: center; 
-      padding: 10px;
-      background: #f5f5f5;
-      margin: 10px 0;
-    }
-    .barcode-text {
-      font-size: 10px;
-      text-align: center;
-      font-family: monospace;
       letter-spacing: 2px;
+      margin-top: 5px;
     }
   </style>
 </head>
@@ -156,10 +181,11 @@ export const generateHtmlReceipt = ({
     <span>${format(date, 'dd/MM/yy HH:mm')}</span>
   </div>
 
-  ${shortCode ? `<div class="short-code">${shortCode}</div>` : ''}
-  ${barcode ? `<div class="barcode-text">${barcode}</div>` : ''}
-
-  <div class="status">${statusText}</div>
+  <div class="barcode-section">
+    ${barcodeDataUrl ? `<img src="${barcodeDataUrl}" class="barcode-img" alt="Barcode">` : ''}
+    ${shortCode ? `<div class="short-code">${shortCode}</div>` : ''}
+    <div class="status">${statusText}</div>
+  </div>
 
   <div class="divider"></div>
 
@@ -187,6 +213,12 @@ export const generateHtmlReceipt = ({
 
   ${paymentMethodText ? `<div style="text-align: center; margin-top: 5px;">Payment: ${paymentMethodText}</div>` : ''}
 
+  ${paymentStatus === 'unpaid' ? `
+  <div style="text-align: center; margin-top: 10px; padding: 8px; background: #fff3cd; border-radius: 4px; font-weight: bold;">
+    Please proceed to cashier for payment
+  </div>
+  ` : ''}
+
   <div class="divider"></div>
 
   <div class="footer">
@@ -202,7 +234,6 @@ export const generateHtmlReceipt = ({
 
 export const printHtmlReceipt = (html: string): Promise<void> => {
   return new Promise((resolve, reject) => {
-    // Create a hidden iframe for printing
     const iframe = document.createElement('iframe');
     iframe.style.cssText = 'position: fixed; right: 0; bottom: 0; width: 0; height: 0; border: none; visibility: hidden;';
     document.body.appendChild(iframe);
@@ -218,51 +249,37 @@ export const printHtmlReceipt = (html: string): Promise<void> => {
     iframeDoc.write(html);
     iframeDoc.close();
 
-    // Wait for content to load then print
-    iframe.onload = () => {
+    // Wait for content and images to load
+    setTimeout(() => {
       try {
         const iframeWindow = iframe.contentWindow;
         if (!iframeWindow) {
           throw new Error('No iframe window');
         }
 
-        // Focus for Edge browser compatibility
         iframeWindow.focus();
+        iframeWindow.print();
         
-        // Small delay for Edge browser
-        setTimeout(() => {
-          iframeWindow.print();
-          
-          // Keep iframe alive for Edge until user closes print dialog
-          // Edge needs the stream to remain open
-          const cleanup = () => {
-            try {
-              document.body.removeChild(iframe);
-            } catch {
-              // Already removed
-            }
-            resolve();
-          };
-
-          // Use afterprint event if available (better for Edge)
-          if ('onafterprint' in iframeWindow) {
-            iframeWindow.onafterprint = cleanup;
-            // Fallback timeout in case afterprint doesn't fire
-            setTimeout(cleanup, 30000);
-          } else {
-            // Fallback for browsers without afterprint
-            setTimeout(cleanup, 3000);
+        const cleanup = () => {
+          try {
+            document.body.removeChild(iframe);
+          } catch {
+            // Already removed
           }
-        }, 100);
+          resolve();
+        };
+
+        // Use afterprint event for Edge browser compatibility
+        if ('onafterprint' in iframeWindow) {
+          iframeWindow.onafterprint = cleanup;
+          setTimeout(cleanup, 30000);
+        } else {
+          setTimeout(cleanup, 3000);
+        }
       } catch (error) {
         document.body.removeChild(iframe);
         reject(error);
       }
-    };
-
-    iframe.onerror = () => {
-      document.body.removeChild(iframe);
-      reject(new Error('Failed to load print content'));
-    };
+    }, 300);
   });
 };

@@ -1,8 +1,9 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Header } from '@/components/Header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Package, AlertTriangle, PackagePlus, ClipboardList, FileImage, Zap, Clock, FileSpreadsheet, TrendingDown, Calendar, Download, FileText, ChevronDown, Plus, DollarSign } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Package, AlertTriangle, PackagePlus, ClipboardList, FileImage, Zap, Clock, FileSpreadsheet, TrendingDown, Calendar, Download, FileText, ChevronDown, Plus, DollarSign, LayoutGrid, List, Search, Trash2, CheckSquare } from 'lucide-react';
 import { useMedications } from '@/hooks/useMedications';
 import { ReceiveStockModal } from '@/components/inventory/ReceiveStockModal';
 import { StockCountModal } from '@/components/inventory/StockCountModal';
@@ -10,28 +11,91 @@ import { InvoiceScannerModal } from '@/components/inventory/InvoiceScannerModal'
 import { AddMedicationModal } from '@/components/inventory/AddMedicationModal';
 import { StockCSVImportModal } from '@/components/inventory/StockCSVImportModal';
 import { BulkPriceUpdateModal } from '@/components/inventory/BulkPriceUpdateModal';
+import { MedicationsTable } from '@/components/inventory/MedicationsTable';
+import { InventoryGrid } from '@/components/inventory/InventoryGrid';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { Checkbox } from '@/components/ui/checkbox';
 import { differenceInDays, parseISO, format } from 'date-fns';
 import { exportInventoryToPDF, exportInventoryToExcel, downloadFile } from '@/utils/reportExporter';
 import { usePharmacy } from '@/hooks/usePharmacy';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { toast } from 'sonner';
+import { Medication } from '@/types/medication';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 const Inventory = () => {
-  const { medications } = useMedications();
+  const { medications, deleteMedication } = useMedications();
   const [showReceiveStockModal, setShowReceiveStockModal] = useState(false);
   const [showStockCountModal, setShowStockCountModal] = useState(false);
   const [showInvoiceScannerModal, setShowInvoiceScannerModal] = useState(false);
   const [showCSVImportModal, setShowCSVImportModal] = useState(false);
   const [showAddMedicationModal, setShowAddMedicationModal] = useState(false);
   const [showBulkPriceModal, setShowBulkPriceModal] = useState(false);
+  const [editingMedication, setEditingMedication] = useState<Medication | null>(null);
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const { pharmacy } = usePharmacy();
+  const { currency } = useCurrency();
+
+  const filteredMedications = useMemo(() => {
+    if (!searchQuery) return medications;
+    const query = searchQuery.toLowerCase();
+    return medications.filter(m =>
+      m.name.toLowerCase().includes(query) ||
+      m.category.toLowerCase().includes(query) ||
+      m.batch_number.toLowerCase().includes(query)
+    );
+  }, [medications, searchQuery]);
+
+  const toggleSelect = (id: string) => {
+    const newSet = new Set(selectedIds);
+    if (newSet.has(id)) {
+      newSet.delete(id);
+    } else {
+      newSet.add(id);
+    }
+    setSelectedIds(newSet);
+  };
+
+  const selectAll = () => {
+    if (selectedIds.size === filteredMedications.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(filteredMedications.map(m => m.id)));
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    for (const id of selectedIds) {
+      await deleteMedication.mutateAsync(id);
+    }
+    setSelectedIds(new Set());
+    setBulkDeleteOpen(false);
+    toast.success(`Deleted ${selectedIds.size} items`);
+  };
+
+  const handleEdit = (medication: Medication) => {
+    setEditingMedication(medication);
+    setShowAddMedicationModal(true);
+  };
   const { pharmacy } = usePharmacy();
   const { currency } = useCurrency();
 
@@ -360,6 +424,83 @@ const Inventory = () => {
             </CardContent>
           </Card>
         </div>
+
+        {/* Inventory List/Grid Section */}
+        <Card className="glass-card mt-6">
+          <CardHeader className="pb-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <Package className="h-5 w-5 text-primary" />
+                Product Inventory
+                <Badge variant="secondary">{filteredMedications.length} items</Badge>
+              </CardTitle>
+              <div className="flex items-center gap-2">
+                {/* Search */}
+                <div className="relative flex-1 sm:w-64">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search products..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-9 h-9"
+                  />
+                </div>
+                {/* View Toggle */}
+                <div className="flex border rounded-lg overflow-hidden">
+                  <Button
+                    variant={viewMode === 'list' ? 'default' : 'ghost'}
+                    size="sm"
+                    className="rounded-none h-9 px-3"
+                    onClick={() => setViewMode('list')}
+                  >
+                    <List className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    variant={viewMode === 'grid' ? 'default' : 'ghost'}
+                    size="sm"
+                    className="rounded-none h-9 px-3"
+                    onClick={() => setViewMode('grid')}
+                  >
+                    <LayoutGrid className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+            {/* Bulk Actions */}
+            {selectedIds.size > 0 && (
+              <div className="flex items-center gap-2 mt-3 p-2 bg-primary/5 rounded-lg">
+                <Checkbox
+                  checked={selectedIds.size === filteredMedications.length}
+                  onCheckedChange={selectAll}
+                />
+                <span className="text-sm font-medium">{selectedIds.size} selected</span>
+                <Button variant="outline" size="sm" onClick={() => setSelectedIds(new Set())}>
+                  Clear
+                </Button>
+                <Button variant="destructive" size="sm" onClick={() => setBulkDeleteOpen(true)}>
+                  <Trash2 className="h-3 w-3 mr-1" />
+                  Delete
+                </Button>
+              </div>
+            )}
+          </CardHeader>
+          <CardContent>
+            {viewMode === 'list' ? (
+              <MedicationsTable
+                medications={filteredMedications}
+                searchQuery=""
+                onEdit={handleEdit}
+              />
+            ) : (
+              <InventoryGrid
+                medications={filteredMedications}
+                selectedIds={selectedIds}
+                onToggleSelect={toggleSelect}
+                onEdit={handleEdit}
+              />
+            )}
+          </CardContent>
+        </Card>
       </main>
       
       <ReceiveStockModal
@@ -384,13 +525,35 @@ const Inventory = () => {
       
       <AddMedicationModal
         open={showAddMedicationModal}
-        onOpenChange={setShowAddMedicationModal}
+        onOpenChange={(open) => {
+          setShowAddMedicationModal(open);
+          if (!open) setEditingMedication(null);
+        }}
+        editingMedication={editingMedication}
       />
       
       <BulkPriceUpdateModal
         open={showBulkPriceModal}
         onOpenChange={setShowBulkPriceModal}
       />
+
+      {/* Bulk Delete Dialog */}
+      <AlertDialog open={bulkDeleteOpen} onOpenChange={setBulkDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete {selectedIds.size} items?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. Selected medications will be permanently removed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleBulkDelete} className="bg-destructive text-destructive-foreground">
+              Delete All
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

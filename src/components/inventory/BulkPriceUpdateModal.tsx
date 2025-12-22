@@ -141,8 +141,8 @@ export const BulkPriceUpdateModal = ({ open, onOpenChange }: BulkPriceUpdateModa
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
-        <DialogHeader>
+      <DialogContent className="max-w-xl max-h-[85vh] overflow-hidden flex flex-col">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle className="font-display text-xl flex items-center gap-2">
             <Calculator className="h-5 w-5 text-primary" />
             Bulk Price Update
@@ -152,115 +152,117 @@ export const BulkPriceUpdateModal = ({ open, onOpenChange }: BulkPriceUpdateModa
           </DialogDescription>
         </DialogHeader>
 
-        {/* Price Mode Selection */}
-        <div className="grid grid-cols-2 gap-4 py-4">
-          <div
-            onClick={() => setPriceMode('markup')}
-            className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
-              priceMode === 'markup'
-                ? 'border-primary bg-primary/5'
-                : 'border-border hover:border-muted-foreground'
-            }`}
-          >
-            <div className="flex items-center gap-2 mb-2">
-              <Percent className="h-5 w-5 text-primary" />
-              <span className="font-medium">Markup %</span>
+        <div className="flex-1 min-h-0 overflow-y-auto space-y-4 pr-1">
+          {/* Price Mode Selection */}
+          <div className="grid grid-cols-2 gap-3">
+            <div
+              onClick={() => setPriceMode('markup')}
+              className={`p-3 rounded-xl border-2 cursor-pointer transition-all ${
+                priceMode === 'markup'
+                  ? 'border-primary bg-primary/5'
+                  : 'border-border hover:border-muted-foreground'
+              }`}
+            >
+              <div className="flex items-center gap-2 mb-2">
+                <Percent className="h-4 w-4 text-primary" />
+                <span className="font-medium text-sm">Markup %</span>
+              </div>
+              <Input
+                type="number"
+                placeholder="e.g., 30"
+                value={markupPercent}
+                onChange={(e) => setMarkupPercent(e.target.value)}
+                disabled={priceMode !== 'markup'}
+                className="h-9"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Calculates from cost price
+              </p>
             </div>
-            <Input
-              type="number"
-              placeholder="e.g., 30"
-              value={markupPercent}
-              onChange={(e) => setMarkupPercent(e.target.value)}
-              disabled={priceMode !== 'markup'}
-              className="mt-2"
-            />
-            <p className="text-xs text-muted-foreground mt-1">
-              Calculates from cost price
-            </p>
+
+            <div
+              onClick={() => setPriceMode('fixed')}
+              className={`p-3 rounded-xl border-2 cursor-pointer transition-all ${
+                priceMode === 'fixed'
+                  ? 'border-primary bg-primary/5'
+                  : 'border-border hover:border-muted-foreground'
+              }`}
+            >
+              <div className="flex items-center gap-2 mb-2">
+                <DollarSign className="h-4 w-4 text-primary" />
+                <span className="font-medium text-sm">Fixed Price</span>
+              </div>
+              <Input
+                type="number"
+                placeholder="e.g., 500"
+                value={fixedPrice}
+                onChange={(e) => setFixedPrice(e.target.value)}
+                disabled={priceMode !== 'fixed'}
+                className="h-9"
+              />
+              <p className="text-xs text-muted-foreground mt-1">
+                Same price for all selected
+              </p>
+            </div>
           </div>
 
-          <div
-            onClick={() => setPriceMode('fixed')}
-            className={`p-4 rounded-xl border-2 cursor-pointer transition-all ${
-              priceMode === 'fixed'
-                ? 'border-primary bg-primary/5'
-                : 'border-border hover:border-muted-foreground'
-            }`}
-          >
-            <div className="flex items-center gap-2 mb-2">
-              <DollarSign className="h-5 w-5 text-primary" />
-              <span className="font-medium">Fixed Price</span>
-            </div>
+          {/* Search and Select All */}
+          <div className="flex items-center gap-3">
             <Input
-              type="number"
-              placeholder="e.g., 500"
-              value={fixedPrice}
-              onChange={(e) => setFixedPrice(e.target.value)}
-              disabled={priceMode !== 'fixed'}
-              className="mt-2"
+              placeholder="Search medications..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="flex-1 h-9"
             />
-            <p className="text-xs text-muted-foreground mt-1">
-              Same price for all selected
-            </p>
+            <Button variant="outline" size="sm" onClick={selectAll} className="h-9 text-xs">
+              {selectedIds.size === filteredMedications.length ? 'Deselect All' : 'Select All'}
+            </Button>
+            <Badge variant="secondary" className="h-6">{selectedIds.size} selected</Badge>
           </div>
-        </div>
 
-        {/* Search and Select All */}
-        <div className="flex items-center gap-4">
-          <Input
-            placeholder="Search medications..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="flex-1"
-          />
-          <Button variant="outline" size="sm" onClick={selectAll}>
-            {selectedIds.size === filteredMedications.length ? 'Deselect All' : 'Select All'}
-          </Button>
-          <Badge variant="secondary">{selectedIds.size} selected</Badge>
-        </div>
+          {/* Medications List */}
+          <ScrollArea className="h-[220px] border rounded-lg">
+            <div className="p-2 space-y-1">
+              {filteredMedications.map((medication) => {
+                const isSelected = selectedIds.has(medication.id);
+                const newPrice = isSelected ? calculateNewPrice(medication) : null;
 
-        {/* Medications List */}
-        <ScrollArea className="flex-1 min-h-0 max-h-[300px] border rounded-lg">
-          <div className="p-2 space-y-1">
-            {filteredMedications.map((medication) => {
-              const isSelected = selectedIds.has(medication.id);
-              const newPrice = isSelected ? calculateNewPrice(medication) : null;
-
-              return (
-                <div
-                  key={medication.id}
-                  onClick={() => toggleSelect(medication.id)}
-                  className={`p-3 rounded-lg cursor-pointer flex items-center justify-between transition-colors ${
-                    isSelected ? 'bg-primary/10 border border-primary/30' : 'hover:bg-muted/50'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <Checkbox checked={isSelected} />
-                    <div>
-                      <p className="font-medium">{medication.name}</p>
-                      <p className="text-xs text-muted-foreground">
-                        Cost: {formatPrice(medication.unit_price)}
-                        {medication.selling_price && (
-                          <span className="ml-2">
-                            Current: {formatPrice(medication.selling_price)}
-                          </span>
-                        )}
-                      </p>
+                return (
+                  <div
+                    key={medication.id}
+                    onClick={() => toggleSelect(medication.id)}
+                    className={`p-2.5 rounded-lg cursor-pointer flex items-center justify-between transition-colors ${
+                      isSelected ? 'bg-primary/10 border border-primary/30' : 'hover:bg-muted/50'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Checkbox checked={isSelected} />
+                      <div>
+                        <p className="font-medium text-sm">{medication.name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          Cost: {formatPrice(medication.unit_price)}
+                          {medication.selling_price && (
+                            <span className="ml-2">
+                              Current: {formatPrice(medication.selling_price)}
+                            </span>
+                          )}
+                        </p>
+                      </div>
                     </div>
+                    {isSelected && newPrice !== null && (
+                      <Badge className="bg-success text-success-foreground text-xs">
+                        → {formatPrice(newPrice)}
+                      </Badge>
+                    )}
                   </div>
-                  {isSelected && newPrice !== null && (
-                    <Badge className="bg-success text-success-foreground">
-                      → {formatPrice(newPrice)}
-                    </Badge>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-        </ScrollArea>
+                );
+              })}
+            </div>
+          </ScrollArea>
+        </div>
 
-        <DialogFooter className="pt-4">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+        <DialogFooter className="flex-shrink-0 pt-4 border-t">
+          <Button variant="outline" onClick={() => onOpenChange(false)} size="sm">
             <X className="h-4 w-4 mr-2" />
             Cancel
           </Button>
@@ -268,6 +270,7 @@ export const BulkPriceUpdateModal = ({ open, onOpenChange }: BulkPriceUpdateModa
             onClick={handleUpdate}
             disabled={isUpdating || selectedIds.size === 0}
             className="bg-gradient-primary"
+            size="sm"
           >
             {isUpdating ? (
               'Updating...'

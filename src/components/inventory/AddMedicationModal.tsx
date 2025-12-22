@@ -41,6 +41,7 @@ import {
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Label } from '@/components/ui/label';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 
 import { ALL_CATEGORIES, CATEGORY_GROUPS, ProductType, MedicationCategory, DISPENSING_UNITS, DispensingUnit } from '@/types/medication';
@@ -442,26 +443,47 @@ export const AddMedicationModal = ({
               />
             </div>
 
-            <FormField
-              control={form.control}
-              name="selling_price"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Selling Price (Optional)</FormLabel>
-                  <FormControl>
-                    <Input 
-                      type="number" 
-                      min="0" 
-                      step="0.01" 
-                      placeholder="Leave empty to use cost price"
-                      {...field} 
-                      value={field.value ?? ''}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {/* Markup-based Selling Price */}
+            <div className="space-y-3 p-3 rounded-lg bg-muted/30 border">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-medium">Selling Price</Label>
+                <div className="flex items-center gap-2">
+                  <Label className="text-xs text-muted-foreground">Markup %</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="1"
+                    placeholder="30"
+                    className="w-20 h-8 text-sm"
+                    onChange={(e) => {
+                      const markup = parseFloat(e.target.value) || 0;
+                      const costPrice = form.getValues('unit_price') || 0;
+                      const sellingPrice = Math.round(costPrice * (1 + markup / 100));
+                      form.setValue('selling_price', sellingPrice);
+                    }}
+                  />
+                </div>
+              </div>
+              <FormField
+                control={form.control}
+                name="selling_price"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormControl>
+                      <Input 
+                        type="number" 
+                        min="0" 
+                        step="0.01" 
+                        placeholder="Or enter fixed selling price"
+                        {...field} 
+                        value={field.value ?? ''}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
 
             {/* Supplier Section - Only for new medications */}
             {!isEditing && (
