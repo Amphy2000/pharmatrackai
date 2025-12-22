@@ -22,6 +22,7 @@ interface PurchaseOrderData {
   orders: SupplierOrder[];
   pharmacyName: string;
   pharmacyPhone?: string;
+  pharmacyLogoUrl?: string;
   orderNumber: string;
   date: Date;
   currency?: CurrencyCode;
@@ -38,15 +39,38 @@ const formatCurrency = (amount: number, currency: CurrencyCode = 'NGN'): string 
   return `${symbol}${amount.toLocaleString('en', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 };
 
+// Helper function to load image as base64
+const loadImage = (url: string): Promise<string> => {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        reject(new Error('Failed to get canvas context'));
+        return;
+      }
+      ctx.drawImage(img, 0, 0);
+      resolve(canvas.toDataURL('image/png'));
+    };
+    img.onerror = () => reject(new Error('Failed to load image'));
+    img.src = url;
+  });
+};
+
 // POS Receipt format (80mm thermal paper = ~72mm printable width)
-export const generatePurchaseOrder = ({
+export const generatePurchaseOrder = async ({
   orders,
   pharmacyName,
   pharmacyPhone,
+  pharmacyLogoUrl,
   orderNumber,
   date,
   currency = 'NGN',
-}: PurchaseOrderData): jsPDF => {
+}: PurchaseOrderData): Promise<jsPDF> => {
   // 80mm thermal receipt paper (standard POS width)
   const receiptWidth = 80;
   const margin = 4;
@@ -83,11 +107,24 @@ export const generatePurchaseOrder = ({
   };
 
   // Process each supplier order
-  orders.forEach((order, orderIndex) => {
+  for (let orderIndex = 0; orderIndex < orders.length; orderIndex++) {
+    const order = orders[orderIndex];
     if (orderIndex > 0) {
       y += 10;
       drawDashedLine(y);
       y += 8;
+    }
+
+    // Header - Add logo if available
+    if (pharmacyLogoUrl && orderIndex === 0) {
+      try {
+        const logoImg = await loadImage(pharmacyLogoUrl);
+        const logoSize = 12; // 12mm square
+        doc.addImage(logoImg, 'PNG', (receiptWidth - logoSize) / 2, y, logoSize, logoSize);
+        y += logoSize + 2;
+      } catch (error) {
+        console.error('Failed to load logo for purchase order:', error);
+      }
     }
 
     // Header - Pharmacy name
@@ -196,7 +233,7 @@ export const generatePurchaseOrder = ({
     centerText('Thank you for your service', y);
     doc.setTextColor(0);
     y += 6;
-  });
+  }
 
   // Final footer
   y += 2;
