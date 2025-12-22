@@ -383,7 +383,7 @@ const SalesPitch = () => {
             className="max-w-5xl mx-auto text-center"
           >
             {/* Beta Badge - Scarcity Strategy */}
-            <motion.div variants={fadeInUp} className="mb-4">
+            <motion.div variants={fadeInUp} className="mb-4 mt-6 sm:mt-8">
               <Badge className="text-xs sm:text-sm px-3 sm:px-4 py-1.5 sm:py-2 bg-gradient-to-r from-amber-500/20 to-orange-500/20 text-amber-600 dark:text-amber-400 border-amber-500/30">
                 <Rocket className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
                 Currently in Exclusive Beta: Accepting 5 Pioneer Pharmacies for 2026
