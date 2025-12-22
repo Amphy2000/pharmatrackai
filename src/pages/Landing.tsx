@@ -16,6 +16,8 @@ import { Badge } from '@/components/ui/badge';
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table';
 import { useAuth } from '@/contexts/AuthContext';
 import { ProfitProtectorCalculator } from '@/components/landing/ProfitProtectorCalculator';
+import { FeatureDemo } from '@/components/landing/FeatureDemo';
+import { VideoShowcase } from '@/components/landing/VideoShowcase';
 
 // Animation variants
 const fadeInUp = {
@@ -283,6 +285,9 @@ const Landing = () => {
           </motion.div>
         </div>
       </section>
+
+      {/* Feature Demos Section */}
+      <FeatureDemo isInternational={isInternational} />
 
       {/* Stop the Leakage Pitch Section */}
       <section className="py-16 sm:py-24 relative bg-gradient-hero hero-medical">
@@ -814,6 +819,9 @@ const Landing = () => {
           </motion.div>
         </div>
       </section>
+
+      {/* Video Showcase & Testimonials */}
+      <VideoShowcase />
 
       {/* ROI Calculator */}
       <section className="py-20 sm:py-32 relative bg-muted/20">
