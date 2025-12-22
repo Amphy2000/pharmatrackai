@@ -12,6 +12,7 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { useSearchParams, Navigate, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { useProductTour } from '@/hooks/useProductTour';
+import { ProductTour } from '@/components/ProductTour';
 
 const Settings = () => {
   const { hasPermission, userRole, isLoading } = usePermissions();
@@ -31,6 +32,7 @@ const Settings = () => {
 
   return (
     <div className="min-h-screen bg-background">
+      <ProductTour />
       <Header />
       
       <main className="container mx-auto px-4 py-8">

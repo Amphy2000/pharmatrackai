@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { usePharmacy } from '@/hooks/usePharmacy';
@@ -64,6 +65,64 @@ export const useBranches = () => {
     },
     enabled: !!pharmacyId,
   });
+
+  // Real-time subscription for branches and transfers
+  useEffect(() => {
+    if (!pharmacyId) return;
+
+    const branchesChannel = supabase
+      .channel('branches-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'branches',
+          filter: `pharmacy_id=eq.${pharmacyId}`,
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['branches', pharmacyId] });
+        }
+      )
+      .subscribe();
+
+    const transfersChannel = supabase
+      .channel('transfers-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'stock_transfers',
+          filter: `pharmacy_id=eq.${pharmacyId}`,
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['stock-transfers', pharmacyId] });
+        }
+      )
+      .subscribe();
+
+    const inventoryChannel = supabase
+      .channel('branch-inventory-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'branch_inventory',
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['branch-inventory', pharmacyId] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(branchesChannel);
+      supabase.removeChannel(transfersChannel);
+      supabase.removeChannel(inventoryChannel);
+    };
+  }, [pharmacyId, queryClient]);
 
   // Add branch
   const addBranch = useMutation({

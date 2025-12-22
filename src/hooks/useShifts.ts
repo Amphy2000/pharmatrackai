@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePharmacy } from '@/hooks/usePharmacy';
@@ -108,6 +109,32 @@ export const useShifts = () => {
     },
     enabled: !!pharmacyId,
   });
+
+  // Real-time subscription for shifts
+  useEffect(() => {
+    if (!pharmacyId) return;
+
+    const channel = supabase
+      .channel('shifts-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'staff_shifts',
+          filter: `pharmacy_id=eq.${pharmacyId}`,
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['all-shifts', pharmacyId] });
+          queryClient.invalidateQueries({ queryKey: ['active-shift'] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [pharmacyId, queryClient]);
 
   // Clock in mutation
   const clockIn = useMutation({
