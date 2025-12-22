@@ -1,174 +1,168 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useRef } from 'react';
 import { format, differenceInDays, parseISO } from 'date-fns';
-import { Shield, AlertTriangle, FileText, ChevronDown, ChevronUp } from 'lucide-react';
+import { Shield, AlertTriangle, FileText, ChevronDown, ChevronUp, Printer, Download, Filter } from 'lucide-react';
 import { Medication } from '@/types/medication';
 import { useRegionalSettings } from '@/contexts/RegionalSettingsContext';
+import { usePharmacy } from '@/hooks/usePharmacy';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
 } from '@/components/ui/collapsible';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { generateNAFDACComplianceReport } from '@/utils/nafdacReportGenerator';
 
 interface NAFDACCompliancePanelProps {
   medications: Medication[];
 }
 
-interface ComplianceIssue {
-  medication: Medication;
-  issue: 'expired' | 'expiring_soon' | 'near_limit';
-  daysUntilExpiry: number;
-  severity: 'critical' | 'warning' | 'info';
-}
+type FilterType = 'all' | 'expiring_soon' | 'controlled';
 
 export const NAFDACCompliancePanel = ({ medications }: NAFDACCompliancePanelProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [filter, setFilter] = useState<FilterType>('all');
   const { regulatory, flagEmoji } = useRegionalSettings();
+  const { pharmacy } = usePharmacy();
+  const printRef = useRef<HTMLDivElement>(null);
+
+  // Filter medications based on selected filter
+  const filteredMedications = useMemo(() => {
+    const today = new Date();
+    
+    switch (filter) {
+      case 'expiring_soon':
+        return medications.filter(med => {
+          const expiryDate = parseISO(med.expiry_date);
+          const daysUntilExpiry = differenceInDays(expiryDate, today);
+          return daysUntilExpiry >= 0 && daysUntilExpiry <= 90;
+        });
+      case 'controlled':
+        const controlledCategories = ['controlled', 'narcotic', 'psychotropic', 'schedule_ii', 'schedule_iii'];
+        return medications.filter(med => 
+          controlledCategories.some(cat => med.category.toLowerCase().includes(cat))
+        );
+      default:
+        return medications;
+    }
+  }, [medications, filter]);
 
   const complianceData = useMemo(() => {
     const today = new Date();
-    const issues: ComplianceIssue[] = [];
-    
-    // Regulatory bodies typically require medications to have at least 6 months shelf life remaining
-    const minDays = 180; // 6 months
-    const warningDays = 90; // 3 months warning
-    const criticalDays = 30; // 1 month critical
+    const criticalDays = 30;
+    const warningDays = 90;
+
+    let criticalCount = 0;
+    let warningCount = 0;
+    let expiredCount = 0;
 
     medications.forEach(med => {
       const expiryDate = parseISO(med.expiry_date);
       const daysUntilExpiry = differenceInDays(expiryDate, today);
 
       if (daysUntilExpiry < 0) {
-        issues.push({
-          medication: med,
-          issue: 'expired',
-          daysUntilExpiry,
-          severity: 'critical'
-        });
+        expiredCount++;
+        criticalCount++;
       } else if (daysUntilExpiry <= criticalDays) {
-        issues.push({
-          medication: med,
-          issue: 'expiring_soon',
-          daysUntilExpiry,
-          severity: 'critical'
-        });
+        criticalCount++;
       } else if (daysUntilExpiry <= warningDays) {
-        issues.push({
-          medication: med,
-          issue: 'expiring_soon',
-          daysUntilExpiry,
-          severity: 'warning'
-        });
-      } else if (daysUntilExpiry <= minDays) {
-        issues.push({
-          medication: med,
-          issue: 'near_limit',
-          daysUntilExpiry,
-          severity: 'info'
-        });
+        warningCount++;
       }
     });
 
-    // Sort by severity and days until expiry
-    issues.sort((a, b) => {
-      const severityOrder = { critical: 0, warning: 1, info: 2 };
-      if (severityOrder[a.severity] !== severityOrder[b.severity]) {
-        return severityOrder[a.severity] - severityOrder[b.severity];
-      }
-      return a.daysUntilExpiry - b.daysUntilExpiry;
-    });
-
-    const criticalCount = issues.filter(i => i.severity === 'critical').length;
-    const warningCount = issues.filter(i => i.severity === 'warning').length;
-    const infoCount = issues.filter(i => i.severity === 'info').length;
-    
-    const compliantCount = medications.length - issues.length;
+    const issueCount = expiredCount + criticalCount + warningCount - expiredCount; // avoid double counting expired
+    const compliantCount = medications.length - criticalCount - warningCount;
     const complianceScore = medications.length > 0 
-      ? Math.round((compliantCount / medications.length) * 100) 
+      ? Math.round((Math.max(0, compliantCount) / medications.length) * 100) 
       : 100;
 
-    return { issues, criticalCount, warningCount, infoCount, complianceScore, compliantCount };
+    return { criticalCount, warningCount, complianceScore, expiredCount };
   }, [medications]);
 
-  const generateComplianceReport = () => {
-    const today = format(new Date(), 'yyyy-MM-dd');
-    let report = `${regulatory.abbreviation} COMPLIANCE REPORT\n`;
-    report += `Generated: ${format(new Date(), 'PPpp')}\n`;
-    report += `Regulatory Body: ${regulatory.name}\n`;
-    report += `================================\n\n`;
-    
-    report += `SUMMARY\n`;
-    report += `-------\n`;
-    report += `Total Medications: ${medications.length}\n`;
-    report += `Compliant: ${complianceData.compliantCount}\n`;
-    report += `Compliance Score: ${complianceData.complianceScore}%\n\n`;
-    
-    report += `ISSUES REQUIRING ATTENTION\n`;
-    report += `--------------------------\n\n`;
+  const getStatusBadge = (med: Medication) => {
+    const expiryDate = parseISO(med.expiry_date);
+    const today = new Date();
+    const daysUntilExpiry = differenceInDays(expiryDate, today);
 
-    if (complianceData.issues.length === 0) {
-      report += `No compliance issues found. All medications meet ${regulatory.abbreviation} requirements.\n`;
-    } else {
-      const critical = complianceData.issues.filter(i => i.severity === 'critical');
-      const warning = complianceData.issues.filter(i => i.severity === 'warning');
-      const info = complianceData.issues.filter(i => i.severity === 'info');
-
-      if (critical.length > 0) {
-        report += `CRITICAL (Immediate Action Required):\n`;
-        critical.forEach(issue => {
-          report += `  - ${issue.medication.name} (Batch: ${issue.medication.batch_number})\n`;
-          report += `    ${regulatory.licenseLabel}: ${issue.medication.batch_number}\n`;
-          report += `    Expiry: ${format(parseISO(issue.medication.expiry_date), 'PPP')}\n`;
-          report += `    Status: ${issue.daysUntilExpiry < 0 ? 'EXPIRED' : `Expires in ${issue.daysUntilExpiry} days`}\n`;
-          report += `    Stock: ${issue.medication.current_stock} units\n\n`;
-        });
-      }
-
-      if (warning.length > 0) {
-        report += `\nWARNING (Action Required Within 30 Days):\n`;
-        warning.forEach(issue => {
-          report += `  - ${issue.medication.name} (Batch: ${issue.medication.batch_number})\n`;
-          report += `    Expiry: ${format(parseISO(issue.medication.expiry_date), 'PPP')}\n`;
-          report += `    Days Until Expiry: ${issue.daysUntilExpiry}\n`;
-          report += `    Stock: ${issue.medication.current_stock} units\n\n`;
-        });
-      }
-
-      if (info.length > 0) {
-        report += `\nINFO (Monitor - Approaching ${regulatory.abbreviation} Limit):\n`;
-        info.forEach(issue => {
-          report += `  - ${issue.medication.name} (Batch: ${issue.medication.batch_number})\n`;
-          report += `    Expiry: ${format(parseISO(issue.medication.expiry_date), 'PPP')}\n`;
-          report += `    Days Until Expiry: ${issue.daysUntilExpiry}\n`;
-          report += `    Stock: ${issue.medication.current_stock} units\n\n`;
-        });
-      }
+    if (daysUntilExpiry < 0) {
+      return <Badge className="bg-destructive text-destructive-foreground text-[10px] px-1.5 py-0.5">Expired</Badge>;
+    } else if (daysUntilExpiry <= 90) {
+      return <Badge className="bg-warning text-warning-foreground text-[10px] px-1.5 py-0.5">{daysUntilExpiry}d left</Badge>;
     }
-
-    report += `\n================================\n`;
-    report += `This report is for ${regulatory.abbreviation} inspection purposes.\n`;
-    report += `Retain for regulatory compliance records.\n`;
-
-    const blob = new Blob([report], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `${regulatory.abbreviation.toLowerCase()}-compliance-report-${today}.txt`;
-    a.click();
+    return <Badge variant="outline" className="text-[10px] px-1.5 py-0.5 text-success border-success/30">OK</Badge>;
   };
 
-  const getSeverityColor = (severity: string) => {
-    switch (severity) {
-      case 'critical': return 'bg-destructive text-destructive-foreground';
-      case 'warning': return 'bg-warning text-warning-foreground';
-      default: return 'bg-primary/20 text-primary';
+  const handleDownloadPDF = () => {
+    if (!pharmacy) return;
+    
+    const doc = generateNAFDACComplianceReport(
+      filteredMedications,
+      {
+        name: pharmacy.name,
+        address: pharmacy.address,
+        phone: pharmacy.phone,
+        license_number: pharmacy.license_number,
+        pharmacist_in_charge: pharmacy.pharmacist_in_charge,
+      },
+      {
+        regulatory,
+        filter,
+      }
+    );
+    
+    const today = format(new Date(), 'yyyy-MM-dd');
+    doc.save(`${regulatory.abbreviation.toLowerCase()}-compliance-report-${today}.pdf`);
+  };
+
+  const handlePrint = () => {
+    if (!pharmacy) return;
+    
+    const doc = generateNAFDACComplianceReport(
+      filteredMedications,
+      {
+        name: pharmacy.name,
+        address: pharmacy.address,
+        phone: pharmacy.phone,
+        license_number: pharmacy.license_number,
+        pharmacist_in_charge: pharmacy.pharmacist_in_charge,
+      },
+      {
+        regulatory,
+        filter,
+      }
+    );
+    
+    // Open in new window for printing
+    const pdfBlob = doc.output('blob');
+    const pdfUrl = URL.createObjectURL(pdfBlob);
+    const printWindow = window.open(pdfUrl, '_blank');
+    if (printWindow) {
+      printWindow.onload = () => {
+        printWindow.print();
+      };
     }
   };
 
   return (
     <div className="glass-card rounded-2xl p-4 sm:p-6 overflow-hidden">
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
         <div className="flex items-center gap-3 min-w-0">
           <div className="p-2 rounded-xl bg-primary/10 text-xl flex-shrink-0">
@@ -176,17 +170,43 @@ export const NAFDACCompliancePanel = ({ medications }: NAFDACCompliancePanelProp
           </div>
           <div className="min-w-0">
             <h3 className="text-base sm:text-lg font-bold font-display truncate">{regulatory.abbreviation} Compliance</h3>
-            <p className="text-xs text-muted-foreground">Regulatory status and alerts</p>
+            <p className="text-xs text-muted-foreground">Professional Audit Document</p>
           </div>
         </div>
-        <Button onClick={generateComplianceReport} variant="outline" size="sm" className="gap-1.5 h-8 px-2.5 flex-shrink-0">
-          <FileText className="h-3.5 w-3.5" />
-          <span className="hidden sm:inline">Generate</span> Report
-        </Button>
+        
+        {/* Action Buttons */}
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <Button onClick={handleDownloadPDF} variant="outline" size="sm" className="gap-1.5 h-8 px-2.5">
+            <Download className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">PDF</span>
+          </Button>
+          <Button onClick={handlePrint} variant="outline" size="sm" className="gap-1.5 h-8 px-2.5">
+            <Printer className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Print</span>
+          </Button>
+        </div>
+      </div>
+
+      {/* Filter Dropdown */}
+      <div className="flex items-center gap-2 mb-4">
+        <Filter className="h-4 w-4 text-muted-foreground" />
+        <Select value={filter} onValueChange={(v) => setFilter(v as FilterType)}>
+          <SelectTrigger className="w-[200px] h-8 text-sm">
+            <SelectValue placeholder="Filter view" />
+          </SelectTrigger>
+          <SelectContent className="bg-background border border-border z-50">
+            <SelectItem value="all">Full Inventory</SelectItem>
+            <SelectItem value="expiring_soon">Expiring Soon (90 days)</SelectItem>
+            <SelectItem value="controlled">Controlled/Narcotic Drugs</SelectItem>
+          </SelectContent>
+        </Select>
+        <span className="text-xs text-muted-foreground ml-2">
+          {filteredMedications.length} items
+        </span>
       </div>
 
       {/* Compliance Score */}
-      <div className="mb-6">
+      <div className="mb-4">
         <div className="flex items-center justify-between mb-2">
           <span className="text-sm font-medium">Compliance Score</span>
           <span className={`text-lg font-bold ${
@@ -203,67 +223,85 @@ export const NAFDACCompliancePanel = ({ medications }: NAFDACCompliancePanelProp
       </div>
 
       {/* Quick Stats */}
-      <div className="grid grid-cols-3 gap-3 sm:gap-6 mb-6">
-        <div className="text-center p-4 sm:p-5 rounded-xl bg-destructive/10 border border-destructive/20">
-          <p className="text-2xl sm:text-3xl font-bold text-destructive">{complianceData.criticalCount}</p>
-          <p className="text-xs sm:text-sm text-muted-foreground mt-1">Critical</p>
+      <div className="grid grid-cols-3 gap-2 sm:gap-4 mb-4">
+        <div className="text-center p-3 rounded-xl bg-destructive/10 border border-destructive/20">
+          <p className="text-xl sm:text-2xl font-bold text-destructive">{complianceData.expiredCount}</p>
+          <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5">Expired</p>
         </div>
-        <div className="text-center p-4 sm:p-5 rounded-xl bg-warning/10 border border-warning/20">
-          <p className="text-2xl sm:text-3xl font-bold text-warning">{complianceData.warningCount}</p>
-          <p className="text-xs sm:text-sm text-muted-foreground mt-1">Warning</p>
+        <div className="text-center p-3 rounded-xl bg-warning/10 border border-warning/20">
+          <p className="text-xl sm:text-2xl font-bold text-warning">{complianceData.warningCount}</p>
+          <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5">Expiring Soon</p>
         </div>
-        <div className="text-center p-4 sm:p-5 rounded-xl bg-primary/10 border border-primary/20">
-          <p className="text-2xl sm:text-3xl font-bold text-primary">{complianceData.infoCount}</p>
-          <p className="text-xs sm:text-sm text-muted-foreground mt-1">Monitor</p>
+        <div className="text-center p-3 rounded-xl bg-success/10 border border-success/20">
+          <p className="text-xl sm:text-2xl font-bold text-success">{medications.length - complianceData.criticalCount - complianceData.warningCount}</p>
+          <p className="text-[10px] sm:text-xs text-muted-foreground mt-0.5">Compliant</p>
         </div>
       </div>
 
-      {/* Issues List */}
-      {complianceData.issues.length > 0 && (
-        <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
-          <CollapsibleTrigger asChild>
-            <Button variant="ghost" className="w-full justify-between text-sm">
-              <span className="flex items-center gap-2">
-                <AlertTriangle className="h-4 w-4" />
-                {complianceData.issues.length} items need attention
-              </span>
-              {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-            </Button>
-          </CollapsibleTrigger>
-          <CollapsibleContent className="mt-3">
-            <div className="space-y-2 max-h-64 overflow-y-auto">
-              {complianceData.issues.slice(0, 10).map((issue, idx) => (
-                <div 
-                  key={idx} 
-                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 rounded-lg bg-muted/50 border border-border/50"
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="font-medium text-sm truncate">{issue.medication.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      Batch: {issue.medication.batch_number} • Stock: {issue.medication.current_stock}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2 flex-shrink-0">
-                    <Badge className={getSeverityColor(issue.severity)}>
-                      {issue.daysUntilExpiry < 0 
-                        ? 'Expired' 
-                        : `${issue.daysUntilExpiry}d left`}
-                    </Badge>
-                  </div>
-                </div>
-              ))}
-              {complianceData.issues.length > 10 && (
-                <p className="text-xs text-center text-muted-foreground py-2">
-                  +{complianceData.issues.length - 10} more items. Download full report for details.
-                </p>
-              )}
-            </div>
-          </CollapsibleContent>
-        </Collapsible>
-      )}
+      {/* Inventory Table */}
+      <Collapsible open={isExpanded} onOpenChange={setIsExpanded}>
+        <CollapsibleTrigger asChild>
+          <Button variant="ghost" className="w-full justify-between text-sm h-9 mb-2">
+            <span className="flex items-center gap-2">
+              <FileText className="h-4 w-4" />
+              View Inventory Table
+            </span>
+            {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          </Button>
+        </CollapsibleTrigger>
+        <CollapsibleContent>
+          <ScrollArea className="h-[300px] rounded-lg border border-border">
+            <Table>
+              <TableHeader className="sticky top-0 bg-muted/95 backdrop-blur-sm z-10">
+                <TableRow>
+                  <TableHead className="w-10 text-xs">S/N</TableHead>
+                  <TableHead className="text-xs">Product Name</TableHead>
+                  <TableHead className="text-xs hidden sm:table-cell">Batch No</TableHead>
+                  <TableHead className="text-xs hidden md:table-cell">Exp Date</TableHead>
+                  <TableHead className="text-xs text-right">Stock</TableHead>
+                  <TableHead className="text-xs text-center">Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredMedications.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                      {filter === 'controlled' 
+                        ? 'No controlled drugs found in inventory'
+                        : filter === 'expiring_soon'
+                        ? 'No items expiring within 90 days'
+                        : 'No inventory items found'}
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredMedications.map((med, index) => (
+                    <TableRow key={med.id} className="text-xs">
+                      <TableCell className="font-medium py-2">{index + 1}</TableCell>
+                      <TableCell className="py-2">
+                        <span className="line-clamp-1">{med.name}</span>
+                      </TableCell>
+                      <TableCell className="py-2 hidden sm:table-cell font-mono text-[10px]">
+                        {med.batch_number}
+                      </TableCell>
+                      <TableCell className="py-2 hidden md:table-cell">
+                        {format(parseISO(med.expiry_date), 'MMM yyyy')}
+                      </TableCell>
+                      <TableCell className="py-2 text-right">{med.current_stock}</TableCell>
+                      <TableCell className="py-2 text-center">
+                        {getStatusBadge(med)}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </ScrollArea>
+        </CollapsibleContent>
+      </Collapsible>
 
-      {complianceData.issues.length === 0 && (
-        <div className="text-center py-4">
+      {/* All Clear Message */}
+      {complianceData.criticalCount === 0 && complianceData.warningCount === 0 && medications.length > 0 && (
+        <div className="text-center py-4 mt-2">
           <Shield className="h-8 w-8 text-success mx-auto mb-2" />
           <p className="text-sm text-success font-medium">All Clear!</p>
           <p className="text-xs text-muted-foreground">All medications meet {regulatory.abbreviation} requirements</p>
