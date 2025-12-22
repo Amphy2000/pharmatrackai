@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { useProductTour, TourStep } from '@/hooks/useProductTour';
+import { useProductTourContext, TourStep } from '@/contexts/ProductTourContext';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -83,7 +83,7 @@ export const ProductTour = () => {
     prevStep,
     goToStep,
     skipTour,
-  } = useProductTour();
+  } = useProductTourContext();
 
   if (!isOpen || !currentStepData) return null;
 
@@ -100,7 +100,7 @@ export const ProductTour = () => {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[100] flex items-center justify-center bg-background/90 backdrop-blur-md"
+        className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-background/90 backdrop-blur-md overflow-y-auto"
       >
         {/* Background decorative elements */}
         <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -127,7 +127,7 @@ export const ProductTour = () => {
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.9, opacity: 0, y: 20 }}
           transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-          className="relative w-full max-w-2xl mx-4"
+          className="relative w-full max-w-2xl my-auto"
         >
           {/* Card */}
           <div className="glass-card rounded-3xl overflow-hidden border border-border/50 shadow-elevated">
@@ -173,7 +173,7 @@ export const ProductTour = () => {
             </div>
 
             {/* Content */}
-            <ScrollArea className="max-h-[60vh]">
+            <ScrollArea className="max-h-[50vh] sm:max-h-[55vh]">
               <div className="p-8">
                 <AnimatePresence mode="wait">
                   <motion.div

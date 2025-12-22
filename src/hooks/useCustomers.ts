@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { usePharmacy } from '@/hooks/usePharmacy';
 import { useToast } from '@/hooks/use-toast';
@@ -25,6 +26,31 @@ export const useCustomers = () => {
     },
     enabled: !!pharmacy?.id,
   });
+
+  // Real-time subscription for customers
+  useEffect(() => {
+    if (!pharmacy?.id) return;
+
+    const channel = supabase
+      .channel('customers-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'customers',
+          filter: `pharmacy_id=eq.${pharmacy.id}`,
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['customers', pharmacy.id] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [pharmacy?.id, queryClient]);
 
   const addCustomer = useMutation({
     mutationFn: async (customer: Omit<Customer, 'id' | 'created_at' | 'updated_at' | 'loyalty_points'>) => {

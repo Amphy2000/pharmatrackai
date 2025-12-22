@@ -1,4 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { usePharmacy } from '@/hooks/usePharmacy';
@@ -63,6 +64,48 @@ export const useSuppliers = () => {
     },
     enabled: !!pharmacyId,
   });
+
+  // Real-time subscription for suppliers
+  useEffect(() => {
+    if (!pharmacyId) return;
+
+    const suppliersChannel = supabase
+      .channel('suppliers-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'suppliers',
+          filter: `pharmacy_id=eq.${pharmacyId}`,
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['suppliers', pharmacyId] });
+        }
+      )
+      .subscribe();
+
+    const reordersChannel = supabase
+      .channel('reorders-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'reorder_requests',
+          filter: `pharmacy_id=eq.${pharmacyId}`,
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['reorder-requests', pharmacyId] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(suppliersChannel);
+      supabase.removeChannel(reordersChannel);
+    };
+  }, [pharmacyId, queryClient]);
 
   // Add supplier
   const addSupplier = useMutation({
