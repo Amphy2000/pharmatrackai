@@ -3,6 +3,7 @@ import { CartItem } from '@/types/medication';
 import { format } from 'date-fns';
 
 type CurrencyCode = 'USD' | 'NGN' | 'GBP';
+type PaymentStatus = 'paid' | 'unpaid';
 
 interface ReceiptData {
   items: CartItem[];
@@ -12,9 +13,14 @@ interface ReceiptData {
   pharmacyAddress?: string;
   pharmacyPhone?: string;
   pharmacyLogoUrl?: string;
+  pharmacistInCharge?: string;
+  staffName?: string;
   receiptNumber: string;
   date: Date;
   currency?: CurrencyCode;
+  paymentStatus?: PaymentStatus;
+  enableLogoOnPrint?: boolean;
+  isDigitalReceipt?: boolean; // For WhatsApp/PDF - always shows logo
 }
 
 const CURRENCY_SYMBOLS: Record<CurrencyCode, string> = {
@@ -43,29 +49,40 @@ export const generateReceipt = async ({
   pharmacyAddress,
   pharmacyPhone,
   pharmacyLogoUrl,
+  pharmacistInCharge,
+  staffName,
   receiptNumber,
   date,
   currency = 'NGN',
+  paymentStatus = 'paid',
+  enableLogoOnPrint = true,
+  isDigitalReceipt = false,
 }: ReceiptData): Promise<jsPDF> => {
-  // Calculate dynamic height based on items
-  const baseHeight = 140;
-  const itemHeight = items.length * 12;
-  const addressHeight = pharmacyAddress ? 8 : 0;
-  const phoneHeight = pharmacyPhone ? 6 : 0;
-  const customerHeight = customerName ? 6 : 0;
-  const logoHeight = pharmacyLogoUrl ? 20 : 0;
-  const totalHeight = baseHeight + itemHeight + addressHeight + phoneHeight + customerHeight + logoHeight;
+  // Calculate dynamic height based on items - optimized for paper saving
+  const baseHeight = 100;
+  const itemHeight = items.length * 8; // Reduced from 12
+  const addressHeight = pharmacyAddress ? 6 : 0;
+  const phoneHeight = pharmacyPhone ? 4 : 0;
+  const customerHeight = customerName ? 4 : 0;
+  const pharmacistHeight = pharmacistInCharge ? 4 : 0;
+  const staffHeight = staffName ? 4 : 0;
+  
+  // Only add logo height if we're showing it
+  const shouldShowLogo = isDigitalReceipt || (enableLogoOnPrint && pharmacyLogoUrl);
+  const logoHeight = shouldShowLogo ? 16 : 0;
+  
+  const totalHeight = baseHeight + itemHeight + addressHeight + phoneHeight + customerHeight + logoHeight + pharmacistHeight + staffHeight;
 
-  // Create PDF optimized for thermal printers (80mm width = ~226.77 points at 72 DPI)
+  // Create PDF optimized for thermal printers (80mm width)
   const doc = new jsPDF({
     unit: 'mm',
-    format: [80, Math.max(totalHeight, 120)],
+    format: [80, Math.max(totalHeight, 90)],
     orientation: 'portrait',
   });
 
   const pageWidth = 80;
-  const margin = 5;
-  let y = 10;
+  const margin = 4;
+  let y = 6;
 
   // Helper function for centered text
   const centerText = (text: string, yPos: number, fontSize: number = 10) => {
@@ -81,145 +98,166 @@ export const generateReceipt = async ({
   };
 
   // ============ PHARMACY BRANDING HEADER ============
-  // Add logo if available
-  if (pharmacyLogoUrl) {
+  // Add logo if enabled and available (digital receipts always show logo)
+  if (shouldShowLogo && pharmacyLogoUrl) {
     try {
       const logoImg = await loadImage(pharmacyLogoUrl);
-      const logoSize = 15; // 15mm square
+      const logoSize = 12;
       doc.addImage(logoImg, 'PNG', (pageWidth - logoSize) / 2, y, logoSize, logoSize);
-      y += logoSize + 3;
+      y += logoSize + 2;
     } catch (error) {
       console.error('Failed to load logo for receipt:', error);
+      // Fall back to text header
     }
   }
 
+  // Pharmacy Name (Bold H1 style)
   doc.setFont('helvetica', 'bold');
-  centerText(pharmacyName.toUpperCase(), y, 14);
-  y += 6;
+  centerText(pharmacyName.toUpperCase(), y, 12);
+  y += 5;
 
-  // Pharmacy address (if provided)
+  // Pharmacy address
   if (pharmacyAddress) {
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(7);
     const addressLines = doc.splitTextToSize(pharmacyAddress, pageWidth - (margin * 2));
     addressLines.forEach((line: string) => {
       centerText(line, y, 7);
-      y += 3.5;
+      y += 3;
     });
-    y += 2;
   }
 
-  // Pharmacy phone (if provided)
+  // Pharmacy phone
   if (pharmacyPhone) {
     doc.setFont('helvetica', 'normal');
-    centerText(`Tel: ${pharmacyPhone}`, y, 8);
-    y += 5;
+    centerText(`Tel: ${pharmacyPhone}`, y, 7);
+    y += 3;
   }
 
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
-  centerText('Your Health, Our Priority', y);
-  y += 6;
+  // Pharmacist in Charge (optional)
+  if (pharmacistInCharge) {
+    doc.setFont('helvetica', 'italic');
+    centerText(`Pharmacist: ${pharmacistInCharge}`, y, 7);
+    y += 3;
+  }
 
-  // Divider
-  doc.setDrawColor(200);
+  y += 2;
+
+  // Thin divider
+  doc.setDrawColor(180);
+  doc.setLineWidth(0.3);
   doc.line(margin, y, pageWidth - margin, y);
-  y += 6;
+  y += 4;
 
-  // Receipt info
-  doc.setFontSize(9);
-  doc.text(`Receipt #: ${receiptNumber}`, margin, y);
-  y += 4;
-  doc.text(`Date: ${format(date, 'MMM dd, yyyy HH:mm')}`, margin, y);
-  y += 4;
+  // Receipt info - compact layout
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
+  doc.text(`#${receiptNumber}`, margin, y);
+  rightText(format(date, 'dd/MM/yy HH:mm'), y);
+  y += 3;
+
   if (customerName) {
     doc.text(`Customer: ${customerName}`, margin, y);
-    y += 4;
+    y += 3;
   }
-  y += 4;
 
-  // Divider
-  doc.line(margin, y, pageWidth - margin, y);
-  y += 6;
-
-  // Column headers
+  // Payment Status Badge
+  const statusText = paymentStatus === 'paid' ? 'PAID' : 'UNPAID';
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(8);
-  doc.text('Item', margin, y);
-  doc.text('Qty', 45, y);
-  rightText('Amount', y);
-  y += 4;
-
-  doc.setFont('helvetica', 'normal');
-  doc.line(margin, y, pageWidth - margin, y);
+  if (paymentStatus === 'paid') {
+    doc.setTextColor(34, 139, 34); // Green
+  } else {
+    doc.setTextColor(220, 20, 60); // Red
+  }
+  centerText(`[ ${statusText} ]`, y);
+  doc.setTextColor(0);
   y += 5;
 
-  // Items
+  // Divider before items
+  doc.setDrawColor(180);
+  doc.line(margin, y, pageWidth - margin, y);
+  y += 3;
+
+  // Column headers - compact
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7);
+  doc.text('Item', margin, y);
+  doc.text('Qty', 48, y);
+  rightText('Amt', y);
+  y += 3;
+
+  doc.setFont('helvetica', 'normal');
+  doc.setDrawColor(200);
+  doc.setLineWidth(0.2);
+  doc.line(margin, y, pageWidth - margin, y);
+  y += 3;
+
+  // Items - compact format
   items.forEach((item) => {
     const price = item.medication.selling_price || item.medication.unit_price;
     const itemTotal = price * item.quantity;
 
-    // Item name (may need to truncate)
+    // Item name (truncate if needed)
     let itemName = item.medication.name;
-    doc.setFontSize(8);
-    if (doc.getTextWidth(itemName) > 35) {
-      while (doc.getTextWidth(itemName + '...') > 35 && itemName.length > 0) {
+    doc.setFontSize(7);
+    if (doc.getTextWidth(itemName) > 40) {
+      while (doc.getTextWidth(itemName + '..') > 40 && itemName.length > 0) {
         itemName = itemName.slice(0, -1);
       }
-      itemName += '...';
+      itemName += '..';
     }
 
     doc.text(itemName, margin, y);
-    doc.text(`x${item.quantity}`, 45, y);
+    doc.text(`x${item.quantity}`, 48, y);
     rightText(formatCurrency(itemTotal, currency), y);
-    y += 5;
+    y += 4;
 
-    // Unit price on second line
-    doc.setFontSize(7);
-    doc.setTextColor(120);
-    doc.text(`@ ${formatCurrency(price, currency)}`, margin, y);
+    // Unit price on same line (smaller)
+    doc.setFontSize(6);
+    doc.setTextColor(100);
+    doc.text(`@${formatCurrency(price, currency)}`, margin, y);
     doc.setTextColor(0);
-    y += 5;
+    y += 4;
   });
 
-  y += 2;
+  // Total section
+  doc.setDrawColor(180);
   doc.line(margin, y, pageWidth - margin, y);
-  y += 6;
+  y += 4;
 
-  // Total
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(10);
   doc.text('TOTAL:', margin, y);
   rightText(formatCurrency(total, currency), y);
-  y += 8;
-
-  // Footer
-  doc.line(margin, y, pageWidth - margin, y);
   y += 6;
 
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
-  centerText('Thank you for your purchase!', y);
+  // Footer
+  doc.setDrawColor(180);
+  doc.line(margin, y, pageWidth - margin, y);
   y += 4;
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7);
+  centerText('Thank you for your purchase!', y);
+  y += 3;
   centerText('Get well soon. Visit us again!', y);
-  y += 5;
+  y += 4;
+
+  // Staff name at footer
+  if (staffName) {
+    doc.setFontSize(6);
+    doc.setTextColor(80);
+    centerText(`Served by: ${staffName}`, y);
+    doc.setTextColor(0);
+    y += 3;
+  }
 
   // Powered by branding
-  doc.setFontSize(7);
+  doc.setFontSize(6);
   doc.setTextColor(120);
   centerText('Powered by PharmaTrack AI', y);
   doc.setTextColor(0);
-  y += 6;
-
-  // Barcode area (placeholder lines simulating barcode)
-  doc.setDrawColor(50);
-  doc.setLineWidth(0.5);
-  const barcodeStart = margin + 10;
-  for (let i = 0; i < 30; i++) {
-    const width = (i % 3 === 0) ? 0.8 : 0.4;
-    doc.setLineWidth(width);
-    doc.line(barcodeStart + i * 2, y, barcodeStart + i * 2, y + 10);
-  }
 
   return doc;
 };

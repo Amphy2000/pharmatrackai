@@ -1,9 +1,15 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
+interface PharmacySettings {
+  enable_logo_on_print?: boolean;
+  pharmacist_in_charge?: string;
+}
+
 export const usePharmacy = () => {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
 
   const { data: pharmacyId, isLoading: isLoadingPharmacy } = useQuery({
     queryKey: ['user-pharmacy', user?.id],
@@ -40,9 +46,26 @@ export const usePharmacy = () => {
     enabled: !!pharmacyId,
   });
 
+  const updatePharmacySettings = useMutation({
+    mutationFn: async (settings: PharmacySettings) => {
+      if (!pharmacyId) throw new Error('No pharmacy ID');
+      
+      const { error } = await supabase
+        .from('pharmacies')
+        .update(settings)
+        .eq('id', pharmacyId);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['pharmacy-details'] });
+    },
+  });
+
   return {
     pharmacyId,
-    pharmacy,
+    pharmacy: pharmacy as typeof pharmacy & PharmacySettings | null,
     isLoading: isLoadingPharmacy || isLoadingPharmacyDetails,
+    updatePharmacySettings,
   };
 };

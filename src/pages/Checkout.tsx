@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { 
   ArrowLeft, 
   ShoppingCart, 
@@ -21,6 +22,8 @@ import { useCurrency } from '@/contexts/CurrencyContext';
 import { useRegionalSettings } from '@/contexts/RegionalSettingsContext';
 import { useHeldTransactions } from '@/hooks/useHeldTransactions';
 import { usePharmacy } from '@/hooks/usePharmacy';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { ProductGrid } from '@/components/pos/ProductGrid';
 import { CartPanel } from '@/components/pos/CartPanel';
 import { HeldTransactionsPanel } from '@/components/pos/HeldTransactionsPanel';
@@ -49,6 +52,7 @@ const Checkout = () => {
   const { formatPrice, currency } = useCurrency();
   const { isSimpleMode, regulatory } = useRegionalSettings();
   const { pharmacy } = usePharmacy();
+  const { user } = useAuth();
   const { toast } = useToast();
   const {
     heldTransactions,
@@ -57,6 +61,22 @@ const Checkout = () => {
     deleteTransaction,
     count: heldCount,
   } = useHeldTransactions();
+
+  // Get current user's profile for staff name
+  const { data: userProfile } = useQuery({
+    queryKey: ['user-profile', user?.id],
+    queryFn: async () => {
+      if (!user?.id) return null;
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('full_name')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user?.id,
+  });
   
   const [customerName, setCustomerName] = useState('');
   const [checkoutOpen, setCheckoutOpen] = useState(false);
@@ -68,6 +88,20 @@ const Checkout = () => {
   const [lastReceiptTotal, setLastReceiptTotal] = useState(0);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewReceipt, setPreviewReceipt] = useState<jsPDF | null>(null);
+
+  // Helper to get receipt params
+  const getReceiptParams = (isPaid: boolean = true, isDigital: boolean = false) => ({
+    pharmacyName: pharmacy?.name || 'PharmaTrack Pharmacy',
+    pharmacyAddress: pharmacy?.address || undefined,
+    pharmacyPhone: pharmacy?.phone || undefined,
+    pharmacyLogoUrl: pharmacy?.logo_url || undefined,
+    pharmacistInCharge: (pharmacy as any)?.pharmacist_in_charge || undefined,
+    staffName: userProfile?.full_name || undefined,
+    currency: currency as 'USD' | 'NGN' | 'GBP',
+    paymentStatus: isPaid ? 'paid' : 'unpaid' as 'paid' | 'unpaid',
+    enableLogoOnPrint: (pharmacy as any)?.enable_logo_on_print !== false,
+    isDigitalReceipt: isDigital,
+  });
 
   const handleHoldSale = () => {
     if (cart.items.length === 0) return;
@@ -100,19 +134,15 @@ const Checkout = () => {
     }
   };
 
-  const printReceipt = async (items: typeof cart.items, total: number, receiptNumber: string, custName?: string) => {
+  const printReceipt = async (items: typeof cart.items, total: number, receiptNumber: string, custName?: string, isPaid: boolean = true) => {
     try {
       const receipt = await generateReceipt({
         items,
         total,
         customerName: custName || undefined,
-        pharmacyName: pharmacy?.name || 'PharmaTrack Pharmacy',
-        pharmacyAddress: pharmacy?.address || undefined,
-        pharmacyPhone: pharmacy?.phone || undefined,
-        pharmacyLogoUrl: pharmacy?.logo_url || undefined,
         receiptNumber,
         date: new Date(),
-        currency: currency as 'USD' | 'NGN' | 'GBP',
+        ...getReceiptParams(isPaid, false),
       });
 
       // Create an iframe for printing instead of opening a new window
@@ -174,18 +204,14 @@ const Checkout = () => {
       setLastReceiptItems(currentItems);
       setLastReceiptTotal(currentTotal);
       
-      // Generate receipt for preview
+      // Generate receipt for preview (digital version for preview always shows logo)
       const receipt = await generateReceipt({
         items: currentItems,
         total: currentTotal,
         customerName: currentCustomer || undefined,
-        pharmacyName: pharmacy?.name || 'PharmaTrack Pharmacy',
-        pharmacyAddress: pharmacy?.address || undefined,
-        pharmacyPhone: pharmacy?.phone || undefined,
-        pharmacyLogoUrl: pharmacy?.logo_url || undefined,
         receiptNumber,
         date: new Date(),
-        currency: currency as 'USD' | 'NGN' | 'GBP',
+        ...getReceiptParams(true, true), // isPaid=true, isDigital=true for preview
       });
       
       setPreviewReceipt(receipt);
@@ -210,17 +236,14 @@ const Checkout = () => {
   const handlePrintLastReceipt = async () => {
     if (!lastReceiptNumber || lastReceiptItems.length === 0) return;
     
+    // Digital version for preview
     const receipt = await generateReceipt({
       items: lastReceiptItems,
       total: lastReceiptTotal,
       customerName: customerName || undefined,
-      pharmacyName: pharmacy?.name || 'PharmaTrack Pharmacy',
-      pharmacyAddress: pharmacy?.address || undefined,
-      pharmacyPhone: pharmacy?.phone || undefined,
-      pharmacyLogoUrl: pharmacy?.logo_url || undefined,
       receiptNumber: lastReceiptNumber,
       date: new Date(),
-      currency: currency as 'USD' | 'NGN' | 'GBP',
+      ...getReceiptParams(true, true),
     });
     
     setPreviewReceipt(receipt);
