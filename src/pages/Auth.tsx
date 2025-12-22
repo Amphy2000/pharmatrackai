@@ -1,13 +1,13 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
-import { Sparkles, Loader2, Mail, Lock, User, ArrowLeft, Check, Zap } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Loader2, Mail, Lock, User, ArrowLeft, Check, Zap } from 'lucide-react';
+import { Logo } from '@/components/Logo';
 
 const Auth = () => {
   const [searchParams] = useSearchParams();
@@ -113,11 +113,8 @@ const Auth = () => {
         </div>
         
         <div className="max-w-md">
-          <div className="flex items-center gap-3 mb-8">
-            <div className="h-14 w-14 rounded-2xl bg-gradient-primary flex items-center justify-center shadow-glow-primary">
-              <Sparkles className="h-7 w-7 text-primary-foreground" />
-            </div>
-            <span className="font-display font-bold text-3xl">PharmaTrack</span>
+          <div className="mb-8">
+            <Logo size="lg" linkTo="/" />
           </div>
           
           <h1 className="text-4xl font-display font-bold mb-4">
@@ -173,11 +170,8 @@ const Auth = () => {
             {/* Content */}
             <div className="relative p-8 sm:p-10">
               {/* Mobile Logo */}
-              <div className="lg:hidden flex items-center justify-center gap-3 mb-8">
-                <div className="h-12 w-12 rounded-xl bg-gradient-primary flex items-center justify-center shadow-glow-primary">
-                  <Sparkles className="h-6 w-6 text-primary-foreground" />
-                </div>
-                <span className="font-display font-bold text-2xl">PharmaTrack</span>
+              <div className="lg:hidden flex items-center justify-center mb-8">
+                <Logo size="md" linkTo="/" />
               </div>
 
               <Tabs defaultValue={defaultTab} className="w-full">

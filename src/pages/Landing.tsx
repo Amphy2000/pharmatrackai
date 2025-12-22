@@ -7,6 +7,7 @@ import {
   FileUp, Wand2, Timer, WifiOff, Database, Headphones, X, DollarSign
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Logo } from '@/components/Logo';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -117,9 +118,8 @@ const Landing = () => {
       <motion.div 
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="h-16 w-16 rounded-2xl bg-gradient-primary flex items-center justify-center shadow-glow-primary"
       >
-        <Sparkles className="h-8 w-8 text-primary-foreground animate-pulse" />
+        <Logo showText={false} size="lg" linkTo="" />
       </motion.div>
     </div>
   );
@@ -134,12 +134,7 @@ const Landing = () => {
         className="fixed top-0 left-0 right-0 z-50 border-b border-border/40 backdrop-blur-xl bg-background/80"
       >
         <div className="container mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-gradient-primary flex items-center justify-center shadow-glow-primary">
-              <Sparkles className="h-5 w-5 text-primary-foreground" />
-            </div>
-            <span className="font-display font-bold text-xl">PharmaTrack</span>
-          </div>
+          <Logo size="sm" linkTo="/" />
           <div className="flex items-center gap-3">
             {/* International Toggle */}
             <div className="hidden sm:flex items-center gap-2 mr-2 px-3 py-1.5 rounded-full bg-muted/50 border border-border/50">
@@ -976,12 +971,8 @@ const Landing = () => {
             <motion.div 
               initial={{ opacity: 0 }}
               whileInView={{ opacity: 1 }}
-              className="flex items-center gap-3"
             >
-              <div className="h-10 w-10 rounded-xl bg-gradient-primary flex items-center justify-center">
-                <Sparkles className="h-5 w-5 text-primary-foreground" />
-              </div>
-              <span className="font-display font-bold text-xl">PharmaTrack</span>
+              <Logo size="sm" linkTo="/" />
             </motion.div>
             <div className="flex flex-wrap items-center justify-center gap-6 text-sm text-muted-foreground">
               <a href="mailto:pharmatrackai@gmail.com" className="flex items-center gap-2 hover:text-primary transition-colors">
