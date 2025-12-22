@@ -23,6 +23,7 @@ import { ProfitMarginAnalyzer } from '@/components/dashboard/ProfitMarginAnalyze
 import { DemandForecasting } from '@/components/dashboard/DemandForecasting';
 import { ExpiryDiscountEngine } from '@/components/dashboard/ExpiryDiscountEngine';
 import { QuickGlancePanel } from '@/components/dashboard/QuickGlancePanel';
+import { ROIDashboard } from '@/components/dashboard/ROIDashboard';
 import { 
   Package, 
   AlertTriangle, 
@@ -276,7 +277,17 @@ const Dashboard = () => {
           </motion.section>
         )}
 
-        {/* Expiry Discount Engine */}
+        {/* ROI Dashboard - Owner/Manager Only */}
+        {isOwnerOrManager && (
+          <motion.section 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.42 }}
+            className="mb-8 sm:mb-10"
+          >
+            <ROIDashboard invoicesScanned={12} auditLogCount={3} />
+          </motion.section>
+        )}
         {medications.length > 0 && (
           <motion.section 
             initial={{ opacity: 0, y: 20 }}

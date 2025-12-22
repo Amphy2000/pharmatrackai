@@ -78,7 +78,11 @@ export const ProductGrid = ({ medications, onAddToCart, isLoading }: ProductGrid
         med.name.toLowerCase().includes(query) ||
         med.category.toLowerCase().includes(query) ||
         med.batch_number.toLowerCase().includes(query) ||
-        med.barcode_id?.toLowerCase().includes(query)
+        med.barcode_id?.toLowerCase().includes(query) ||
+        // Clinical search: match active ingredients
+        (med as any).active_ingredients?.some((ingredient: string) => 
+          ingredient.toLowerCase().includes(query)
+        )
     );
   }, [medications, searchQuery]);
 
@@ -102,7 +106,7 @@ export const ProductGrid = ({ medications, onAddToCart, isLoading }: ProductGrid
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search medications..."
+            placeholder="Search by name, ingredient, or barcode..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10 h-12 rounded-xl bg-muted/30 border-border/50"
