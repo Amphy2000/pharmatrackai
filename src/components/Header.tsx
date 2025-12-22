@@ -51,6 +51,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { usePlatformAdmin } from '@/hooks/usePlatformAdmin';
 import { BranchSwitcher } from '@/components/header/BranchSwitcher';
 import { useBranchContext } from '@/contexts/BranchContext';
+import { OfflineIndicator } from '@/components/header/OfflineIndicator';
 
 export const Header = () => {
   const location = useLocation();
@@ -244,14 +245,8 @@ export const Header = () => {
 
           {/* Right Section */}
           <div className="flex items-center gap-2 flex-shrink-0">
-            {/* Live Status */}
-            <div className="hidden lg:flex items-center gap-2 px-3 py-1.5 rounded-full bg-success/10 border border-success/20">
-              <span className="relative flex h-2 w-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-success"></span>
-              </span>
-              <span className="text-xs font-medium text-success">Online</span>
-            </div>
+            {/* Offline/Sync Status Indicator */}
+            <OfflineIndicator />
 
             {/* Mobile Nav */}
             <div className="flex lg:hidden items-center gap-0.5">

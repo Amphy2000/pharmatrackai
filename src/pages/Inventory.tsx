@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Header } from '@/components/Header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Package, AlertTriangle, PackagePlus, ClipboardList, FileImage, Zap, Clock, FileSpreadsheet, TrendingDown, Calendar } from 'lucide-react';
+import { Package, AlertTriangle, PackagePlus, ClipboardList, FileImage, Zap, Clock, FileSpreadsheet, TrendingDown, Calendar, Download, FileText, ChevronDown } from 'lucide-react';
 import { useMedications } from '@/hooks/useMedications';
 import { ReceiveStockModal } from '@/components/inventory/ReceiveStockModal';
 import { StockCountModal } from '@/components/inventory/StockCountModal';
@@ -11,6 +11,16 @@ import { StockCSVImportModal } from '@/components/inventory/StockCSVImportModal'
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { differenceInDays, parseISO, format } from 'date-fns';
+import { exportInventoryToPDF, exportInventoryToExcel, downloadFile } from '@/utils/reportExporter';
+import { usePharmacy } from '@/hooks/usePharmacy';
+import { useCurrency } from '@/contexts/CurrencyContext';
+import { toast } from 'sonner';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 const Inventory = () => {
   const { medications } = useMedications();
@@ -18,6 +28,41 @@ const Inventory = () => {
   const [showStockCountModal, setShowStockCountModal] = useState(false);
   const [showInvoiceScannerModal, setShowInvoiceScannerModal] = useState(false);
   const [showCSVImportModal, setShowCSVImportModal] = useState(false);
+  const { pharmacy } = usePharmacy();
+  const { currency } = useCurrency();
+
+  const handleExportPDF = () => {
+    if (medications.length === 0) {
+      toast.error('No inventory data to export');
+      return;
+    }
+    const doc = exportInventoryToPDF(
+      medications.map(m => ({
+        ...m,
+        selling_price: m.selling_price ?? m.unit_price
+      })),
+      pharmacy?.name || 'Pharmacy',
+      currency as 'USD' | 'NGN' | 'GBP' | 'EUR'
+    );
+    doc.save(`inventory-report-${format(new Date(), 'yyyy-MM-dd')}.pdf`);
+    toast.success('PDF report downloaded');
+  };
+
+  const handleExportExcel = () => {
+    if (medications.length === 0) {
+      toast.error('No inventory data to export');
+      return;
+    }
+    const csv = exportInventoryToExcel(
+      medications.map(m => ({
+        ...m,
+        selling_price: m.selling_price ?? m.unit_price
+      })),
+      currency as 'USD' | 'NGN' | 'GBP' | 'EUR'
+    );
+    downloadFile(csv, `inventory-report-${format(new Date(), 'yyyy-MM-dd')}.csv`);
+    toast.success('Excel report downloaded');
+  };
 
   const today = new Date();
   const lowStockCount = medications.filter(m => m.current_stock <= m.reorder_level).length;
@@ -72,6 +117,25 @@ const Inventory = () => {
               Manage stock receiving, counting, and inventory tasks
             </p>
           </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="gap-2">
+                <Download className="h-4 w-4" />
+                Export Report
+                <ChevronDown className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={handleExportPDF} className="gap-2">
+                <FileText className="h-4 w-4" />
+                Export as PDF
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={handleExportExcel} className="gap-2">
+                <FileSpreadsheet className="h-4 w-4" />
+                Export as Excel (CSV)
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
 
         {/* Rapid Stock Entry Section */}
