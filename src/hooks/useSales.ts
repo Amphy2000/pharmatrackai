@@ -142,9 +142,9 @@ export const useSales = () => {
 
       return results;
     },
-    onSuccess: (results) => {
-      // Invalidate both medications and sales queries to refresh data
-      queryClient.invalidateQueries({ queryKey: ['medications'] });
+    onSuccess: async (results) => {
+      // Force immediate refetch of medications to ensure UI updates
+      await queryClient.refetchQueries({ queryKey: ['medications'], type: 'active' });
       queryClient.invalidateQueries({ queryKey: ['sales'] });
       
       // Check for low stock alerts

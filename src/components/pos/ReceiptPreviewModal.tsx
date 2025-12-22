@@ -50,37 +50,30 @@ export const ReceiptPreviewModal = ({
       const blob = receipt.output('blob');
       const url = URL.createObjectURL(blob);
 
-      // Print via a hidden iframe (more reliable than window.open across browsers)
-      const iframe = document.createElement('iframe');
-      iframe.style.position = 'fixed';
-      iframe.style.right = '0';
-      iframe.style.bottom = '0';
-      iframe.style.width = '0';
-      iframe.style.height = '0';
-      iframe.style.border = '0';
-      iframe.src = url;
-
-      document.body.appendChild(iframe);
-
-      iframe.onload = () => {
-        try {
-          iframe.contentWindow?.focus();
-          iframe.contentWindow?.print();
-        } finally {
+      // Open PDF in new tab - most reliable cross-browser print solution
+      const printWindow = window.open(url, '_blank');
+      
+      if (printWindow) {
+        // Wait for PDF to load then trigger print
+        printWindow.onload = () => {
           setTimeout(() => {
-            try {
-              document.body.removeChild(iframe);
-            } catch {
-              // ignore
-            }
-            URL.revokeObjectURL(url);
-          }, 1000);
-        }
-      };
+            printWindow.print();
+            setIsPrinting(false);
+          }, 500);
+        };
+        
+        // Cleanup URL after a delay to allow printing
+        setTimeout(() => {
+          URL.revokeObjectURL(url);
+        }, 60000); // Keep URL valid for 1 minute
+      } else {
+        // Fallback: download the PDF if popup blocked
+        receipt.save(`receipt-${receiptNumber}.pdf`);
+        setIsPrinting(false);
+      }
     } catch (e) {
       console.error('Print failed:', e);
-    } finally {
-      setTimeout(() => setIsPrinting(false), 1000);
+      setIsPrinting(false);
     }
   };
 
