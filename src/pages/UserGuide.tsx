@@ -191,6 +191,28 @@ const guideSections: GuideSection[] = [
       'Add NAFDAC registration numbers for official audit documents',
     ],
   },
+  {
+    id: 'compliance',
+    title: 'Regulatory Compliance (Why Generic POS Fails)',
+    icon: Shield,
+    description: 'Pharmacy-specific legal compliance features that generic retail apps cannot provide',
+    steps: [
+      'NAFDAC Compliance: Generate audit-ready PDF reports from Dashboard → NAFDAC Compliance panel',
+      'Controlled Drugs Register: Mark medications as controlled when adding, filter in compliance reports',
+      'Drug Interaction Warnings: Automatic alerts appear at checkout when conflicting drugs are in cart',
+      'Manufacturing Date Tracking: Record production dates for complete product lifecycle visibility',
+      'Batch Traceability: Track batch numbers for recall compliance',
+      'NAFDAC Reg Numbers: Store and display on compliance documents',
+      'Prescription Management: Link Rx to customer records for refill reminders',
+      'Expiry Audit Trail: Full history of expiry actions and discounting decisions',
+    ],
+    tips: [
+      'Generic retail POS (ShopKite, etc.) cannot track controlled substances legally',
+      'NAFDAC inspections require proper documentation that PharmaTrack generates automatically',
+      'Drug interaction warnings can prevent patient harm and liability',
+      'Manufacturing dates help verify product authenticity and shelf life',
+    ],
+  },
 ];
 
 const faqs = [
@@ -229,6 +251,18 @@ const faqs = [
   {
     question: 'What is the Manufacturing Date field for?',
     answer: 'The Manufacturing Date helps track complete product lifecycle for compliance. It appears in NAFDAC audit reports. If not provided, the system estimates it as 2 years before expiry.',
+  },
+  {
+    question: 'Why can\'t I use a generic retail POS like ShopKite for my pharmacy?',
+    answer: 'Generic retail apps are built for supermarkets, not pharmacies. They lack critical legal compliance features: controlled drugs register, NAFDAC audit reports, drug interaction warnings, prescription management, and manufacturing date tracking. Using a non-compliant system puts you at legal risk during inspections.',
+  },
+  {
+    question: 'What makes PharmaTrack different from other inventory apps?',
+    answer: 'PharmaTrack is purpose-built for Nigerian pharmacies with: (1) NAFDAC-ready compliance reports, (2) Controlled Drugs Register with legal audit trail, (3) Drug interaction warnings at checkout, (4) AI expiry prediction 60 days early, (5) Prescription management with refill reminders, (6) Manufacturing date tracking for product lifecycle visibility.',
+  },
+  {
+    question: 'How do drug interaction warnings work?',
+    answer: 'When you add medications to a sale at checkout, PharmaTrack automatically checks for known drug-drug interactions. If a dangerous combination is detected, you\'ll see a warning with severity level before completing the sale. This protects patients and reduces liability.',
   },
 ];
 

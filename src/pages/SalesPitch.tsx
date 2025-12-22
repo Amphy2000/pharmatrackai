@@ -27,7 +27,7 @@ const staggerContainer = {
   visible: { opacity: 1, transition: { staggerChildren: 0.1 } }
 };
 
-const slideNames = ['hero', 'problem', 'roi', 'features', 'comparison', 'insights', 'pricing', 'cta'];
+const slideNames = ['hero', 'problem', 'why-not-generic', 'roi', 'features', 'comparison', 'insights', 'pricing', 'cta'];
 
 const SalesPitch = () => {
   const [currentSlide, setCurrentSlide] = useState(0);
@@ -243,6 +243,28 @@ const SalesPitch = () => {
     { feature: 'Support', old: 'Call the vendor', pharmatrack: '24/7 Priority support', impact: 'high' },
     { feature: 'Setup Fee', old: 'Heavy upfront', pharmatrack: '₦0 option available', impact: 'high' },
     { feature: 'Updates', old: 'Pay per upgrade', pharmatrack: 'Always latest version', impact: 'medium' },
+  ];
+
+  // Generic POS vs PharmaTrack comparison (for battle card)
+  const genericPosComparison = [
+    { category: 'Legal Compliance', generic: 'Not designed for pharmacy regulations', pharmatrack: 'NAFDAC audit reports, PCN-ready documentation', critical: true },
+    { category: 'Controlled Drugs', generic: 'No narcotics tracking', pharmatrack: 'Full controlled drugs register with audit trail', critical: true },
+    { category: 'Drug Interactions', generic: 'No safety warnings', pharmatrack: 'Automatic drug interaction alerts at checkout', critical: true },
+    { category: 'Expiry Tracking', generic: 'Basic date field only', pharmatrack: 'AI predicts expiry 60 days early + auto discounts', critical: true },
+    { category: 'Manufacturing Dates', generic: 'Not tracked', pharmatrack: 'Complete product lifecycle visibility', critical: false },
+    { category: 'Prescription Management', generic: 'Not available', pharmatrack: 'Full Rx history, refill reminders, prescriber records', critical: false },
+    { category: 'NAFDAC Reg Numbers', generic: 'Not supported', pharmatrack: 'Stored and printed on compliance reports', critical: false },
+    { category: 'Batch Tracking', generic: 'Basic or none', pharmatrack: 'Full batch-level traceability for recalls', critical: false },
+  ];
+
+  // Killer questions for sales conversations
+  const killerQuestions = [
+    "Does your current app generate NAFDAC-ready compliance reports?",
+    "Can it track controlled substances with a legal audit trail?",
+    "Does it warn you about dangerous drug interactions at checkout?",
+    "Can it predict which items will expire before selling?",
+    "Does it track manufacturing dates for full product lifecycle?",
+    "Can your staff prescriptions be linked to customer records for refill reminders?",
   ];
 
   const pricing: Record<string, { name: string; tagline: string; setup: string; monthly: string; annual: string; target: string; features: string[]; popular?: boolean }> = {
@@ -473,6 +495,144 @@ const SalesPitch = () => {
               </motion.div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* SLIDE 2.5: Why Not Generic POS */}
+      <section id="slide-why-not-generic" className="min-h-screen flex items-center py-12 sm:py-24 snap-start">
+        <div className="container mx-auto px-4 sm:px-6">
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mb-10 sm:mb-16"
+          >
+            <Badge variant="outline" className="mb-4 text-warning border-warning/30">
+              <AlertTriangle className="h-3 w-3 mr-2" />
+              Critical Difference
+            </Badge>
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-display font-bold mb-4">
+              Why <span className="text-destructive">Generic Retail POS</span> Fails Pharmacies
+            </h2>
+            <p className="text-lg sm:text-xl text-muted-foreground max-w-3xl mx-auto">
+              Generic apps like ShopKite are built for supermarkets, not pharmacies. 
+              <span className="text-primary font-semibold"> You need pharmacy-specific compliance features to avoid legal trouble.</span>
+            </p>
+          </motion.div>
+
+          {/* Compliance Badges */}
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="flex flex-wrap items-center justify-center gap-4 mb-10 sm:mb-12"
+          >
+            {[
+              { icon: ShieldCheck, label: 'NAFDAC Ready', color: 'bg-success/10 border-success/30 text-success' },
+              { icon: Lock, label: 'Controlled Drugs Register', color: 'bg-destructive/10 border-destructive/30 text-destructive' },
+              { icon: BadgeCheck, label: 'PCN Compliant', color: 'bg-primary/10 border-primary/30 text-primary' },
+              { icon: Clock, label: 'Expiry AI Tracking', color: 'bg-warning/10 border-warning/30 text-warning' },
+            ].map((badge, i) => (
+              <motion.div
+                key={i}
+                initial={{ opacity: 0, scale: 0.9 }}
+                whileInView={{ opacity: 1, scale: 1 }}
+                viewport={{ once: true }}
+                transition={{ delay: i * 0.1 }}
+                className={`flex items-center gap-2 px-4 py-2 rounded-full border ${badge.color}`}
+              >
+                <badge.icon className="h-4 w-4" />
+                <span className="font-medium text-sm">{badge.label}</span>
+              </motion.div>
+            ))}
+          </motion.div>
+
+          {/* Comparison Table */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="max-w-5xl mx-auto mb-10 sm:mb-12"
+          >
+            <Card className="overflow-hidden border-2 border-primary/20">
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b bg-muted/50">
+                      <th className="text-left p-3 sm:p-4 font-display font-bold text-sm sm:text-base">Pharmacy Requirement</th>
+                      <th className="text-left p-3 sm:p-4 font-display font-bold text-destructive text-sm sm:text-base">Generic Retail POS</th>
+                      <th className="text-left p-3 sm:p-4 font-display font-bold text-primary text-sm sm:text-base">PharmaTrack</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {genericPosComparison.map((row, i) => (
+                      <tr key={i} className="border-b hover:bg-muted/30 transition-colors">
+                        <td className="p-3 sm:p-4">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-sm sm:text-base">{row.category}</span>
+                            {row.critical && (
+                              <Badge variant="destructive" className="text-[8px] sm:text-[10px]">Legal</Badge>
+                            )}
+                          </div>
+                        </td>
+                        <td className="p-3 sm:p-4">
+                          <div className="flex items-center gap-2 text-muted-foreground text-xs sm:text-sm">
+                            <X className="h-3 w-3 sm:h-4 sm:w-4 text-destructive shrink-0" />
+                            {row.generic}
+                          </div>
+                        </td>
+                        <td className="p-3 sm:p-4">
+                          <div className="flex items-center gap-2 text-xs sm:text-sm">
+                            <Check className="h-3 w-3 sm:h-4 sm:w-4 text-success shrink-0" />
+                            <span className="font-medium text-success">{row.pharmatrack}</span>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+          </motion.div>
+
+          {/* Killer Questions for Sales */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="max-w-4xl mx-auto"
+          >
+            <Card className="border-warning/30 bg-gradient-to-br from-warning/5 to-background">
+              <CardContent className="p-6 sm:p-8">
+                <div className="flex items-center gap-3 mb-6">
+                  <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-xl bg-warning/20 flex items-center justify-center">
+                    <Target className="h-5 w-5 sm:h-6 sm:w-6 text-warning" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg sm:text-xl font-display font-bold">Questions to Ask Your Pharmacist</h3>
+                    <p className="text-sm text-muted-foreground">Use these in sales conversations to expose gaps in generic POS</p>
+                  </div>
+                </div>
+                <div className="grid sm:grid-cols-2 gap-3 sm:gap-4">
+                  {killerQuestions.map((question, i) => (
+                    <motion.div
+                      key={i}
+                      initial={{ opacity: 0, x: -10 }}
+                      whileInView={{ opacity: 1, x: 0 }}
+                      viewport={{ once: true }}
+                      transition={{ delay: i * 0.1 }}
+                      className="flex items-start gap-3 p-3 rounded-lg bg-background/50 border border-border/50"
+                    >
+                      <div className="h-6 w-6 rounded-full bg-warning/20 flex items-center justify-center shrink-0 mt-0.5">
+                        <span className="text-xs font-bold text-warning">{i + 1}</span>
+                      </div>
+                      <p className="text-sm font-medium">{question}</p>
+                    </motion.div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
         </div>
       </section>
 
