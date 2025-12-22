@@ -156,10 +156,10 @@ const Landing = () => {
           
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-6">
-            <a href="#features" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Features</a>
-            <a href="#pricing" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Pricing</a>
-            <a href="#comparison" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Why PharmaTrack</a>
-            <a href="#testimonials" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Testimonials</a>
+            <button onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })} className="text-sm text-muted-foreground hover:text-foreground transition-colors">Features</button>
+            <button onClick={() => document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' })} className="text-sm text-muted-foreground hover:text-foreground transition-colors">Pricing</button>
+            <button onClick={() => document.getElementById('comparison')?.scrollIntoView({ behavior: 'smooth' })} className="text-sm text-muted-foreground hover:text-foreground transition-colors">Why PharmaTrack</button>
+            <button onClick={() => document.getElementById('testimonials')?.scrollIntoView({ behavior: 'smooth' })} className="text-sm text-muted-foreground hover:text-foreground transition-colors">Testimonials</button>
           </div>
 
           <div className="flex items-center gap-3">
@@ -182,17 +182,17 @@ const Landing = () => {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
-                <DropdownMenuItem asChild>
-                  <a href="#features">Features</a>
+                <DropdownMenuItem onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })}>
+                  Features
                 </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <a href="#pricing">Pricing</a>
+                <DropdownMenuItem onClick={() => document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' })}>
+                  Pricing
                 </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <a href="#comparison">Why PharmaTrack</a>
+                <DropdownMenuItem onClick={() => document.getElementById('comparison')?.scrollIntoView({ behavior: 'smooth' })}>
+                  Why PharmaTrack
                 </DropdownMenuItem>
-                <DropdownMenuItem asChild>
-                  <a href="#testimonials">Testimonials</a>
+                <DropdownMenuItem onClick={() => document.getElementById('testimonials')?.scrollIntoView({ behavior: 'smooth' })}>
+                  Testimonials
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
                   <Link to="/auth">Login</Link>

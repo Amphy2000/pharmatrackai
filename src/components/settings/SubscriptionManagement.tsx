@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Switch } from '@/components/ui/switch';
+import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useSubscription } from '@/hooks/useSubscription';
 import { usePharmacy } from '@/hooks/usePharmacy';
@@ -21,6 +23,8 @@ const plans = [
     setupPrice: 150000,
     monthly: '₦10,000',
     monthlyPrice: 10000,
+    annual: '₦100,000',
+    annualPrice: 100000,
     setupLabel: 'One-time Setup',
     target: 'Single-branch pharmacies looking for stability',
     features: ['Lifetime License Feel', 'Cloud Backups', '1 User Account', 'Unlimited SKUs', 'Basic POS System', 'Expiry Tracking', 'Email Support'],
@@ -35,9 +39,11 @@ const plans = [
     setupPrice: 0,
     monthly: '₦35,000',
     monthlyPrice: 35000,
+    annual: '₦350,000',
+    annualPrice: 350000,
     setupLabel: 'Zero Setup Fee',
     target: 'Fast-growing pharmacies using AI to stop waste',
-    features: ['₦0 Setup Fee', 'Automated Expiry Discounting', 'Demand Forecasting AI', 'Unlimited Users', 'Multi-Branch Ready', 'Staff Clock-in Tracking', 'NAFDAC Compliance Reports', 'Priority Support'],
+    features: ['₦0 Setup Fee', 'Automated Expiry Discounting', 'Demand Forecasting AI', 'Unlimited Users', 'Multi-Branch Ready', 'Staff Clock-in Tracking', 'NAFDAC Compliance Reports', 'Controlled Drugs Register', 'Manufacturing Date Tracking', 'Priority Support'],
     popular: true,
     buttonText: 'Subscribe',
   },
@@ -49,9 +55,11 @@ const plans = [
     setupPrice: 0,
     monthly: '₦1,000,000+',
     monthlyPrice: 1000000,
+    annual: '₦10,000,000+',
+    annualPrice: 10000000,
     setupLabel: 'Custom Quote',
     target: 'Hospital chains & international clients',
-    features: ['Everything in Pro', 'White-label Options', 'Custom API Access', 'Dedicated Account Manager', '24/7 Priority Support', 'Custom Integrations'],
+    features: ['Everything in Pro', 'White-label Options', 'Custom API Access', 'Dedicated Account Manager', '24/7 Priority Support', 'Custom Integrations', 'SLA Guarantee', 'On-site Training'],
     popular: false,
     buttonText: 'Contact Sales',
   },
@@ -63,6 +71,7 @@ export const SubscriptionManagement = () => {
   const { pharmacy } = usePharmacy();
   const { toast } = useToast();
   const [isProcessing, setIsProcessing] = useState<string | null>(null);
+  const [isAnnual, setIsAnnual] = useState(false);
 
   // Fetch billing history
   const { data: payments = [], isLoading: paymentsLoading } = useQuery({
@@ -214,10 +223,29 @@ export const SubscriptionManagement = () => {
       {/* Available Plans */}
       <Card>
         <CardHeader>
-          <CardTitle>Available Plans</CardTitle>
-          <CardDescription>
-            Choose the plan that best fits your pharmacy
-          </CardDescription>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <CardTitle>Available Plans</CardTitle>
+              <CardDescription>
+                Choose the plan that best fits your pharmacy
+              </CardDescription>
+            </div>
+            {/* Annual/Monthly Toggle */}
+            <div className="flex items-center gap-3 px-4 py-2 rounded-xl bg-muted/50 border border-border/50">
+              <Label htmlFor="billing-toggle" className={`text-sm ${!isAnnual ? 'text-primary font-medium' : 'text-muted-foreground'}`}>
+                Monthly
+              </Label>
+              <Switch
+                id="billing-toggle"
+                checked={isAnnual}
+                onCheckedChange={setIsAnnual}
+              />
+              <Label htmlFor="billing-toggle" className={`text-sm ${isAnnual ? 'text-primary font-medium' : 'text-muted-foreground'}`}>
+                Annual
+                <Badge variant="secondary" className="ml-2 text-xs">Save 17%</Badge>
+              </Label>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
           <div className="grid md:grid-cols-3 gap-6">
@@ -243,17 +271,17 @@ export const SubscriptionManagement = () => {
                       <p className="text-sm text-muted-foreground">{planOption.tagline}</p>
                     </div>
                     <div className="mt-4 space-y-1">
-                      {planOption.setupPrice > 0 && (
+                      {planOption.setupPrice > 0 && !isAnnual && (
                         <div className="flex items-baseline gap-1">
                           <span className="text-3xl font-bold">{planOption.setup}</span>
                           <span className="text-sm text-muted-foreground">{planOption.setupLabel}</span>
                         </div>
                       )}
                       <div className="flex items-baseline gap-1">
-                        <span className={`${planOption.setupPrice > 0 ? 'text-lg' : 'text-3xl font-bold'}`}>
-                          {planOption.monthly}
+                        <span className={`${planOption.setupPrice > 0 && !isAnnual ? 'text-lg' : 'text-3xl font-bold'}`}>
+                          {isAnnual ? planOption.annual : planOption.monthly}
                         </span>
-                        <span className="text-sm text-muted-foreground">/month</span>
+                        <span className="text-sm text-muted-foreground">/{isAnnual ? 'year' : 'month'}</span>
                       </div>
                     </div>
                     <p className="text-xs text-muted-foreground mt-2">{planOption.target}</p>

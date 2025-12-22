@@ -1,7 +1,7 @@
 import { Header } from '@/components/Header';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Settings as SettingsIcon, Users, Globe, CreditCard, Shield, ImageIcon, ShieldCheck, FileText } from 'lucide-react';
+import { Settings as SettingsIcon, Users, Globe, CreditCard, Shield, ImageIcon, ShieldCheck, FileText, RotateCcw } from 'lucide-react';
 import { StaffManagement } from '@/components/settings/StaffManagement';
 import { PermissionsManagement } from '@/components/settings/PermissionsManagement';
 import { RegionCurrencySettings } from '@/components/settings/RegionCurrencySettings';
@@ -11,12 +11,14 @@ import { PriceShieldSettings } from '@/components/settings/PriceShieldSettings';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useSearchParams, Navigate, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { useProductTour } from '@/hooks/useProductTour';
 
 const Settings = () => {
   const { hasPermission, userRole, isLoading } = usePermissions();
   const canManageStaff = hasPermission('manage_staff');
   const [searchParams, setSearchParams] = useSearchParams();
   const currentTab = searchParams.get('tab') || 'general';
+  const { resetTour } = useProductTour();
 
   const handleTabChange = (value: string) => {
     setSearchParams({ tab: value }, { replace: true });
@@ -75,7 +77,7 @@ const Settings = () => {
           </TabsList>
 
           <TabsContent value="general">
-            <Card>
+            <Card className="mb-6">
               <CardHeader>
                 <CardTitle>General Settings</CardTitle>
                 <CardDescription>
@@ -84,6 +86,29 @@ const Settings = () => {
               </CardHeader>
               <CardContent>
                 <RegionCurrencySettings />
+              </CardContent>
+            </Card>
+            
+            {/* Product Tour Restart */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <RotateCcw className="h-5 w-5" />
+                  Product Tour
+                </CardTitle>
+                <CardDescription>
+                  Restart the interactive guide to learn about all features
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <Button 
+                  variant="outline" 
+                  onClick={resetTour}
+                  className="gap-2"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                  Restart Product Tour
+                </Button>
               </CardContent>
             </Card>
           </TabsContent>
