@@ -41,9 +41,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { generateReceipt, generateReceiptNumber, generateInvoiceNumber } from '@/utils/receiptGenerator';
+import { generateReceipt, generateReceiptNumber, generateInvoiceNumber, PaymentMethod } from '@/utils/receiptGenerator';
 import jsPDF from 'jspdf';
-import { FileText } from 'lucide-react';
+import { FileText, Banknote, CreditCard as CreditCardIcon, Landmark } from 'lucide-react';
 
 const Checkout = () => {
   const { medications, isLoading } = useMedications();
@@ -80,6 +80,7 @@ const Checkout = () => {
   });
   
   const [customerName, setCustomerName] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [heldPanelOpen, setHeldPanelOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -87,11 +88,12 @@ const Checkout = () => {
   const [lastReceiptNumber, setLastReceiptNumber] = useState('');
   const [lastReceiptItems, setLastReceiptItems] = useState(cart.items);
   const [lastReceiptTotal, setLastReceiptTotal] = useState(0);
+  const [lastPaymentMethod, setLastPaymentMethod] = useState<PaymentMethod>('cash');
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewReceipt, setPreviewReceipt] = useState<jsPDF | null>(null);
 
   // Helper to get receipt params
-  const getReceiptParams = (isPaid: boolean = true, isDigital: boolean = false) => ({
+  const getReceiptParams = (isPaid: boolean = true, isDigital: boolean = false, method: PaymentMethod = paymentMethod) => ({
     pharmacyName: pharmacy?.name || 'PharmaTrack Pharmacy',
     pharmacyAddress: pharmacy?.address || undefined,
     pharmacyPhone: pharmacy?.phone || undefined,
@@ -100,6 +102,7 @@ const Checkout = () => {
     staffName: userProfile?.full_name || undefined,
     currency: currency as 'USD' | 'NGN' | 'GBP',
     paymentStatus: isPaid ? 'paid' : 'unpaid' as 'paid' | 'unpaid',
+    paymentMethod: method,
     enableLogoOnPrint: (pharmacy as any)?.enable_logo_on_print !== false,
     isDigitalReceipt: isDigital,
   });
@@ -191,6 +194,7 @@ const Checkout = () => {
     const currentItems = [...cart.items];
     const currentTotal = cart.getTotal();
     const currentCustomer = customerName;
+    const currentPaymentMethod = paymentMethod;
     
     try {
       await completeSale.mutateAsync({
@@ -204,6 +208,7 @@ const Checkout = () => {
       setLastReceiptNumber(receiptNumber);
       setLastReceiptItems(currentItems);
       setLastReceiptTotal(currentTotal);
+      setLastPaymentMethod(currentPaymentMethod);
       
       // Generate receipt for preview (digital version for preview always shows logo)
       const receipt = await generateReceipt({
@@ -212,7 +217,7 @@ const Checkout = () => {
         customerName: currentCustomer || undefined,
         receiptNumber,
         date: new Date(),
-        ...getReceiptParams(true, true), // isPaid=true, isDigital=true for preview
+        ...getReceiptParams(true, true, currentPaymentMethod), // isPaid=true, isDigital=true for preview
       });
       
       setPreviewReceipt(receipt);
@@ -228,6 +233,7 @@ const Checkout = () => {
   const handleNewSale = () => {
     cart.clearCart();
     setCustomerName('');
+    setPaymentMethod('cash');
     setSaleComplete(false);
     setCheckoutOpen(false);
     setPreviewOpen(false);
@@ -244,7 +250,7 @@ const Checkout = () => {
       customerName: customerName || undefined,
       receiptNumber: lastReceiptNumber,
       date: new Date(),
-      ...getReceiptParams(true, true),
+      ...getReceiptParams(true, true, lastPaymentMethod),
     });
     
     setPreviewReceipt(receipt);
@@ -495,6 +501,49 @@ const Checkout = () => {
                     onChange={(e) => setCustomerName(e.target.value)}
                     className="rounded-xl"
                   />
+                </div>
+
+                {/* Payment Method Selector */}
+                <div>
+                  <label className="text-sm font-medium mb-2 block">Payment Method</label>
+                  <div className="grid grid-cols-3 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setPaymentMethod('cash')}
+                      className={`flex flex-col items-center justify-center gap-1 p-3 rounded-xl border transition-all ${
+                        paymentMethod === 'cash'
+                          ? 'border-primary bg-primary/10 text-primary'
+                          : 'border-border/50 hover:border-primary/50 hover:bg-primary/5'
+                      }`}
+                    >
+                      <Banknote className="h-5 w-5" />
+                      <span className="text-xs font-medium">Cash</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPaymentMethod('transfer')}
+                      className={`flex flex-col items-center justify-center gap-1 p-3 rounded-xl border transition-all ${
+                        paymentMethod === 'transfer'
+                          ? 'border-primary bg-primary/10 text-primary'
+                          : 'border-border/50 hover:border-primary/50 hover:bg-primary/5'
+                      }`}
+                    >
+                      <Landmark className="h-5 w-5" />
+                      <span className="text-xs font-medium">Transfer</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setPaymentMethod('pos')}
+                      className={`flex flex-col items-center justify-center gap-1 p-3 rounded-xl border transition-all ${
+                        paymentMethod === 'pos'
+                          ? 'border-primary bg-primary/10 text-primary'
+                          : 'border-border/50 hover:border-primary/50 hover:bg-primary/5'
+                      }`}
+                    >
+                      <CreditCardIcon className="h-5 w-5" />
+                      <span className="text-xs font-medium">POS</span>
+                    </button>
+                  </div>
                 </div>
 
                 {/* Enterprise mode additional fields */}

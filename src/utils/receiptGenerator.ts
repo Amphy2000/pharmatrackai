@@ -4,6 +4,7 @@ import { format } from 'date-fns';
 
 type CurrencyCode = 'USD' | 'NGN' | 'GBP';
 type PaymentStatus = 'paid' | 'unpaid';
+export type PaymentMethod = 'cash' | 'transfer' | 'pos' | '';
 
 interface ReceiptData {
   items: CartItem[];
@@ -19,6 +20,7 @@ interface ReceiptData {
   date: Date;
   currency?: CurrencyCode;
   paymentStatus?: PaymentStatus;
+  paymentMethod?: PaymentMethod;
   enableLogoOnPrint?: boolean;
   isDigitalReceipt?: boolean;
 }
@@ -97,17 +99,19 @@ export const generateReceipt = async ({
   date,
   currency = 'NGN',
   paymentStatus = 'paid',
+  paymentMethod,
   enableLogoOnPrint = true,
   isDigitalReceipt = false,
 }: ReceiptData): Promise<jsPDF> => {
   // Calculate dynamic height based on items
-  const baseHeight = 110;
+  const baseHeight = 115; // slight bump for payment method line
   const itemHeight = items.length * 7;
   const addressHeight = pharmacyAddress ? 8 : 0;
   const phoneHeight = pharmacyPhone ? 5 : 0;
   const customerHeight = customerName ? 5 : 0;
   const pharmacistHeight = pharmacistInCharge ? 5 : 0;
   const staffHeight = staffName ? 5 : 0;
+  const paymentMethodHeight = paymentMethod ? 5 : 0;
 
   const shouldShowLogo = isDigitalReceipt || (enableLogoOnPrint && pharmacyLogoUrl);
   const logoHeight = shouldShowLogo ? 16 : 0;
@@ -120,7 +124,8 @@ export const generateReceipt = async ({
     customerHeight +
     logoHeight +
     pharmacistHeight +
-    staffHeight;
+    staffHeight +
+    paymentMethodHeight;
 
   // Create PDF optimized for thermal printers (80mm width)
   const doc = new jsPDF({
@@ -287,6 +292,19 @@ export const generateReceipt = async ({
   doc.text('Total:', margin, y);
   rightText(formatCurrency(total, currency), y);
   y += 6;
+
+  // Payment Method (if provided)
+  if (paymentMethod) {
+    const methodLabel: Record<string, string> = {
+      cash: 'Cash',
+      transfer: 'Bank Transfer',
+      pos: 'POS',
+    };
+    doc.setFont('NotoSans', 'normal');
+    doc.setFontSize(7);
+    centerText(`Payment: ${methodLabel[paymentMethod] || paymentMethod.toUpperCase()}`, y);
+    y += 5;
+  }
 
   // ============ FOOTER ============
   doc.setLineWidth(0.3);
