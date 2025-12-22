@@ -150,24 +150,31 @@ const Dashboard = () => {
           </div>
         </motion.section>
 
-        {/* Quick Glance & Shift Clock */}
+        {/* Quick Glance & Shift Clock - Side by Side */}
         <motion.section 
           variants={containerVariants}
           initial="hidden"
           animate="visible"
-          className="mb-8 sm:mb-10"
+          className="mb-6"
         >
-          <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-3">
-            <motion.div variants={itemVariants} className="lg:col-span-1">
+          <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-2">
+            <motion.div variants={itemVariants}>
               <QuickGlancePanel />
             </motion.div>
-            <motion.div variants={itemVariants} className="lg:col-span-1">
+            <motion.div variants={itemVariants}>
               <ShiftClock />
             </motion.div>
-            <motion.div variants={itemVariants} className="lg:col-span-1">
-              <StaffQuickActions />
-            </motion.div>
           </div>
+        </motion.section>
+
+        {/* Staff Quick Actions - Full Width */}
+        <motion.section 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.15 }}
+          className="mb-8 sm:mb-10"
+        >
+          <StaffQuickActions />
         </motion.section>
 
         {/* Key Metrics */}
