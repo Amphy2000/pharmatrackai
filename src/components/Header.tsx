@@ -1,9 +1,8 @@
 import React, { useState, useMemo } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { TrialBanner } from '@/components/subscription';
+import { Logo } from '@/components/Logo';
 import { 
-  Pill, 
-  Activity, 
   Bell, 
   ChevronDown,
   User,
@@ -158,22 +157,8 @@ export const Header = () => {
           <div className="flex h-16 sm:h-20 items-center justify-between gap-4 lg:gap-6">
             {/* Logo and Branch Switcher */}
             <div className="flex items-center gap-3">
-              <Link to="/dashboard" className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
-                <div className="relative">
-                  <div className="flex h-9 w-9 sm:h-11 sm:w-11 items-center justify-center rounded-xl bg-gradient-primary shadow-glow-primary">
-                    <Pill className="h-4 w-4 sm:h-5 sm:w-5 text-primary-foreground" />
-                  </div>
-                  <div className="absolute -bottom-0.5 -right-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full bg-success">
-                    <Activity className="h-2 w-2 text-success-foreground" />
-                  </div>
-                </div>
-                <div className="hidden sm:block">
-                  <h1 className="text-lg font-bold font-display tracking-tight">
-                    <span className="text-foreground">Pharma</span>
-                    <span className="text-gradient">Track</span>
-                  </h1>
-                </div>
-              </Link>
+              <Logo showText={true} linkTo="/dashboard" size="md" className="hidden sm:flex" />
+              <Logo showText={false} linkTo="/dashboard" size="md" className="flex sm:hidden" />
 
               {/* Branch Switcher - Only for Pro/Enterprise */}
               <div className="hidden md:block">
