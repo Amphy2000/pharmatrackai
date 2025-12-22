@@ -12,8 +12,12 @@ import { useSearchParams, Navigate } from 'react-router-dom';
 const Settings = () => {
   const { hasPermission, userRole, isLoading } = usePermissions();
   const canManageStaff = hasPermission('manage_staff');
-  const [searchParams] = useSearchParams();
-  const defaultTab = searchParams.get('tab') || 'general';
+  const [searchParams, setSearchParams] = useSearchParams();
+  const currentTab = searchParams.get('tab') || 'general';
+
+  const handleTabChange = (value: string) => {
+    setSearchParams({ tab: value }, { replace: true });
+  };
 
   // Only owners can access settings page
   if (!isLoading && userRole !== 'owner') {
@@ -35,7 +39,7 @@ const Settings = () => {
           </p>
         </div>
 
-        <Tabs value={defaultTab} className="space-y-6">
+        <Tabs value={currentTab} onValueChange={handleTabChange} className="space-y-6">
           <TabsList className="flex-wrap">
             <TabsTrigger value="general" className="gap-2">
               <Globe className="h-4 w-4" />
