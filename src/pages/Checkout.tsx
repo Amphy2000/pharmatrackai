@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
+import { useBarcodeScanner } from '@/hooks/useBarcodeScanner';
+import { isBefore, parseISO } from 'date-fns';
 import { 
   ArrowLeft, 
   ShoppingCart, 
@@ -93,6 +95,76 @@ const Checkout = () => {
   const [lastPaymentMethod, setLastPaymentMethod] = useState<PaymentMethod>('cash');
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewReceipt, setPreviewReceipt] = useState<jsPDF | null>(null);
+
+  // Global barcode scanner - works without focusing search bar
+  const isExpired = (expiryDate: string): boolean => {
+    return isBefore(parseISO(expiryDate), new Date());
+  };
+
+  const handleBarcodeScan = useCallback((barcode: string) => {
+    const medication = medications.find(
+      (med) => med.barcode_id === barcode || med.batch_number === barcode
+    );
+
+    if (medication) {
+      if (medication.current_stock > 0 && !isExpired(medication.expiry_date)) {
+        cart.addItem(medication);
+        toast({
+          title: 'Added to cart',
+          description: `${medication.name} scanned and added`,
+        });
+      } else if (isExpired(medication.expiry_date)) {
+        toast({
+          title: 'Cannot add expired item',
+          description: medication.name,
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: 'Out of stock',
+          description: medication.name,
+          variant: 'destructive',
+        });
+      }
+    } else {
+      toast({
+        title: 'Item not found',
+        description: `Barcode: ${barcode}`,
+      });
+    }
+  }, [medications, cart, toast]);
+
+  // Enable global scanner (works even without focus on search)
+  useBarcodeScanner({
+    onScan: handleBarcodeScan,
+    enabled: !checkoutOpen && !previewOpen && !heldPanelOpen,
+  });
+
+  // Keyboard shortcuts for +/- to adjust last item quantity
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't trigger when in input fields or dialogs
+      const target = e.target as HTMLElement;
+      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+        return;
+      }
+      if (checkoutOpen || previewOpen || heldPanelOpen) return;
+
+      const lastItemId = cart.getLastItemId();
+      if (!lastItemId) return;
+
+      if (e.key === '+' || e.key === '=') {
+        e.preventDefault();
+        cart.incrementQuantity(lastItemId);
+      } else if (e.key === '-' || e.key === '_') {
+        e.preventDefault();
+        cart.decrementQuantity(lastItemId);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [cart, checkoutOpen, previewOpen, heldPanelOpen]);
 
   // Helper to get receipt params
   const getReceiptParams = (isPaid: boolean = true, isDigital: boolean = false, method: PaymentMethod = paymentMethod) => ({
