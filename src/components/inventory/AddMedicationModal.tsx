@@ -285,10 +285,10 @@ export const AddMedicationModal = ({
                           <SelectValue placeholder="Select category" />
                         </SelectTrigger>
                       </FormControl>
-                      <SelectContent>
+                      <SelectContent className="max-h-60 overflow-y-auto z-[9999]">
                         {(Object.keys(CATEGORY_GROUPS) as ProductType[]).map((group) => (
                           <div key={group}>
-                            <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground bg-muted/50">
+                            <div className="px-2 py-1.5 text-xs font-semibold text-muted-foreground bg-muted/50 sticky top-0">
                               {group}
                             </div>
                             {CATEGORY_GROUPS[group].map((category) => (
@@ -347,7 +347,7 @@ export const AddMedicationModal = ({
                         <SelectValue placeholder="Select unit" />
                       </SelectTrigger>
                     </FormControl>
-                    <SelectContent>
+                    <SelectContent className="z-[9999]">
                       {DISPENSING_UNITS.map((unit) => (
                         <SelectItem key={unit.value} value={unit.value}>
                           {unit.label}

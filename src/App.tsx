@@ -30,6 +30,7 @@ import AdminDashboard from "./pages/AdminDashboard";
 import SalesPitch from "./pages/SalesPitch";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
+import PaymentTerminal from "./pages/PaymentTerminal";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -59,6 +60,7 @@ const App = () => (
                 <Route path="/staff-dashboard" element={<ProtectedRoute><StaffDashboard /></ProtectedRoute>} />
                 <Route path="/my-sales" element={<ProtectedRoute><MySales /></ProtectedRoute>} />
                 <Route path="/checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
+                <Route path="/payment-terminal" element={<ProtectedRoute><PaymentTerminal /></ProtectedRoute>} />
                 <Route path="/sales" element={<ProtectedRoute><SalesHistory /></ProtectedRoute>} />
                 <Route path="/customers" element={<ProtectedRoute><Customers /></ProtectedRoute>} />
                 <Route path="/branches" element={<ProtectedRoute><Branches /></ProtectedRoute>} />

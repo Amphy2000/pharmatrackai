@@ -322,6 +322,62 @@ export type Database = {
           },
         ]
       }
+      pending_transactions: {
+        Row: {
+          barcode: string
+          completed_at: string | null
+          completed_by: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          items: Json
+          notes: string | null
+          payment_method: string | null
+          pharmacy_id: string
+          short_code: string
+          status: string
+          total_amount: number
+        }
+        Insert: {
+          barcode: string
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          items: Json
+          notes?: string | null
+          payment_method?: string | null
+          pharmacy_id: string
+          short_code: string
+          status?: string
+          total_amount: number
+        }
+        Update: {
+          barcode?: string
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          items?: Json
+          notes?: string | null
+          payment_method?: string | null
+          pharmacy_id?: string
+          short_code?: string
+          status?: string
+          total_amount?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pending_transactions_pharmacy_id_fkey"
+            columns: ["pharmacy_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pharmacies: {
         Row: {
           address: string | null
