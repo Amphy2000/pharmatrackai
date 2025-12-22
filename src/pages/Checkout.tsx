@@ -96,27 +96,53 @@ const Checkout = () => {
   };
 
   const printReceipt = async (items: typeof cart.items, total: number, receiptNumber: string, custName?: string) => {
-    const receipt = await generateReceipt({
-      items,
-      total,
-      customerName: custName || undefined,
-      pharmacyName: pharmacy?.name || 'PharmaTrack Pharmacy',
-      pharmacyAddress: pharmacy?.address || undefined,
-      pharmacyPhone: pharmacy?.phone || undefined,
-      pharmacyLogoUrl: pharmacy?.logo_url || undefined,
-      receiptNumber,
-      date: new Date(),
-      currency: currency as 'USD' | 'NGN' | 'GBP',
-    });
+    try {
+      const receipt = await generateReceipt({
+        items,
+        total,
+        customerName: custName || undefined,
+        pharmacyName: pharmacy?.name || 'PharmaTrack Pharmacy',
+        pharmacyAddress: pharmacy?.address || undefined,
+        pharmacyPhone: pharmacy?.phone || undefined,
+        pharmacyLogoUrl: pharmacy?.logo_url || undefined,
+        receiptNumber,
+        date: new Date(),
+        currency: currency as 'USD' | 'NGN' | 'GBP',
+      });
 
-    // Open print dialog - optimized for thermal printers
-    const pdfBlob = receipt.output('blob');
-    const url = URL.createObjectURL(pdfBlob);
-    const printWindow = window.open(url, '_blank');
-    if (printWindow) {
-      printWindow.onload = () => {
-        printWindow.print();
+      // Create an iframe for printing instead of opening a new window
+      const pdfBlob = receipt.output('blob');
+      const url = URL.createObjectURL(pdfBlob);
+      
+      // Create hidden iframe for printing
+      const iframe = document.createElement('iframe');
+      iframe.style.position = 'fixed';
+      iframe.style.right = '0';
+      iframe.style.bottom = '0';
+      iframe.style.width = '0';
+      iframe.style.height = '0';
+      iframe.style.border = 'none';
+      iframe.src = url;
+      
+      document.body.appendChild(iframe);
+      
+      iframe.onload = () => {
+        setTimeout(() => {
+          iframe.contentWindow?.print();
+          // Clean up after printing
+          setTimeout(() => {
+            document.body.removeChild(iframe);
+            URL.revokeObjectURL(url);
+          }, 1000);
+        }, 500);
       };
+    } catch (error) {
+      console.error('Failed to print receipt:', error);
+      toast({
+        title: 'Print failed',
+        description: 'Could not generate receipt. Please try again.',
+        variant: 'destructive',
+      });
     }
   };
 
