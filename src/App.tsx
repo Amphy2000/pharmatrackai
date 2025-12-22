@@ -7,7 +7,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { CurrencyProvider } from "@/contexts/CurrencyContext";
 import { RegionalSettingsProvider } from "@/contexts/RegionalSettingsContext";
 import { BranchProvider } from "@/contexts/BranchContext";
-import { ManagerRoute } from "@/components/ManagerRoute";
+import { PermissionRoute } from "@/components/PermissionRoute";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Landing from "./pages/Landing";
 import Auth from "./pages/Auth";
@@ -57,7 +57,7 @@ const App = () => (
                 <Route path="/customers" element={<ProtectedRoute><Customers /></ProtectedRoute>} />
                 <Route path="/branches" element={<ProtectedRoute><Branches /></ProtectedRoute>} />
                 <Route path="/inventory" element={<ProtectedRoute><Inventory /></ProtectedRoute>} />
-                <Route path="/suppliers" element={<ManagerRoute><Suppliers /></ManagerRoute>} />
+                <Route path="/suppliers" element={<ProtectedRoute><PermissionRoute anyOf={["access_suppliers"]}><Suppliers /></PermissionRoute></ProtectedRoute>} />
                 <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
                 <Route path="/profile" element={<ProtectedRoute><ProfileSettings /></ProtectedRoute>} />
                 <Route path="/guide" element={<ProtectedRoute><UserGuide /></ProtectedRoute>} />
