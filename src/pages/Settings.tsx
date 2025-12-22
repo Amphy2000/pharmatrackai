@@ -35,7 +35,7 @@ const Settings = () => {
           </p>
         </div>
 
-        <Tabs defaultValue={defaultTab} className="space-y-6">
+        <Tabs value={defaultTab} className="space-y-6">
           <TabsList className="flex-wrap">
             <TabsTrigger value="general" className="gap-2">
               <Globe className="h-4 w-4" />
