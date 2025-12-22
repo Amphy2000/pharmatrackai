@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Sparkles, Loader2, Lock, Eye, EyeOff, CheckCircle } from 'lucide-react';
+import { Loader2, Lock, Eye, EyeOff, CheckCircle } from 'lucide-react';
+import { Logo } from '@/components/Logo';
 
 const ResetPassword = () => {
   const [password, setPassword] = useState('');
@@ -110,11 +111,8 @@ const ResetPassword = () => {
             <div className="relative rounded-3xl overflow-hidden">
               <div className="absolute inset-0 bg-card/60 backdrop-blur-xl border border-border/50"></div>
               <div className="relative p-8 sm:p-10 text-center">
-                <div className="flex items-center justify-center gap-3 mb-8">
-                  <div className="h-12 w-12 rounded-xl bg-gradient-primary flex items-center justify-center shadow-glow-primary">
-                    <Sparkles className="h-6 w-6 text-primary-foreground" />
-                  </div>
-                  <span className="font-display font-bold text-2xl">PharmaTrack</span>
+                <div className="flex items-center justify-center mb-8">
+                  <Logo size="md" linkTo="/auth" />
                 </div>
                 <h2 className="text-2xl font-display font-bold mb-2">Invalid or Expired Link</h2>
                 <p className="text-sm text-muted-foreground mb-6">
@@ -148,11 +146,8 @@ const ResetPassword = () => {
             
             <div className="relative p-8 sm:p-10">
               {/* Logo */}
-              <div className="flex items-center justify-center gap-3 mb-8">
-                <div className="h-12 w-12 rounded-xl bg-gradient-primary flex items-center justify-center shadow-glow-primary">
-                  <Sparkles className="h-6 w-6 text-primary-foreground" />
-                </div>
-                <span className="font-display font-bold text-2xl">PharmaTrack</span>
+              <div className="flex items-center justify-center mb-8">
+                <Logo size="md" linkTo="/auth" />
               </div>
 
               {!isSuccess ? (

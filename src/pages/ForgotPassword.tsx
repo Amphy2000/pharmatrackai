@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
-import { Sparkles, Loader2, Mail, ArrowLeft, CheckCircle } from 'lucide-react';
+import { Loader2, Mail, ArrowLeft, CheckCircle } from 'lucide-react';
+import { Logo } from '@/components/Logo';
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState('');
@@ -79,11 +80,8 @@ const ForgotPassword = () => {
             
             <div className="relative p-8 sm:p-10">
               {/* Logo */}
-              <div className="flex items-center justify-center gap-3 mb-8">
-                <div className="h-12 w-12 rounded-xl bg-gradient-primary flex items-center justify-center shadow-glow-primary">
-                  <Sparkles className="h-6 w-6 text-primary-foreground" />
-                </div>
-                <span className="font-display font-bold text-2xl">PharmaTrack</span>
+              <div className="flex items-center justify-center mb-8">
+                <Logo size="md" linkTo="/auth" />
               </div>
 
               {!isSubmitted ? (
