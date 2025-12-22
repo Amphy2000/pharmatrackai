@@ -58,11 +58,11 @@ const Dashboard = () => {
   const { pharmacy, isLoading: pharmacyLoading } = usePharmacy();
   const { medications, isLoading: medsLoading, getMetrics } = useMedications();
   const { activeShift } = useShifts();
-  const { isOwnerOrManager } = usePermissions();
+  const { isOwnerOrManager, userRole, hasPermission, isLoading: permissionsLoading } = usePermissions();
   const { formatPrice } = useCurrency();
 
   // Loading state
-  if (authLoading || pharmacyLoading) {
+  if (authLoading || pharmacyLoading || permissionsLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <motion.div 
@@ -91,6 +91,20 @@ const Dashboard = () => {
     return null;
   }
 
+  // Role-based dashboard routing
+  // Cashier (staff with no view_dashboard permission) → CashierDashboard
+  if (userRole === 'staff' && !hasPermission('view_dashboard')) {
+    navigate('/cashier-dashboard', { replace: true });
+    return null;
+  }
+
+  // Staff with view_dashboard permission (Pharmacist, Inventory Clerk) → StaffDashboard
+  if (userRole === 'staff' && hasPermission('view_dashboard')) {
+    navigate('/staff-dashboard', { replace: true });
+    return null;
+  }
+
+  // Owner and Manager get the full dashboard (continue rendering below)
   const metrics = getMetrics();
 
   // Calculate total inventory value

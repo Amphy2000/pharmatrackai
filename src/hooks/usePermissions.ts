@@ -17,6 +17,12 @@ export type PermissionKey =
   | 'access_branches'
   | 'access_suppliers'
 
+  // Granular data access
+  | 'view_own_sales'
+  | 'view_all_sales'
+  | 'view_cost_prices'
+  | 'view_profit_margins'
+
   // Actions
   | 'manage_stock_transfers'
 
@@ -33,6 +39,10 @@ export const PERMISSION_KEYS: PermissionKey[] = [
   'access_customers',
   'access_branches',
   'access_suppliers',
+  'view_own_sales',
+  'view_all_sales',
+  'view_cost_prices',
+  'view_profit_margins',
   'manage_stock_transfers',
   'manage_staff',
   'manage_settings',
@@ -54,24 +64,31 @@ export const normalizePermissionKey = (key: string): PermissionKey | null => {
 export const ROLE_TEMPLATES: Record<string, { name: string; description: string; permissions: PermissionKey[] }> = {
   cashier: {
     name: 'Cashier',
-    description: 'POS access only',
-    permissions: [],
+    description: 'POS-only access with personal transaction history',
+    permissions: ['view_own_sales'],
   },
   pharmacist: {
     name: 'Pharmacist',
-    description: 'Full clinical access: inventory, customers, prescriptions',
+    description: 'Clinical access: inventory, customers, prescriptions, branches',
     permissions: [
       'view_dashboard',
       'access_inventory',
       'access_customers',
       'access_branches',
       'view_reports',
+      'view_own_sales',
     ],
   },
   inventory_clerk: {
     name: 'Inventory Clerk',
     description: 'Inventory + branches, can transfer stock',
-    permissions: ['view_dashboard', 'access_inventory', 'access_branches', 'manage_stock_transfers'],
+    permissions: [
+      'view_dashboard',
+      'access_inventory',
+      'access_branches',
+      'manage_stock_transfers',
+      'view_own_sales',
+    ],
   },
   senior_staff: {
     name: 'Senior Staff',
@@ -84,6 +101,7 @@ export const ROLE_TEMPLATES: Record<string, { name: string; description: string;
       'access_suppliers',
       'view_reports',
       'view_analytics',
+      'view_all_sales',
       'manage_stock_transfers',
     ],
   },
@@ -129,6 +147,26 @@ export const PERMISSION_LABELS: Record<PermissionKey, { label: string; descripti
   view_financial_data: {
     label: 'View Financial Data',
     description: 'Access to revenue, profit margins, and costs',
+    category: 'Data Access',
+  },
+  view_own_sales: {
+    label: 'View Own Sales',
+    description: 'Can view their own transaction history',
+    category: 'Data Access',
+  },
+  view_all_sales: {
+    label: 'View All Sales',
+    description: 'Can view all staff transaction history',
+    category: 'Data Access',
+  },
+  view_cost_prices: {
+    label: 'View Cost Prices',
+    description: 'Can see medication cost/purchase prices',
+    category: 'Data Access',
+  },
+  view_profit_margins: {
+    label: 'View Profit Margins',
+    description: 'Can see profit margin data and analytics',
     category: 'Data Access',
   },
   manage_stock_transfers: {
