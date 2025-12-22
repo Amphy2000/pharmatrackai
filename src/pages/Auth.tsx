@@ -121,7 +121,7 @@ const Auth = () => {
             The Intelligence Layer for <span className="text-gradient-premium">Your Pharmacy</span>
           </h1>
           <p className="text-lg text-muted-foreground mb-8">
-            Join 500+ pharmacies using AI to eliminate waste and maximize profit.
+            Built by pharmacists, for pharmacists. Protect your license, eliminate waste, and grow your profit.
           </p>
           
           <div className="space-y-4">
