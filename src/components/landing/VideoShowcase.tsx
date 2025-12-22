@@ -3,7 +3,6 @@ import { Play, Clock, Users, Star, MessageSquare } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-
 interface Testimonial {
   name: string;
   role: string;
@@ -14,62 +13,62 @@ interface Testimonial {
   metricLabel: string;
   avatar?: string;
 }
-
-const testimonials: Testimonial[] = [
-  {
-    name: 'Pharm. Adebayo Okonkwo',
-    role: 'Owner',
-    pharmacy: 'HealthPlus Pharmacy',
-    location: 'Lagos, Nigeria',
-    quote: "Before PharmaTrack, we lost ₦800,000 yearly to expired drugs. Now our AI predicts demand and auto-discounts items 30 days before expiry. We've recovered that entire loss.",
-    metric: '₦800K',
-    metricLabel: 'Recovered yearly'
-  },
-  {
-    name: 'Pharm. Chioma Eze',
-    role: 'Manager',
-    pharmacy: 'MediCare Plus',
-    location: 'Abuja, Nigeria',
-    quote: "Staff used to give discounts to friends without my knowledge. The Price Lock feature stopped that immediately. My margins increased by 12% in the first month.",
-    metric: '12%',
-    metricLabel: 'Margin increase'
-  },
-  {
-    name: 'Pharm. Ibrahim Musa',
-    role: 'Owner',
-    pharmacy: 'Sunrise Pharmacy',
-    location: 'Kano, Nigeria',
-    quote: "NAFDAC inspection used to stress me for days. Now I generate compliance reports in 2 minutes. The batch tracking saved my license during the last audit.",
-    metric: '2 min',
-    metricLabel: 'Audit prep time'
-  },
-  {
-    name: 'Pharm. Ngozi Uche',
-    role: 'Owner',
-    pharmacy: 'Unity Pharmacy',
-    location: 'Port Harcourt, Nigeria',
-    quote: "The invoice scanner changed everything. I used to spend 2 hours entering stock from wholesaler deliveries. Now it takes 5 minutes. That's time I spend with customers.",
-    metric: '95%',
-    metricLabel: 'Time saved on stock entry'
-  }
-];
-
+const testimonials: Testimonial[] = [{
+  name: 'Pharm. Adebayo Okonkwo',
+  role: 'Owner',
+  pharmacy: 'HealthPlus Pharmacy',
+  location: 'Lagos, Nigeria',
+  quote: "Before PharmaTrack, we lost ₦800,000 yearly to expired drugs. Now our AI predicts demand and auto-discounts items 30 days before expiry. We've recovered that entire loss.",
+  metric: '₦800K',
+  metricLabel: 'Recovered yearly'
+}, {
+  name: 'Pharm. Chioma Eze',
+  role: 'Manager',
+  pharmacy: 'MediCare Plus',
+  location: 'Abuja, Nigeria',
+  quote: "Staff used to give discounts to friends without my knowledge. The Price Lock feature stopped that immediately. My margins increased by 12% in the first month.",
+  metric: '12%',
+  metricLabel: 'Margin increase'
+}, {
+  name: 'Pharm. Ibrahim Musa',
+  role: 'Owner',
+  pharmacy: 'Sunrise Pharmacy',
+  location: 'Kano, Nigeria',
+  quote: "NAFDAC inspection used to stress me for days. Now I generate compliance reports in 2 minutes. The batch tracking saved my license during the last audit.",
+  metric: '2 min',
+  metricLabel: 'Audit prep time'
+}, {
+  name: 'Pharm. Ngozi Uche',
+  role: 'Owner',
+  pharmacy: 'Unity Pharmacy',
+  location: 'Port Harcourt, Nigeria',
+  quote: "The invoice scanner changed everything. I used to spend 2 hours entering stock from wholesaler deliveries. Now it takes 5 minutes. That's time I spend with customers.",
+  metric: '95%',
+  metricLabel: 'Time saved on stock entry'
+}];
 const fadeInUp = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0 }
+  hidden: {
+    opacity: 0,
+    y: 20
+  },
+  visible: {
+    opacity: 1,
+    y: 0
+  }
 };
-
 export const VideoShowcase = () => {
-  return (
-    <section className="py-16 sm:py-24 relative bg-muted/30">
+  return <section className="py-16 sm:py-24 relative bg-muted/30">
       <div className="container mx-auto px-4 sm:px-6">
         {/* Video Section */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="text-center mb-12"
-        >
+        <motion.div initial={{
+        opacity: 0,
+        y: 20
+      }} whileInView={{
+        opacity: 1,
+        y: 0
+      }} viewport={{
+        once: true
+      }} className="text-center mb-12">
           <Badge className="mb-4 bg-primary/10 text-primary border-primary/30">
             <Play className="h-3 w-3 mr-2" />
             Product Demo
@@ -83,12 +82,15 @@ export const VideoShowcase = () => {
         </motion.div>
 
         {/* Video Placeholder */}
-        <motion.div
-          initial={{ opacity: 0, scale: 0.95 }}
-          whileInView={{ opacity: 1, scale: 1 }}
-          viewport={{ once: true }}
-          className="max-w-4xl mx-auto mb-20"
-        >
+        <motion.div initial={{
+        opacity: 0,
+        scale: 0.95
+      }} whileInView={{
+        opacity: 1,
+        scale: 1
+      }} viewport={{
+        once: true
+      }} className="max-w-4xl mx-auto mb-20">
           <Card className="overflow-hidden border-2 border-dashed border-primary/30 bg-gradient-to-br from-primary/5 to-primary/10">
             <CardContent className="p-0">
               <div className="relative aspect-video flex items-center justify-center">
@@ -96,26 +98,29 @@ export const VideoShowcase = () => {
                 <div className="absolute inset-0 bg-gradient-to-br from-background via-primary/5 to-secondary/10" />
                 
                 {/* Decorative Elements */}
-                <motion.div 
-                  className="absolute top-1/4 left-1/4 w-32 h-32 bg-primary/10 rounded-full blur-2xl"
-                  animate={{ scale: [1, 1.2, 1], opacity: [0.5, 0.8, 0.5] }}
-                  transition={{ duration: 4, repeat: Infinity }}
-                />
-                <motion.div 
-                  className="absolute bottom-1/4 right-1/4 w-24 h-24 bg-secondary/10 rounded-full blur-2xl"
-                  animate={{ scale: [1.2, 1, 1.2], opacity: [0.8, 0.5, 0.8] }}
-                  transition={{ duration: 4, repeat: Infinity, delay: 2 }}
-                />
+                <motion.div className="absolute top-1/4 left-1/4 w-32 h-32 bg-primary/10 rounded-full blur-2xl" animate={{
+                scale: [1, 1.2, 1],
+                opacity: [0.5, 0.8, 0.5]
+              }} transition={{
+                duration: 4,
+                repeat: Infinity
+              }} />
+                <motion.div className="absolute bottom-1/4 right-1/4 w-24 h-24 bg-secondary/10 rounded-full blur-2xl" animate={{
+                scale: [1.2, 1, 1.2],
+                opacity: [0.8, 0.5, 0.8]
+              }} transition={{
+                duration: 4,
+                repeat: Infinity,
+                delay: 2
+              }} />
                 
                 {/* Play Button */}
-                <motion.div 
-                  className="relative z-10 flex flex-col items-center gap-4"
-                  whileHover={{ scale: 1.05 }}
-                >
-                  <motion.div 
-                    className="w-20 h-20 rounded-full bg-primary/20 backdrop-blur-sm border border-primary/30 flex items-center justify-center cursor-pointer group"
-                    whileHover={{ boxShadow: '0 0 30px hsl(var(--primary) / 0.4)' }}
-                  >
+                <motion.div className="relative z-10 flex flex-col items-center gap-4" whileHover={{
+                scale: 1.05
+              }}>
+                  <motion.div className="w-20 h-20 rounded-full bg-primary/20 backdrop-blur-sm border border-primary/30 flex items-center justify-center cursor-pointer group" whileHover={{
+                  boxShadow: '0 0 30px hsl(var(--primary) / 0.4)'
+                }}>
                     <Play className="w-8 h-8 text-primary ml-1 group-hover:scale-110 transition-transform" />
                   </motion.div>
                   <div className="text-center">
@@ -137,12 +142,15 @@ export const VideoShowcase = () => {
         </motion.div>
 
         {/* Testimonials Section */}
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="text-center mb-12"
-        >
+        <motion.div initial={{
+        opacity: 0,
+        y: 20
+      }} whileInView={{
+        opacity: 1,
+        y: 0
+      }} viewport={{
+        once: true
+      }} className="text-center mb-12">
           <Badge className="mb-4 bg-success/10 text-success border-success/30">
             <Star className="h-3 w-3 mr-2" />
             Real Results
@@ -157,14 +165,17 @@ export const VideoShowcase = () => {
 
         {/* Testimonial Cards */}
         <div className="grid md:grid-cols-2 gap-6 max-w-5xl mx-auto">
-          {testimonials.map((testimonial, i) => (
-            <motion.div
-              key={i}
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: i * 0.1 }}
-            >
+          {testimonials.map((testimonial, i) => <motion.div key={i} initial={{
+          opacity: 0,
+          y: 30
+        }} whileInView={{
+          opacity: 1,
+          y: 0
+        }} viewport={{
+          once: true
+        }} transition={{
+          delay: i * 0.1
+        }}>
               <Card className="h-full bg-card/80 backdrop-blur-sm border-border/50 overflow-hidden group hover:border-primary/30 transition-all">
                 <CardContent className="p-6">
                   {/* Metric Badge */}
@@ -178,7 +189,7 @@ export const VideoShowcase = () => {
                       </div>
                       <div>
                         <p className="font-semibold text-foreground">{testimonial.name}</p>
-                        <p className="text-xs text-muted-foreground">{testimonial.role}, {testimonial.pharmacy}</p>
+                        
                       </div>
                     </div>
                     <div className="text-right">
@@ -204,22 +215,23 @@ export const VideoShowcase = () => {
                   </div>
                 </CardContent>
               </Card>
-            </motion.div>
-          ))}
+            </motion.div>)}
         </div>
 
         {/* CTA */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="text-center mt-12"
-        >
+        <motion.div initial={{
+        opacity: 0,
+        y: 20
+      }} whileInView={{
+        opacity: 1,
+        y: 0
+      }} viewport={{
+        once: true
+      }} className="text-center mt-12">
           <Button size="lg" className="bg-gradient-primary hover:opacity-90 shadow-glow-primary">
             Join 100+ Nigerian Pharmacies
           </Button>
         </motion.div>
       </div>
-    </section>
-  );
+    </section>;
 };
