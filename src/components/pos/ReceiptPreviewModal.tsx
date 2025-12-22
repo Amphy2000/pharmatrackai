@@ -47,34 +47,52 @@ export const ReceiptPreviewModal = ({
     setIsPrinting(true);
 
     try {
+      // Download the PDF first
+      receipt.save(`receipt-${receiptNumber}.pdf`);
+      
+      // Then open print dialog for the blob URL
       const blob = receipt.output('blob');
       const url = URL.createObjectURL(blob);
-
-      // Open the PDF in a new tab/window (same-origin blob URL), then trigger the system print dialog.
-      // This avoids cross-origin iframe access issues.
-      const printWindow = window.open(url, '_blank', 'noopener,noreferrer');
-
-      if (!printWindow) {
-        // Popup blocked – fall back to download.
-        receipt.save(`receipt-${receiptNumber}.pdf`);
-        return;
-      }
-
-      // Give the browser a moment to load the PDF plugin/viewer before printing.
-      setTimeout(() => {
-        try {
-          printWindow.focus();
-          printWindow.print();
-        } catch (e) {
-          console.error('Print failed:', e);
-          receipt.save(`receipt-${receiptNumber}.pdf`);
-        }
-      }, 700);
-
-      // Revoke after a while (not immediately) to avoid breaking the opened tab.
-      setTimeout(() => URL.revokeObjectURL(url), 60_000);
+      
+      // Create an invisible iframe for printing
+      const printFrame = document.createElement('iframe');
+      printFrame.style.position = 'fixed';
+      printFrame.style.right = '0';
+      printFrame.style.bottom = '0';
+      printFrame.style.width = '0';
+      printFrame.style.height = '0';
+      printFrame.style.border = 'none';
+      printFrame.src = url;
+      
+      document.body.appendChild(printFrame);
+      
+      printFrame.onload = () => {
+        setTimeout(() => {
+          try {
+            printFrame.contentWindow?.focus();
+            printFrame.contentWindow?.print();
+          } catch (e) {
+            // If iframe print fails, open in new tab
+            const printWindow = window.open(url, '_blank');
+            if (printWindow) {
+              printWindow.onload = () => {
+                printWindow.focus();
+                printWindow.print();
+              };
+            }
+          }
+          
+          // Cleanup after printing
+          setTimeout(() => {
+            document.body.removeChild(printFrame);
+            URL.revokeObjectURL(url);
+          }, 1000);
+        }, 500);
+      };
+    } catch (e) {
+      console.error('Print failed:', e);
     } finally {
-      setTimeout(() => setIsPrinting(false), 900);
+      setTimeout(() => setIsPrinting(false), 1500);
     }
   };
 
@@ -97,7 +115,6 @@ export const ReceiptPreviewModal = ({
           files: [file],
         });
       } else {
-        // Fallback to download
         handleDownload();
       }
     } catch (error) {

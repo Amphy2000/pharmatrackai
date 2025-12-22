@@ -20,7 +20,7 @@ interface ReceiptData {
   currency?: CurrencyCode;
   paymentStatus?: PaymentStatus;
   enableLogoOnPrint?: boolean;
-  isDigitalReceipt?: boolean; // For WhatsApp/PDF - always shows logo
+  isDigitalReceipt?: boolean;
 }
 
 const CURRENCY_SYMBOLS: Record<CurrencyCode, string> = {
@@ -38,7 +38,7 @@ const CURRENCY_LOCALES: Record<CurrencyCode, string> = {
 const formatCurrency = (amount: number, currency: CurrencyCode = 'NGN'): string => {
   const symbol = CURRENCY_SYMBOLS[currency];
   const locale = CURRENCY_LOCALES[currency];
-  return `${symbol}${amount.toLocaleString(locale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  return `${symbol}${amount.toLocaleString(locale, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 };
 
 export const generateReceipt = async ({
@@ -58,16 +58,15 @@ export const generateReceipt = async ({
   enableLogoOnPrint = true,
   isDigitalReceipt = false,
 }: ReceiptData): Promise<jsPDF> => {
-  // Calculate dynamic height based on items - optimized for paper saving
-  const baseHeight = 100;
-  const itemHeight = items.length * 8; // Reduced from 12
-  const addressHeight = pharmacyAddress ? 6 : 0;
-  const phoneHeight = pharmacyPhone ? 4 : 0;
-  const customerHeight = customerName ? 4 : 0;
-  const pharmacistHeight = pharmacistInCharge ? 4 : 0;
-  const staffHeight = staffName ? 4 : 0;
+  // Calculate dynamic height based on items
+  const baseHeight = 110;
+  const itemHeight = items.length * 7;
+  const addressHeight = pharmacyAddress ? 8 : 0;
+  const phoneHeight = pharmacyPhone ? 5 : 0;
+  const customerHeight = customerName ? 5 : 0;
+  const pharmacistHeight = pharmacistInCharge ? 5 : 0;
+  const staffHeight = staffName ? 5 : 0;
   
-  // Only add logo height if we're showing it
   const shouldShowLogo = isDigitalReceipt || (enableLogoOnPrint && pharmacyLogoUrl);
   const logoHeight = shouldShowLogo ? 16 : 0;
   
@@ -76,7 +75,7 @@ export const generateReceipt = async ({
   // Create PDF optimized for thermal printers (80mm width)
   const doc = new jsPDF({
     unit: 'mm',
-    format: [80, Math.max(totalHeight, 90)],
+    format: [80, Math.max(totalHeight, 100)],
     orientation: 'portrait',
   });
 
@@ -84,21 +83,19 @@ export const generateReceipt = async ({
   const margin = 4;
   let y = 6;
 
-  // Helper function for centered text
+  // Helper functions
   const centerText = (text: string, yPos: number, fontSize: number = 10) => {
     doc.setFontSize(fontSize);
     const textWidth = doc.getTextWidth(text);
     doc.text(text, (pageWidth - textWidth) / 2, yPos);
   };
 
-  // Helper function for right-aligned text
   const rightText = (text: string, yPos: number) => {
     const textWidth = doc.getTextWidth(text);
     doc.text(text, pageWidth - margin - textWidth, yPos);
   };
 
-  // ============ PHARMACY BRANDING HEADER ============
-  // Add logo if enabled and available (digital receipts always show logo)
+  // ============ HEADER ============
   if (shouldShowLogo && pharmacyLogoUrl) {
     try {
       const logoImg = await loadImage(pharmacyLogoUrl);
@@ -106,17 +103,16 @@ export const generateReceipt = async ({
       doc.addImage(logoImg, 'PNG', (pageWidth - logoSize) / 2, y, logoSize, logoSize);
       y += logoSize + 2;
     } catch (error) {
-      console.error('Failed to load logo for receipt:', error);
-      // Fall back to text header
+      console.error('Failed to load logo:', error);
     }
   }
 
-  // Pharmacy Name (Bold H1 style)
+  // Pharmacy Name
   doc.setFont('helvetica', 'bold');
-  centerText(pharmacyName.toUpperCase(), y, 12);
+  centerText(pharmacyName.toUpperCase(), y, 11);
   y += 5;
 
-  // Pharmacy address
+  // Address
   if (pharmacyAddress) {
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(7);
@@ -127,113 +123,118 @@ export const generateReceipt = async ({
     });
   }
 
-  // Pharmacy phone
+  // Phone
   if (pharmacyPhone) {
     doc.setFont('helvetica', 'normal');
     centerText(`Tel: ${pharmacyPhone}`, y, 7);
-    y += 3;
-  }
-
-  // Pharmacist in Charge (optional)
-  if (pharmacistInCharge) {
-    doc.setFont('helvetica', 'italic');
-    centerText(`Pharmacist: ${pharmacistInCharge}`, y, 7);
-    y += 3;
+    y += 4;
   }
 
   y += 2;
 
-  // Thin divider
-  doc.setDrawColor(180);
+  // Divider
+  doc.setDrawColor(0);
+  doc.setLineWidth(0.3);
+  doc.line(margin, y, pageWidth - margin, y);
+  y += 5;
+
+  // Receipt info row
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(7);
+  doc.text(`#${receiptNumber}`, margin, y);
+  doc.setFont('helvetica', 'normal');
+  rightText(format(date, 'dd/MM/yy HH:mm'), y);
+  y += 4;
+
+  if (customerName) {
+    doc.text(`Customer: ${customerName}`, margin, y);
+    y += 4;
+  }
+
+  // Payment Status
+  const statusText = paymentStatus === 'paid' ? 'PAID' : 'UNPAID';
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  if (paymentStatus === 'paid') {
+    doc.setTextColor(0, 128, 0);
+  } else {
+    doc.setTextColor(220, 20, 60);
+  }
+  centerText(`[ ${statusText} ]`, y);
+  doc.setTextColor(0);
+  y += 6;
+
+  // ============ TABLE HEADER ============
+  doc.setDrawColor(0);
   doc.setLineWidth(0.3);
   doc.line(margin, y, pageWidth - margin, y);
   y += 4;
 
-  // Receipt info - compact layout
-  doc.setFont('helvetica', 'normal');
+  // Column positions
+  const colSN = margin;
+  const colItem = margin + 7;
+  const colQty = 44;
+  const colPrice = 54;
+  const colTotal = pageWidth - margin;
+
+  doc.setFont('helvetica', 'bold');
   doc.setFontSize(7);
-  doc.text(`#${receiptNumber}`, margin, y);
-  rightText(format(date, 'dd/MM/yy HH:mm'), y);
+  doc.text('S/N', colSN, y);
+  doc.text('Item', colItem, y);
+  doc.text('Qty', colQty, y);
+  doc.text('Price', colPrice, y);
+  rightText('Total', y);
   y += 3;
 
-  if (customerName) {
-    doc.text(`Customer: ${customerName}`, margin, y);
-    y += 3;
-  }
-
-  // Payment Status Badge
-  const statusText = paymentStatus === 'paid' ? 'PAID' : 'UNPAID';
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(8);
-  if (paymentStatus === 'paid') {
-    doc.setTextColor(34, 139, 34); // Green
-  } else {
-    doc.setTextColor(220, 20, 60); // Red
-  }
-  centerText(`[ ${statusText} ]`, y);
-  doc.setTextColor(0);
-  y += 5;
-
-  // Divider before items
-  doc.setDrawColor(180);
   doc.line(margin, y, pageWidth - margin, y);
   y += 3;
 
-  // Column headers - compact
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(7);
-  doc.text('Item', margin, y);
-  doc.text('Qty', 48, y);
-  rightText('Amt', y);
-  y += 3;
-
+  // ============ TABLE ROWS ============
   doc.setFont('helvetica', 'normal');
-  doc.setDrawColor(200);
-  doc.setLineWidth(0.2);
-  doc.line(margin, y, pageWidth - margin, y);
-  y += 3;
-
-  // Items - compact format
-  items.forEach((item) => {
+  
+  items.forEach((item, index) => {
     const price = item.medication.selling_price || item.medication.unit_price;
     const itemTotal = price * item.quantity;
 
-    // Item name (truncate if needed)
+    // Truncate item name if needed
     let itemName = item.medication.name;
     doc.setFontSize(7);
-    if (doc.getTextWidth(itemName) > 40) {
-      while (doc.getTextWidth(itemName + '..') > 40 && itemName.length > 0) {
+    const maxItemWidth = colQty - colItem - 2;
+    if (doc.getTextWidth(itemName) > maxItemWidth) {
+      while (doc.getTextWidth(itemName + '..') > maxItemWidth && itemName.length > 0) {
         itemName = itemName.slice(0, -1);
       }
       itemName += '..';
     }
 
-    doc.text(itemName, margin, y);
-    doc.text(`x${item.quantity}`, 48, y);
+    // S/N
+    doc.text(`${index + 1}`, colSN, y);
+    // Item
+    doc.text(itemName, colItem, y);
+    // Qty
+    doc.text(`${item.quantity}`, colQty, y);
+    // Price
+    doc.text(formatCurrency(price, currency), colPrice, y);
+    // Total
     rightText(formatCurrency(itemTotal, currency), y);
-    y += 4;
-
-    // Unit price on same line (smaller)
-    doc.setFontSize(6);
-    doc.setTextColor(100);
-    doc.text(`@${formatCurrency(price, currency)}`, margin, y);
-    doc.setTextColor(0);
-    y += 4;
+    
+    y += 5;
   });
 
-  // Total section
-  doc.setDrawColor(180);
+  // ============ TOTAL ============
+  y += 1;
+  doc.setLineWidth(0.3);
   doc.line(margin, y, pageWidth - margin, y);
-  y += 4;
+  y += 5;
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(10);
-  doc.text('TOTAL:', margin, y);
+  doc.text('Total:', margin, y);
   rightText(formatCurrency(total, currency), y);
   y += 6;
 
-  // Footer
-  doc.setDrawColor(180);
+  // ============ FOOTER ============
+  doc.setLineWidth(0.3);
   doc.line(margin, y, pageWidth - margin, y);
   y += 4;
 
@@ -244,7 +245,6 @@ export const generateReceipt = async ({
   centerText('Get well soon. Visit us again!', y);
   y += 4;
 
-  // Staff name at footer
   if (staffName) {
     doc.setFontSize(6);
     doc.setTextColor(80);
@@ -253,7 +253,6 @@ export const generateReceipt = async ({
     y += 3;
   }
 
-  // Powered by branding
   doc.setFontSize(6);
   doc.setTextColor(120);
   centerText('Powered by PharmaTrack AI', y);
@@ -274,27 +273,20 @@ export const generateInvoiceNumber = (): string => {
   return `INV-${timestamp}-${random}`;
 };
 
-// Helper function to load image as base64
 const loadImage = (url: string): Promise<string> => {
   return new Promise((resolve, reject) => {
-    // Use fetch to handle CORS properly for Supabase storage URLs
     fetch(url, { mode: 'cors' })
       .then(response => {
-        if (!response.ok) {
-          throw new Error('Failed to fetch image');
-        }
+        if (!response.ok) throw new Error('Failed to fetch image');
         return response.blob();
       })
       .then(blob => {
         const reader = new FileReader();
-        reader.onloadend = () => {
-          resolve(reader.result as string);
-        };
+        reader.onloadend = () => resolve(reader.result as string);
         reader.onerror = () => reject(new Error('Failed to read image blob'));
         reader.readAsDataURL(blob);
       })
       .catch(() => {
-        // Fallback to Image approach if fetch fails
         const img = new Image();
         img.crossOrigin = 'anonymous';
         img.onload = () => {
