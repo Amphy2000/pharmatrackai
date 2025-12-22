@@ -10,7 +10,8 @@ import {
   Pause,
   Clock,
   Zap,
-  Building2
+  Building2,
+  Eye
 } from 'lucide-react';
 import { useMedications } from '@/hooks/useMedications';
 import { useCart } from '@/hooks/useCart';
@@ -24,6 +25,7 @@ import { ProductGrid } from '@/components/pos/ProductGrid';
 import { CartPanel } from '@/components/pos/CartPanel';
 import { HeldTransactionsPanel } from '@/components/pos/HeldTransactionsPanel';
 import { DrugInteractionWarning } from '@/components/pos/DrugInteractionWarning';
+import { ReceiptPreviewModal } from '@/components/pos/ReceiptPreviewModal';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -37,6 +39,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { generateReceipt, generateReceiptNumber } from '@/utils/receiptGenerator';
+import jsPDF from 'jspdf';
 
 const Checkout = () => {
   const { medications, isLoading } = useMedications();
@@ -63,6 +66,8 @@ const Checkout = () => {
   const [lastReceiptNumber, setLastReceiptNumber] = useState('');
   const [lastReceiptItems, setLastReceiptItems] = useState(cart.items);
   const [lastReceiptTotal, setLastReceiptTotal] = useState(0);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewReceipt, setPreviewReceipt] = useState<jsPDF | null>(null);
 
   const handleHoldSale = () => {
     if (cart.items.length === 0) return;
@@ -169,9 +174,22 @@ const Checkout = () => {
       setLastReceiptItems(currentItems);
       setLastReceiptTotal(currentTotal);
       
-      // Print receipt with pharmacy branding
-      printReceipt(currentItems, currentTotal, receiptNumber, currentCustomer);
-
+      // Generate receipt for preview
+      const receipt = await generateReceipt({
+        items: currentItems,
+        total: currentTotal,
+        customerName: currentCustomer || undefined,
+        pharmacyName: pharmacy?.name || 'PharmaTrack Pharmacy',
+        pharmacyAddress: pharmacy?.address || undefined,
+        pharmacyPhone: pharmacy?.phone || undefined,
+        pharmacyLogoUrl: pharmacy?.logo_url || undefined,
+        receiptNumber,
+        date: new Date(),
+        currency: currency as 'USD' | 'NGN' | 'GBP',
+      });
+      
+      setPreviewReceipt(receipt);
+      setPreviewOpen(true);
       setSaleComplete(true);
     } catch (error) {
       console.error('Sale failed:', error);
@@ -185,11 +203,33 @@ const Checkout = () => {
     setCustomerName('');
     setSaleComplete(false);
     setCheckoutOpen(false);
+    setPreviewOpen(false);
+    setPreviewReceipt(null);
   };
 
-  const handlePrintLastReceipt = () => {
+  const handlePrintLastReceipt = async () => {
     if (!lastReceiptNumber || lastReceiptItems.length === 0) return;
-    printReceipt(lastReceiptItems, lastReceiptTotal, lastReceiptNumber, customerName);
+    
+    const receipt = await generateReceipt({
+      items: lastReceiptItems,
+      total: lastReceiptTotal,
+      customerName: customerName || undefined,
+      pharmacyName: pharmacy?.name || 'PharmaTrack Pharmacy',
+      pharmacyAddress: pharmacy?.address || undefined,
+      pharmacyPhone: pharmacy?.phone || undefined,
+      pharmacyLogoUrl: pharmacy?.logo_url || undefined,
+      receiptNumber: lastReceiptNumber,
+      date: new Date(),
+      currency: currency as 'USD' | 'NGN' | 'GBP',
+    });
+    
+    setPreviewReceipt(receipt);
+    setPreviewOpen(true);
+  };
+
+  const handlePreviewPrintComplete = () => {
+    // Close preview after printing
+    setPreviewOpen(false);
   };
 
   return (
@@ -402,8 +442,8 @@ const Checkout = () => {
                     'Processing...'
                   ) : (
                     <>
-                      <Printer className="h-4 w-4" />
-                      Complete & Print
+                      <Eye className="h-4 w-4" />
+                      Complete & Preview
                     </>
                   )}
                 </Button>
@@ -429,8 +469,8 @@ const Checkout = () => {
                   onClick={handlePrintLastReceipt}
                   className="gap-2"
                 >
-                  <Printer className="h-4 w-4" />
-                  Print Again
+                  <Eye className="h-4 w-4" />
+                  View Receipt
                 </Button>
                 <Button
                   onClick={handleNewSale}
@@ -443,6 +483,15 @@ const Checkout = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Receipt Preview Modal */}
+      <ReceiptPreviewModal
+        open={previewOpen}
+        onOpenChange={setPreviewOpen}
+        receipt={previewReceipt}
+        receiptNumber={lastReceiptNumber}
+        onPrint={handlePreviewPrintComplete}
+      />
     </div>
   );
 };
