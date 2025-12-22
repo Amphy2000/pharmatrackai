@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { CartItem } from '@/types/medication';
 import { useToast } from '@/hooks/use-toast';
@@ -65,6 +66,31 @@ export const useSales = () => {
     },
     enabled: !!pharmacyId,
   });
+
+  // Real-time subscription for sales updates
+  useEffect(() => {
+    if (!pharmacyId) return;
+
+    const channel = supabase
+      .channel('sales-realtime')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'sales',
+          filter: `pharmacy_id=eq.${pharmacyId}`,
+        },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ['sales', pharmacyId] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [pharmacyId, queryClient]);
 
   const completeSale = useMutation({
     mutationFn: async ({ items, customerName, shiftId }: CompleteSaleParams) => {
