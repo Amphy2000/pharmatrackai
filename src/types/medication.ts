@@ -37,6 +37,16 @@ export const ALL_CATEGORIES: MedicationCategory[] = [
   'Other',
 ];
 
+// Dispensing units for products
+export type DispensingUnit = 'unit' | 'pack' | 'tab' | 'bottle';
+
+export const DISPENSING_UNITS: { value: DispensingUnit; label: string }[] = [
+  { value: 'unit', label: 'Unit' },
+  { value: 'pack', label: 'Pack' },
+  { value: 'tab', label: 'Tab' },
+  { value: 'bottle', label: 'Bottle' },
+];
+
 export interface Medication {
   id: string;
   name: string;
@@ -53,6 +63,7 @@ export interface Medication {
   location?: string;
   min_stock_alert?: number;
   is_shelved?: boolean;
+  dispensing_unit?: DispensingUnit;
   created_at: string;
   updated_at: string;
 }
@@ -67,6 +78,7 @@ export interface MedicationFormData {
   unit_price: number;
   selling_price?: number;
   barcode_id?: string;
+  dispensing_unit?: DispensingUnit;
 }
 
 export interface DashboardMetrics {

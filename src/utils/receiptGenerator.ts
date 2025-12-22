@@ -9,7 +9,6 @@ export type PaymentMethod = 'cash' | 'transfer' | 'pos' | '';
 interface ReceiptData {
   items: CartItem[];
   total: number;
-  customerName?: string;
   pharmacyName?: string;
   pharmacyAddress?: string;
   pharmacyPhone?: string;
@@ -88,7 +87,6 @@ const ensureReceiptFonts = async (doc: jsPDF) => {
 export const generateReceipt = async ({
   items,
   total,
-  customerName,
   pharmacyName = 'PharmaTrack Pharmacy',
   pharmacyAddress,
   pharmacyPhone,
@@ -104,11 +102,10 @@ export const generateReceipt = async ({
   isDigitalReceipt = false,
 }: ReceiptData): Promise<jsPDF> => {
   // Calculate dynamic height based on items
-  const baseHeight = 115; // slight bump for payment method line
+  const baseHeight = 110;
   const itemHeight = items.length * 7;
   const addressHeight = pharmacyAddress ? 8 : 0;
   const phoneHeight = pharmacyPhone ? 5 : 0;
-  const customerHeight = customerName ? 5 : 0;
   const pharmacistHeight = pharmacistInCharge ? 5 : 0;
   const staffHeight = staffName ? 5 : 0;
   const paymentMethodHeight = paymentMethod ? 5 : 0;
@@ -121,7 +118,6 @@ export const generateReceipt = async ({
     itemHeight +
     addressHeight +
     phoneHeight +
-    customerHeight +
     logoHeight +
     pharmacistHeight +
     staffHeight +
@@ -206,11 +202,6 @@ export const generateReceipt = async ({
   rightText(format(date, 'dd/MM/yy HH:mm'), y);
   y += 4;
 
-  if (customerName) {
-    doc.text(`Customer: ${customerName}`, margin, y);
-    y += 4;
-  }
-
   // Payment Status
   const statusText = paymentStatus === 'paid' ? 'PAID' : 'UNPAID';
   doc.setFont('NotoSans', 'bold');
@@ -255,9 +246,11 @@ export const generateReceipt = async ({
   items.forEach((item, index) => {
     const price = item.medication.selling_price || item.medication.unit_price;
     const itemTotal = price * item.quantity;
+    const dispensingUnit = item.medication.dispensing_unit || 'unit';
+    const unitLabel = dispensingUnit === 'unit' ? '' : ` (${dispensingUnit})`;
 
     // Truncate item name if needed
-    let itemName = item.medication.name;
+    let itemName = item.medication.name + unitLabel;
     doc.setFontSize(7);
     const maxItemWidth = colQty - colItem - 2;
     if (doc.getTextWidth(itemName) > maxItemWidth) {

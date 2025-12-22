@@ -138,12 +138,11 @@ const Checkout = () => {
     }
   };
 
-  const printReceipt = async (items: typeof cart.items, total: number, receiptNumber: string, custName?: string, isPaid: boolean = true) => {
+  const printReceipt = async (items: typeof cart.items, total: number, receiptNumber: string, _custName?: string, isPaid: boolean = true) => {
     try {
       const receipt = await generateReceipt({
         items,
         total,
-        customerName: custName || undefined,
         receiptNumber,
         date: new Date(),
         ...getReceiptParams(isPaid, false),
@@ -214,7 +213,6 @@ const Checkout = () => {
       const receipt = await generateReceipt({
         items: currentItems,
         total: currentTotal,
-        customerName: currentCustomer || undefined,
         receiptNumber,
         date: new Date(),
         ...getReceiptParams(true, true, currentPaymentMethod), // isPaid=true, isDigital=true for preview
@@ -247,7 +245,6 @@ const Checkout = () => {
     const receipt = await generateReceipt({
       items: lastReceiptItems,
       total: lastReceiptTotal,
-      customerName: customerName || undefined,
       receiptNumber: lastReceiptNumber,
       date: new Date(),
       ...getReceiptParams(true, true, lastPaymentMethod),
@@ -279,7 +276,6 @@ const Checkout = () => {
       const receipt = await generateReceipt({
         items: currentItems,
         total: currentTotal,
-        customerName: currentCustomer || undefined,
         receiptNumber: invoiceNumber,
         date: new Date(),
         ...getReceiptParams(false, true), // isPaid=false, isDigital=true
