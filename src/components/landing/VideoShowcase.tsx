@@ -229,7 +229,7 @@ export const VideoShowcase = () => {
         once: true
       }} className="text-center mt-12">
           <Button size="lg" className="bg-gradient-primary hover:opacity-90 shadow-glow-primary">
-            Join 100+ Nigerian Pharmacies
+            Start Your Free Trial Today
           </Button>
         </motion.div>
       </div>
