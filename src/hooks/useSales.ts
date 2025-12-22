@@ -82,6 +82,18 @@ export const useSales = () => {
         const totalPrice = price * item.quantity;
         totalSaleAmount += totalPrice;
 
+        // Get the current stock from DB to ensure accuracy
+        const { data: medicationData, error: fetchError } = await supabase
+          .from('medications')
+          .select('current_stock')
+          .eq('id', item.medication.id)
+          .single();
+
+        if (fetchError) throw fetchError;
+
+        const currentStock = medicationData?.current_stock || 0;
+        const newStock = Math.max(0, currentStock - item.quantity);
+
         // Insert sale record with shift_id and sold_by
         const { error: saleError } = await supabase.from('sales').insert({
           medication_id: item.medication.id,
@@ -96,8 +108,7 @@ export const useSales = () => {
 
         if (saleError) throw saleError;
 
-        // Update medication stock
-        const newStock = item.medication.current_stock - item.quantity;
+        // Update medication stock using the fresh stock value
         const { error: updateError } = await supabase
           .from('medications')
           .update({ current_stock: newStock })
@@ -132,7 +143,9 @@ export const useSales = () => {
       return results;
     },
     onSuccess: (results) => {
+      // Invalidate both medications and sales queries to refresh data
       queryClient.invalidateQueries({ queryKey: ['medications'] });
+      queryClient.invalidateQueries({ queryKey: ['sales'] });
       
       // Check for low stock alerts
       const lowStockItems = results.filter(

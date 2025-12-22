@@ -42,32 +42,57 @@ export const ReceiptPreviewModal = ({
   }, [receipt, open]);
 
   const handlePrint = async () => {
-    if (!pdfUrl) return;
+    if (!receipt) return;
     
     setIsPrinting(true);
     
-    // Create hidden iframe for printing
-    const iframe = document.createElement('iframe');
-    iframe.style.position = 'fixed';
-    iframe.style.right = '0';
-    iframe.style.bottom = '0';
-    iframe.style.width = '0';
-    iframe.style.height = '0';
-    iframe.style.border = 'none';
-    iframe.src = pdfUrl;
-    
-    document.body.appendChild(iframe);
-    
-    iframe.onload = () => {
-      setTimeout(() => {
-        iframe.contentWindow?.print();
+    try {
+      // Use data URL approach to avoid cross-origin issues
+      const pdfDataUri = receipt.output('datauristring');
+      
+      // Create a new window with the PDF embedded
+      const printWindow = window.open('', '_blank', 'width=800,height=600');
+      
+      if (printWindow) {
+        printWindow.document.write(`
+          <!DOCTYPE html>
+          <html>
+            <head>
+              <title>Print Receipt</title>
+              <style>
+                body { margin: 0; padding: 0; }
+                iframe { width: 100%; height: 100vh; border: none; }
+                @media print {
+                  body { margin: 0; }
+                  iframe { width: 100%; height: auto; }
+                }
+              </style>
+            </head>
+            <body>
+              <iframe src="${pdfDataUri}" onload="setTimeout(function() { window.print(); }, 500);"></iframe>
+            </body>
+          </html>
+        `);
+        printWindow.document.close();
+        
+        // Close the window after a delay to allow printing
         setTimeout(() => {
-          document.body.removeChild(iframe);
           setIsPrinting(false);
           onPrint();
-        }, 1000);
-      }, 500);
-    };
+        }, 2000);
+      } else {
+        // Fallback: just download the PDF
+        receipt.save(`receipt-${receiptNumber}.pdf`);
+        setIsPrinting(false);
+        onPrint();
+      }
+    } catch (error) {
+      console.error('Print failed:', error);
+      // Fallback to download
+      receipt.save(`receipt-${receiptNumber}.pdf`);
+      setIsPrinting(false);
+      onPrint();
+    }
   };
 
   const handleDownload = () => {
