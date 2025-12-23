@@ -163,14 +163,14 @@ const Dashboard = () => {
           animate="visible"
           className="mb-6"
         >
-          <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-3">
-            <motion.div variants={itemVariants}>
+          <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-3 auto-rows-fr">
+            <motion.div variants={itemVariants} className="min-h-[280px]">
               <QuickGlancePanel />
             </motion.div>
-            <motion.div variants={itemVariants}>
+            <motion.div variants={itemVariants} className="min-h-[280px]">
               <ShiftClock />
             </motion.div>
-            <motion.div variants={itemVariants}>
+            <motion.div variants={itemVariants} className="min-h-[280px]">
               <LiveActivityFeed />
             </motion.div>
           </div>
