@@ -49,8 +49,10 @@ import {
   TrendingUp,
   CreditCard,
   Lock,
+  Lightbulb,
 } from 'lucide-react';
 import { format } from 'date-fns';
+import { FeatureRequestsPanel } from '@/components/admin/FeatureRequestsPanel';
 
 interface PharmacyWithMetrics {
   id: string;
@@ -498,6 +500,15 @@ const AdminDashboard = () => {
         </div>
 
         {/* Main Content */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+          <div className="lg:col-span-2">
+            {/* Feature Requests Panel */}
+          </div>
+          <div>
+            <FeatureRequestsPanel />
+          </div>
+        </div>
+
         <Tabs defaultValue="pharmacies" className="space-y-6">
           <TabsList className="glass-card p-1">
             <TabsTrigger value="pharmacies" className="gap-2">

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Package, AlertTriangle, XCircle, Clock, Plus, ShoppingCart, Upload, Zap, Archive } from 'lucide-react';
+import { Package, AlertTriangle, XCircle, Clock, Plus, ShoppingCart, Upload, Zap, Archive, Sparkles } from 'lucide-react';
 import { useMedications } from '@/hooks/useMedications';
 import { usePermissions } from '@/hooks/usePermissions';
 import { Medication } from '@/types/medication';
@@ -283,12 +283,20 @@ const Index = () => {
                   <BulkUnshelveButton medications={medications} />
                 )}
                 <Button
+                  onClick={() => setIsSmartImportOpen(true)}
+                  variant="outline"
+                  className="gap-2 h-9 sm:h-11 text-xs sm:text-sm border-primary/30 hover:bg-primary/10"
+                >
+                  <Sparkles className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary" />
+                  Smart Import
+                </Button>
+                <Button
                   onClick={() => setIsCSVModalOpen(true)}
                   variant="outline"
                   className="gap-2 h-9 sm:h-11 text-xs sm:text-sm"
                 >
                   <Upload className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                  Import CSV
+                  CSV
                 </Button>
                 <Button
                   onClick={() => setIsModalOpen(true)}

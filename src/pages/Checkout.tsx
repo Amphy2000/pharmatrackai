@@ -32,6 +32,9 @@ import { CartPanel } from '@/components/pos/CartPanel';
 import { HeldTransactionsPanel } from '@/components/pos/HeldTransactionsPanel';
 import { DrugInteractionWarning } from '@/components/pos/DrugInteractionWarning';
 import { ReceiptPreviewModal } from '@/components/pos/ReceiptPreviewModal';
+import { PatientSelector } from '@/components/pos/PatientSelector';
+import { PrescriptionImageUpload } from '@/components/pos/PrescriptionImageUpload';
+import { Customer } from '@/types/customer';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -95,6 +98,8 @@ const Checkout = () => {
   const [lastPaymentMethod, setLastPaymentMethod] = useState<PaymentMethod>('cash');
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewReceipt, setPreviewReceipt] = useState<jsPDF | null>(null);
+  const [selectedPatient, setSelectedPatient] = useState<Customer | null>(null);
+  const [prescriptionImages, setPrescriptionImages] = useState<string[]>([]);
 
   // Global barcode scanner - works without focusing search bar
   const isExpired = (expiryDate: string): boolean => {
@@ -312,6 +317,8 @@ const Checkout = () => {
     setCheckoutOpen(false);
     setPreviewOpen(false);
     setPreviewReceipt(null);
+    setSelectedPatient(null);
+    setPrescriptionImages([]);
   };
 
   const handlePrintLastReceipt = async () => {
@@ -506,6 +513,32 @@ const Checkout = () => {
               {cart.items.length >= 2 && (
                 <div className="mt-4">
                   <DrugInteractionWarning cartItems={cart.items} />
+                </div>
+              )}
+
+              {/* Patient Selection */}
+              {cart.items.length > 0 && (
+                <div className="mt-4">
+                  <PatientSelector
+                    selectedPatient={selectedPatient}
+                    onSelectPatient={(patient) => {
+                      setSelectedPatient(patient);
+                      if (patient) {
+                        setCustomerName(patient.full_name);
+                      }
+                    }}
+                    onSkip={() => setCustomerName('')}
+                  />
+                </div>
+              )}
+
+              {/* Prescription Image Upload */}
+              {cart.items.length > 0 && (
+                <div className="mt-4">
+                  <PrescriptionImageUpload
+                    images={prescriptionImages}
+                    onImagesChange={setPrescriptionImages}
+                  />
                 </div>
               )}
 
