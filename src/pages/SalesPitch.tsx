@@ -7,8 +7,9 @@ import {
   BadgeCheck, Globe, Smartphone, WifiOff, Database, Headphones,
   ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Play, Calculator,
   Building2, Award, LineChart, Package, Receipt, UserCog, Lock, Lightbulb,
-  Rocket, Crown, Sparkles
+  Rocket, Crown, Sparkles, FileDown
 } from 'lucide-react';
+import { SalesPdfGenerator } from '@/components/sales/SalesPdfGenerator';
 import { Logo } from '@/components/Logo';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -1034,7 +1035,7 @@ const SalesPitch = () => {
                 </Button>
               </Link>
             </div>
-            <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 text-xs sm:text-sm text-muted-foreground">
+            <div className="flex flex-wrap items-center justify-center gap-4 sm:gap-6 text-xs sm:text-sm text-muted-foreground mb-12">
               <div className="flex items-center gap-2">
                 <Check className="h-3 w-3 sm:h-4 sm:w-4 text-success" />
                 No credit card required
@@ -1048,6 +1049,21 @@ const SalesPitch = () => {
                 Cancel anytime
               </div>
             </div>
+
+            {/* Sales PDF Generator */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.3 }}
+              className="pt-8 border-t border-border/50"
+            >
+              <div className="flex items-center justify-center gap-2 mb-6">
+                <FileDown className="h-5 w-5 text-primary" />
+                <h3 className="text-lg font-semibold">Sales Rep Tools</h3>
+              </div>
+              <SalesPdfGenerator defaultSignupUrl={window.location.origin + '/auth?tab=signup'} />
+            </motion.div>
           </motion.div>
         </div>
       </section>
