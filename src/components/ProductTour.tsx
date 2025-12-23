@@ -1,5 +1,6 @@
 import { motion, AnimatePresence } from 'framer-motion';
-import { useProductTourContext, TourStep } from '@/contexts/ProductTourContext';
+import { useProductTourContext } from '@/contexts/ProductTourContext';
+import { TourStep } from '@/data/tourSteps';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { ScrollArea } from '@/components/ui/scroll-area';
