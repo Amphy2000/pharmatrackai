@@ -53,6 +53,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { FeatureRequestsPanel } from '@/components/admin/FeatureRequestsPanel';
+import { PlatformMetricsGrid } from '@/components/admin/PlatformMetricsGrid';
 
 interface PharmacyWithMetrics {
   id: string;
@@ -413,96 +414,11 @@ const AdminDashboard = () => {
         </div>
 
         {/* Platform Metrics */}
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
-          <Card className="glass-card">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-muted-foreground">Pharmacies</p>
-                  <p className="text-2xl font-bold">{totalPharmacies}</p>
-                </div>
-                <Building2 className="h-8 w-8 text-primary opacity-50" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="glass-card">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-muted-foreground">Active Subs</p>
-                  <p className="text-2xl font-bold text-success">{activeSubscriptions}</p>
-                </div>
-                <CheckCircle className="h-8 w-8 text-success opacity-50" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="glass-card">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-muted-foreground">Total Staff</p>
-                  <p className="text-2xl font-bold">{totalStaff}</p>
-                </div>
-                <Users className="h-8 w-8 text-primary opacity-50" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="glass-card">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-muted-foreground">Products</p>
-                  <p className="text-2xl font-bold">{totalMedications}</p>
-                </div>
-                <Package className="h-8 w-8 text-primary opacity-50" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="glass-card">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-muted-foreground">Total Sales</p>
-                  <p className="text-2xl font-bold">{totalSales}</p>
-                </div>
-                <BarChart3 className="h-8 w-8 text-primary opacity-50" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="glass-card">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-muted-foreground">Pharmacy Revenue</p>
-                  <p className="text-lg font-bold">{formatPrice(totalRevenue)}</p>
-                </div>
-                <TrendingUp className="h-8 w-8 text-primary opacity-50" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="glass-card border-success/30 bg-success/5">
-            <CardContent className="pt-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs text-muted-foreground">Platform Revenue</p>
-                  <p className="text-lg font-bold text-success">{formatPrice(platformRevenue)}</p>
-                </div>
-                <CreditCard className="h-8 w-8 text-success opacity-50" />
-              </div>
-            </CardContent>
-          </Card>
-        </div>
+        <PlatformMetricsGrid pharmacies={pharmacies} isLoading={loadingPharmacies} />
 
         {/* Main Content */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-          <div className="lg:col-span-2">
-            {/* Feature Requests Panel */}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+          <div className="lg:col-span-3">
           </div>
           <div>
             <FeatureRequestsPanel />
