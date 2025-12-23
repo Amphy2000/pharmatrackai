@@ -524,6 +524,9 @@ export type Database = {
           pharmacist_in_charge: string | null
           phone: string | null
           price_lock_enabled: boolean | null
+          require_wifi_clockin: boolean | null
+          shop_location_qr: string | null
+          shop_wifi_name: string | null
           subscription_ends_at: string | null
           subscription_plan: Database["public"]["Enums"]["subscription_plan"]
           subscription_status: Database["public"]["Enums"]["subscription_status"]
@@ -548,6 +551,9 @@ export type Database = {
           pharmacist_in_charge?: string | null
           phone?: string | null
           price_lock_enabled?: boolean | null
+          require_wifi_clockin?: boolean | null
+          shop_location_qr?: string | null
+          shop_wifi_name?: string | null
           subscription_ends_at?: string | null
           subscription_plan?: Database["public"]["Enums"]["subscription_plan"]
           subscription_status?: Database["public"]["Enums"]["subscription_status"]
@@ -572,6 +578,9 @@ export type Database = {
           pharmacist_in_charge?: string | null
           phone?: string | null
           price_lock_enabled?: boolean | null
+          require_wifi_clockin?: boolean | null
+          shop_location_qr?: string | null
+          shop_wifi_name?: string | null
           subscription_ends_at?: string | null
           subscription_plan?: Database["public"]["Enums"]["subscription_plan"]
           subscription_status?: Database["public"]["Enums"]["subscription_status"]
@@ -1100,9 +1109,12 @@ export type Database = {
       staff_shifts: {
         Row: {
           clock_in: string
+          clock_in_method: string | null
+          clock_in_wifi_name: string | null
           clock_out: string | null
           created_at: string
           id: string
+          is_wifi_verified: boolean | null
           notes: string | null
           pharmacy_id: string
           staff_id: string
@@ -1112,9 +1124,12 @@ export type Database = {
         }
         Insert: {
           clock_in?: string
+          clock_in_method?: string | null
+          clock_in_wifi_name?: string | null
           clock_out?: string | null
           created_at?: string
           id?: string
+          is_wifi_verified?: boolean | null
           notes?: string | null
           pharmacy_id: string
           staff_id: string
@@ -1124,9 +1139,12 @@ export type Database = {
         }
         Update: {
           clock_in?: string
+          clock_in_method?: string | null
+          clock_in_wifi_name?: string | null
           clock_out?: string | null
           created_at?: string
           id?: string
+          is_wifi_verified?: boolean | null
           notes?: string | null
           pharmacy_id?: string
           staff_id?: string

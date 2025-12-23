@@ -149,9 +149,14 @@ export const useShifts = () => {
     };
   }, [pharmacyId, queryClient]);
 
-  // Clock in mutation
+  // Clock in mutation with WiFi verification
   const clockIn = useMutation({
-    mutationFn: async (notes?: string) => {
+    mutationFn: async (params?: { 
+      notes?: string; 
+      wifiName?: string; 
+      method?: 'wifi' | 'qr' | 'standard';
+      isVerified?: boolean;
+    }) => {
       if (!staffRecord?.id || !pharmacyId) {
         throw new Error('No staff record found');
       }
@@ -161,7 +166,10 @@ export const useShifts = () => {
         .insert({
           pharmacy_id: pharmacyId,
           staff_id: staffRecord.id,
-          notes: notes || null,
+          notes: params?.notes || null,
+          clock_in_wifi_name: params?.wifiName || null,
+          clock_in_method: params?.method || 'standard',
+          is_wifi_verified: params?.isVerified ?? false,
         })
         .select()
         .single();

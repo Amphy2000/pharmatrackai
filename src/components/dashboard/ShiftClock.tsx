@@ -1,31 +1,88 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Clock, LogIn, LogOut, Timer, DollarSign, History } from 'lucide-react';
+import { Clock, LogIn, LogOut, Timer, DollarSign, History, Wifi, WifiOff, Lock, QrCode, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useShifts } from '@/hooks/useShifts';
 import { useCurrency } from '@/contexts/CurrencyContext';
+import { usePharmacy } from '@/hooks/usePharmacy';
 import { format, formatDistanceToNow } from 'date-fns';
+import { QRScannerModal } from '@/components/shifts/QRScannerModal';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export const ShiftClock = () => {
   const navigate = useNavigate();
   const { activeShift, clockIn, clockOut, isLoadingActiveShift } = useShifts();
   const { formatPrice } = useCurrency();
+  const { pharmacy, pharmacyId } = usePharmacy();
   const [currentTime, setCurrentTime] = useState(new Date());
+  const [showQRScanner, setShowQRScanner] = useState(false);
+  const [isQRVerified, setIsQRVerified] = useState(false);
+  const [detectedWifi, setDetectedWifi] = useState<string | null>(null);
+  const [isWifiMatched, setIsWifiMatched] = useState(false);
+
+  // Get security settings from pharmacy
+  const requireWifiClockin = pharmacy?.require_wifi_clockin ?? false;
+  const shopWifiName = pharmacy?.shop_wifi_name;
+  const shopLocationQr = pharmacy?.shop_location_qr;
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
 
-  const handleClockIn = () => {
-    clockIn.mutate(undefined);
-  };
+  // Simulate WiFi detection (in real PWA/native, this would use actual network APIs)
+  useEffect(() => {
+    if (!requireWifiClockin || !shopWifiName) {
+      setIsWifiMatched(true);
+      return;
+    }
+
+    // Check if we're online (basic connectivity check)
+    const checkWifi = () => {
+      if (navigator.onLine) {
+        // In a real implementation with native capabilities, we'd check actual SSID
+        // For web, we'll show as "Connected" and let user verify via QR if needed
+        setDetectedWifi('Connected Network');
+        // For demo purposes, we'll use a simulated match
+        // In production, this would need native app capabilities
+        setIsWifiMatched(false); // Default to false, requiring QR scan for web
+      } else {
+        setDetectedWifi(null);
+        setIsWifiMatched(false);
+      }
+    };
+
+    checkWifi();
+    window.addEventListener('online', checkWifi);
+    window.addEventListener('offline', checkWifi);
+
+    return () => {
+      window.removeEventListener('online', checkWifi);
+      window.removeEventListener('offline', checkWifi);
+    };
+  }, [requireWifiClockin, shopWifiName]);
+
+  const canClockIn = !requireWifiClockin || isWifiMatched || isQRVerified;
+
+  const handleClockIn = useCallback(() => {
+    const method = isQRVerified ? 'qr' : (isWifiMatched ? 'wifi' : 'standard');
+    clockIn.mutate({
+      wifiName: detectedWifi || undefined,
+      method,
+      isVerified: isWifiMatched || isQRVerified,
+    });
+  }, [clockIn, isQRVerified, isWifiMatched, detectedWifi]);
 
   const handleClockOut = () => {
     if (activeShift) {
       clockOut.mutate(activeShift.id);
     }
+  };
+
+  const handleQRSuccess = () => {
+    setIsQRVerified(true);
+    setShowQRScanner(false);
   };
 
   const getShiftDuration = () => {
@@ -117,18 +174,94 @@ export const ShiftClock = () => {
         </div>
       ) : (
         <div className="flex-1 flex flex-col justify-end">
-          <p className="text-sm text-muted-foreground text-center mb-4">
-            Clock in to start tracking your shift sales
-          </p>
+          {/* WiFi Status Display */}
+          {requireWifiClockin && (
+            <div className="mb-4 space-y-2">
+              <AnimatePresence mode="wait">
+                {isWifiMatched || isQRVerified ? (
+                  <motion.div
+                    key="verified"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    className="flex items-center justify-center gap-2 text-sm text-success bg-success/10 rounded-lg p-2 border border-success/30"
+                  >
+                    <Check className="h-4 w-4" />
+                    <span>
+                      {isQRVerified ? 'Location verified via QR' : `Connected to: ${shopWifiName}`}
+                    </span>
+                  </motion.div>
+                ) : (
+                  <motion.div
+                    key="not-verified"
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={{ opacity: 0, y: -10 }}
+                    className="space-y-2"
+                  >
+                    <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground bg-muted/50 rounded-lg p-2 border border-border/50">
+                      <WifiOff className="h-4 w-4" />
+                      <span>
+                        {detectedWifi 
+                          ? `Connected to: ${detectedWifi}` 
+                          : 'Not connected to WiFi'}
+                      </span>
+                    </div>
+                    <p className="text-xs text-center text-amber-600 dark:text-amber-400">
+                      Please connect to <strong>{shopWifiName}</strong> or scan the Location QR to clock in
+                    </p>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          )}
+
+          {!requireWifiClockin && (
+            <p className="text-sm text-muted-foreground text-center mb-4">
+              Clock in to start tracking your shift sales
+            </p>
+          )}
+
           <div className="flex gap-2">
-            <Button 
-              onClick={handleClockIn} 
-              className="flex-1 bg-gradient-to-r from-green-500 to-emerald-600 hover:opacity-90 text-white"
-              disabled={clockIn.isPending}
-            >
-              <LogIn className="h-4 w-4 mr-2" />
-              {clockIn.isPending ? 'Clocking In...' : 'Clock In'}
-            </Button>
+            {canClockIn ? (
+              <motion.div
+                className="flex-1"
+                initial={{ scale: 0.95 }}
+                animate={{ scale: 1 }}
+                transition={{ type: "spring", stiffness: 300, damping: 20 }}
+              >
+                <Button 
+                  onClick={handleClockIn} 
+                  className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:opacity-90 text-white"
+                  disabled={clockIn.isPending}
+                >
+                  <LogIn className="h-4 w-4 mr-2" />
+                  {clockIn.isPending ? 'Clocking In...' : 'Clock In'}
+                </Button>
+              </motion.div>
+            ) : (
+              <Button 
+                variant="secondary"
+                className="flex-1 cursor-not-allowed opacity-70"
+                disabled
+              >
+                <Lock className="h-4 w-4 mr-2" />
+                Clock In Locked
+              </Button>
+            )}
+            
+            {/* QR Scan Button */}
+            {requireWifiClockin && !isWifiMatched && !isQRVerified && shopLocationQr && (
+              <Button 
+                onClick={() => setShowQRScanner(true)}
+                variant="outline"
+                className="gap-2"
+              >
+                <QrCode className="h-4 w-4" />
+                Scan QR
+              </Button>
+            )}
+            
             <Button 
               onClick={() => navigate('/shift-history')} 
               variant="outline"
@@ -139,6 +272,16 @@ export const ShiftClock = () => {
             </Button>
           </div>
         </div>
+      )}
+
+      {/* QR Scanner Modal */}
+      {pharmacyId && (
+        <QRScannerModal
+          open={showQRScanner}
+          onOpenChange={setShowQRScanner}
+          pharmacyId={pharmacyId}
+          onSuccess={handleQRSuccess}
+        />
       )}
     </div>
   );
