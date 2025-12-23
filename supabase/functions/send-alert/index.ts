@@ -48,9 +48,23 @@ serve(async (req) => {
       toNumber = `whatsapp:${toNumber}`;
     }
 
-    let fromNumber = twilioPhone;
+    // Ensure Twilio sender number is E.164 formatted
+    const fromE164 = twilioPhone.startsWith('+') ? twilioPhone : `+${twilioPhone}`;
+    let fromNumber = fromE164;
     if (channel === 'whatsapp') {
-      fromNumber = `whatsapp:${twilioPhone}`;
+      fromNumber = `whatsapp:${fromE164}`;
+    }
+
+    // Guard: Twilio rejects when To and From are the same
+    const normalize = (v: string) => v.replace(/^whatsapp:/, '');
+    if (normalize(toNumber) === normalize(fromNumber)) {
+      return new Response(
+        JSON.stringify({
+          error:
+            "Recipient phone cannot be the same as the sender. Use a different number than your Twilio sender number (TWILIO_PHONE_NUMBER).",
+        }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
+      );
     }
 
     // Prepare the alert message with emoji prefix based on type

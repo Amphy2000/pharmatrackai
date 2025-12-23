@@ -173,7 +173,7 @@ export const ProductTour = () => {
             </div>
 
             {/* Content */}
-            <ScrollArea className="max-h-[60vh] sm:max-h-[65vh]">
+            <ScrollArea className="h-[60vh] sm:h-[65vh]">
               <div className="p-6 sm:p-8">
                 <AnimatePresence mode="wait">
                   <motion.div
