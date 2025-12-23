@@ -1,9 +1,13 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+// Rate limiting: max 50 medications per request
+const MAX_MEDICATIONS = 50;
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -11,6 +15,44 @@ serve(async (req) => {
   }
 
   try {
+    // Authenticate the request
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized: Missing authorization header' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+    if (authError || !user) {
+      console.error('Auth error:', authError);
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized: Invalid token' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Verify user belongs to a pharmacy
+    const { data: staffRecord } = await supabaseAdmin
+      .from('pharmacy_staff')
+      .select('pharmacy_id')
+      .eq('user_id', user.id)
+      .eq('is_active', true)
+      .maybeSingle();
+
+    if (!staffRecord) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized: User is not associated with any pharmacy' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const { medications } = await req.json();
     
     if (!medications || medications.length < 2) {
@@ -20,12 +62,22 @@ serve(async (req) => {
       );
     }
 
+    // Validate input size to prevent abuse
+    if (medications.length > MAX_MEDICATIONS) {
+      return new Response(
+        JSON.stringify({ error: `Too many medications. Maximum allowed: ${MAX_MEDICATIONS}` }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) {
       throw new Error("LOVABLE_API_KEY is not configured");
     }
 
     const medicationNames = medications.map((m: { name: string }) => m.name).join(", ");
+
+    console.log(`Checking drug interactions for user ${user.id}, pharmacy ${staffRecord.pharmacy_id}`);
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
