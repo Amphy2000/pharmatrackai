@@ -530,11 +530,11 @@ const Checkout = () => {
             </div>
           </div>
 
-          {/* Cart Panel - Takes 1/3, fixed height matching products */}
+          {/* Cart Panel - Takes 1/3 */}
           <div className="lg:col-span-1">
-            <div className="bg-card/90 backdrop-blur-sm rounded-2xl p-4 border border-border/40 shadow-sm h-[calc(100vh-7rem)] flex flex-col">
-              {/* Cart Header */}
-              <div className="flex items-center justify-between pb-3 border-b border-border/30 flex-shrink-0">
+            <div className="bg-card/90 backdrop-blur-sm rounded-2xl border border-border/40 shadow-sm h-[calc(100vh-7rem)] flex flex-col overflow-hidden">
+              {/* Cart Header - Fixed */}
+              <div className="flex items-center justify-between p-4 pb-3 border-b border-border/30 flex-shrink-0">
                 <div className="flex items-center gap-2">
                   <h2 className="text-sm font-bold font-display">Cart</h2>
                   {cart.items.length > 0 && (
@@ -556,8 +556,8 @@ const Checkout = () => {
                 )}
               </div>
 
-              {/* Main cart content - flexible height */}
-              <div className="flex-1 min-h-0 pt-3 flex flex-col overflow-hidden">
+              {/* Scrollable Cart Items */}
+              <div className="flex-1 overflow-y-auto p-4 pt-2">
                 <CartPanel
                   items={cart.items}
                   onIncrement={cart.incrementQuantity}
@@ -567,16 +567,29 @@ const Checkout = () => {
                 />
               </div>
 
-              {/* Drug Interaction Warning */}
-              {cart.items.length >= 2 && (
-                <div className="pt-2 flex-shrink-0">
-                  <DrugInteractionWarning cartItems={cart.items} />
-                </div>
-              )}
+              {/* Fixed Bottom Section */}
+              <div className="flex-shrink-0 border-t border-border/30 p-4 space-y-3 bg-card/95">
+                {/* Totals */}
+                {cart.items.length > 0 && (
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center text-xs text-muted-foreground">
+                      <span>{cart.items.length} {cart.items.length === 1 ? 'item' : 'items'}</span>
+                      <span className="tabular-nums">{formatPrice(cart.getTotal())}</span>
+                    </div>
+                    <div className="flex justify-between items-center p-3 rounded-xl bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border border-primary/20">
+                      <span className="font-bold text-sm">Total</span>
+                      <span className="font-bold text-lg text-primary tabular-nums">{formatPrice(cart.getTotal())}</span>
+                    </div>
+                  </div>
+                )}
 
-              {/* Patient Selection */}
-              {cart.items.length > 0 && (
-                <div className="pt-2 flex-shrink-0">
+                {/* Drug Interaction Warning */}
+                {cart.items.length >= 2 && (
+                  <DrugInteractionWarning cartItems={cart.items} />
+                )}
+
+                {/* Patient Selection */}
+                {cart.items.length > 0 && (
                   <PatientSelector
                     selectedPatient={selectedPatient}
                     onSelectPatient={(patient) => {
@@ -587,21 +600,17 @@ const Checkout = () => {
                     }}
                     onSkip={() => setCustomerName('')}
                   />
-                </div>
-              )}
+                )}
 
-              {/* Prescription Upload */}
-              {cart.items.length > 0 && (
-                <div className="pt-2 flex-shrink-0">
+                {/* Prescription Upload */}
+                {cart.items.length > 0 && (
                   <PrescriptionImageUpload
                     images={prescriptionImages}
                     onImagesChange={setPrescriptionImages}
                   />
-                </div>
-              )}
+                )}
 
-              {/* Action Buttons - Fixed at bottom */}
-              <div className="pt-3 flex-shrink-0 space-y-2">
+                {/* Action Buttons */}
                 {cart.items.length > 0 && (
                   <div className="grid grid-cols-2 gap-2">
                     <Button
