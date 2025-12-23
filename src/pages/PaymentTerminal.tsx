@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   ArrowLeft,
   Search,
@@ -28,6 +28,7 @@ import { usePharmacy } from '@/hooks/usePharmacy';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { usePermissions } from '@/hooks/usePermissions';
 
 type PaymentMethod = 'cash' | 'transfer' | 'pos';
 
@@ -41,6 +42,7 @@ interface FoundTransaction {
 }
 
 const PaymentTerminal = () => {
+  const navigate = useNavigate();
   const [searchValue, setSearchValue] = useState('');
   const [isSearching, setIsSearching] = useState(false);
   const [foundTransaction, setFoundTransaction] = useState<FoundTransaction | null>(null);
@@ -55,6 +57,15 @@ const PaymentTerminal = () => {
   const { pharmacy } = usePharmacy();
   const { user } = useAuth();
   const { toast } = useToast();
+  const { userRole } = usePermissions();
+
+  // Determine back navigation based on role
+  const getBackPath = () => {
+    if (userRole === 'staff') {
+      return '/cashier-dashboard';
+    }
+    return '/dashboard';
+  };
 
   // Get current user's profile for staff name
   const { data: userProfile } = useQuery({
@@ -146,16 +157,18 @@ const PaymentTerminal = () => {
         paymentMethod: selectedPayment,
       });
 
-      await printHtmlReceipt(html);
+      // Print receipt - don't await since we want to reset UI immediately
+      printHtmlReceipt(html);
 
       toast({
         title: 'Sale Complete',
         description: `Transaction ${foundTransaction.short_code} completed successfully.`,
       });
 
-      // Reset state
+      // Reset state immediately so button shows "Complete Sale" again
       setFoundTransaction(null);
       setSelectedPayment(null);
+      setIsProcessing(false);
       searchInputRef.current?.focus();
     } catch (error) {
       console.error('Complete sale error:', error);
@@ -164,7 +177,6 @@ const PaymentTerminal = () => {
         description: 'Failed to complete the sale. Please try again.',
         variant: 'destructive',
       });
-    } finally {
       setIsProcessing(false);
     }
   };
@@ -183,11 +195,14 @@ const PaymentTerminal = () => {
         <div className="container mx-auto px-4 sm:px-6">
           <div className="flex h-14 sm:h-16 items-center justify-between">
             <div className="flex items-center gap-2 sm:gap-4">
-              <Link to="/checkout">
-                <Button variant="ghost" size="icon" className="rounded-xl h-9 w-9">
-                  <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
-                </Button>
-              </Link>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="rounded-xl h-9 w-9"
+                onClick={() => navigate(getBackPath())}
+              >
+                <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
+              </Button>
               <div>
                 <h1 className="text-base sm:text-xl font-bold font-display flex items-center gap-2">
                   <CreditCard className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
