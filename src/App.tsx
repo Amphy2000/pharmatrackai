@@ -8,6 +8,7 @@ import { CurrencyProvider } from "@/contexts/CurrencyContext";
 import { RegionalSettingsProvider } from "@/contexts/RegionalSettingsContext";
 import { BranchProvider } from "@/contexts/BranchContext";
 import { ProductTourProvider } from "@/contexts/ProductTourContext";
+import { OfflineProvider } from "@/contexts/OfflineContext";
 import { PermissionRoute } from "@/components/PermissionRoute";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import Landing from "./pages/Landing";
@@ -36,18 +37,37 @@ import AuditLog from "./pages/AuditLog";
 import ShiftHistory from "./pages/ShiftHistory";
 import NotFound from "./pages/NotFound";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      // Keep data fresh for 5 minutes
+      staleTime: 5 * 60 * 1000,
+      // Cache data for 30 minutes for offline access
+      gcTime: 30 * 60 * 1000,
+      // Retry failed requests when network is available
+      retry: (failureCount, error) => {
+        // Don't retry if we're offline
+        if (!navigator.onLine) return false;
+        return failureCount < 3;
+      },
+      // Use cached data while refetching
+      refetchOnWindowFocus: true,
+      refetchOnReconnect: true,
+    },
+  },
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <AuthProvider>
-      <RegionalSettingsProvider>
-        <CurrencyProvider>
-          <BranchProvider>
-            <ProductTourProvider>
-              <TooltipProvider>
-              <Toaster />
-              <Sonner />
+      <OfflineProvider>
+        <RegionalSettingsProvider>
+          <CurrencyProvider>
+            <BranchProvider>
+              <ProductTourProvider>
+                <TooltipProvider>
+                <Toaster />
+                <Sonner />
               <BrowserRouter>
                 <Routes>
                   {/* Public Routes */}
@@ -85,6 +105,7 @@ const App = () => (
           </BranchProvider>
         </CurrencyProvider>
       </RegionalSettingsProvider>
+      </OfflineProvider>
     </AuthProvider>
   </QueryClientProvider>
 );

@@ -1,7 +1,8 @@
 import { useState, useMemo } from 'react';
 import { format, parseISO } from 'date-fns';
-import { Edit2, Trash2, MoreHorizontal, Package, ChevronDown, ChevronUp, Archive, ArchiveRestore, Filter, Link2Off, Hash, Loader2 } from 'lucide-react';
+import { Edit2, Trash2, MoreHorizontal, Package, ChevronDown, ChevronUp, Archive, ArchiveRestore, Filter, Link2Off, Hash, Loader2, Printer } from 'lucide-react';
 import { Medication } from '@/types/medication';
+import { BarcodeLabelPrinter } from './BarcodeLabelPrinter';
 import { useMedications } from '@/hooks/useMedications';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { cn } from '@/lib/utils';
@@ -68,6 +69,7 @@ export const MedicationsTable = ({ medications, searchQuery, onEdit }: Medicatio
   const [currentPage, setCurrentPage] = useState(1);
   const [filterStatus, setFilterStatus] = useState<'all' | 'shelved' | 'unshelved' | 'expired' | 'low-stock' | 'no-barcode'>('all');
   const [generatingCodeFor, setGeneratingCodeFor] = useState<string | null>(null);
+  const [printLabelMedication, setPrintLabelMedication] = useState<Medication | null>(null);
 
   const filteredMedications = useMemo(() => {
     let filtered = medications.filter((med) => {
@@ -364,6 +366,15 @@ export const MedicationsTable = ({ medications, searchQuery, onEdit }: Medicatio
                                   </DropdownMenuItem>
                                 </>
                               )}
+                              {medication.barcode_id && (
+                                <>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem onClick={() => setPrintLabelMedication(medication)}>
+                                    <Printer className="mr-2 h-4 w-4" />
+                                    Print Barcode Label
+                                  </DropdownMenuItem>
+                                </>
+                              )}
                               <DropdownMenuSeparator />
                               {medication.is_shelved === false ? (
                                 <DropdownMenuItem onClick={() => handleShelving(medication, 'shelve')}>
@@ -480,6 +491,13 @@ export const MedicationsTable = ({ medications, searchQuery, onEdit }: Medicatio
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Barcode Label Printer Modal */}
+      <BarcodeLabelPrinter
+        medication={printLabelMedication}
+        open={!!printLabelMedication}
+        onOpenChange={(open) => !open && setPrintLabelMedication(null)}
+      />
     </>
   );
 };
