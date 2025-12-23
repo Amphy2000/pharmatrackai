@@ -231,47 +231,6 @@ const CashierDashboard = () => {
           </motion.div>
         </motion.section>
 
-        {/* Quick Actions */}
-        <motion.section 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4 }}
-          className="mt-8 pb-6"
-        >
-          <Card className="glass-card border-border/50">
-            <CardHeader>
-              <CardTitle className="font-display">Quick Actions</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-3 gap-4">
-                <Button
-                  variant="outline"
-                  className="h-20 flex flex-col items-center justify-center gap-2 hover:bg-primary/5 hover:border-primary/30 transition-all group"
-                  onClick={() => navigate('/checkout')}
-                >
-                  <ShoppingCart className="h-6 w-6 group-hover:text-primary transition-colors" />
-                  <span className="text-sm">New Sale</span>
-                </Button>
-                <Button
-                  variant="outline"
-                  className="h-20 flex flex-col items-center justify-center gap-2 hover:bg-primary/5 hover:border-primary/30 transition-all group"
-                  onClick={() => navigate('/my-sales')}
-                >
-                  <Receipt className="h-6 w-6 group-hover:text-primary transition-colors" />
-                  <span className="text-sm">My Sales</span>
-                </Button>
-                <Button
-                  variant="outline"
-                  className="h-20 flex flex-col items-center justify-center gap-2 hover:bg-primary/5 hover:border-primary/30 transition-all group"
-                  onClick={() => navigate('/profile')}
-                >
-                  <User className="h-6 w-6 group-hover:text-primary transition-colors" />
-                  <span className="text-sm">My Profile</span>
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.section>
       </main>
     </div>
   );
