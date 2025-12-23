@@ -119,6 +119,62 @@ const CashierDashboard = () => {
           </div>
         </motion.section>
 
+        {/* Stats Row */}
+        <motion.section 
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="grid grid-cols-3 gap-4 mb-6"
+        >
+          <div className="p-4 rounded-xl bg-primary/5 border border-primary/10">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                <Receipt className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Transactions</p>
+                <p className="text-xl font-bold">{todaysTransactionCount}</p>
+              </div>
+            </div>
+          </div>
+          <div className="p-4 rounded-xl bg-success/5 border border-success/10">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-lg bg-success/10 flex items-center justify-center">
+                <Package className="h-5 w-5 text-success" />
+              </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Items Sold</p>
+                <p className="text-xl font-bold">{todaysItemsSold}</p>
+              </div>
+            </div>
+          </div>
+          {heldTransactions.length > 0 ? (
+            <div className="p-4 rounded-xl bg-warning/5 border border-warning/10">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-lg bg-warning/10 flex items-center justify-center">
+                  <Clock className="h-5 w-5 text-warning" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Held</p>
+                  <p className="text-xl font-bold">{heldTransactions.length}</p>
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="p-4 rounded-xl bg-muted/30 border border-border/50">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center">
+                  <Clock className="h-5 w-5 text-muted-foreground" />
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Held</p>
+                  <p className="text-xl font-bold">0</p>
+                </div>
+              </div>
+            </div>
+          )}
+        </motion.section>
+
         {/* Main Grid */}
         <motion.section 
           variants={containerVariants}
@@ -126,53 +182,9 @@ const CashierDashboard = () => {
           animate="visible"
           className="grid gap-6 grid-cols-1 lg:grid-cols-3"
         >
-          {/* Left Column - Shift Clock & Quick Stats */}
-          <motion.div variants={itemVariants} className="lg:col-span-1 space-y-6">
+          {/* Left Column - Shift Clock */}
+          <motion.div variants={itemVariants} className="lg:col-span-1">
             <ShiftClock />
-
-            {/* Today's Stats */}
-            <Card className="glass-card border-border/50">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-lg font-display">Today's Activity</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex items-center justify-between p-3 rounded-lg bg-primary/5 border border-primary/10">
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                      <Receipt className="h-5 w-5 text-primary" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Transactions</p>
-                      <p className="text-xl font-bold">{todaysTransactionCount}</p>
-                    </div>
-                  </div>
-                </div>
-                <div className="flex items-center justify-between p-3 rounded-lg bg-success/5 border border-success/10">
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-lg bg-success/10 flex items-center justify-center">
-                      <Package className="h-5 w-5 text-success" />
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Items Sold</p>
-                      <p className="text-xl font-bold">{todaysItemsSold}</p>
-                    </div>
-                  </div>
-                </div>
-                {heldTransactions.length > 0 && (
-                  <div className="flex items-center justify-between p-3 rounded-lg bg-warning/5 border border-warning/10">
-                    <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-lg bg-warning/10 flex items-center justify-center">
-                        <Clock className="h-5 w-5 text-warning" />
-                      </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground">Held</p>
-                        <p className="text-xl font-bold">{heldTransactions.length}</p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
           </motion.div>
 
           {/* Right Column - Recent Transactions */}
@@ -188,26 +200,27 @@ const CashierDashboard = () => {
                     <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                   </div>
                 ) : recentTransactions.length === 0 ? (
-                  <div className="text-center py-12">
-                    <Receipt className="h-12 w-12 mx-auto text-muted-foreground/30 mb-3" />
-                    <p className="text-muted-foreground">No transactions yet today</p>
+                  <div className="text-center py-8">
+                    <Receipt className="h-10 w-10 mx-auto text-muted-foreground/30 mb-3" />
+                    <p className="text-muted-foreground text-sm">No transactions yet</p>
                     <Button 
                       variant="outline" 
-                      className="mt-4"
+                      size="sm"
+                      className="mt-3"
                       onClick={() => navigate('/checkout')}
                     >
                       Make your first sale
                     </Button>
                   </div>
                 ) : (
-                  <div className="space-y-3">
+                  <div className="space-y-2 max-h-64 overflow-y-auto">
                     {recentTransactions.map((sale) => (
                       <div 
                         key={sale.id}
-                        className="flex items-center justify-between p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
+                        className="flex items-center justify-between p-2.5 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors"
                       >
-                        <div className="flex items-center gap-3">
-                          <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center">
+                        <div className="flex items-center gap-2.5">
+                          <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center">
                             <Package className="h-4 w-4 text-primary" />
                           </div>
                           <div>
@@ -217,11 +230,9 @@ const CashierDashboard = () => {
                             </p>
                           </div>
                         </div>
-                        <div className="text-right">
-                          <p className="text-xs text-muted-foreground">
-                            {format(new Date(sale.sale_date), 'MMM d, h:mm a')}
-                          </p>
-                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          {format(new Date(sale.sale_date), 'MMM d, h:mm a')}
+                        </p>
                       </div>
                     ))}
                   </div>
