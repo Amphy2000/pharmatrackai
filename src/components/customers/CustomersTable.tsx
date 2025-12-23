@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { format } from 'date-fns';
 import { 
   User, Phone, Mail, Calendar, MapPin, Star, Edit, Trash2, 
-  FileText, Plus, MoreVertical 
+  FileText, Plus, MoreVertical, Eye 
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -37,10 +37,11 @@ import type { Customer } from '@/types/customer';
 interface CustomersTableProps {
   onEdit: (customer: Customer) => void;
   onViewPrescriptions: (customer: Customer) => void;
+  onViewDetails?: (customer: Customer) => void;
   searchQuery: string;
 }
 
-export const CustomersTable = ({ onEdit, onViewPrescriptions, searchQuery }: CustomersTableProps) => {
+export const CustomersTable = ({ onEdit, onViewPrescriptions, onViewDetails, searchQuery }: CustomersTableProps) => {
   const { customers, isLoading, deleteCustomer } = useCustomers();
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
 
@@ -137,6 +138,12 @@ export const CustomersTable = ({ onEdit, onViewPrescriptions, searchQuery }: Cus
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
+                      {onViewDetails && (
+                        <DropdownMenuItem onClick={() => onViewDetails(customer)}>
+                          <Eye className="h-4 w-4 mr-2" />
+                          View Details
+                        </DropdownMenuItem>
+                      )}
                       <DropdownMenuItem onClick={() => onViewPrescriptions(customer)}>
                         <FileText className="h-4 w-4 mr-2" />
                         View Prescriptions

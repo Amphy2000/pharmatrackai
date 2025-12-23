@@ -48,6 +48,7 @@ serve(async (req) => {
   try {
     const body = await req.json();
     const query = validateInput(body);
+    const searchMetadata = body.searchMetadata !== false; // Default to true
     
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
 
@@ -57,11 +58,13 @@ serve(async (req) => {
 
     const today = new Date().toISOString().split('T')[0];
 
-    const systemPrompt = `You are an AI that interprets natural language pharmacy inventory queries and converts them to simple search terms.
+    const systemPrompt = `You are an AI that interprets natural language pharmacy inventory and patient queries and converts them to search terms.
 
 Current date: ${today}
 
-Examples:
+IMPORTANT: This search also looks into metadata fields (custom data like Blood Type, Allergies, Insurance Provider, etc.) so be flexible with terms.
+
+Examples for Inventory:
 - "Which drugs expire next month?" → return terms that filter for expiring items
 - "Show me low stock items" → return "low stock"
 - "Find all tablets" → return "Tablet"
@@ -70,11 +73,22 @@ Examples:
 - "Antibiotics" → return "Amoxicillin" or similar antibiotic names
 - "Pain relievers" → return "Ibuprofen Paracetamol"
 
-Return a JSON object with:
-- searchTerms: simple keywords or phrases to filter the inventory table
-- interpretation: brief explanation of how you interpreted the query`;
+Examples for Patients/Customers (including metadata):
+- "Find patients with blood type O+" → return "O+" (searches metadata)
+- "Customers with diabetes" → return "diabetes" (searches notes and metadata)
+- "Who has insurance?" → return "insurance" (searches metadata)
+- "Patients allergic to penicillin" → return "penicillin allergy" (searches metadata)
 
-    console.log('Processing AI search query:', query);
+Examples for Doctors (including metadata):
+- "Cardiologists" → return "cardiology cardiologist"
+- "Doctors from Lagos" → return "Lagos"
+
+Return a JSON object with:
+- searchTerms: simple keywords or phrases to filter the tables (standard fields AND metadata)
+- interpretation: brief explanation of how you interpreted the query
+- searchIn: array of where to search - can include "medications", "customers", "doctors", "metadata"`;
+
+    console.log('Processing AI search query:', query, 'searchMetadata:', searchMetadata);
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -86,7 +100,7 @@ Return a JSON object with:
         model: 'google/gemini-2.5-flash',
         messages: [
           { role: 'system', content: systemPrompt },
-          { role: 'user', content: `Convert this pharmacy inventory query to search terms: "${query}"` }
+          { role: 'user', content: `Convert this pharmacy query to search terms: "${query}"` }
         ],
         response_format: { type: 'json_object' },
       }),

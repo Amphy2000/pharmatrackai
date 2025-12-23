@@ -8,6 +8,7 @@ export interface Customer {
   address: string | null;
   notes: string | null;
   loyalty_points: number;
+  metadata?: Record<string, any> | null;
   created_at: string;
   updated_at: string;
 }

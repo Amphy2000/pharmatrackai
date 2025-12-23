@@ -277,10 +277,12 @@ const Checkout = () => {
     try {
       const result = await completeSale.mutateAsync({
         items: currentItems,
-        customerName: currentCustomer || undefined,
+        customerName: selectedPatient?.full_name || currentCustomer || undefined,
+        customerId: selectedPatient?.id || undefined,
         shiftId: activeShift?.id,
         staffName: userProfile?.full_name || undefined,
         paymentMethod: currentPaymentMethod || undefined,
+        prescriptionImages: prescriptionImages.length > 0 ? prescriptionImages : undefined,
       });
 
       // Use the receipt ID from the sale result

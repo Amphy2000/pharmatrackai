@@ -67,6 +67,7 @@ export interface Medication {
   is_controlled?: boolean;
   nafdac_reg_number?: string;
   dispensing_unit?: DispensingUnit;
+  metadata?: Record<string, any> | null;
   created_at: string;
   updated_at: string;
 }

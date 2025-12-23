@@ -8,9 +8,11 @@ import { usePharmacy } from '@/hooks/usePharmacy';
 interface CompleteSaleParams {
   items: CartItem[];
   customerName?: string;
+  customerId?: string;
   shiftId?: string;
   staffName?: string;
   paymentMethod?: string;
+  prescriptionImages?: string[];
 }
 
 interface SaleWithMedication {
@@ -109,7 +111,7 @@ export const useSales = () => {
   }, [pharmacyId, queryClient]);
 
   const completeSale = useMutation({
-    mutationFn: async ({ items, customerName, shiftId, staffName, paymentMethod }: CompleteSaleParams) => {
+    mutationFn: async ({ items, customerName, customerId, shiftId, staffName, paymentMethod, prescriptionImages }: CompleteSaleParams) => {
       if (!pharmacyId) {
         throw new Error('No pharmacy associated with your account. Please complete onboarding first.');
       }
@@ -143,19 +145,21 @@ export const useSales = () => {
         // Generate unique receipt_id for each sale record (append index if multiple items)
         const itemReceiptId = items.length > 1 ? `${receiptId}-${index + 1}` : receiptId;
 
-        // Insert sale record with receipt_id, shift_id, sold_by, sold_by_name, and payment_method
+        // Insert sale record with receipt_id, shift_id, sold_by, sold_by_name, payment_method, and prescription images
         const { data: saleData, error: saleError } = await supabase.from('sales').insert({
           medication_id: item.medication.id,
           quantity: item.quantity,
           unit_price: price,
           total_price: totalPrice,
           customer_name: customerName || null,
+          customer_id: customerId || null,
           pharmacy_id: pharmacyId,
           sold_by: user?.id || null,
           sold_by_name: staffName || null,
           receipt_id: itemReceiptId,
           shift_id: shiftId || null,
           payment_method: paymentMethod || null,
+          prescription_images: prescriptionImages && prescriptionImages.length > 0 ? prescriptionImages : null,
         }).select('receipt_id').single();
 
         if (saleError) throw saleError;
