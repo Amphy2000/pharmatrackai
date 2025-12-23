@@ -39,6 +39,8 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 
+import { MedicationDetailModal } from '@/components/inventory/MedicationDetailModal';
+
 const Inventory = () => {
   const { medications, deleteMedication, updateMedication } = useMedications();
   const [showReceiveStockModal, setShowReceiveStockModal] = useState(false);
@@ -48,6 +50,7 @@ const Inventory = () => {
   const [showAddMedicationModal, setShowAddMedicationModal] = useState(false);
   const [showBulkPriceModal, setShowBulkPriceModal] = useState(false);
   const [editingMedication, setEditingMedication] = useState<Medication | null>(null);
+  const [detailMedication, setDetailMedication] = useState<Medication | null>(null);
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -661,6 +664,13 @@ const Inventory = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Medication Detail Modal */}
+      <MedicationDetailModal
+        medication={detailMedication}
+        open={!!detailMedication}
+        onOpenChange={(open) => !open && setDetailMedication(null)}
+      />
     </div>
   );
 };

@@ -934,11 +934,13 @@ export type Database = {
       sales: {
         Row: {
           created_at: string
+          customer_id: string | null
           customer_name: string | null
           id: string
           medication_id: string
           payment_method: string | null
           pharmacy_id: string
+          prescription_images: string[] | null
           quantity: number
           receipt_id: string | null
           sale_date: string
@@ -950,11 +952,13 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          customer_id?: string | null
           customer_name?: string | null
           id?: string
           medication_id: string
           payment_method?: string | null
           pharmacy_id: string
+          prescription_images?: string[] | null
           quantity: number
           receipt_id?: string | null
           sale_date?: string
@@ -966,11 +970,13 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          customer_id?: string | null
           customer_name?: string | null
           id?: string
           medication_id?: string
           payment_method?: string | null
           pharmacy_id?: string
+          prescription_images?: string[] | null
           quantity?: number
           receipt_id?: string | null
           sale_date?: string
@@ -981,6 +987,13 @@ export type Database = {
           unit_price?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "sales_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "sales_medication_id_fkey"
             columns: ["medication_id"]

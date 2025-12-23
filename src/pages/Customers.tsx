@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { CustomersTable } from '@/components/customers/CustomersTable';
 import { AddCustomerModal } from '@/components/customers/AddCustomerModal';
 import { CustomerPrescriptionsModal } from '@/components/customers/CustomerPrescriptionsModal';
+import { CustomerDetailModal } from '@/components/customers/CustomerDetailModal';
 import { useCustomers } from '@/hooks/useCustomers';
 import { usePrescriptions } from '@/hooks/usePrescriptions';
 import type { Customer } from '@/types/customer';
@@ -15,6 +16,7 @@ const Customers = () => {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [editingCustomer, setEditingCustomer] = useState<Customer | null>(null);
   const [viewingCustomer, setViewingCustomer] = useState<Customer | null>(null);
+  const [detailCustomer, setDetailCustomer] = useState<Customer | null>(null);
   const { customers } = useCustomers();
   const { prescriptionsDueForReminder } = usePrescriptions();
 
@@ -128,6 +130,7 @@ const Customers = () => {
             searchQuery={searchQuery}
             onEdit={handleEdit}
             onViewPrescriptions={setViewingCustomer}
+            onViewDetails={setDetailCustomer}
           />
         </section>
       </main>
@@ -145,6 +148,12 @@ const Customers = () => {
           customer={viewingCustomer}
         />
       )}
+
+      <CustomerDetailModal
+        customer={detailCustomer}
+        open={!!detailCustomer}
+        onOpenChange={(open) => !open && setDetailCustomer(null)}
+      />
     </div>
   );
 };

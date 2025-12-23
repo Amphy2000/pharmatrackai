@@ -5,6 +5,18 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Keyword dictionary for Nigerian supplier invoices
+const KEYWORD_DICTIONARY = {
+  productName: ['Item', 'Description', 'Drug Name', 'Product', 'SKU Name', 'Name', 'Medicine', 'Drug', 'Medication'],
+  purchasePrice: ['P.Price', 'Cost', 'Unit Cost', 'Rate', 'W-Sale', 'Land Cost', 'Cost Price', 'Purchase', 'Buying Price'],
+  sellingPrice: ['S.Price', 'Retail', 'MSRP', 'Unit Price', 'Dispense Price', 'Selling', 'Sale Price', 'Price'],
+  batchNumber: ['BN', 'B/N', 'Batch', 'Lot', 'Lot No', 'Control No', 'Batch Number', 'Batch No'],
+  expiryDate: ['EXP', 'Expiry', 'Best Before', 'Valid To', 'E.Date', 'Exp Date', 'Expiry Date', 'Expires'],
+  manufacturingDate: ['MFG', 'Mfg Date', 'Manufacturing', 'Prod Date', 'Production Date', 'Made'],
+  quantity: ['Qty', 'In Stock', 'Balance', 'SOH', 'Count', 'Quantity', 'Units', 'Pcs', 'Pieces'],
+  nafdacNumber: ['NAFDAC', 'Reg No', 'Registration', 'NAFDAC No', 'Reg Number'],
+};
+
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -30,7 +42,12 @@ serve(async (req) => {
       );
     }
 
-    console.log('Processing invoice image with AI...');
+    console.log('Processing invoice image with enhanced AI scanner...');
+
+    // Build keyword hints for the AI
+    const keywordHints = Object.entries(KEYWORD_DICTIONARY)
+      .map(([field, keywords]) => `${field}: Look for "${keywords.join('", "')}"`)
+      .join('\n');
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -43,20 +60,34 @@ serve(async (req) => {
         messages: [
           {
             role: 'system',
-            content: `You are an expert at extracting product information from pharmaceutical invoices and receipts.
-            
-Extract all products/medications from the invoice image. Pay special attention to:
-- EXP or Expiry Date markings (NAFDAC requirement)
-- BN or Batch Number markings (NAFDAC requirement)
-- MFG or Manufacturing Date if visible
+            content: `You are an expert at extracting product information from pharmaceutical invoices and receipts, especially Nigerian supplier invoices.
 
-For each item, identify:
-- productName: The medication or product name
+KEYWORD DICTIONARY - Look for these terms ANYWHERE on the page:
+${keywordHints}
+
+TABLE EXTRACTION RULES:
+1. Identify horizontal rows in the invoice - each row is typically one product
+2. Look for the "Total Amount" at the bottom to verify prices
+3. Look for the "Date" at the top for invoice date reference
+
+DATE PATTERN PRIORITIZATION:
+- If you see a 4-digit year near a 2-digit month (e.g., 05/2027, 2027-05), prioritize it as Expiry Date for that row
+- Common formats: MM/YYYY, YYYY-MM, DD/MM/YYYY, MM-DD-YYYY
+- Convert all dates to YYYY-MM-DD format
+
+BATCH NUMBER PATTERNS:
+- Alphanumeric strings like "BN2044", "LOT-A123", "B/N: 45678"
+- Usually 4-10 characters
+
+For each item found, identify:
+- productName: The medication or product name (REQUIRED)
 - quantity: The quantity purchased (default to 1 if unclear)
 - unitPrice: Price per unit/cost price if visible (optional)
-- batchNumber: Batch/lot number - look for "BN:", "Batch:", "Lot:" (optional but important)
-- expiryDate: Expiry date - look for "EXP:", "Expiry:" in YYYY-MM-DD format (optional but important)
-- manufacturingDate: Manufacturing date - look for "MFG:", "Mfg Date:" in YYYY-MM-DD format (optional)
+- sellingPrice: Retail/selling price if different from unit price (optional)
+- batchNumber: Batch/lot number (IMPORTANT - look for BN:, Batch:, Lot:)
+- expiryDate: Expiry date in YYYY-MM-DD format (IMPORTANT - look for EXP:, Expiry:)
+- manufacturingDate: Manufacturing date in YYYY-MM-DD format if visible (optional)
+- nafdacNumber: NAFDAC registration number if visible (optional)
 
 Return ONLY a valid JSON object with this structure:
 {
@@ -65,11 +96,16 @@ Return ONLY a valid JSON object with this structure:
       "productName": "string",
       "quantity": number,
       "unitPrice": number or null,
+      "sellingPrice": number or null,
       "batchNumber": "string or null",
-      "expiryDate": "string or null",
-      "manufacturingDate": "string or null"
+      "expiryDate": "YYYY-MM-DD or null",
+      "manufacturingDate": "YYYY-MM-DD or null",
+      "nafdacNumber": "string or null"
     }
-  ]
+  ],
+  "invoiceTotal": number or null,
+  "invoiceDate": "YYYY-MM-DD or null",
+  "supplierName": "string or null"
 }
 
 If you cannot identify any products, return: {"items": [], "error": "Could not extract products from image"}
@@ -80,7 +116,7 @@ Do not include any explanation, just the JSON.`
             content: [
               {
                 type: 'text',
-                text: 'Extract all medication/product details from this invoice image. Return only valid JSON.'
+                text: 'Extract all medication/product details from this invoice image. Use keyword-based extraction to find batch numbers, expiry dates, and prices. Look for table rows and extract each product. Return only valid JSON.'
               },
               {
                 type: 'image_url',
@@ -141,6 +177,31 @@ Do not include any explanation, just the JSON.`
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
+    }
+
+    // Post-process: Validate and clean extracted data
+    if (result.items && Array.isArray(result.items)) {
+      result.items = result.items.map((item: any) => {
+        // Validate expiry date format
+        if (item.expiryDate && !/^\d{4}-\d{2}-\d{2}$/.test(item.expiryDate)) {
+          // Try to parse and reformat common date formats
+          const dateStr = item.expiryDate;
+          const yearMatch = dateStr.match(/20\d{2}/);
+          const monthMatch = dateStr.match(/\b(0?[1-9]|1[0-2])\b/);
+          if (yearMatch && monthMatch) {
+            item.expiryDate = `${yearMatch[0]}-${monthMatch[1].padStart(2, '0')}-01`;
+          } else {
+            item.expiryDate = null;
+          }
+        }
+        
+        // Ensure quantity is a positive number
+        if (!item.quantity || item.quantity < 1) {
+          item.quantity = 1;
+        }
+        
+        return item;
+      });
     }
 
     console.log('Extracted items:', result.items?.length || 0);
