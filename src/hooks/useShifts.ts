@@ -79,31 +79,44 @@ export const useShifts = () => {
     queryFn: async () => {
       if (!pharmacyId) return [];
       
-      const { data, error } = await supabase
+      // First fetch shifts with staff data
+      const { data: shiftsData, error: shiftsError } = await supabase
         .from('staff_shifts')
         .select(`
           *,
           staff:pharmacy_staff(
             id,
             user_id,
-            role,
-            profile:profiles(full_name)
+            role
           )
         `)
         .eq('pharmacy_id', pharmacyId)
         .order('clock_in', { ascending: false })
         .limit(100);
 
-      if (error) throw error;
+      if (shiftsError) throw shiftsError;
+      if (!shiftsData || shiftsData.length === 0) return [];
+
+      // Get unique user_ids from staff
+      const userIds = [...new Set(shiftsData.map(s => s.staff?.user_id).filter(Boolean))];
       
-      // Transform the nested profile data
-      return (data || []).map(shift => ({
+      // Fetch profiles separately
+      const { data: profilesData } = await supabase
+        .from('profiles')
+        .select('user_id, full_name')
+        .in('user_id', userIds);
+
+      // Create a map of user_id to profile
+      const profilesMap = new Map(
+        (profilesData || []).map(p => [p.user_id, { full_name: p.full_name }])
+      );
+
+      // Merge profiles with shifts
+      return shiftsData.map(shift => ({
         ...shift,
         staff: shift.staff ? {
           ...shift.staff,
-          profile: Array.isArray(shift.staff.profile) 
-            ? shift.staff.profile[0] 
-            : shift.staff.profile
+          profile: profilesMap.get(shift.staff.user_id) || { full_name: null }
         } : null
       })) as StaffShift[];
     },
