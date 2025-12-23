@@ -158,8 +158,8 @@ const Landing = () => {
           <div className="hidden md:flex items-center gap-6">
             <button onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })} className="text-sm text-muted-foreground hover:text-foreground transition-colors">Features</button>
             <button onClick={() => document.getElementById('comparison')?.scrollIntoView({ behavior: 'smooth' })} className="text-sm text-muted-foreground hover:text-foreground transition-colors">Why PharmaTrack</button>
-            <button onClick={() => document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' })} className="text-sm text-muted-foreground hover:text-foreground transition-colors">Pricing</button>
             <button onClick={() => document.getElementById('testimonials')?.scrollIntoView({ behavior: 'smooth' })} className="text-sm text-muted-foreground hover:text-foreground transition-colors">Testimonials</button>
+            <button onClick={() => document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' })} className="text-sm text-muted-foreground hover:text-foreground transition-colors">Pricing</button>
           </div>
 
           <div className="flex items-center gap-3">
@@ -188,11 +188,11 @@ const Landing = () => {
                 <DropdownMenuItem onClick={() => document.getElementById('comparison')?.scrollIntoView({ behavior: 'smooth' })}>
                   Why PharmaTrack
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' })}>
-                  Pricing
-                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => document.getElementById('testimonials')?.scrollIntoView({ behavior: 'smooth' })}>
                   Testimonials
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' })}>
+                  Pricing
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
                   <Link to="/auth">Login</Link>
