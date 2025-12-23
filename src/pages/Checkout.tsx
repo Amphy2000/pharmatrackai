@@ -7,14 +7,15 @@ import {
   ArrowLeft, 
   ShoppingCart, 
   CreditCard, 
-  Printer, 
   Trash2,
   Check,
   Pause,
   Clock,
   Zap,
   Building2,
-  Eye
+  Eye,
+  Keyboard,
+  HelpCircle
 } from 'lucide-react';
 import { useMedications } from '@/hooks/useMedications';
 import { useCart } from '@/hooks/useCart';
@@ -34,9 +35,9 @@ import { DrugInteractionWarning } from '@/components/pos/DrugInteractionWarning'
 import { ReceiptPreviewModal } from '@/components/pos/ReceiptPreviewModal';
 import { PatientSelector } from '@/components/pos/PatientSelector';
 import { PrescriptionImageUpload } from '@/components/pos/PrescriptionImageUpload';
+import { KeyboardShortcutsOverlay } from '@/components/pos/KeyboardShortcutsOverlay';
 import { Customer } from '@/types/customer';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
 import {
@@ -47,7 +48,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { generateReceipt, generateReceiptNumber, generateInvoiceNumber, PaymentMethod } from '@/utils/receiptGenerator';
+import { generateReceipt, PaymentMethod } from '@/utils/receiptGenerator';
 import { printHtmlReceipt } from '@/utils/htmlReceiptPrinter';
 import jsPDF from 'jspdf';
 import { FileText, Banknote, CreditCard as CreditCardIcon, Landmark } from 'lucide-react';
@@ -100,6 +101,7 @@ const Checkout = () => {
   const [previewReceipt, setPreviewReceipt] = useState<jsPDF | null>(null);
   const [selectedPatient, setSelectedPatient] = useState<Customer | null>(null);
   const [prescriptionImages, setPrescriptionImages] = useState<string[]>([]);
+  const [showShortcuts, setShowShortcuts] = useState(false);
 
   // Global barcode scanner - works without focusing search bar
   const isExpired = (expiryDate: string): boolean => {
@@ -145,31 +147,52 @@ const Checkout = () => {
     enabled: !checkoutOpen && !previewOpen && !heldPanelOpen,
   });
 
-  // Keyboard shortcuts for +/- to adjust last item quantity
+  // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't trigger when in input fields or dialogs
       const target = e.target as HTMLElement;
-      if (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable) {
+      const isInputField = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
+      
+      // ? key to toggle shortcuts overlay (works anywhere)
+      if (e.key === '?' && !isInputField) {
+        e.preventDefault();
+        setShowShortcuts(prev => !prev);
         return;
       }
-      if (checkoutOpen || previewOpen || heldPanelOpen) return;
+      
+      // Don't process other shortcuts if dialogs are open or in input fields
+      if (isInputField || checkoutOpen || previewOpen || heldPanelOpen || showShortcuts) return;
 
       const lastItemId = cart.getLastItemId();
-      if (!lastItemId) return;
 
-      if (e.key === '+' || e.key === '=') {
+      // Quantity shortcuts
+      if ((e.key === '+' || e.key === '=') && lastItemId) {
         e.preventDefault();
         cart.incrementQuantity(lastItemId);
-      } else if (e.key === '-' || e.key === '_') {
+      } else if ((e.key === '-' || e.key === '_') && lastItemId) {
         e.preventDefault();
         cart.decrementQuantity(lastItemId);
+      }
+      // Enter to checkout
+      else if (e.key === 'Enter' && cart.items.length > 0) {
+        e.preventDefault();
+        setCheckoutOpen(true);
+      }
+      // H to hold sale
+      else if (e.key.toLowerCase() === 'h' && cart.items.length > 0) {
+        e.preventDefault();
+        handleHoldSale();
+      }
+      // I to generate invoice
+      else if (e.key.toLowerCase() === 'i' && cart.items.length > 0) {
+        e.preventDefault();
+        handleGenerateInvoice();
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [cart, checkoutOpen, previewOpen, heldPanelOpen]);
+  }, [cart, checkoutOpen, previewOpen, heldPanelOpen, showShortcuts]);
 
   // Helper to get receipt params
   const getReceiptParams = (isPaid: boolean = true, isDigital: boolean = false, method: PaymentMethod = paymentMethod) => ({
@@ -411,72 +434,94 @@ const Checkout = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header */}
-      <header className="sticky top-0 z-50 border-b border-border/50 bg-background/80 backdrop-blur-xl">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/30">
+      {/* Keyboard Shortcuts Overlay */}
+      <KeyboardShortcutsOverlay 
+        open={showShortcuts} 
+        onClose={() => setShowShortcuts(false)} 
+      />
+
+      {/* Premium Header */}
+      <header className="sticky top-0 z-50 border-b border-border/30 bg-background/70 backdrop-blur-2xl">
         <div className="container mx-auto px-4 sm:px-6">
           <div className="flex h-14 sm:h-16 items-center justify-between">
-            <div className="flex items-center gap-2 sm:gap-4">
+            <div className="flex items-center gap-3 sm:gap-4">
               <Link to="/">
-                <Button variant="ghost" size="icon" className="rounded-xl h-9 w-9">
+                <Button variant="ghost" size="icon" className="rounded-xl h-9 w-9 hover:bg-muted/80">
                   <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
                 </Button>
               </Link>
               <div>
-                <h1 className="text-base sm:text-xl font-bold font-display flex items-center gap-2">
-                  <ShoppingCart className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
+                <h1 className="text-base sm:text-lg font-bold font-display flex items-center gap-2">
+                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-gradient-primary flex items-center justify-center shadow-sm">
+                    <ShoppingCart className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-white" />
+                  </div>
                   Point of Sale
                   {isSimpleMode ? (
-                    <Badge variant="secondary" className="text-[10px] gap-1">
+                    <Badge variant="secondary" className="text-[10px] gap-1 ml-1">
                       <Zap className="h-3 w-3" />
                       Simple
                     </Badge>
                   ) : (
-                    <Badge variant="outline" className="text-[10px] gap-1">
+                    <Badge variant="outline" className="text-[10px] gap-1 ml-1 border-primary/30 text-primary">
                       <Building2 className="h-3 w-3" />
                       Enterprise
                     </Badge>
                   )}
                 </h1>
-                <p className="text-[10px] sm:text-xs text-muted-foreground hidden xs:block">
-                  {isSimpleMode ? 'Fast checkout mode' : `Full ${regulatory.abbreviation} compliance tracking`}
-                </p>
               </div>
             </div>
 
             <div className="flex items-center gap-2 sm:gap-3">
+              {/* Keyboard Shortcuts Button */}
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setShowShortcuts(true)}
+                className="h-8 w-8 sm:h-9 sm:w-9 rounded-lg text-muted-foreground hover:text-foreground"
+                title="Keyboard shortcuts (?)"
+              >
+                <Keyboard className="h-4 w-4" />
+              </Button>
+
               {/* Held Transactions Button */}
               <Button
                 variant="outline"
                 size="sm"
                 onClick={() => setHeldPanelOpen(true)}
-                className="gap-1.5 h-8 sm:h-9 px-2 sm:px-3 text-xs sm:text-sm relative"
+                className="gap-1.5 h-8 sm:h-9 px-2.5 sm:px-3 text-xs sm:text-sm relative rounded-xl border-border/50"
               >
                 <Clock className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-                <span className="hidden xs:inline">Held</span>
+                <span className="hidden sm:inline">Held</span>
                 {heldCount > 0 && (
-                  <Badge className="absolute -top-2 -right-2 h-5 w-5 p-0 flex items-center justify-center text-[10px] bg-primary">
+                  <Badge className="absolute -top-2 -right-2 h-5 w-5 p-0 flex items-center justify-center text-[10px] bg-primary shadow-sm">
                     {heldCount}
                   </Badge>
                 )}
               </Button>
 
-              <Badge variant="secondary" className="gap-1 px-2 sm:px-3 py-1 text-xs">
-                <ShoppingCart className="h-3 w-3" />
-                {cart.getTotalItems()}
-              </Badge>
+              {/* Cart Count */}
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-primary/10 border border-primary/20">
+                <ShoppingCart className="h-3.5 w-3.5 text-primary" />
+                <span className="text-sm font-bold text-primary tabular-nums">{cart.getTotalItems()}</span>
+              </div>
             </div>
           </div>
         </div>
       </header>
 
-      {/* Main Content */}
+      {/* Main Content - Balanced Grid */}
       <main className="container mx-auto px-4 sm:px-6 py-4 sm:py-6">
-        <div className="grid gap-4 sm:gap-6 lg:grid-cols-3">
-          {/* Product Grid */}
-          <div className="lg:col-span-2">
-            <div className="glass-card rounded-2xl p-4 sm:p-6">
-              <h2 className="text-base sm:text-lg font-bold font-display mb-4">Select Products</h2>
+        <div className="grid gap-4 sm:gap-5 lg:grid-cols-5 xl:grid-cols-4">
+          {/* Product Grid - Takes more space */}
+          <div className="lg:col-span-3 xl:col-span-3">
+            <div className="bg-card/80 backdrop-blur-sm rounded-2xl p-4 sm:p-5 border border-border/40 shadow-sm">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-sm sm:text-base font-bold font-display">Select Products</h2>
+                <span className="text-xs text-muted-foreground">
+                  {medications.length} items
+                </span>
+              </div>
               <ProductGrid
                 medications={medications}
                 onAddToCart={cart.addItem}
@@ -485,20 +530,28 @@ const Checkout = () => {
             </div>
           </div>
 
-          {/* Cart Panel */}
-          <div className="lg:col-span-1">
-            <div className="glass-card rounded-2xl p-4 sm:p-6 lg:sticky lg:top-24">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-base sm:text-lg font-bold font-display">Cart</h2>
+          {/* Cart Panel - Compact and sticky */}
+          <div className="lg:col-span-2 xl:col-span-1">
+            <div className="bg-card/90 backdrop-blur-sm rounded-2xl p-4 border border-border/40 shadow-sm lg:sticky lg:top-20">
+              {/* Cart Header */}
+              <div className="flex items-center justify-between mb-3 pb-3 border-b border-border/30">
+                <div className="flex items-center gap-2">
+                  <h2 className="text-sm font-bold font-display">Cart</h2>
+                  {cart.items.length > 0 && (
+                    <Badge variant="secondary" className="h-5 px-1.5 text-[10px]">
+                      {cart.items.length}
+                    </Badge>
+                  )}
+                </div>
                 {cart.items.length > 0 && (
                   <Button
                     variant="ghost"
                     size="sm"
                     onClick={cart.clearCart}
-                    className="text-destructive hover:text-destructive hover:bg-destructive/10 h-8 px-2"
+                    className="text-destructive/70 hover:text-destructive hover:bg-destructive/10 h-7 px-2 text-[10px]"
                   >
-                    <Trash2 className="h-3.5 w-3.5 mr-1" />
-                    <span className="text-xs">Clear</span>
+                    <Trash2 className="h-3 w-3 mr-1" />
+                    Clear
                   </Button>
                 )}
               </div>
@@ -513,14 +566,14 @@ const Checkout = () => {
 
               {/* Drug Interaction Warning */}
               {cart.items.length >= 2 && (
-                <div className="mt-4">
+                <div className="mt-3">
                   <DrugInteractionWarning cartItems={cart.items} />
                 </div>
               )}
 
-              {/* Patient Selection */}
+              {/* Patient Selection - Compact */}
               {cart.items.length > 0 && (
-                <div className="mt-4">
+                <div className="mt-3">
                   <PatientSelector
                     selectedPatient={selectedPatient}
                     onSelectPatient={(patient) => {
@@ -534,9 +587,9 @@ const Checkout = () => {
                 </div>
               )}
 
-              {/* Prescription Image Upload */}
+              {/* Prescription Upload - Compact */}
               {cart.items.length > 0 && (
-                <div className="mt-4">
+                <div className="mt-3">
                   <PrescriptionImageUpload
                     images={prescriptionImages}
                     onImagesChange={setPrescriptionImages}
@@ -545,35 +598,35 @@ const Checkout = () => {
               )}
 
               {/* Action Buttons */}
-              <div className="space-y-2 mt-4 sm:mt-6">
-                {/* Hold Sale Button */}
+              <div className="space-y-2 mt-4">
                 {cart.items.length > 0 && (
                   <div className="grid grid-cols-2 gap-2">
                     <Button
                       onClick={handleHoldSale}
                       variant="outline"
-                      className="h-10 sm:h-11 gap-2 text-sm"
+                      size="sm"
+                      className="h-9 gap-1.5 text-xs rounded-xl"
                     >
-                      <Pause className="h-4 w-4" />
-                      Hold Sale
+                      <Pause className="h-3.5 w-3.5" />
+                      Hold
                     </Button>
                     <Button
                       onClick={handleGenerateInvoice}
                       variant="outline"
+                      size="sm"
                       disabled={isProcessing}
-                      className="h-10 sm:h-11 gap-2 text-sm border-amber-500/50 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30"
+                      className="h-9 gap-1.5 text-xs rounded-xl border-amber-500/40 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30"
                     >
-                      <FileText className="h-4 w-4" />
+                      <FileText className="h-3.5 w-3.5" />
                       Invoice
                     </Button>
                   </div>
                 )}
 
-                {/* Checkout Button */}
                 <Button
                   onClick={() => setCheckoutOpen(true)}
                   disabled={cart.items.length === 0}
-                  className="w-full h-12 sm:h-14 text-base sm:text-lg font-bold gap-2 sm:gap-3 bg-gradient-primary hover:opacity-90 shadow-glow-primary btn-glow rounded-xl"
+                  className="w-full h-11 text-sm font-bold gap-2 bg-gradient-primary hover:opacity-90 shadow-md rounded-xl transition-all hover:shadow-lg"
                 >
                   <CreditCard className="h-4 w-4 sm:h-5 sm:w-5" />
                   Complete Sale
