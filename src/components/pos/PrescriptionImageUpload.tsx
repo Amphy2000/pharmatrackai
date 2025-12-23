@@ -1,8 +1,9 @@
-import { useState, useRef } from 'react';
-import { Camera, Upload, X, Image as ImageIcon, Loader2 } from 'lucide-react';
+import { useState, useRef, useEffect } from 'react';
+import { Camera, X, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { usePharmacy } from '@/hooks/usePharmacy';
 
 interface PrescriptionImageUploadProps {
   images: string[];
@@ -16,12 +17,59 @@ export const PrescriptionImageUpload = ({
   maxImages = 3 
 }: PrescriptionImageUploadProps) => {
   const [isUploading, setIsUploading] = useState(false);
+  const [signedUrls, setSignedUrls] = useState<Record<string, string>>({});
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const { pharmacy } = usePharmacy();
+
+  // Generate signed URLs for displaying private images
+  useEffect(() => {
+    const generateSignedUrls = async () => {
+      if (images.length === 0) {
+        setSignedUrls({});
+        return;
+      }
+
+      const newSignedUrls: Record<string, string> = {};
+      
+      for (const storagePath of images) {
+        // Skip if we already have a signed URL for this path
+        if (signedUrls[storagePath]) {
+          newSignedUrls[storagePath] = signedUrls[storagePath];
+          continue;
+        }
+
+        try {
+          const { data, error } = await supabase.storage
+            .from('prescriptions')
+            .createSignedUrl(storagePath, 3600); // 1 hour expiry
+
+          if (data?.signedUrl) {
+            newSignedUrls[storagePath] = data.signedUrl;
+          }
+        } catch (error) {
+          console.error('Failed to generate signed URL:', error);
+        }
+      }
+
+      setSignedUrls(newSignedUrls);
+    };
+
+    generateSignedUrls();
+  }, [images]);
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const files = event.target.files;
     if (!files || files.length === 0) return;
+
+    if (!pharmacy?.id) {
+      toast({
+        title: 'Error',
+        description: 'No pharmacy associated with your account',
+        variant: 'destructive',
+      });
+      return;
+    }
 
     if (images.length + files.length > maxImages) {
       toast({
@@ -33,7 +81,7 @@ export const PrescriptionImageUpload = ({
     }
 
     setIsUploading(true);
-    const newImages: string[] = [];
+    const newImagePaths: string[] = [];
 
     try {
       for (const file of Array.from(files)) {
@@ -57,25 +105,23 @@ export const PrescriptionImageUpload = ({
 
         const fileName = `prescription-${Date.now()}-${Math.random().toString(36).slice(2)}`;
         const fileExt = file.name.split('.').pop();
-        const filePath = `prescriptions/${fileName}.${fileExt}`;
+        // Store in pharmacy-specific folder for RLS policy
+        const filePath = `${pharmacy.id}/${fileName}.${fileExt}`;
 
         const { error: uploadError } = await supabase.storage
-          .from('pharmacy-logos')
+          .from('prescriptions')
           .upload(filePath, file);
 
         if (uploadError) throw uploadError;
 
-        const { data: { publicUrl } } = supabase.storage
-          .from('pharmacy-logos')
-          .getPublicUrl(filePath);
-
-        newImages.push(publicUrl);
+        // Store the storage path (not the full URL) for signed URL generation
+        newImagePaths.push(filePath);
       }
 
-      onImagesChange([...images, ...newImages]);
+      onImagesChange([...images, ...newImagePaths]);
       toast({
         title: 'Upload successful',
-        description: `${newImages.length} image(s) uploaded`,
+        description: `${newImagePaths.length} image(s) uploaded securely`,
       });
     } catch (error) {
       toast({
@@ -91,7 +137,18 @@ export const PrescriptionImageUpload = ({
     }
   };
 
-  const removeImage = (index: number) => {
+  const removeImage = async (index: number) => {
+    const storagePath = images[index];
+    
+    // Try to delete from storage
+    try {
+      await supabase.storage
+        .from('prescriptions')
+        .remove([storagePath]);
+    } catch (error) {
+      console.error('Failed to delete image from storage:', error);
+    }
+
     const newImages = images.filter((_, i) => i !== index);
     onImagesChange(newImages);
   };
@@ -110,16 +167,22 @@ export const PrescriptionImageUpload = ({
 
       {images.length > 0 && (
         <div className="flex gap-2 flex-wrap">
-          {images.map((url, index) => (
+          {images.map((storagePath, index) => (
             <div 
               key={index} 
               className="relative h-16 w-16 rounded-lg overflow-hidden border border-border/50 group"
             >
-              <img 
-                src={url} 
-                alt={`Prescription ${index + 1}`} 
-                className="h-full w-full object-cover"
-              />
+              {signedUrls[storagePath] ? (
+                <img 
+                  src={signedUrls[storagePath]} 
+                  alt={`Prescription ${index + 1}`} 
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <div className="h-full w-full flex items-center justify-center bg-muted">
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                </div>
+              )}
               <button
                 onClick={() => removeImage(index)}
                 className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
@@ -137,7 +200,7 @@ export const PrescriptionImageUpload = ({
           size="sm"
           className="gap-2 w-full"
           onClick={() => fileInputRef.current?.click()}
-          disabled={isUploading}
+          disabled={isUploading || !pharmacy?.id}
         >
           {isUploading ? (
             <>
