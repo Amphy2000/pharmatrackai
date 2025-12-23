@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Clock, LogIn, LogOut, Timer } from 'lucide-react';
+import { Clock, LogIn, LogOut, Timer, DollarSign, Receipt } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useShifts } from '@/hooks/useShifts';
 import { useCurrency } from '@/contexts/CurrencyContext';
@@ -34,87 +33,91 @@ export const ShiftClock = () => {
 
   if (isLoadingActiveShift) {
     return (
-      <Card className="bg-card/50 backdrop-blur-sm border-border/50">
-        <CardContent className="p-4">
-          <div className="animate-pulse flex items-center gap-3">
-            <div className="h-10 w-10 bg-muted rounded-full" />
-            <div className="h-4 w-32 bg-muted rounded" />
-          </div>
-        </CardContent>
-      </Card>
+      <div className="glass-card rounded-2xl border border-border/50 p-5 h-full flex flex-col">
+        <div className="animate-pulse flex items-center gap-3">
+          <div className="h-10 w-10 bg-muted rounded-xl" />
+          <div className="h-4 w-32 bg-muted rounded" />
+        </div>
+      </div>
     );
   }
 
   return (
-    <Card className={`backdrop-blur-sm border-border/50 ${activeShift ? 'bg-primary/5 border-primary/30' : 'bg-card/50'}`}>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-sm font-medium flex items-center gap-2">
-          <Clock className="h-4 w-4" />
-          Shift Status
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div className="text-2xl font-mono font-bold">
-            {format(currentTime, 'HH:mm:ss')}
+    <div className={`rounded-2xl border p-5 h-full flex flex-col ${
+      activeShift 
+        ? 'glass-card border-primary/30 bg-primary/5' 
+        : 'glass-card border-border/50'
+    }`}>
+      <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-3">
+          <div className={`h-10 w-10 rounded-xl flex items-center justify-center shadow-lg ${
+            activeShift 
+              ? 'bg-gradient-to-br from-green-500 to-emerald-600' 
+              : 'bg-gradient-to-br from-slate-500 to-slate-600'
+          }`}>
+            <Clock className="h-5 w-5 text-white" />
           </div>
-          <Badge variant={activeShift ? 'default' : 'secondary'}>
-            {activeShift ? 'On Shift' : 'Off Shift'}
-          </Badge>
-        </div>
-
-        {activeShift ? (
-          <>
-            <div className="grid grid-cols-2 gap-3 text-sm">
-              <div className="bg-background/50 rounded-lg p-3">
-                <div className="text-muted-foreground text-xs">Started</div>
-                <div className="font-medium">
-                  {format(new Date(activeShift.clock_in), 'h:mm a')}
-                </div>
-              </div>
-              <div className="bg-background/50 rounded-lg p-3">
-                <div className="text-muted-foreground text-xs flex items-center gap-1">
-                  <Timer className="h-3 w-3" /> Duration
-                </div>
-                <div className="font-medium">{getShiftDuration()}</div>
-              </div>
-              <div className="bg-background/50 rounded-lg p-3">
-                <div className="text-muted-foreground text-xs">Sales</div>
-                <div className="font-medium text-green-600">
-                  {formatPrice(activeShift.total_sales || 0)}
-                </div>
-              </div>
-              <div className="bg-background/50 rounded-lg p-3">
-                <div className="text-muted-foreground text-xs">Transactions</div>
-                <div className="font-medium">{activeShift.total_transactions || 0}</div>
-              </div>
-            </div>
-            <Button 
-              onClick={handleClockOut} 
-              variant="destructive" 
-              className="w-full"
-              disabled={clockOut.isPending}
-            >
-              <LogOut className="h-4 w-4 mr-2" />
-              {clockOut.isPending ? 'Clocking Out...' : 'Clock Out'}
-            </Button>
-          </>
-        ) : (
-          <div className="space-y-3">
-            <p className="text-sm text-muted-foreground text-center py-2">
-              Clock in to start tracking your shift sales
+          <div>
+            <h3 className="font-display font-semibold text-foreground">Shift Status</h3>
+            <p className="text-xs text-muted-foreground">
+              {activeShift ? 'Currently working' : 'Not clocked in'}
             </p>
-            <Button 
-              onClick={handleClockIn} 
-              className="w-full"
-              disabled={clockIn.isPending}
-            >
-              <LogIn className="h-4 w-4 mr-2" />
-              {clockIn.isPending ? 'Clocking In...' : 'Clock In'}
-            </Button>
           </div>
-        )}
-      </CardContent>
-    </Card>
+        </div>
+        <Badge variant={activeShift ? 'default' : 'secondary'} className={
+          activeShift ? 'bg-success text-success-foreground' : ''
+        }>
+          {activeShift ? 'On Shift' : 'Off Shift'}
+        </Badge>
+      </div>
+
+      <div className="text-center mb-4">
+        <div className="text-3xl font-mono font-bold tracking-tight">
+          {format(currentTime, 'HH:mm:ss')}
+        </div>
+      </div>
+
+      {activeShift ? (
+        <div className="flex-1 flex flex-col">
+          <div className="grid grid-cols-2 gap-2 mb-4">
+            <div className="bg-background/50 rounded-xl p-3 text-center border border-border/30">
+              <Timer className="h-4 w-4 mx-auto mb-1 text-muted-foreground" />
+              <div className="text-sm font-semibold">{getShiftDuration()}</div>
+              <div className="text-[10px] text-muted-foreground">Duration</div>
+            </div>
+            <div className="bg-background/50 rounded-xl p-3 text-center border border-border/30">
+              <DollarSign className="h-4 w-4 mx-auto mb-1 text-success" />
+              <div className="text-sm font-semibold text-success">
+                {formatPrice(activeShift.total_sales || 0)}
+              </div>
+              <div className="text-[10px] text-muted-foreground">Sales</div>
+            </div>
+          </div>
+          <Button 
+            onClick={handleClockOut} 
+            variant="destructive" 
+            className="w-full mt-auto"
+            disabled={clockOut.isPending}
+          >
+            <LogOut className="h-4 w-4 mr-2" />
+            {clockOut.isPending ? 'Clocking Out...' : 'Clock Out'}
+          </Button>
+        </div>
+      ) : (
+        <div className="flex-1 flex flex-col justify-end">
+          <p className="text-sm text-muted-foreground text-center mb-4">
+            Clock in to start tracking your shift sales
+          </p>
+          <Button 
+            onClick={handleClockIn} 
+            className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:opacity-90 text-white"
+            disabled={clockIn.isPending}
+          >
+            <LogIn className="h-4 w-4 mr-2" />
+            {clockIn.isPending ? 'Clocking In...' : 'Clock In'}
+          </Button>
+        </div>
+      )}
+    </div>
   );
 };

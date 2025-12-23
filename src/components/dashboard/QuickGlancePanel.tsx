@@ -2,7 +2,6 @@ import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { ShoppingBag, AlertTriangle, XCircle, TrendingUp } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useCurrency } from '@/contexts/CurrencyContext';
@@ -29,10 +28,9 @@ export const QuickGlancePanel = () => {
       const totalValue = data?.reduce((sum, s) => sum + Number(s.total_price), 0) || 0;
       return { totalItems, totalValue, count: data?.length || 0 };
     },
-    refetchInterval: 30000, // Refresh every 30 seconds
+    refetchInterval: 30000,
   });
 
-  // Calculate expired stock value and low stock alerts from medications
   const metrics = useMemo(() => {
     if (!medications || medications.length === 0) {
       return { expiredValue: 0, expiredCount: 0, lowStockCount: 0 };
@@ -47,7 +45,6 @@ export const QuickGlancePanel = () => {
       const isLowStock = med.current_stock <= med.reorder_level && med.current_stock > 0;
       
       if (isExpired && !med.is_shelved) {
-        // Unshelved expired stock
         expiredValue += med.current_stock * med.unit_price;
         expiredCount++;
       }
@@ -66,56 +63,57 @@ export const QuickGlancePanel = () => {
       value: todaySales?.totalItems || 0,
       subValue: formatPrice(todaySales?.totalValue || 0),
       icon: ShoppingBag,
-      color: 'text-primary',
-      bgColor: 'bg-primary/10',
+      gradient: 'from-blue-500 to-cyan-500',
     },
     {
       label: 'Unshelved Expired',
       value: metrics.expiredCount,
       subValue: formatPrice(metrics.expiredValue),
       icon: XCircle,
-      color: 'text-destructive',
-      bgColor: 'bg-destructive/10',
+      gradient: 'from-rose-500 to-pink-500',
     },
     {
       label: 'Low Stock',
       value: metrics.lowStockCount,
       subValue: 'non-expired items',
       icon: AlertTriangle,
-      color: 'text-warning',
-      bgColor: 'bg-warning/10',
+      gradient: 'from-amber-500 to-orange-500',
     },
   ];
 
   return (
-    <Card className="glass-card border-border/50">
-      <CardHeader className="pb-3">
-        <CardTitle className="font-display text-lg flex items-center gap-2">
-          <TrendingUp className="h-5 w-5 text-primary" />
-          Quick Glance
-          <Badge variant="secondary" className="text-[10px] ml-2">Live</Badge>
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-3 gap-4">
-          {stats.map((stat, index) => (
-            <motion.div
-              key={stat.label}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
-              className="text-center"
-            >
-              <div className={`inline-flex items-center justify-center h-10 w-10 rounded-xl ${stat.bgColor} mb-2`}>
-                <stat.icon className={`h-5 w-5 ${stat.color}`} />
-              </div>
-              <p className="text-2xl font-bold tabular-nums">{stat.value}</p>
-              <p className="text-xs text-muted-foreground font-medium">{stat.label}</p>
-              <p className="text-xs text-muted-foreground/70 mt-0.5">{stat.subValue}</p>
-            </motion.div>
-          ))}
+    <div className="glass-card rounded-2xl border border-border/50 p-5 h-full flex flex-col">
+      <div className="flex items-center justify-between mb-5">
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-600 flex items-center justify-center shadow-lg">
+            <TrendingUp className="h-5 w-5 text-white" />
+          </div>
+          <div>
+            <h3 className="font-display font-semibold text-foreground">Quick Glance</h3>
+            <p className="text-xs text-muted-foreground">Today's snapshot</p>
+          </div>
         </div>
-      </CardContent>
-    </Card>
+        <Badge className="bg-primary/10 text-primary border-primary/20 text-[10px]">Live</Badge>
+      </div>
+
+      <div className="flex-1 grid grid-cols-3 gap-3">
+        {stats.map((stat, index) => (
+          <motion.div
+            key={stat.label}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.1 }}
+            className="flex flex-col items-center justify-center text-center p-3 rounded-xl bg-muted/30 border border-border/30"
+          >
+            <div className={`h-9 w-9 rounded-lg bg-gradient-to-br ${stat.gradient} flex items-center justify-center mb-2 shadow-sm`}>
+              <stat.icon className="h-4 w-4 text-white" />
+            </div>
+            <p className="text-2xl font-bold tabular-nums leading-none">{stat.value}</p>
+            <p className="text-[11px] text-muted-foreground font-medium mt-1">{stat.label}</p>
+            <p className="text-[10px] text-muted-foreground/70 truncate max-w-full">{stat.subValue}</p>
+          </motion.div>
+        ))}
+      </div>
+    </div>
   );
 };
