@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { CartItem } from '@/types/medication';
 import { useToast } from '@/hooks/use-toast';
 import { usePharmacy } from '@/hooks/usePharmacy';
+import { useOfflineSync } from '@/hooks/useOfflineSync';
 
 interface CompleteSaleParams {
   items: CartItem[];
@@ -48,6 +49,7 @@ export const useSales = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { pharmacyId } = usePharmacy();
+  const { isOnline, addPendingSale } = useOfflineSync();
 
   // Query to fetch sales
   const { data: sales = [], isLoading } = useQuery({
@@ -116,14 +118,48 @@ export const useSales = () => {
         throw new Error('No pharmacy associated with your account. Please complete onboarding first.');
       }
 
+      // Generate receipt ID early
+      const receiptId = generateReceiptId();
+
+      // If offline, queue immediately and return
+      if (!isOnline) {
+        const total = items.reduce((sum, item) => {
+          const price = item.medication.selling_price || item.medication.unit_price;
+          return sum + (price * item.quantity);
+        }, 0);
+
+        addPendingSale({
+          items: items.map(item => ({
+            medicationId: item.medication.id,
+            medicationName: item.medication.name,
+            quantity: item.quantity,
+            unitPrice: item.medication.selling_price || item.medication.unit_price,
+            totalPrice: (item.medication.selling_price || item.medication.unit_price) * item.quantity,
+          })),
+          total,
+          customerId,
+          customerName,
+          paymentMethod,
+          shiftId,
+          staffName,
+        });
+
+        return { 
+          results: items.map(item => ({ 
+            item, 
+            newStock: Math.max(0, item.medication.current_stock - item.quantity), 
+            receiptId 
+          })), 
+          receiptId,
+          isOffline: true,
+        };
+      }
+
       // Get current user for sold_by
       const { data: authData } = await supabase.auth.getUser();
       const user = authData?.user;
       
       let totalSaleAmount = 0;
-      
-      // Generate a single receipt ID for this transaction batch
-      const receiptId = generateReceiptId();
       
       // Results array
       const results: { item: CartItem; newStock: number; receiptId: string }[] = [];
@@ -198,9 +234,18 @@ export const useSales = () => {
         }
       }
 
-      return { results, receiptId };
+      return { results, receiptId, isOffline: false };
     },
-    onSuccess: async ({ results, receiptId }) => {
+    onSuccess: async ({ results, receiptId, isOffline }) => {
+      // If offline, show a different message
+      if (isOffline) {
+        toast({
+          title: 'Queued for Sync',
+          description: `Sale ${receiptId} saved offline. Will sync when online.`,
+        });
+        return;
+      }
+
       // Force immediate refetch of medications
       await queryClient.refetchQueries({ queryKey: ['medications'], type: 'active' });
       queryClient.invalidateQueries({ queryKey: ['sales'] });

@@ -153,8 +153,8 @@ const Checkout = () => {
       const target = e.target as HTMLElement;
       const isInputField = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
       
-      // ? key to toggle shortcuts overlay (works anywhere)
-      if (e.key === '?' && !isInputField) {
+      // F1 key to toggle shortcuts overlay (works anywhere)
+      if (e.key === 'F1') {
         e.preventDefault();
         setShowShortcuts(prev => !prev);
         return;
@@ -479,7 +479,7 @@ const Checkout = () => {
                 size="icon"
                 onClick={() => setShowShortcuts(true)}
                 className="h-8 w-8 sm:h-9 sm:w-9 rounded-lg text-muted-foreground hover:text-foreground"
-                title="Keyboard shortcuts (?)"
+                title="Keyboard shortcuts (F1)"
               >
                 <Keyboard className="h-4 w-4" />
               </Button>
@@ -510,14 +510,14 @@ const Checkout = () => {
         </div>
       </header>
 
-      {/* Main Content - Balanced Grid */}
-      <main className="container mx-auto px-4 sm:px-6 py-4 sm:py-6">
-        <div className="grid gap-4 sm:gap-5 lg:grid-cols-5 xl:grid-cols-4">
-          {/* Product Grid - Takes more space */}
-          <div className="lg:col-span-3 xl:col-span-3">
-            <div className="bg-card/80 backdrop-blur-sm rounded-2xl p-4 sm:p-5 border border-border/40 shadow-sm">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="text-sm sm:text-base font-bold font-display">Select Products</h2>
+      {/* Main Content - Premium single-screen layout */}
+      <main className="container mx-auto px-4 sm:px-6 py-3 sm:py-4">
+        <div className="grid gap-4 lg:grid-cols-3">
+          {/* Product Grid - Takes 2/3 */}
+          <div className="lg:col-span-2">
+            <div className="bg-card/80 backdrop-blur-sm rounded-2xl p-4 border border-border/40 shadow-sm h-[calc(100vh-7rem)]">
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-sm font-bold font-display">Select Products</h2>
                 <span className="text-xs text-muted-foreground">
                   {medications.length} items
                 </span>
@@ -530,11 +530,11 @@ const Checkout = () => {
             </div>
           </div>
 
-          {/* Cart Panel - Compact and sticky */}
-          <div className="lg:col-span-2 xl:col-span-1">
-            <div className="bg-card/90 backdrop-blur-sm rounded-2xl p-4 border border-border/40 shadow-sm lg:sticky lg:top-20">
+          {/* Cart Panel - Takes 1/3, fixed height matching products */}
+          <div className="lg:col-span-1">
+            <div className="bg-card/90 backdrop-blur-sm rounded-2xl p-4 border border-border/40 shadow-sm h-[calc(100vh-7rem)] flex flex-col">
               {/* Cart Header */}
-              <div className="flex items-center justify-between mb-3 pb-3 border-b border-border/30">
+              <div className="flex items-center justify-between pb-3 border-b border-border/30 flex-shrink-0">
                 <div className="flex items-center gap-2">
                   <h2 className="text-sm font-bold font-display">Cart</h2>
                   {cart.items.length > 0 && (
@@ -548,7 +548,7 @@ const Checkout = () => {
                     variant="ghost"
                     size="sm"
                     onClick={cart.clearCart}
-                    className="text-destructive/70 hover:text-destructive hover:bg-destructive/10 h-7 px-2 text-[10px]"
+                    className="text-destructive/70 hover:text-destructive hover:bg-destructive/10 h-6 px-2 text-[10px]"
                   >
                     <Trash2 className="h-3 w-3 mr-1" />
                     Clear
@@ -556,56 +556,75 @@ const Checkout = () => {
                 )}
               </div>
 
-              <CartPanel
-                items={cart.items}
-                onIncrement={cart.incrementQuantity}
-                onDecrement={cart.decrementQuantity}
-                onRemove={cart.removeItem}
-                total={cart.getTotal()}
-              />
-
-              {/* Drug Interaction Warning */}
-              {cart.items.length >= 2 && (
-                <div className="mt-3">
-                  <DrugInteractionWarning cartItems={cart.items} />
-                </div>
-              )}
-
-              {/* Patient Selection - Compact */}
-              {cart.items.length > 0 && (
-                <div className="mt-3">
-                  <PatientSelector
-                    selectedPatient={selectedPatient}
-                    onSelectPatient={(patient) => {
-                      setSelectedPatient(patient);
-                      if (patient) {
-                        setCustomerName(patient.full_name);
-                      }
-                    }}
-                    onSkip={() => setCustomerName('')}
+              {/* Scrollable middle section */}
+              <div className="flex-1 overflow-hidden py-3 min-h-0">
+                <div className="h-full flex flex-col">
+                  <CartPanel
+                    items={cart.items}
+                    onIncrement={cart.incrementQuantity}
+                    onDecrement={cart.decrementQuantity}
+                    onRemove={cart.removeItem}
+                    total={cart.getTotal()}
                   />
-                </div>
-              )}
 
-              {/* Prescription Upload - Compact */}
-              {cart.items.length > 0 && (
-                <div className="mt-3">
-                  <PrescriptionImageUpload
-                    images={prescriptionImages}
-                    onImagesChange={setPrescriptionImages}
-                  />
-                </div>
-              )}
+                  {/* Drug Interaction Warning */}
+                  {cart.items.length >= 2 && (
+                    <div className="mt-2 flex-shrink-0">
+                      <DrugInteractionWarning cartItems={cart.items} />
+                    </div>
+                  )}
 
-              {/* Action Buttons */}
-              <div className="space-y-2 mt-4">
+                  {/* Patient Selection - Compact */}
+                  {cart.items.length > 0 && (
+                    <div className="mt-2 flex-shrink-0">
+                      <PatientSelector
+                        selectedPatient={selectedPatient}
+                        onSelectPatient={(patient) => {
+                          setSelectedPatient(patient);
+                          if (patient) {
+                            setCustomerName(patient.full_name);
+                          }
+                        }}
+                        onSkip={() => setCustomerName('')}
+                      />
+                    </div>
+                  )}
+
+                  {/* Prescription Upload - Compact */}
+                  {cart.items.length > 0 && (
+                    <div className="mt-2 flex-shrink-0">
+                      <PrescriptionImageUpload
+                        images={prescriptionImages}
+                        onImagesChange={setPrescriptionImages}
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Totals - Fixed at bottom */}
+              <div className="pt-3 border-t border-border/30 flex-shrink-0 space-y-2">
+                {cart.items.length > 0 && (
+                  <>
+                    <div className="flex justify-between items-center text-xs text-muted-foreground">
+                      <span>{cart.items.length} {cart.items.length === 1 ? 'item' : 'items'}</span>
+                      <span className="tabular-nums">{formatPrice(cart.getTotal())}</span>
+                    </div>
+                    <div className="flex justify-between items-center p-2.5 rounded-xl bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border border-primary/20">
+                      <span className="font-bold text-sm">Total</span>
+                      <span className="font-bold text-lg text-primary tabular-nums">{formatPrice(cart.getTotal())}</span>
+                    </div>
+                  </>
+                )}
+
+                {/* Action Buttons */}
                 {cart.items.length > 0 && (
                   <div className="grid grid-cols-2 gap-2">
                     <Button
                       onClick={handleHoldSale}
                       variant="outline"
                       size="sm"
-                      className="h-9 gap-1.5 text-xs rounded-xl"
+                      className="h-8 gap-1.5 text-xs rounded-xl"
                     >
                       <Pause className="h-3.5 w-3.5" />
                       Hold
@@ -615,7 +634,7 @@ const Checkout = () => {
                       variant="outline"
                       size="sm"
                       disabled={isProcessing}
-                      className="h-9 gap-1.5 text-xs rounded-xl border-amber-500/40 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30"
+                      className="h-8 gap-1.5 text-xs rounded-xl border-amber-500/40 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30"
                     >
                       <FileText className="h-3.5 w-3.5" />
                       Invoice
@@ -626,9 +645,9 @@ const Checkout = () => {
                 <Button
                   onClick={() => setCheckoutOpen(true)}
                   disabled={cart.items.length === 0}
-                  className="w-full h-11 text-sm font-bold gap-2 bg-gradient-primary hover:opacity-90 shadow-md rounded-xl transition-all hover:shadow-lg"
+                  className="w-full h-10 text-sm font-bold gap-2 bg-gradient-primary hover:opacity-90 shadow-md rounded-xl transition-all hover:shadow-lg"
                 >
-                  <CreditCard className="h-4 w-4 sm:h-5 sm:w-5" />
+                  <CreditCard className="h-4 w-4" />
                   Complete Sale
                 </Button>
               </div>

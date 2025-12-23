@@ -9,14 +9,12 @@ interface ShortcutItem {
 }
 
 const shortcuts: ShortcutItem[] = [
-  { keys: ['+', '='], description: 'Increase last item quantity', icon: <Plus className="h-4 w-4" /> },
-  { keys: ['-'], description: 'Decrease last item quantity', icon: <Minus className="h-4 w-4" /> },
-  { keys: ['/', 'Ctrl', 'K'], description: 'Focus search bar', icon: <Search className="h-4 w-4" /> },
-  { keys: ['Enter'], description: 'Open checkout dialog', icon: <ShoppingCart className="h-4 w-4" /> },
-  { keys: ['H'], description: 'Hold current sale', icon: <Pause className="h-4 w-4" /> },
-  { keys: ['I'], description: 'Generate invoice', icon: <FileText className="h-4 w-4" /> },
-  { keys: ['Esc'], description: 'Close dialogs', icon: <X className="h-4 w-4" /> },
-  { keys: ['?'], description: 'Toggle this help', icon: <HelpCircle className="h-4 w-4" /> },
+  { keys: ['+'], description: 'Increase quantity', icon: <Plus className="h-4 w-4" /> },
+  { keys: ['-'], description: 'Decrease quantity', icon: <Minus className="h-4 w-4" /> },
+  { keys: ['Enter'], description: 'Open checkout', icon: <ShoppingCart className="h-4 w-4" /> },
+  { keys: ['H'], description: 'Hold sale', icon: <Pause className="h-4 w-4" /> },
+  { keys: ['I'], description: 'Invoice', icon: <FileText className="h-4 w-4" /> },
+  { keys: ['F1'], description: 'Toggle help', icon: <HelpCircle className="h-4 w-4" /> },
 ];
 
 interface KeyboardShortcutsOverlayProps {
@@ -102,7 +100,7 @@ export const KeyboardShortcutsOverlay = ({ open, onClose }: KeyboardShortcutsOve
         {/* Footer */}
         <div className="p-4 border-t border-border/50 bg-muted/20 rounded-b-2xl">
           <p className="text-xs text-center text-muted-foreground">
-            Press <kbd className="px-1.5 py-0.5 text-[10px] font-mono bg-background border border-border rounded">?</kbd> anytime to toggle this overlay
+            Press <kbd className="px-1.5 py-0.5 text-[10px] font-mono bg-background border border-border rounded">F1</kbd> anytime to toggle this overlay
           </p>
         </div>
       </div>
