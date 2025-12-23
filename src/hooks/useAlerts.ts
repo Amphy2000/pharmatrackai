@@ -17,6 +17,23 @@ export const useAlerts = () => {
   const [isSending, setIsSending] = useState(false);
   const { pharmacy } = usePharmacy();
 
+  const getFunctionsErrorMessage = async (error: any) => {
+    try {
+      const ctx = error?.context;
+      if (ctx && typeof ctx.json === 'function') {
+        const body = await ctx.json();
+        return body?.error || body?.message || error?.message || 'Failed to send alert';
+      }
+      if (ctx && typeof ctx.text === 'function') {
+        const text = await ctx.text();
+        return text || error?.message || 'Failed to send alert';
+      }
+    } catch {
+      // ignore
+    }
+    return error?.message || 'Failed to send alert';
+  };
+
   const sendAlert = async ({ alertType, message, recipientPhone, channel }: SendAlertParams) => {
     if (!pharmacy?.id) {
       toast.error('Pharmacy not found');
@@ -37,16 +54,18 @@ export const useAlerts = () => {
 
       if (error) {
         console.error('Alert error:', error);
-        toast.error(`Failed to send ${channel.toUpperCase()} alert`);
-        return { success: false, error: error.message };
+        const errorMessage = await getFunctionsErrorMessage(error);
+        toast.error(errorMessage);
+        return { success: false, error: errorMessage };
       }
 
       toast.success(`${channel.toUpperCase()} alert sent successfully!`);
       return { success: true, data };
     } catch (err: any) {
       console.error('Alert exception:', err);
-      toast.error('Failed to send alert');
-      return { success: false, error: err.message };
+      const errorMessage = err?.message || 'Failed to send alert';
+      toast.error(errorMessage);
+      return { success: false, error: errorMessage };
     } finally {
       setIsSending(false);
     }
