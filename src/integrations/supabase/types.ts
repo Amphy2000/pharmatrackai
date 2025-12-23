@@ -363,6 +363,36 @@ export type Database = {
           },
         ]
       }
+      master_barcode_library: {
+        Row: {
+          barcode: string
+          category: string | null
+          created_at: string
+          id: string
+          manufacturer: string | null
+          product_name: string
+          updated_at: string
+        }
+        Insert: {
+          barcode: string
+          category?: string | null
+          created_at?: string
+          id?: string
+          manufacturer?: string | null
+          product_name: string
+          updated_at?: string
+        }
+        Update: {
+          barcode?: string
+          category?: string | null
+          created_at?: string
+          id?: string
+          manufacturer?: string | null
+          product_name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       medications: {
         Row: {
           active_ingredients: string[] | null
@@ -1411,6 +1441,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      generate_internal_barcode: { Args: never; Returns: string }
       generate_receipt_id: { Args: never; Returns: string }
       get_user_pharmacy_id: { Args: { user_uuid: string }; Returns: string }
       has_pharmacy_role: {

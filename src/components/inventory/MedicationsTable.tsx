@@ -1,10 +1,12 @@
 import { useState, useMemo } from 'react';
 import { format, parseISO } from 'date-fns';
-import { Edit2, Trash2, MoreHorizontal, Package, ChevronDown, ChevronUp, Archive, ArchiveRestore, Filter } from 'lucide-react';
+import { Edit2, Trash2, MoreHorizontal, Package, ChevronDown, ChevronUp, Archive, ArchiveRestore, Filter, Link2Off, Hash, Loader2 } from 'lucide-react';
 import { Medication } from '@/types/medication';
 import { useMedications } from '@/hooks/useMedications';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 import {
   Table,
   TableBody,
@@ -56,6 +58,7 @@ const ITEMS_PER_PAGE = 10;
 export const MedicationsTable = ({ medications, searchQuery, onEdit }: MedicationsTableProps) => {
   const { deleteMedication, updateMedication, isExpired, isLowStock, isExpiringSoon } = useMedications();
   const { formatPrice } = useCurrency();
+  const { toast } = useToast();
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [medicationToDelete, setMedicationToDelete] = useState<Medication | null>(null);
   const [shelvingDialogOpen, setShelvingDialogOpen] = useState(false);
@@ -63,7 +66,8 @@ export const MedicationsTable = ({ medications, searchQuery, onEdit }: Medicatio
   const [shelvingAction, setShelvingAction] = useState<'shelve' | 'unshelve'>('unshelve');
   const [isExpanded, setIsExpanded] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
-  const [filterStatus, setFilterStatus] = useState<'all' | 'shelved' | 'unshelved' | 'expired' | 'low-stock'>('all');
+  const [filterStatus, setFilterStatus] = useState<'all' | 'shelved' | 'unshelved' | 'expired' | 'low-stock' | 'no-barcode'>('all');
+  const [generatingCodeFor, setGeneratingCodeFor] = useState<string | null>(null);
 
   const filteredMedications = useMemo(() => {
     let filtered = medications.filter((med) => {
@@ -104,6 +108,8 @@ export const MedicationsTable = ({ medications, searchQuery, onEdit }: Medicatio
       filtered = filtered.filter(m => isExpired(m.expiry_date));
     } else if (filterStatus === 'low-stock') {
       filtered = filtered.filter(m => isLowStock(m.current_stock, m.reorder_level));
+    } else if (filterStatus === 'no-barcode') {
+      filtered = filtered.filter(m => !m.barcode_id);
     }
 
     return filtered;
@@ -122,7 +128,35 @@ export const MedicationsTable = ({ medications, searchQuery, onEdit }: Medicatio
     unshelved: medications.filter(m => m.is_shelved === false).length,
     expired: medications.filter(m => isExpired(m.expiry_date)).length,
     lowStock: medications.filter(m => isLowStock(m.current_stock, m.reorder_level)).length,
+    noBarcode: medications.filter(m => !m.barcode_id).length,
   }), [medications, isExpired, isLowStock]);
+
+  // Generate internal barcode
+  const handleGenerateInternalCode = async (medication: Medication) => {
+    setGeneratingCodeFor(medication.id);
+    try {
+      const { data, error } = await supabase.rpc('generate_internal_barcode');
+      if (error) throw error;
+      
+      await updateMedication.mutateAsync({
+        id: medication.id,
+        barcode_id: data as string,
+      });
+
+      toast({
+        title: 'Internal Code Generated',
+        description: `Code "${data}" assigned to ${medication.name}`,
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to generate internal code',
+        variant: 'destructive',
+      });
+    } finally {
+      setGeneratingCodeFor(null);
+    }
+  };
 
   const handleDelete = (medication: Medication) => {
     setMedicationToDelete(medication);
@@ -219,6 +253,12 @@ export const MedicationsTable = ({ medications, searchQuery, onEdit }: Medicatio
                   <span className="w-2 h-2 rounded-full bg-destructive"></span>
                   {statusCounts.expired} expired
                 </span>
+                {statusCounts.noBarcode > 0 && (
+                  <span className="flex items-center gap-1">
+                    <Link2Off className="w-3 h-3 text-amber-500" />
+                    {statusCounts.noBarcode} no barcode
+                  </span>
+                )}
               </div>
               
               {/* Filter dropdown */}
@@ -233,6 +273,7 @@ export const MedicationsTable = ({ medications, searchQuery, onEdit }: Medicatio
                   <SelectItem value="unshelved">Unshelved</SelectItem>
                   <SelectItem value="expired">Expired</SelectItem>
                   <SelectItem value="low-stock">Low Stock</SelectItem>
+                  <SelectItem value="no-barcode">No Barcode</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -270,10 +311,15 @@ export const MedicationsTable = ({ medications, searchQuery, onEdit }: Medicatio
                         className={cn('transition-colors', getRowClass(medication))}
                       >
                         <TableCell className="font-medium">
-                          {medication.name}
-                          {medication.is_shelved === false && (
-                            <Archive className="inline-block ml-2 h-3 w-3 text-muted-foreground" />
-                          )}
+                          <div className="flex items-center gap-2">
+                            {medication.name}
+                            {medication.is_shelved === false && (
+                              <Archive className="h-3 w-3 text-muted-foreground" />
+                            )}
+                            {!medication.barcode_id && (
+                              <Link2Off className="h-3 w-3 text-amber-500" />
+                            )}
+                          </div>
                         </TableCell>
                         <TableCell>
                           <Badge variant="outline" className="font-normal">
@@ -302,6 +348,22 @@ export const MedicationsTable = ({ medications, searchQuery, onEdit }: Medicatio
                                 <Edit2 className="mr-2 h-4 w-4" />
                                 Edit
                               </DropdownMenuItem>
+                              {!medication.barcode_id && (
+                                <>
+                                  <DropdownMenuSeparator />
+                                  <DropdownMenuItem 
+                                    onClick={() => handleGenerateInternalCode(medication)}
+                                    disabled={generatingCodeFor === medication.id}
+                                  >
+                                    {generatingCodeFor === medication.id ? (
+                                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    ) : (
+                                      <Hash className="mr-2 h-4 w-4" />
+                                    )}
+                                    Generate Internal Code
+                                  </DropdownMenuItem>
+                                </>
+                              )}
                               <DropdownMenuSeparator />
                               {medication.is_shelved === false ? (
                                 <DropdownMenuItem onClick={() => handleShelving(medication, 'shelve')}>

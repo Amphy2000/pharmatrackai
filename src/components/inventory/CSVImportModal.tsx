@@ -2,6 +2,7 @@ import { useState, useRef, useCallback } from 'react';
 import Papa from 'papaparse';
 import { Upload, FileSpreadsheet, Check, AlertCircle, X, Loader2 } from 'lucide-react';
 import { useMedications } from '@/hooks/useMedications';
+import { useBarcodeLibrary } from '@/hooks/useBarcodeLibrary';
 import { MedicationFormData } from '@/types/medication';
 import { Button } from '@/components/ui/button';
 import {
@@ -65,6 +66,7 @@ const categoryMap: Record<string, MedicationFormData['category']> = {
 
 export const CSVImportModal = ({ open, onOpenChange }: CSVImportModalProps) => {
   const { addMedication } = useMedications();
+  const { findBarcodeByName } = useBarcodeLibrary();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -210,16 +212,24 @@ export const CSVImportModal = ({ open, onOpenChange }: CSVImportModalProps) => {
       try {
         const categoryValue = row[mapping.category]?.toLowerCase().trim();
         const category = categoryMap[categoryValue] || 'Other';
+        const productName = row[mapping.name]?.trim() || '';
+        
+        // Try to get barcode from CSV first, then fallback to master library
+        let barcodeId = mapping.barcode_id ? row[mapping.barcode_id]?.trim() : undefined;
+        if (!barcodeId && productName) {
+          // Auto-match from master barcode library
+          barcodeId = findBarcodeByName(productName) || undefined;
+        }
 
         const medication: MedicationFormData = {
-          name: row[mapping.name]?.trim() || '',
+          name: productName,
           category,
           batch_number: row[mapping.batch_number]?.trim() || `BATCH-${Date.now()}`,
           current_stock: parseInt(row[mapping.current_stock]) || 0,
           reorder_level: mapping.reorder_level ? parseInt(row[mapping.reorder_level]) || 10 : 10,
           expiry_date: parseDate(row[mapping.expiry_date]),
           unit_price: parseFloat(row[mapping.unit_price]?.replace(/[^0-9.]/g, '')) || 0,
-          barcode_id: mapping.barcode_id ? row[mapping.barcode_id]?.trim() : undefined,
+          barcode_id: barcodeId,
         };
 
         if (!medication.name) {
