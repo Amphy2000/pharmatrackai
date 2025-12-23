@@ -126,58 +126,67 @@ const PaymentTerminal = () => {
     if (!foundTransaction || !selectedPayment) return;
 
     setIsProcessing(true);
+    
+    // Store transaction info before clearing state
+    const transactionToPrint = { ...foundTransaction };
+    const paymentMethodToUse = selectedPayment;
+    
     try {
       // Complete the sale (deduct stock) with staff name and payment method
       await completeSale.mutateAsync({
-        items: foundTransaction.items,
+        items: transactionToPrint.items,
         shiftId: activeShift?.id,
         staffName: userProfile?.full_name || undefined,
-        paymentMethod: selectedPayment,
+        paymentMethod: paymentMethodToUse,
       });
 
       // Mark the pending transaction as completed
       await completePendingTransaction.mutateAsync({
-        transactionId: foundTransaction.id,
-        paymentMethod: selectedPayment,
+        transactionId: transactionToPrint.id,
+        paymentMethod: paymentMethodToUse,
       });
 
-      // Print receipt using the transaction's short_code as the receipt ID
+      // Reset state IMMEDIATELY after successful sale - BEFORE print dialog
+      // This way button shows "Complete Sale" again right away
+      setFoundTransaction(null);
+      setSelectedPayment(null);
+      setIsProcessing(false);
+      
+      // Show success toast
+      toast({
+        title: 'Sale Complete',
+        description: `Transaction ${transactionToPrint.short_code} completed successfully.`,
+      });
+
+      // Generate and print receipt AFTER resetting state
       const html = generateHtmlReceipt({
-        items: foundTransaction.items,
-        total: foundTransaction.total_amount,
+        items: transactionToPrint.items,
+        total: transactionToPrint.total_amount,
         pharmacyName: pharmacy?.name,
         pharmacyAddress: pharmacy?.address || undefined,
         pharmacyPhone: pharmacy?.phone || undefined,
-        receiptNumber: foundTransaction.short_code,
-        shortCode: foundTransaction.short_code,
+        receiptNumber: transactionToPrint.short_code,
+        shortCode: transactionToPrint.short_code,
         staffName: userProfile?.full_name || undefined,
         date: new Date(),
         currency: currency as 'USD' | 'NGN' | 'GBP',
         paymentStatus: 'paid',
-        paymentMethod: selectedPayment,
+        paymentMethod: paymentMethodToUse,
       });
 
-      // Print receipt - don't await since we want to reset UI immediately
+      // Print receipt - this opens print dialog
       printHtmlReceipt(html);
 
-      toast({
-        title: 'Sale Complete',
-        description: `Transaction ${foundTransaction.short_code} completed successfully.`,
-      });
-
-      // Reset state immediately so button shows "Complete Sale" again
-      setFoundTransaction(null);
-      setSelectedPayment(null);
-      setIsProcessing(false);
+      // Focus search input for next transaction
       searchInputRef.current?.focus();
-    } catch (error) {
+    } catch (error: any) {
       console.error('Complete sale error:', error);
+      setIsProcessing(false);
       toast({
         title: 'Error',
-        description: 'Failed to complete the sale. Please try again.',
+        description: error?.message || 'Failed to complete the sale. Please try again.',
         variant: 'destructive',
       });
-      setIsProcessing(false);
     }
   };
 
