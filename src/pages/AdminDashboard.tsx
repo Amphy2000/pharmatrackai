@@ -171,6 +171,21 @@ const AdminDashboard = () => {
     enabled: isAdmin || isDevEmail,
   });
 
+  // Fetch subscription payments for platform revenue calculation
+  const { data: subscriptionPayments = [] } = useQuery({
+    queryKey: ['admin-subscription-payments'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('subscription_payments')
+        .select('id, pharmacy_id, plan, amount, status, payment_date')
+        .order('payment_date', { ascending: false });
+
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: isAdmin || isDevEmail,
+  });
+
   // Fetch custom features for selected pharmacy
   const { data: customFeatures = [], isLoading: loadingFeatures } = useQuery({
     queryKey: ['pharmacy-features', selectedPharmacy?.id],
@@ -414,7 +429,7 @@ const AdminDashboard = () => {
         </div>
 
         {/* Platform Metrics */}
-        <PlatformMetricsGrid pharmacies={pharmacies} isLoading={loadingPharmacies} />
+        <PlatformMetricsGrid pharmacies={pharmacies} subscriptionPayments={subscriptionPayments} isLoading={loadingPharmacies} />
 
         {/* Main Content */}
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">

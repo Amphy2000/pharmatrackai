@@ -1,5 +1,6 @@
 import { useState, useMemo } from 'react';
-import { Users, TrendingUp, Clock, DollarSign, Calendar, ChevronDown, ChevronUp } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Users, TrendingUp, Clock, DollarSign, Calendar, ChevronDown, ChevronUp, History } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -26,6 +27,7 @@ interface StaffStats {
 }
 
 export const StaffPerformancePanel = () => {
+  const navigate = useNavigate();
   const { allShifts, isLoadingAllShifts } = useShifts();
   const { isOwnerOrManager } = usePermissions();
   const { formatPrice } = useCurrency();
@@ -136,6 +138,15 @@ export const StaffPerformancePanel = () => {
                   <SelectItem value="month">This Month</SelectItem>
                 </SelectContent>
               </Select>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="h-8"
+                onClick={() => navigate('/shift-history')}
+              >
+                <History className="h-4 w-4 mr-1" />
+                History
+              </Button>
               <CollapsibleTrigger asChild>
                 <Button variant="ghost" size="icon" className="h-8 w-8">
                   {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
