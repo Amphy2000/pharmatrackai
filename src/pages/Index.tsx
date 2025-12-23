@@ -18,6 +18,7 @@ import { StaffPerformancePanel } from '@/components/dashboard/StaffPerformancePa
 import { MedicationsTable } from '@/components/inventory/MedicationsTable';
 import { AddMedicationModal } from '@/components/inventory/AddMedicationModal';
 import { CSVImportModal } from '@/components/inventory/CSVImportModal';
+import { IntelligentDataImportModal } from '@/components/import/IntelligentDataImportModal';
 import { AISearchBar } from '@/components/inventory/AISearchBar';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -102,6 +103,7 @@ const Index = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isCSVModalOpen, setIsCSVModalOpen] = useState(false);
+  const [isSmartImportOpen, setIsSmartImportOpen] = useState(false);
   const [editingMedication, setEditingMedication] = useState<Medication | null>(null);
 
   const metrics = getMetrics();
@@ -331,6 +333,11 @@ const Index = () => {
       <CSVImportModal
         open={isCSVModalOpen}
         onOpenChange={setIsCSVModalOpen}
+      />
+
+      <IntelligentDataImportModal
+        open={isSmartImportOpen}
+        onOpenChange={setIsSmartImportOpen}
       />
     </div>
   );
