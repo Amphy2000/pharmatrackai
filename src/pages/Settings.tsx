@@ -1,7 +1,7 @@
 import { Header } from '@/components/Header';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Settings as SettingsIcon, Users, Globe, CreditCard, Shield, ImageIcon, ShieldCheck, FileText, RotateCcw, Bell } from 'lucide-react';
+import { Settings as SettingsIcon, Users, Globe, CreditCard, Shield, ImageIcon, ShieldCheck, FileText, RotateCcw, Bell, Clock } from 'lucide-react';
 import { StaffManagement } from '@/components/settings/StaffManagement';
 import { PermissionsManagement } from '@/components/settings/PermissionsManagement';
 import { RegionCurrencySettings } from '@/components/settings/RegionCurrencySettings';
@@ -9,6 +9,7 @@ import { SubscriptionManagement } from '@/components/settings/SubscriptionManage
 import { BrandingSettings } from '@/components/settings/BrandingSettings';
 import { PriceShieldSettings } from '@/components/settings/PriceShieldSettings';
 import { AlertSettings } from '@/components/settings/AlertSettings';
+import { ClockInSecuritySettings } from '@/components/settings/ClockInSecuritySettings';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useSearchParams, Navigate, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -74,6 +75,10 @@ const Settings = () => {
             <TabsTrigger value="alerts" className="gap-2">
               <Bell className="h-4 w-4" />
               Alerts
+            </TabsTrigger>
+            <TabsTrigger value="clockin" className="gap-2">
+              <Clock className="h-4 w-4" />
+              Clock-In
             </TabsTrigger>
             {canManageStaff && (
               <TabsTrigger value="permissions" className="gap-2">
@@ -174,6 +179,10 @@ const Settings = () => {
 
           <TabsContent value="alerts">
             <AlertSettings />
+          </TabsContent>
+
+          <TabsContent value="clockin">
+            <ClockInSecuritySettings />
           </TabsContent>
         </Tabs>
       </main>
