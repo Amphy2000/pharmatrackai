@@ -1,5 +1,6 @@
+import { useState } from 'react';
 import { useOfflineSync } from '@/hooks/useOfflineSync';
-import { Wifi, WifiOff, RefreshCw, Cloud, CloudOff } from 'lucide-react';
+import { Wifi, WifiOff, RefreshCw, Cloud, CloudOff, List } from 'lucide-react';
 import {
   Tooltip,
   TooltipContent,
@@ -7,13 +8,21 @@ import {
 } from '@/components/ui/tooltip';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
+import { PendingSalesQueue } from '@/components/pos/PendingSalesQueue';
 
 export const OfflineIndicator = () => {
   const { isOnline, pendingSalesCount, isSyncing, lastSyncTime, syncPendingSales } = useOfflineSync();
+  const [showQueue, setShowQueue] = useState(false);
 
   const handleSync = () => {
     if (isOnline && pendingSalesCount > 0) {
       syncPendingSales();
+    }
+  };
+
+  const handleShowQueue = () => {
+    if (pendingSalesCount > 0) {
+      setShowQueue(true);
     }
   };
 
@@ -45,27 +54,34 @@ export const OfflineIndicator = () => {
   if (!isOnline) {
     // Offline mode
     return (
-      <Tooltip>
-        <TooltipTrigger asChild>
-          <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-warning/10 border border-warning/20">
-            <WifiOff className="h-3.5 w-3.5 text-warning" />
-            <span className="text-xs font-medium text-warning">Offline</span>
+      <>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              onClick={handleShowQueue}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-warning/10 border border-warning/20 hover:bg-warning/20 transition-colors"
+            >
+              <WifiOff className="h-3.5 w-3.5 text-warning" />
+              <span className="text-xs font-medium text-warning">Offline</span>
+              {pendingSalesCount > 0 && (
+                <Badge variant="secondary" className="h-5 px-1.5 text-[10px] bg-warning/20 text-warning border-0">
+                  {pendingSalesCount}
+                </Badge>
+              )}
+            </button>
+          </TooltipTrigger>
+          <TooltipContent>
+            <p>Working offline</p>
             {pendingSalesCount > 0 && (
-              <Badge variant="secondary" className="h-5 px-1.5 text-[10px] bg-warning/20 text-warning border-0">
-                {pendingSalesCount}
-              </Badge>
+              <p className="text-xs text-muted-foreground">
+                {pendingSalesCount} sale{pendingSalesCount > 1 ? 's' : ''} pending sync
+              </p>
             )}
-          </div>
-        </TooltipTrigger>
-        <TooltipContent>
-          <p>Working offline</p>
-          {pendingSalesCount > 0 && (
-            <p className="text-xs text-muted-foreground">
-              {pendingSalesCount} sale{pendingSalesCount > 1 ? 's' : ''} pending sync
-            </p>
-          )}
-        </TooltipContent>
-      </Tooltip>
+            <p className="text-xs text-muted-foreground mt-1">Click to view queue</p>
+          </TooltipContent>
+        </Tooltip>
+        <PendingSalesQueue isOpen={showQueue} onClose={() => setShowQueue(false)} />
+      </>
     );
   }
 
@@ -88,26 +104,40 @@ export const OfflineIndicator = () => {
 
   // Online but has pending sales
   return (
-    <Tooltip>
-      <TooltipTrigger asChild>
-        <button
-          onClick={handleSync}
-          className={cn(
-            "flex items-center gap-2 px-3 py-1.5 rounded-full border transition-colors",
-            "bg-warning/10 border-warning/20 hover:bg-warning/20"
-          )}
-        >
-          <Cloud className="h-3.5 w-3.5 text-warning" />
-          <span className="text-xs font-medium text-warning">Pending</span>
-          <Badge variant="secondary" className="h-5 px-1.5 text-[10px] bg-warning/20 text-warning border-0">
-            {pendingSalesCount}
-          </Badge>
-        </button>
-      </TooltipTrigger>
-      <TooltipContent>
-        <p>{pendingSalesCount} sale{pendingSalesCount > 1 ? 's' : ''} pending sync</p>
-        <p className="text-xs text-muted-foreground">Click to sync now</p>
-      </TooltipContent>
-    </Tooltip>
+    <>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={handleSync}
+              className={cn(
+                "flex items-center gap-2 px-3 py-1.5 rounded-l-full border-y border-l transition-colors",
+                "bg-warning/10 border-warning/20 hover:bg-warning/20"
+              )}
+            >
+              <Cloud className="h-3.5 w-3.5 text-warning" />
+              <span className="text-xs font-medium text-warning">Pending</span>
+              <Badge variant="secondary" className="h-5 px-1.5 text-[10px] bg-warning/20 text-warning border-0">
+                {pendingSalesCount}
+              </Badge>
+            </button>
+            <button
+              onClick={handleShowQueue}
+              className={cn(
+                "flex items-center px-2 py-1.5 rounded-r-full border transition-colors",
+                "bg-warning/10 border-warning/20 hover:bg-warning/20"
+              )}
+            >
+              <List className="h-3.5 w-3.5 text-warning" />
+            </button>
+          </div>
+        </TooltipTrigger>
+        <TooltipContent>
+          <p>{pendingSalesCount} sale{pendingSalesCount > 1 ? 's' : ''} pending sync</p>
+          <p className="text-xs text-muted-foreground">Click to sync or view queue</p>
+        </TooltipContent>
+      </Tooltip>
+      <PendingSalesQueue isOpen={showQueue} onClose={() => setShowQueue(false)} />
+    </>
   );
 };

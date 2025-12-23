@@ -1,11 +1,23 @@
 import { useState, useEffect, useCallback } from 'react';
 
-interface PendingSale {
+export interface PendingSale {
   id: string;
-  items: any[];
+  items: {
+    medicationId: string;
+    medicationName: string;
+    quantity: number;
+    unitPrice: number;
+    totalPrice: number;
+  }[];
   total: number;
   timestamp: number;
   customerId?: string;
+  customerName?: string;
+  paymentMethod?: string;
+  shiftId?: string;
+  staffName?: string;
+  syncStatus?: 'pending' | 'syncing' | 'failed';
+  syncError?: string;
 }
 
 interface OfflineSyncState {
@@ -16,6 +28,8 @@ interface OfflineSyncState {
 }
 
 const PENDING_SALES_KEY = 'pharmatrack_pending_sales';
+const LAST_SYNC_KEY = 'pharmatrack_last_sync';
+const MEDICATIONS_CACHE_KEY = 'pharmatrack_medications_cache';
 
 export const useOfflineSync = () => {
   const [state, setState] = useState<OfflineSyncState>({
@@ -28,10 +42,15 @@ export const useOfflineSync = () => {
   // Load pending sales count on mount
   useEffect(() => {
     const stored = localStorage.getItem(PENDING_SALES_KEY);
+    const lastSync = localStorage.getItem(LAST_SYNC_KEY);
     if (stored) {
       try {
         const pending = JSON.parse(stored) as PendingSale[];
-        setState(prev => ({ ...prev, pendingSalesCount: pending.length }));
+        setState(prev => ({ 
+          ...prev, 
+          pendingSalesCount: pending.length,
+          lastSyncTime: lastSync ? new Date(parseInt(lastSync)) : null,
+        }));
       } catch {
         localStorage.removeItem(PENDING_SALES_KEY);
       }
@@ -63,12 +82,14 @@ export const useOfflineSync = () => {
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
       if (event.data?.type === 'SYNC_COMPLETE') {
+        const pending = getPendingSales();
         setState(prev => ({
           ...prev,
-          pendingSalesCount: 0,
+          pendingSalesCount: pending.length,
           isSyncing: false,
           lastSyncTime: new Date(),
         }));
+        localStorage.setItem(LAST_SYNC_KEY, Date.now().toString());
       }
     };
 
@@ -78,16 +99,25 @@ export const useOfflineSync = () => {
     };
   }, []);
 
-  const addPendingSale = useCallback((sale: Omit<PendingSale, 'id' | 'timestamp'>) => {
+  const getPendingSales = useCallback((): PendingSale[] => {
+    try {
+      const stored = localStorage.getItem(PENDING_SALES_KEY);
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  }, []);
+
+  const addPendingSale = useCallback((sale: Omit<PendingSale, 'id' | 'timestamp' | 'syncStatus'>) => {
     const pendingSale: PendingSale = {
       ...sale,
       id: `offline_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
       timestamp: Date.now(),
+      syncStatus: 'pending',
     };
 
     // Store in localStorage
-    const stored = localStorage.getItem(PENDING_SALES_KEY);
-    const pending: PendingSale[] = stored ? JSON.parse(stored) : [];
+    const pending = getPendingSales();
     pending.push(pendingSale);
     localStorage.setItem(PENDING_SALES_KEY, JSON.stringify(pending));
 
@@ -102,12 +132,15 @@ export const useOfflineSync = () => {
     }
 
     return pendingSale.id;
-  }, []);
+  }, [getPendingSales]);
 
-  const getPendingSales = useCallback((): PendingSale[] => {
-    const stored = localStorage.getItem(PENDING_SALES_KEY);
-    return stored ? JSON.parse(stored) : [];
-  }, []);
+  const updatePendingSale = useCallback((id: string, updates: Partial<PendingSale>) => {
+    const pending = getPendingSales().map(sale => 
+      sale.id === id ? { ...sale, ...updates } : sale
+    );
+    localStorage.setItem(PENDING_SALES_KEY, JSON.stringify(pending));
+    setState(prev => ({ ...prev, pendingSalesCount: pending.length }));
+  }, [getPendingSales]);
 
   const removePendingSale = useCallback((id: string) => {
     const pending = getPendingSales().filter(s => s.id !== id);
@@ -115,41 +148,146 @@ export const useOfflineSync = () => {
     setState(prev => ({ ...prev, pendingSalesCount: pending.length }));
   }, [getPendingSales]);
 
+  const clearAllPendingSales = useCallback(() => {
+    localStorage.removeItem(PENDING_SALES_KEY);
+    setState(prev => ({ ...prev, pendingSalesCount: 0 }));
+  }, []);
+
   const syncPendingSales = useCallback(async () => {
-    if (!state.isOnline || state.isSyncing) return;
+    if (!navigator.onLine || state.isSyncing) return;
+
+    const pending = getPendingSales();
+    if (pending.length === 0) return;
 
     setState(prev => ({ ...prev, isSyncing: true }));
 
     try {
-      // Request background sync via service worker
-      if ('serviceWorker' in navigator && 'sync' in (window as any).ServiceWorkerRegistration?.prototype) {
-        const registration = await navigator.serviceWorker.ready;
-        await (registration as any).sync.register('sync-sales');
-      } else {
-        // Fallback: manual sync
-        const pending = getPendingSales();
-        // Manual sync would happen here - for now just clear
-        localStorage.setItem(PENDING_SALES_KEY, JSON.stringify([]));
-        setState(prev => ({
-          ...prev,
-          pendingSalesCount: 0,
-          isSyncing: false,
-          lastSyncTime: new Date(),
-        }));
+      // Dynamic import to avoid circular deps
+      const { supabase } = await import('@/integrations/supabase/client');
+      
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setState(prev => ({ ...prev, isSyncing: false }));
+        return;
       }
+
+      const { data: staffData } = await supabase
+        .from('pharmacy_staff')
+        .select('pharmacy_id')
+        .eq('user_id', user.id)
+        .eq('is_active', true)
+        .maybeSingle();
+
+      if (!staffData?.pharmacy_id) {
+        setState(prev => ({ ...prev, isSyncing: false }));
+        return;
+      }
+
+      for (const sale of pending) {
+        updatePendingSale(sale.id, { syncStatus: 'syncing' });
+        
+        try {
+          // Generate receipt ID
+          const { data: receiptId } = await supabase.rpc('generate_receipt_id');
+
+          // Insert each sale item
+          for (const item of sale.items) {
+            await supabase.from('sales').insert({
+              pharmacy_id: staffData.pharmacy_id,
+              medication_id: item.medicationId,
+              quantity: item.quantity,
+              unit_price: item.unitPrice,
+              total_price: item.totalPrice,
+              customer_id: sale.customerId || null,
+              customer_name: sale.customerName || null,
+              shift_id: sale.shiftId || null,
+              sold_by_name: sale.staffName || null,
+              payment_method: sale.paymentMethod || 'cash',
+              receipt_id: receiptId,
+              sold_by: user.id,
+            });
+
+            // Update stock
+            const { data: medication } = await supabase
+              .from('medications')
+              .select('current_stock')
+              .eq('id', item.medicationId)
+              .single();
+
+            if (medication) {
+              await supabase
+                .from('medications')
+                .update({ current_stock: Math.max(0, medication.current_stock - item.quantity) })
+                .eq('id', item.medicationId);
+            }
+          }
+
+          // Remove synced sale
+          removePendingSale(sale.id);
+        } catch (error) {
+          console.error('Failed to sync sale:', sale.id, error);
+          updatePendingSale(sale.id, { 
+            syncStatus: 'failed', 
+            syncError: error instanceof Error ? error.message : 'Unknown error' 
+          });
+        }
+      }
+
+      setState(prev => ({
+        ...prev,
+        isSyncing: false,
+        lastSyncTime: new Date(),
+      }));
+      localStorage.setItem(LAST_SYNC_KEY, Date.now().toString());
     } catch (error) {
       console.error('Sync failed:', error);
       setState(prev => ({ ...prev, isSyncing: false }));
     }
-  }, [state.isOnline, state.isSyncing, getPendingSales]);
+  }, [state.isSyncing, getPendingSales, updatePendingSale, removePendingSale]);
 
   return {
     ...state,
     addPendingSale,
     getPendingSales,
+    updatePendingSale,
     removePendingSale,
+    clearAllPendingSales,
     syncPendingSales,
   };
+};
+
+// Cache medications for offline use
+export const cacheMedicationsForOffline = (medications: any[]) => {
+  try {
+    localStorage.setItem(MEDICATIONS_CACHE_KEY, JSON.stringify({
+      data: medications,
+      cachedAt: Date.now(),
+    }));
+  } catch (error) {
+    console.error('Failed to cache medications:', error);
+  }
+};
+
+export const getCachedMedications = (): any[] => {
+  try {
+    const cached = localStorage.getItem(MEDICATIONS_CACHE_KEY);
+    if (!cached) return [];
+    const parsed = JSON.parse(cached);
+    return parsed.data || [];
+  } catch {
+    return [];
+  }
+};
+
+export const getMedicationsCacheAge = (): number | null => {
+  try {
+    const cached = localStorage.getItem(MEDICATIONS_CACHE_KEY);
+    if (!cached) return null;
+    const parsed = JSON.parse(cached);
+    return parsed.cachedAt ? Date.now() - parsed.cachedAt : null;
+  } catch {
+    return null;
+  }
 };
 
 // Register service worker

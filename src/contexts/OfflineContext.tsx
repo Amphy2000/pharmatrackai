@@ -1,5 +1,5 @@
 import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
-import { useOfflineSync } from '@/hooks/useOfflineSync';
+import { useOfflineSync, PendingSale, cacheMedicationsForOffline, getCachedMedications } from '@/hooks/useOfflineSync';
 import { useToast } from '@/hooks/use-toast';
 
 interface OfflineContextType {
@@ -7,8 +7,11 @@ interface OfflineContextType {
   pendingSalesCount: number;
   isSyncing: boolean;
   lastSyncTime: Date | null;
-  addPendingSale: (sale: { items: any[]; total: number; customerId?: string }) => string;
+  addPendingSale: (sale: Omit<PendingSale, 'id' | 'timestamp' | 'syncStatus'>) => string;
+  getPendingSales: () => PendingSale[];
   syncNow: () => Promise<void>;
+  cacheMedications: (medications: any[]) => void;
+  getCachedMeds: () => any[];
 }
 
 const OfflineContext = createContext<OfflineContextType | undefined>(undefined);
@@ -33,6 +36,7 @@ export const OfflineProvider = ({ children }: OfflineProviderProps) => {
     isSyncing,
     lastSyncTime,
     addPendingSale,
+    getPendingSales,
     syncPendingSales,
   } = useOfflineSync();
 
@@ -69,6 +73,14 @@ export const OfflineProvider = ({ children }: OfflineProviderProps) => {
     await syncPendingSales();
   }, [isOnline, syncPendingSales, toast]);
 
+  const cacheMedications = useCallback((medications: any[]) => {
+    cacheMedicationsForOffline(medications);
+  }, []);
+
+  const getCachedMeds = useCallback(() => {
+    return getCachedMedications();
+  }, []);
+
   return (
     <OfflineContext.Provider
       value={{
@@ -77,7 +89,10 @@ export const OfflineProvider = ({ children }: OfflineProviderProps) => {
         isSyncing,
         lastSyncTime,
         addPendingSale,
+        getPendingSales,
         syncNow,
+        cacheMedications,
+        getCachedMeds,
       }}
     >
       {children}
