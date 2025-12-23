@@ -117,35 +117,38 @@ export const useSales = () => {
       }
 
       // Get current user for sold_by
-      const { data: { user } } = await supabase.auth.getUser();
+      const { data: authData } = await supabase.auth.getUser();
+      const user = authData?.user;
+      
       let totalSaleAmount = 0;
       
       // Generate a single receipt ID for this transaction batch
       const receiptId = generateReceiptId();
+      
+      // Results array
+      const results: { item: CartItem; newStock: number; receiptId: string }[] = [];
 
-      // Process each item in the cart
-      const salePromises = items.map(async (item, index) => {
+      // Process items sequentially for reliability
+      for (let index = 0; index < items.length; index++) {
+        const item = items[index];
         const price = item.medication.selling_price || item.medication.unit_price;
         const totalPrice = price * item.quantity;
         totalSaleAmount += totalPrice;
 
-        // Get the current stock from DB to ensure accuracy
-        const { data: medicationData, error: fetchError } = await supabase
+        // Get the current stock from DB
+        const { data: medicationData } = await supabase
           .from('medications')
           .select('current_stock')
           .eq('id', item.medication.id)
           .maybeSingle();
-
-        if (fetchError) throw fetchError;
         
-        // Use cart item's stock if medication not found in DB (might be deleted)
         const currentStock = medicationData?.current_stock ?? item.medication.current_stock ?? 0;
         const newStock = Math.max(0, currentStock - item.quantity);
 
-        // Generate unique receipt_id for each sale record (append index if multiple items)
+        // Generate unique receipt_id for each sale record
         const itemReceiptId = items.length > 1 ? `${receiptId}-${index + 1}` : receiptId;
 
-        // Insert sale record with receipt_id, shift_id, sold_by, sold_by_name, payment_method, and prescription images
+        // Insert sale record
         const { data: saleData, error: saleError } = await supabase.from('sales').insert({
           medication_id: item.medication.id,
           quantity: item.quantity,
@@ -162,20 +165,19 @@ export const useSales = () => {
           prescription_images: prescriptionImages && prescriptionImages.length > 0 ? prescriptionImages : null,
         }).select('receipt_id').single();
 
-        if (saleError) throw saleError;
+        if (saleError) {
+          console.error('Error inserting sale:', saleError);
+          throw saleError;
+        }
 
-        // Update medication stock using the fresh stock value
-        const { error: updateError } = await supabase
+        // Update medication stock
+        await supabase
           .from('medications')
           .update({ current_stock: newStock })
           .eq('id', item.medication.id);
 
-        if (updateError) throw updateError;
-
-        return { item, newStock, receiptId: saleData?.receipt_id || itemReceiptId };
-      });
-
-      const results = await Promise.all(salePromises);
+        results.push({ item, newStock, receiptId: saleData?.receipt_id || itemReceiptId });
+      }
 
       // Update shift stats if we have a shift
       if (shiftId) {
@@ -196,11 +198,10 @@ export const useSales = () => {
         }
       }
 
-      // Return results with the main receipt ID for this transaction
       return { results, receiptId };
     },
     onSuccess: async ({ results, receiptId }) => {
-      // Force immediate refetch of medications to ensure UI updates
+      // Force immediate refetch of medications
       await queryClient.refetchQueries({ queryKey: ['medications'], type: 'active' });
       queryClient.invalidateQueries({ queryKey: ['sales'] });
       
@@ -223,6 +224,7 @@ export const useSales = () => {
       });
     },
     onError: (error) => {
+      console.error('Sale mutation error:', error);
       toast({
         title: 'Sale Failed',
         description: `Error processing sale: ${error.message}`,
