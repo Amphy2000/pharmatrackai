@@ -46,10 +46,13 @@ export const useMedications = () => {
   }, [queryClient]);
 
   const addMedication = useMutation({
-    mutationFn: async (newMedication: MedicationFormData) => {
+    mutationFn: async (newMedication: MedicationFormData & { metadata?: Record<string, any> }) => {
       const { data, error } = await supabase
         .from('medications')
-        .insert([newMedication])
+        .insert([{
+          ...newMedication,
+          metadata: newMedication.metadata || {},
+        }])
         .select()
         .single();
 

@@ -53,10 +53,13 @@ export const useCustomers = () => {
   }, [pharmacy?.id, queryClient]);
 
   const addCustomer = useMutation({
-    mutationFn: async (customer: Omit<Customer, 'id' | 'created_at' | 'updated_at' | 'loyalty_points'>) => {
+    mutationFn: async (customer: Omit<Customer, 'id' | 'created_at' | 'updated_at' | 'loyalty_points'> & { metadata?: Record<string, any> }) => {
       const { data, error } = await supabase
         .from('customers')
-        .insert(customer)
+        .insert({
+          ...customer,
+          metadata: customer.metadata || {},
+        })
         .select()
         .single();
 
