@@ -15,7 +15,10 @@ import {
   Building2,
   Eye,
   Keyboard,
-  HelpCircle
+  HelpCircle,
+  User,
+  Camera,
+  ChevronDown
 } from 'lucide-react';
 import { useMedications } from '@/hooks/useMedications';
 import { useCart } from '@/hooks/useCart';
@@ -48,6 +51,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import { generateReceipt, PaymentMethod } from '@/utils/receiptGenerator';
 import { printHtmlReceipt } from '@/utils/htmlReceiptPrinter';
 import jsPDF from 'jspdf';
@@ -564,33 +572,53 @@ const Checkout = () => {
                 total={cart.getTotal()}
               />
 
-              {/* Drug Interaction Warning */}
-              {cart.items.length >= 2 && (
-                <div className="mt-3">
-                  <DrugInteractionWarning cartItems={cart.items} />
-                </div>
-              )}
-
-              {/* Patient Selection */}
+              {/* Collapsible extras */}
               {cart.items.length > 0 && (
-                <div className="mt-3">
-                  <PatientSelector
-                    selectedPatient={selectedPatient}
-                    onSelectPatient={(patient) => {
-                      setSelectedPatient(patient);
-                      if (patient) {
-                        setCustomerName(patient.full_name);
-                      }
-                    }}
-                    onSkip={() => setCustomerName('')}
-                  />
-                </div>
-              )}
+                <div className="mt-3 space-y-1">
+                  {/* Drug Interaction Warning */}
+                  {cart.items.length >= 2 && (
+                    <DrugInteractionWarning cartItems={cart.items} />
+                  )}
 
-              {/* Prescription Upload */}
-              {cart.items.length > 0 && (
-                <div className="mt-3">
-                  <PrescriptionImageUpload images={prescriptionImages} onImagesChange={setPrescriptionImages} />
+                  {/* Patient & Prescription Accordion */}
+                  <Collapsible>
+                    <CollapsibleTrigger asChild>
+                      <Button variant="ghost" size="sm" className="w-full justify-between h-8 px-2 text-xs text-muted-foreground hover:text-foreground">
+                        <span className="flex items-center gap-1.5">
+                          <User className="h-3.5 w-3.5" />
+                          {selectedPatient ? selectedPatient.full_name : 'Select Patient (Optional)'}
+                        </span>
+                        <ChevronDown className="h-3.5 w-3.5 transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                      </Button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="pt-2">
+                      <PatientSelector
+                        selectedPatient={selectedPatient}
+                        onSelectPatient={(patient) => {
+                          setSelectedPatient(patient);
+                          if (patient) {
+                            setCustomerName(patient.full_name);
+                          }
+                        }}
+                        onSkip={() => setCustomerName('')}
+                      />
+                    </CollapsibleContent>
+                  </Collapsible>
+
+                  <Collapsible>
+                    <CollapsibleTrigger asChild>
+                      <Button variant="ghost" size="sm" className="w-full justify-between h-8 px-2 text-xs text-muted-foreground hover:text-foreground">
+                        <span className="flex items-center gap-1.5">
+                          <Camera className="h-3.5 w-3.5" />
+                          {prescriptionImages.length > 0 ? `${prescriptionImages.length} image(s) attached` : 'Attach Prescription (Optional)'}
+                        </span>
+                        <ChevronDown className="h-3.5 w-3.5 transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                      </Button>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent className="pt-2">
+                      <PrescriptionImageUpload images={prescriptionImages} onImagesChange={setPrescriptionImages} />
+                    </CollapsibleContent>
+                  </Collapsible>
                 </div>
               )}
 
