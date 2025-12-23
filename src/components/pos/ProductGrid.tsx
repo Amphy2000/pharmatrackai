@@ -1,11 +1,12 @@
 import { useState, useMemo, useCallback } from 'react';
-import { Search, Plus, ScanBarcode, AlertTriangle, XCircle } from 'lucide-react';
+import { Search, Plus, ScanBarcode, AlertTriangle, XCircle, Link2 } from 'lucide-react';
 import { Medication } from '@/types/medication';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { BarcodeScanner } from './BarcodeScanner';
+import { LinkBarcodeModal } from './LinkBarcodeModal';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { useBarcodeScanner } from '@/hooks/useBarcodeScanner';
 import { useToast } from '@/hooks/use-toast';
@@ -20,6 +21,8 @@ interface ProductGridProps {
 export const ProductGrid = ({ medications, onAddToCart, isLoading }: ProductGridProps) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [scannerOpen, setScannerOpen] = useState(false);
+  const [linkBarcodeOpen, setLinkBarcodeOpen] = useState(false);
+  const [medicationToLink, setMedicationToLink] = useState<Medication | null>(null);
   const { formatPrice } = useCurrency();
   const { toast } = useToast();
 
@@ -135,11 +138,22 @@ export const ProductGrid = ({ medications, onAddToCart, isLoading }: ProductGrid
               const lowStock = isLowStock(medication.current_stock, medication.reorder_level);
               const outOfStock = medication.current_stock === 0;
               const price = medication.selling_price || medication.unit_price;
+              const hasNoBarcode = !medication.barcode_id;
+
+              const handleClick = () => {
+                // If no barcode and item is available, show link barcode modal
+                if (hasNoBarcode && !expired && !outOfStock) {
+                  setMedicationToLink(medication);
+                  setLinkBarcodeOpen(true);
+                } else {
+                  onAddToCart(medication);
+                }
+              };
 
               return (
                 <button
                   key={medication.id}
-                  onClick={() => onAddToCart(medication)}
+                  onClick={handleClick}
                   disabled={expired || outOfStock}
                   className={`group relative p-5 rounded-xl text-left transition-all duration-200 border min-h-[140px]
                     ${expired 
@@ -153,12 +167,17 @@ export const ProductGrid = ({ medications, onAddToCart, isLoading }: ProductGrid
                     <Badge variant="secondary" className="text-xs">
                       {medication.category}
                     </Badge>
-                    {expired && (
-                      <XCircle className="h-4 w-4 text-destructive" />
-                    )}
-                    {!expired && lowStock && (
-                      <AlertTriangle className="h-4 w-4 text-warning" />
-                    )}
+                    <div className="flex items-center gap-1">
+                      {hasNoBarcode && !expired && !outOfStock && (
+                        <Link2 className="h-4 w-4 text-amber-500" />
+                      )}
+                      {expired && (
+                        <XCircle className="h-4 w-4 text-destructive" />
+                      )}
+                      {!expired && lowStock && (
+                        <AlertTriangle className="h-4 w-4 text-warning" />
+                      )}
+                    </div>
                   </div>
 
                   <h4 className="font-medium text-sm mb-1 line-clamp-2 min-h-[2.5rem]">
@@ -178,7 +197,11 @@ export const ProductGrid = ({ medications, onAddToCart, isLoading }: ProductGrid
                     {!expired && !outOfStock && (
                       <div className="opacity-0 group-hover:opacity-100 transition-opacity">
                         <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center">
-                          <Plus className="h-4 w-4 text-primary-foreground" />
+                          {hasNoBarcode ? (
+                            <Link2 className="h-4 w-4 text-primary-foreground" />
+                          ) : (
+                            <Plus className="h-4 w-4 text-primary-foreground" />
+                          )}
                         </div>
                       </div>
                     )}
@@ -198,6 +221,19 @@ export const ProductGrid = ({ medications, onAddToCart, isLoading }: ProductGrid
         open={scannerOpen}
         onOpenChange={setScannerOpen}
         onScan={handleBarcodeScan}
+      />
+
+      <LinkBarcodeModal
+        medication={medicationToLink}
+        open={linkBarcodeOpen}
+        onOpenChange={setLinkBarcodeOpen}
+        onLinked={() => {
+          // After linking, add to cart
+          if (medicationToLink) {
+            onAddToCart(medicationToLink);
+          }
+          setMedicationToLink(null);
+        }}
       />
     </div>
   );

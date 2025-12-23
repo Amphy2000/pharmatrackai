@@ -230,6 +230,11 @@ Do not include any explanation, just the JSON.`
 
     // Post-process: Validate and clean extracted data
     if (result.items && Array.isArray(result.items)) {
+      // Fetch master barcode library for auto-matching
+      const { data: barcodeLibrary } = await supabaseAdmin
+        .from('master_barcode_library')
+        .select('product_name, barcode');
+      
       result.items = result.items.map((item: any) => {
         // Validate expiry date format
         if (item.expiryDate && !/^\d{4}-\d{2}-\d{2}$/.test(item.expiryDate)) {
@@ -247,6 +252,20 @@ Do not include any explanation, just the JSON.`
         // Ensure quantity is a positive number
         if (!item.quantity || item.quantity < 1) {
           item.quantity = 1;
+        }
+
+        // Auto-match barcode from master library if not already present
+        if (!item.barcode && item.productName && barcodeLibrary) {
+          const normalizedName = item.productName.toLowerCase().trim();
+          const match = barcodeLibrary.find((entry: any) => {
+            const entryName = entry.product_name.toLowerCase();
+            return entryName === normalizedName || 
+                   entryName.includes(normalizedName) || 
+                   normalizedName.includes(entryName);
+          });
+          if (match) {
+            item.barcode = match.barcode;
+          }
         }
         
         return item;
