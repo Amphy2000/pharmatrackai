@@ -1,5 +1,5 @@
-import { useState, useMemo, useCallback } from 'react';
-import { Search, Plus, ScanBarcode, AlertTriangle, XCircle, Link2 } from 'lucide-react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
+import { Search, Plus, ScanBarcode, AlertTriangle, XCircle, Link2, WifiOff, RefreshCw } from 'lucide-react';
 import { Medication } from '@/types/medication';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -10,6 +10,7 @@ import { LinkBarcodeModal } from './LinkBarcodeModal';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { useBarcodeScanner } from '@/hooks/useBarcodeScanner';
 import { useToast } from '@/hooks/use-toast';
+import { useOffline } from '@/contexts/OfflineContext';
 import { isBefore, parseISO } from 'date-fns';
 
 interface ProductGridProps {
@@ -25,6 +26,22 @@ export const ProductGrid = ({ medications, onAddToCart, isLoading }: ProductGrid
   const [medicationToLink, setMedicationToLink] = useState<Medication | null>(null);
   const { formatPrice } = useCurrency();
   const { toast } = useToast();
+  const { isOnline, cacheMedications, getCachedMeds } = useOffline();
+
+  // Cache medications whenever they update (for offline use)
+  useEffect(() => {
+    if (medications && medications.length > 0 && isOnline) {
+      cacheMedications(medications);
+    }
+  }, [medications, isOnline, cacheMedications]);
+
+  // Use cached medications if offline and no medications loaded
+  const effectiveMedications = useMemo(() => {
+    if (!isOnline && (!medications || medications.length === 0)) {
+      return getCachedMeds() as Medication[];
+    }
+    return medications;
+  }, [medications, isOnline, getCachedMeds]);
 
   const isExpired = (expiryDate: string): boolean => {
     return isBefore(parseISO(expiryDate), new Date());
@@ -32,7 +49,7 @@ export const ProductGrid = ({ medications, onAddToCart, isLoading }: ProductGrid
 
   // Handle barcode scan (from camera or hardware scanner)
   const handleBarcodeScan = useCallback((barcode: string) => {
-    const medication = medications.find(
+    const medication = effectiveMedications.find(
       (med) => med.barcode_id === barcode || med.batch_number === barcode
     );
 
@@ -64,7 +81,7 @@ export const ProductGrid = ({ medications, onAddToCart, isLoading }: ProductGrid
       });
     }
     setScannerOpen(false);
-  }, [medications, onAddToCart, toast]);
+  }, [effectiveMedications, onAddToCart, toast]);
 
   // Auto-detect hardware barcode scanner input
   useBarcodeScanner({
@@ -74,9 +91,9 @@ export const ProductGrid = ({ medications, onAddToCart, isLoading }: ProductGrid
 
   const filteredMedications = useMemo(() => {
     const query = searchQuery.toLowerCase().trim();
-    if (!query) return medications;
+    if (!query) return effectiveMedications;
 
-    return medications.filter(
+    return effectiveMedications.filter(
       (med) =>
         med.name.toLowerCase().includes(query) ||
         med.category.toLowerCase().includes(query) ||
@@ -87,7 +104,7 @@ export const ProductGrid = ({ medications, onAddToCart, isLoading }: ProductGrid
           ingredient.toLowerCase().includes(query)
         )
     );
-  }, [medications, searchQuery]);
+  }, [effectiveMedications, searchQuery]);
 
   const isLowStock = (currentStock: number, reorderLevel: number): boolean => {
     return currentStock <= reorderLevel;
