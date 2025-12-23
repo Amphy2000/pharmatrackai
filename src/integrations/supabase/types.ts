@@ -210,6 +210,7 @@ export type Database = {
           full_name: string
           id: string
           loyalty_points: number | null
+          metadata: Json | null
           notes: string | null
           pharmacy_id: string
           phone: string | null
@@ -223,6 +224,7 @@ export type Database = {
           full_name: string
           id?: string
           loyalty_points?: number | null
+          metadata?: Json | null
           notes?: string | null
           pharmacy_id: string
           phone?: string | null
@@ -236,6 +238,7 @@ export type Database = {
           full_name?: string
           id?: string
           loyalty_points?: number | null
+          metadata?: Json | null
           notes?: string | null
           pharmacy_id?: string
           phone?: string | null
@@ -244,6 +247,115 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "customers_pharmacy_id_fkey"
+            columns: ["pharmacy_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      doctors: {
+        Row: {
+          address: string | null
+          created_at: string
+          email: string | null
+          full_name: string
+          hospital_clinic: string | null
+          id: string
+          is_active: boolean
+          license_number: string | null
+          metadata: Json | null
+          notes: string | null
+          pharmacy_id: string
+          phone: string | null
+          specialty: string | null
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string
+          email?: string | null
+          full_name: string
+          hospital_clinic?: string | null
+          id?: string
+          is_active?: boolean
+          license_number?: string | null
+          metadata?: Json | null
+          notes?: string | null
+          pharmacy_id: string
+          phone?: string | null
+          specialty?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          created_at?: string
+          email?: string | null
+          full_name?: string
+          hospital_clinic?: string | null
+          id?: string
+          is_active?: boolean
+          license_number?: string | null
+          metadata?: Json | null
+          notes?: string | null
+          pharmacy_id?: string
+          phone?: string | null
+          specialty?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "doctors_pharmacy_id_fkey"
+            columns: ["pharmacy_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      feature_requests: {
+        Row: {
+          created_at: string
+          entity_id: string | null
+          entity_type: string
+          field_name: string
+          field_value: string | null
+          id: string
+          notes: string | null
+          pharmacy_id: string
+          requested_by: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          entity_id?: string | null
+          entity_type: string
+          field_name: string
+          field_value?: string | null
+          id?: string
+          notes?: string | null
+          pharmacy_id: string
+          requested_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string
+          field_name?: string
+          field_value?: string | null
+          id?: string
+          notes?: string | null
+          pharmacy_id?: string
+          requested_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "feature_requests_pharmacy_id_fkey"
             columns: ["pharmacy_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
@@ -266,6 +378,7 @@ export type Database = {
           is_shelved: boolean
           location: string | null
           manufacturing_date: string | null
+          metadata: Json | null
           min_stock_alert: number | null
           nafdac_reg_number: string | null
           name: string
@@ -290,6 +403,7 @@ export type Database = {
           is_shelved?: boolean
           location?: string | null
           manufacturing_date?: string | null
+          metadata?: Json | null
           min_stock_alert?: number | null
           nafdac_reg_number?: string | null
           name: string
@@ -314,6 +428,7 @@ export type Database = {
           is_shelved?: boolean
           location?: string | null
           manufacturing_date?: string | null
+          metadata?: Json | null
           min_stock_alert?: number | null
           nafdac_reg_number?: string | null
           name?: string
