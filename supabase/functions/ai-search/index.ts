@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -46,6 +47,44 @@ serve(async (req) => {
   }
 
   try {
+    // Authenticate the request
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized: Missing authorization header', searchTerms: '' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+    if (authError || !user) {
+      console.error('Auth error:', authError);
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized: Invalid token', searchTerms: '' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Verify user belongs to a pharmacy
+    const { data: staffRecord } = await supabaseAdmin
+      .from('pharmacy_staff')
+      .select('pharmacy_id')
+      .eq('user_id', user.id)
+      .eq('is_active', true)
+      .maybeSingle();
+
+    if (!staffRecord) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized: User is not associated with any pharmacy', searchTerms: '' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const body = await req.json();
     const query = validateInput(body);
     const searchMetadata = body.searchMetadata !== false; // Default to true
@@ -57,6 +96,8 @@ serve(async (req) => {
     }
 
     const today = new Date().toISOString().split('T')[0];
+
+    console.log(`AI search for user ${user.id}, pharmacy ${staffRecord.pharmacy_id}: "${query}"`);
 
     const systemPrompt = `You are an AI that interprets natural language pharmacy inventory and patient queries and converts them to search terms.
 
@@ -87,8 +128,6 @@ Return a JSON object with:
 - searchTerms: simple keywords or phrases to filter the tables (standard fields AND metadata)
 - interpretation: brief explanation of how you interpreted the query
 - searchIn: array of where to search - can include "medications", "customers", "doctors", "metadata"`;
-
-    console.log('Processing AI search query:', query, 'searchMetadata:', searchMetadata);
 
     const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
@@ -131,7 +170,7 @@ Return a JSON object with:
       throw new Error('No content in AI response');
     }
 
-    console.log('AI search interpretation:', content);
+    console.log('AI search interpretation complete');
 
     const parsedContent = JSON.parse(content);
 

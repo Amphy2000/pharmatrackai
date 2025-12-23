@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -108,6 +109,44 @@ serve(async (req) => {
   }
 
   try {
+    // Authenticate the request
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized: Missing authorization header', insights: [] }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+    if (authError || !user) {
+      console.error('Auth error:', authError);
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized: Invalid token', insights: [] }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Verify user belongs to a pharmacy
+    const { data: staffRecord } = await supabaseAdmin
+      .from('pharmacy_staff')
+      .select('pharmacy_id')
+      .eq('user_id', user.id)
+      .eq('is_active', true)
+      .maybeSingle();
+
+    if (!staffRecord) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized: User is not associated with any pharmacy', insights: [] }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const body = await req.json();
     const { medications, currency, currencySymbol } = validateInput(body);
     
@@ -116,6 +155,8 @@ serve(async (req) => {
     if (!LOVABLE_API_KEY) {
       throw new Error('LOVABLE_API_KEY is not configured');
     }
+
+    console.log(`Generating insights for user ${user.id}, pharmacy ${staffRecord.pharmacy_id}, ${medications.length} medications`);
 
     const today = new Date().toISOString().split('T')[0];
     const thirtyDaysFromNow = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0];
@@ -240,7 +281,7 @@ Provide 6 actionable insights in JSON format with specific dollar amounts and ac
       throw new Error('No content in AI response');
     }
 
-    console.log('AI response received:', content);
+    console.log('AI response received');
     const parsedContent = JSON.parse(content);
 
     return new Response(JSON.stringify(parsedContent), {

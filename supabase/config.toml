@@ -1,25 +1,28 @@
 project_id = "dbabttvhillcaenxzbnh"
 
 [functions.generate-insights]
-verify_jwt = false
+verify_jwt = true
 
 [functions.ai-search]
-verify_jwt = false
+verify_jwt = true
 
-[functions.send-notification]
-verify_jwt = false
+[functions.send-alert]
+verify_jwt = true
 
 [functions.check-drug-interactions]
-verify_jwt = false
+verify_jwt = true
 
 [functions.scan-invoice]
-verify_jwt = false
+verify_jwt = true
 
 [functions.bootstrap-admin]
 verify_jwt = false
 
 [functions.create-staff]
 verify_jwt = false
+
+[functions.create-payment]
+verify_jwt = true
 
 [functions.paystack-webhook]
 verify_jwt = false

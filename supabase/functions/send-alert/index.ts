@@ -21,6 +21,29 @@ serve(async (req) => {
   }
 
   try {
+    // Authenticate the request
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized: Missing authorization header' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+    if (authError || !user) {
+      console.error('Auth error:', authError);
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized: Invalid token' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const accountSid = Deno.env.get('TWILIO_ACCOUNT_SID');
     const authToken = Deno.env.get('TWILIO_AUTH_TOKEN');
     const twilioPhone = Deno.env.get('TWILIO_PHONE_NUMBER');
@@ -39,6 +62,22 @@ serve(async (req) => {
       return new Response(
         JSON.stringify({ error: 'Missing required fields: recipientPhone and message' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Validate user has access to this pharmacy
+    const { data: staffRecord } = await supabaseAdmin
+      .from('pharmacy_staff')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('pharmacy_id', pharmacyId)
+      .eq('is_active', true)
+      .maybeSingle();
+
+    if (!staffRecord) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized: You do not have access to this pharmacy' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
@@ -83,7 +122,7 @@ serve(async (req) => {
         formattedMessage = `📢 PHARMATRACK ALERT\n\n${message}`;
     }
 
-    console.log(`Sending ${channel} alert to ${toNumber}`);
+    console.log(`Sending ${channel} alert to ${toNumber} for pharmacy ${pharmacyId}`);
 
     // Send via Twilio API
     const twilioUrl = `https://api.twilio.com/2010-04-01/Accounts/${accountSid}/Messages.json`;
@@ -115,14 +154,11 @@ serve(async (req) => {
     console.log('Alert sent successfully:', twilioData.sid);
 
     // Log the alert in audit_logs
-    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-    const supabase = createClient(supabaseUrl, supabaseKey);
-
-    await supabase.from('audit_logs').insert({
+    await supabaseAdmin.from('audit_logs').insert({
       action: 'alert_sent',
       entity_type: 'alert',
       pharmacy_id: pharmacyId,
+      user_id: user.id,
       details: {
         alert_type: alertType,
         channel,

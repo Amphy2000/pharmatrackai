@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -24,11 +25,59 @@ serve(async (req) => {
   }
 
   try {
+    // Authenticate the request
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized: Missing authorization header' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+
+    const { data: { user }, error: authError } = await supabaseAdmin.auth.getUser(token);
+    if (authError || !user) {
+      console.error('Auth error:', authError);
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized: Invalid token' }),
+        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Verify user belongs to a pharmacy
+    const { data: staffRecord } = await supabaseAdmin
+      .from('pharmacy_staff')
+      .select('pharmacy_id')
+      .eq('user_id', user.id)
+      .eq('is_active', true)
+      .maybeSingle();
+
+    if (!staffRecord) {
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized: User is not associated with any pharmacy' }),
+        { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     const { imageUrl } = await req.json();
 
     if (!imageUrl) {
       return new Response(
         JSON.stringify({ error: 'Image URL is required' }),
+        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Validate imageUrl is a proper URL
+    try {
+      new URL(imageUrl);
+    } catch {
+      return new Response(
+        JSON.stringify({ error: 'Invalid image URL format' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -42,7 +91,7 @@ serve(async (req) => {
       );
     }
 
-    console.log('Processing invoice image with enhanced AI scanner...');
+    console.log(`Processing invoice image for user ${user.id}, pharmacy ${staffRecord.pharmacy_id}`);
 
     // Build keyword hints for the AI
     const keywordHints = Object.entries(KEYWORD_DICTIONARY)
@@ -156,7 +205,7 @@ Do not include any explanation, just the JSON.`
     const aiResponse = await response.json();
     const content = aiResponse.choices?.[0]?.message?.content || '';
 
-    console.log('AI response content:', content);
+    console.log('AI response received, parsing...');
 
     // Parse JSON from response
     let result;
