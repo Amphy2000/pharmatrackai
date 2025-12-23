@@ -132,11 +132,12 @@ export const useSales = () => {
           .from('medications')
           .select('current_stock')
           .eq('id', item.medication.id)
-          .single();
+          .maybeSingle();
 
         if (fetchError) throw fetchError;
-
-        const currentStock = medicationData?.current_stock || 0;
+        
+        // Use cart item's stock if medication not found in DB (might be deleted)
+        const currentStock = medicationData?.current_stock ?? item.medication.current_stock ?? 0;
         const newStock = Math.max(0, currentStock - item.quantity);
 
         // Generate unique receipt_id for each sale record (append index if multiple items)
