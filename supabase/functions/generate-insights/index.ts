@@ -5,6 +5,10 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Input validation
+const MAX_MEDICATIONS = 500;
+const MAX_STRING_LENGTH = 255;
+
 interface Medication {
   id: string;
   name: string;
@@ -18,17 +22,95 @@ interface Medication {
   is_shelved?: boolean;
 }
 
+function validateMedication(m: unknown, index: number): Medication {
+  if (!m || typeof m !== 'object') {
+    throw new Error(`Invalid medication at index ${index}: must be an object`);
+  }
+  
+  const med = m as Record<string, unknown>;
+  
+  if (typeof med.id !== 'string' || med.id.length > MAX_STRING_LENGTH) {
+    throw new Error(`Invalid id at index ${index}`);
+  }
+  if (typeof med.name !== 'string' || med.name.length > MAX_STRING_LENGTH) {
+    throw new Error(`Invalid name at index ${index}`);
+  }
+  if (typeof med.category !== 'string' || med.category.length > MAX_STRING_LENGTH) {
+    throw new Error(`Invalid category at index ${index}`);
+  }
+  if (typeof med.batch_number !== 'string' || med.batch_number.length > MAX_STRING_LENGTH) {
+    throw new Error(`Invalid batch_number at index ${index}`);
+  }
+  if (typeof med.current_stock !== 'number' || med.current_stock < 0) {
+    throw new Error(`Invalid current_stock at index ${index}`);
+  }
+  if (typeof med.reorder_level !== 'number' || med.reorder_level < 0) {
+    throw new Error(`Invalid reorder_level at index ${index}`);
+  }
+  if (typeof med.expiry_date !== 'string' || !/^\d{4}-\d{2}-\d{2}/.test(med.expiry_date)) {
+    throw new Error(`Invalid expiry_date format at index ${index}`);
+  }
+  if (typeof med.unit_price !== 'number' || med.unit_price < 0) {
+    throw new Error(`Invalid unit_price at index ${index}`);
+  }
+  if (med.selling_price !== undefined && (typeof med.selling_price !== 'number' || med.selling_price < 0)) {
+    throw new Error(`Invalid selling_price at index ${index}`);
+  }
+  if (med.is_shelved !== undefined && typeof med.is_shelved !== 'boolean') {
+    throw new Error(`Invalid is_shelved at index ${index}`);
+  }
+  
+  return {
+    id: med.id as string,
+    name: (med.name as string).slice(0, MAX_STRING_LENGTH),
+    category: (med.category as string).slice(0, MAX_STRING_LENGTH),
+    batch_number: (med.batch_number as string).slice(0, MAX_STRING_LENGTH),
+    current_stock: med.current_stock as number,
+    reorder_level: med.reorder_level as number,
+    expiry_date: med.expiry_date as string,
+    unit_price: med.unit_price as number,
+    selling_price: med.selling_price as number | undefined,
+    is_shelved: med.is_shelved as boolean | undefined,
+  };
+}
+
+function validateInput(body: unknown): { medications: Medication[]; currency: string; currencySymbol: string } {
+  if (!body || typeof body !== 'object') {
+    throw new Error('Request body must be an object');
+  }
+  
+  const data = body as Record<string, unknown>;
+  
+  if (!Array.isArray(data.medications)) {
+    throw new Error('medications must be an array');
+  }
+  
+  if (data.medications.length > MAX_MEDICATIONS) {
+    throw new Error(`Too many medications. Maximum allowed: ${MAX_MEDICATIONS}`);
+  }
+  
+  const medications = data.medications.map((m, i) => validateMedication(m, i));
+  
+  const currency = typeof data.currency === 'string' 
+    ? data.currency.slice(0, 10) 
+    : 'NGN';
+  
+  const currencySymbol = typeof data.currencySymbol === 'string' 
+    ? data.currencySymbol.slice(0, 5) 
+    : '₦';
+  
+  return { medications, currency, currencySymbol };
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
-    const { medications, currency = 'NGN', currencySymbol = '₦' } = await req.json() as { 
-      medications: Medication[];
-      currency?: string;
-      currencySymbol?: string;
-    };
+    const body = await req.json();
+    const { medications, currency, currencySymbol } = validateInput(body);
+    
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
 
     if (!LOVABLE_API_KEY) {
@@ -140,6 +222,12 @@ Provide 6 actionable insights in JSON format with specific dollar amounts and ac
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
+      if (response.status === 402) {
+        return new Response(JSON.stringify({ error: "Payment required. Please add credits to continue.", insights: [] }), {
+          status: 402,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
       const errorText = await response.text();
       console.error('Lovable AI error:', response.status, errorText);
       throw new Error(`AI gateway error: ${response.status}`);
@@ -167,7 +255,7 @@ Provide 6 actionable insights in JSON format with specific dollar amounts and ac
         insights: [] 
       }),
       {
-        status: 500,
+        status: error instanceof Error && error.message.includes('Invalid') ? 400 : 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
     );

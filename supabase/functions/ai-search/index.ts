@@ -5,6 +5,40 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
+// Input validation constants
+const MAX_QUERY_LENGTH = 500;
+const MIN_QUERY_LENGTH = 1;
+
+function validateInput(body: unknown): string {
+  if (!body || typeof body !== 'object') {
+    throw new Error('Request body must be an object');
+  }
+  
+  const data = body as Record<string, unknown>;
+  
+  if (typeof data.query !== 'string') {
+    throw new Error('query must be a string');
+  }
+  
+  const query = data.query.trim();
+  
+  if (query.length < MIN_QUERY_LENGTH) {
+    throw new Error('query cannot be empty');
+  }
+  
+  if (query.length > MAX_QUERY_LENGTH) {
+    throw new Error(`query must be less than ${MAX_QUERY_LENGTH} characters`);
+  }
+  
+  // Sanitize: remove potential script injections and control characters
+  const sanitized = query
+    .replace(/[\x00-\x1F\x7F]/g, '') // Remove control characters
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '') // Remove script tags
+    .slice(0, MAX_QUERY_LENGTH);
+  
+  return sanitized;
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -12,7 +46,9 @@ serve(async (req) => {
   }
 
   try {
-    const { query } = await req.json() as { query: string };
+    const body = await req.json();
+    const query = validateInput(body);
+    
     const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
 
     if (!LOVABLE_API_KEY) {
@@ -57,6 +93,18 @@ Return a JSON object with:
     });
 
     if (!response.ok) {
+      if (response.status === 429) {
+        return new Response(JSON.stringify({ error: "Rate limited, please try again later.", searchTerms: '' }), {
+          status: 429,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
+      if (response.status === 402) {
+        return new Response(JSON.stringify({ error: "Payment required. Please add credits to continue.", searchTerms: '' }), {
+          status: 402,
+          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+        });
+      }
       const errorText = await response.text();
       console.error('Lovable AI error:', response.status, errorText);
       throw new Error(`AI gateway error: ${response.status}`);
@@ -85,7 +133,7 @@ Return a JSON object with:
         searchTerms: '' 
       }),
       {
-        status: 500,
+        status: error instanceof Error && error.message.includes('must be') ? 400 : 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       }
     );
