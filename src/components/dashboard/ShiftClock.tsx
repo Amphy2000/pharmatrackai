@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Clock, LogIn, LogOut, Timer, DollarSign, Receipt } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Clock, LogIn, LogOut, Timer, DollarSign, History } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { useShifts } from '@/hooks/useShifts';
@@ -7,6 +8,7 @@ import { useCurrency } from '@/contexts/CurrencyContext';
 import { format, formatDistanceToNow } from 'date-fns';
 
 export const ShiftClock = () => {
+  const navigate = useNavigate();
   const { activeShift, clockIn, clockOut, isLoadingActiveShift } = useShifts();
   const { formatPrice } = useCurrency();
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -93,29 +95,49 @@ export const ShiftClock = () => {
               <div className="text-[10px] text-muted-foreground">Sales</div>
             </div>
           </div>
-          <Button 
-            onClick={handleClockOut} 
-            variant="destructive" 
-            className="w-full mt-auto"
-            disabled={clockOut.isPending}
-          >
-            <LogOut className="h-4 w-4 mr-2" />
-            {clockOut.isPending ? 'Clocking Out...' : 'Clock Out'}
-          </Button>
+          <div className="flex gap-2 mt-auto">
+            <Button 
+              onClick={handleClockOut} 
+              variant="destructive" 
+              className="flex-1"
+              disabled={clockOut.isPending}
+            >
+              <LogOut className="h-4 w-4 mr-2" />
+              {clockOut.isPending ? 'Clocking Out...' : 'Clock Out'}
+            </Button>
+            <Button 
+              onClick={() => navigate('/shift-history')} 
+              variant="outline"
+              size="icon"
+              title="View Shift History"
+            >
+              <History className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       ) : (
         <div className="flex-1 flex flex-col justify-end">
           <p className="text-sm text-muted-foreground text-center mb-4">
             Clock in to start tracking your shift sales
           </p>
-          <Button 
-            onClick={handleClockIn} 
-            className="w-full bg-gradient-to-r from-green-500 to-emerald-600 hover:opacity-90 text-white"
-            disabled={clockIn.isPending}
-          >
-            <LogIn className="h-4 w-4 mr-2" />
-            {clockIn.isPending ? 'Clocking In...' : 'Clock In'}
-          </Button>
+          <div className="flex gap-2">
+            <Button 
+              onClick={handleClockIn} 
+              className="flex-1 bg-gradient-to-r from-green-500 to-emerald-600 hover:opacity-90 text-white"
+              disabled={clockIn.isPending}
+            >
+              <LogIn className="h-4 w-4 mr-2" />
+              {clockIn.isPending ? 'Clocking In...' : 'Clock In'}
+            </Button>
+            <Button 
+              onClick={() => navigate('/shift-history')} 
+              variant="outline"
+              size="icon"
+              title="View Shift History"
+            >
+              <History className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       )}
     </div>

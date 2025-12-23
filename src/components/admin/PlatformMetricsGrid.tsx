@@ -36,8 +36,18 @@ interface PharmacyWithMetrics {
   customers_count: number;
 }
 
+interface SubscriptionPayment {
+  id: string;
+  pharmacy_id: string;
+  plan: string;
+  amount: number;
+  status: string;
+  payment_date: string;
+}
+
 interface PlatformMetricsGridProps {
   pharmacies: PharmacyWithMetrics[];
+  subscriptionPayments?: SubscriptionPayment[];
   isLoading?: boolean;
 }
 
@@ -56,7 +66,7 @@ const itemVariants = {
   visible: { opacity: 1, y: 0 }
 };
 
-export const PlatformMetricsGrid = ({ pharmacies, isLoading }: PlatformMetricsGridProps) => {
+export const PlatformMetricsGrid = ({ pharmacies, subscriptionPayments = [], isLoading }: PlatformMetricsGridProps) => {
   const { formatPrice } = useCurrency();
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('all');
 
@@ -80,8 +90,10 @@ export const PlatformMetricsGrid = ({ pharmacies, isLoading }: PlatformMetricsGr
     const proPlan = pharmacies.filter(p => p.subscription_plan === 'pro').length;
     const enterprisePlan = pharmacies.filter(p => p.subscription_plan === 'enterprise').length;
 
-    // Platform revenue (subscription revenue simulation)
-    const platformRevenue = (proPlan * 50000) + (enterprisePlan * 150000);
+    // Platform revenue from actual subscription payments (successful payments only)
+    const platformRevenue = subscriptionPayments
+      .filter(p => p.status === 'success' || p.status === 'completed')
+      .reduce((sum, p) => sum + p.amount, 0);
 
     // Average metrics
     const avgStaffPerPharmacy = totalPharmacies > 0 ? totalStaff / totalPharmacies : 0;
@@ -111,7 +123,7 @@ export const PlatformMetricsGrid = ({ pharmacies, isLoading }: PlatformMetricsGr
       avgSalesPerPharmacy,
       conversionRate,
     };
-  }, [pharmacies]);
+  }, [pharmacies, subscriptionPayments]);
 
   // Simulated growth indicators (in a real app, compare with previous period)
   const growthIndicators = {
@@ -389,7 +401,7 @@ export const PlatformMetricsGrid = ({ pharmacies, isLoading }: PlatformMetricsGr
                 </div>
                 <div>
                   <p className="font-medium">Pro Plan</p>
-                  <p className="text-xs text-muted-foreground">₦50,000/mo each</p>
+                  <p className="text-xs text-muted-foreground">Subscription price: ₦50,000/mo</p>
                 </div>
               </div>
               <div className="text-right">
@@ -411,7 +423,7 @@ export const PlatformMetricsGrid = ({ pharmacies, isLoading }: PlatformMetricsGr
                 </div>
                 <div>
                   <p className="font-medium">Enterprise</p>
-                  <p className="text-xs text-muted-foreground">₦150,000/mo each</p>
+                  <p className="text-xs text-muted-foreground">Subscription price: ₦150,000/mo</p>
                 </div>
               </div>
               <div className="text-right">
