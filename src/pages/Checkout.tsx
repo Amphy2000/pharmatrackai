@@ -530,11 +530,11 @@ const Checkout = () => {
             </div>
           </div>
 
-          {/* Cart Panel - Takes 1/3 */}
+          {/* Cart Panel - taller than products, but NEVER grows with item count */}
           <div className="lg:col-span-1">
-            <div className="bg-card/90 backdrop-blur-sm rounded-2xl border border-border/40 shadow-sm h-[calc(100vh-7rem)] flex flex-col overflow-hidden">
-              {/* Cart Header - Fixed */}
-              <div className="flex items-center justify-between p-4 pb-3 border-b border-border/30 flex-shrink-0">
+            <div className="bg-card/90 backdrop-blur-sm rounded-2xl p-4 border border-border/40 shadow-sm lg:sticky lg:top-20">
+              {/* Cart Header */}
+              <div className="flex items-center justify-between mb-3 pb-3 border-b border-border/30">
                 <div className="flex items-center gap-2">
                   <h2 className="text-sm font-bold font-display">Cart</h2>
                   {cart.items.length > 0 && (
@@ -548,7 +548,7 @@ const Checkout = () => {
                     variant="ghost"
                     size="sm"
                     onClick={cart.clearCart}
-                    className="text-destructive/70 hover:text-destructive hover:bg-destructive/10 h-6 px-2 text-[10px]"
+                    className="text-destructive/70 hover:text-destructive hover:bg-destructive/10 h-7 px-2 text-[10px]"
                   >
                     <Trash2 className="h-3 w-3 mr-1" />
                     Clear
@@ -556,40 +556,24 @@ const Checkout = () => {
                 )}
               </div>
 
-              {/* Scrollable Cart Items */}
-              <div className="flex-1 overflow-y-auto p-4 pt-2">
-                <CartPanel
-                  items={cart.items}
-                  onIncrement={cart.incrementQuantity}
-                  onDecrement={cart.decrementQuantity}
-                  onRemove={cart.removeItem}
-                  total={cart.getTotal()}
-                />
-              </div>
+              <CartPanel
+                items={cart.items}
+                onIncrement={cart.incrementQuantity}
+                onDecrement={cart.decrementQuantity}
+                onRemove={cart.removeItem}
+                total={cart.getTotal()}
+              />
 
-              {/* Fixed Bottom Section */}
-              <div className="flex-shrink-0 border-t border-border/30 p-4 space-y-3 bg-card/95">
-                {/* Totals */}
-                {cart.items.length > 0 && (
-                  <div className="space-y-2">
-                    <div className="flex justify-between items-center text-xs text-muted-foreground">
-                      <span>{cart.items.length} {cart.items.length === 1 ? 'item' : 'items'}</span>
-                      <span className="tabular-nums">{formatPrice(cart.getTotal())}</span>
-                    </div>
-                    <div className="flex justify-between items-center p-3 rounded-xl bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border border-primary/20">
-                      <span className="font-bold text-sm">Total</span>
-                      <span className="font-bold text-lg text-primary tabular-nums">{formatPrice(cart.getTotal())}</span>
-                    </div>
-                  </div>
-                )}
-
-                {/* Drug Interaction Warning */}
-                {cart.items.length >= 2 && (
+              {/* Drug Interaction Warning */}
+              {cart.items.length >= 2 && (
+                <div className="mt-3">
                   <DrugInteractionWarning cartItems={cart.items} />
-                )}
+                </div>
+              )}
 
-                {/* Patient Selection */}
-                {cart.items.length > 0 && (
+              {/* Patient Selection */}
+              {cart.items.length > 0 && (
+                <div className="mt-3">
                   <PatientSelector
                     selectedPatient={selectedPatient}
                     onSelectPatient={(patient) => {
@@ -600,25 +584,21 @@ const Checkout = () => {
                     }}
                     onSkip={() => setCustomerName('')}
                   />
-                )}
+                </div>
+              )}
 
-                {/* Prescription Upload */}
-                {cart.items.length > 0 && (
-                  <PrescriptionImageUpload
-                    images={prescriptionImages}
-                    onImagesChange={setPrescriptionImages}
-                  />
-                )}
+              {/* Prescription Upload */}
+              {cart.items.length > 0 && (
+                <div className="mt-3">
+                  <PrescriptionImageUpload images={prescriptionImages} onImagesChange={setPrescriptionImages} />
+                </div>
+              )}
 
-                {/* Action Buttons */}
+              {/* Action Buttons */}
+              <div className="space-y-2 mt-4">
                 {cart.items.length > 0 && (
                   <div className="grid grid-cols-2 gap-2">
-                    <Button
-                      onClick={handleHoldSale}
-                      variant="outline"
-                      size="sm"
-                      className="h-9 gap-1.5 text-xs rounded-xl"
-                    >
+                    <Button onClick={handleHoldSale} variant="outline" size="sm" className="h-9 gap-1.5 text-xs rounded-xl">
                       <Pause className="h-3.5 w-3.5" />
                       Hold
                     </Button>
