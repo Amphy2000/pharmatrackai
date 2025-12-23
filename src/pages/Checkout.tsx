@@ -556,75 +556,59 @@ const Checkout = () => {
                 )}
               </div>
 
-              {/* Scrollable middle section */}
-              <div className="flex-1 overflow-hidden py-3 min-h-0">
-                <div className="h-full flex flex-col">
-                  <CartPanel
-                    items={cart.items}
-                    onIncrement={cart.incrementQuantity}
-                    onDecrement={cart.decrementQuantity}
-                    onRemove={cart.removeItem}
-                    total={cart.getTotal()}
-                  />
-
-                  {/* Drug Interaction Warning */}
-                  {cart.items.length >= 2 && (
-                    <div className="mt-2 flex-shrink-0">
-                      <DrugInteractionWarning cartItems={cart.items} />
-                    </div>
-                  )}
-
-                  {/* Patient Selection - Compact */}
-                  {cart.items.length > 0 && (
-                    <div className="mt-2 flex-shrink-0">
-                      <PatientSelector
-                        selectedPatient={selectedPatient}
-                        onSelectPatient={(patient) => {
-                          setSelectedPatient(patient);
-                          if (patient) {
-                            setCustomerName(patient.full_name);
-                          }
-                        }}
-                        onSkip={() => setCustomerName('')}
-                      />
-                    </div>
-                  )}
-
-                  {/* Prescription Upload - Compact */}
-                  {cart.items.length > 0 && (
-                    <div className="mt-2 flex-shrink-0">
-                      <PrescriptionImageUpload
-                        images={prescriptionImages}
-                        onImagesChange={setPrescriptionImages}
-                      />
-                    </div>
-                  )}
-                </div>
+              {/* Main cart content - flexible height */}
+              <div className="flex-1 min-h-0 pt-3 flex flex-col overflow-hidden">
+                <CartPanel
+                  items={cart.items}
+                  onIncrement={cart.incrementQuantity}
+                  onDecrement={cart.decrementQuantity}
+                  onRemove={cart.removeItem}
+                  total={cart.getTotal()}
+                />
               </div>
 
-              {/* Totals - Fixed at bottom */}
-              <div className="pt-3 border-t border-border/30 flex-shrink-0 space-y-2">
-                {cart.items.length > 0 && (
-                  <>
-                    <div className="flex justify-between items-center text-xs text-muted-foreground">
-                      <span>{cart.items.length} {cart.items.length === 1 ? 'item' : 'items'}</span>
-                      <span className="tabular-nums">{formatPrice(cart.getTotal())}</span>
-                    </div>
-                    <div className="flex justify-between items-center p-2.5 rounded-xl bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border border-primary/20">
-                      <span className="font-bold text-sm">Total</span>
-                      <span className="font-bold text-lg text-primary tabular-nums">{formatPrice(cart.getTotal())}</span>
-                    </div>
-                  </>
-                )}
+              {/* Drug Interaction Warning */}
+              {cart.items.length >= 2 && (
+                <div className="pt-2 flex-shrink-0">
+                  <DrugInteractionWarning cartItems={cart.items} />
+                </div>
+              )}
 
-                {/* Action Buttons */}
+              {/* Patient Selection */}
+              {cart.items.length > 0 && (
+                <div className="pt-2 flex-shrink-0">
+                  <PatientSelector
+                    selectedPatient={selectedPatient}
+                    onSelectPatient={(patient) => {
+                      setSelectedPatient(patient);
+                      if (patient) {
+                        setCustomerName(patient.full_name);
+                      }
+                    }}
+                    onSkip={() => setCustomerName('')}
+                  />
+                </div>
+              )}
+
+              {/* Prescription Upload */}
+              {cart.items.length > 0 && (
+                <div className="pt-2 flex-shrink-0">
+                  <PrescriptionImageUpload
+                    images={prescriptionImages}
+                    onImagesChange={setPrescriptionImages}
+                  />
+                </div>
+              )}
+
+              {/* Action Buttons - Fixed at bottom */}
+              <div className="pt-3 flex-shrink-0 space-y-2">
                 {cart.items.length > 0 && (
                   <div className="grid grid-cols-2 gap-2">
                     <Button
                       onClick={handleHoldSale}
                       variant="outline"
                       size="sm"
-                      className="h-8 gap-1.5 text-xs rounded-xl"
+                      className="h-9 gap-1.5 text-xs rounded-xl"
                     >
                       <Pause className="h-3.5 w-3.5" />
                       Hold
@@ -634,7 +618,7 @@ const Checkout = () => {
                       variant="outline"
                       size="sm"
                       disabled={isProcessing}
-                      className="h-8 gap-1.5 text-xs rounded-xl border-amber-500/40 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30"
+                      className="h-9 gap-1.5 text-xs rounded-xl border-amber-500/40 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30"
                     >
                       <FileText className="h-3.5 w-3.5" />
                       Invoice
@@ -645,9 +629,9 @@ const Checkout = () => {
                 <Button
                   onClick={() => setCheckoutOpen(true)}
                   disabled={cart.items.length === 0}
-                  className="w-full h-10 text-sm font-bold gap-2 bg-gradient-primary hover:opacity-90 shadow-md rounded-xl transition-all hover:shadow-lg"
+                  className="w-full h-11 text-sm font-bold gap-2 bg-gradient-primary hover:opacity-90 shadow-md rounded-xl transition-all hover:shadow-lg"
                 >
-                  <CreditCard className="h-4 w-4" />
+                  <CreditCard className="h-4 w-4 sm:h-5 sm:w-5" />
                   Complete Sale
                 </Button>
               </div>
