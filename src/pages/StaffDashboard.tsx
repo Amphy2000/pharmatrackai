@@ -12,6 +12,7 @@ import { MetricCard } from '@/components/dashboard/MetricCard';
 import { ShiftClock } from '@/components/dashboard/ShiftClock';
 import { StaffQuickActions } from '@/components/dashboard/StaffQuickActions';
 import { ExpiryDiscountEngine } from '@/components/dashboard/ExpiryDiscountEngine';
+import { AlertSummaryWidget } from '@/components/dashboard/AlertSummaryWidget';
 import { 
   Package, 
   AlertTriangle, 
@@ -160,7 +161,7 @@ const StaffDashboard = () => {
                 icon={<AlertTriangle className="h-5 w-5 sm:h-7 sm:w-7" />}
                 variant="warning"
                 subtitle="Need reordering"
-                onClick={() => navigate('/notifications?filter=low_stock')}
+                onClick={() => navigate('/inventory')}
               />
             </motion.div>
             <motion.div variants={itemVariants}>
@@ -170,7 +171,7 @@ const StaffDashboard = () => {
                 icon={<XCircle className="h-5 w-5 sm:h-7 sm:w-7" />}
                 variant="danger"
                 subtitle="Remove from shelf"
-                onClick={() => navigate('/notifications?filter=expired')}
+                onClick={() => navigate('/inventory')}
               />
             </motion.div>
             <motion.div variants={itemVariants}>
@@ -180,9 +181,14 @@ const StaffDashboard = () => {
                 icon={<Clock className="h-5 w-5 sm:h-7 sm:w-7" />}
                 variant="success"
                 subtitle="Within 30 days"
-                onClick={() => navigate('/notifications?filter=expiring')}
+                onClick={() => navigate('/inventory')}
               />
             </motion.div>
+          </div>
+
+          {/* Pending Alerts Summary */}
+          <div className="mt-6">
+            <AlertSummaryWidget />
           </div>
         </motion.section>
 
