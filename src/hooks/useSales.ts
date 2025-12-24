@@ -1,10 +1,29 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { CartItem } from '@/types/medication';
+import { CartItem, Medication } from '@/types/medication';
 import { useToast } from '@/hooks/use-toast';
 import { usePharmacy } from '@/hooks/usePharmacy';
 import { useOfflineSync } from '@/hooks/useOfflineSync';
+import { isBefore, parseISO } from 'date-fns';
+
+// Check if a medication batch is expired
+export const isExpiredBatch = (expiryDate: string): boolean => {
+  return isBefore(parseISO(expiryDate), new Date());
+};
+
+// FEFO: Find the batch with earliest expiry that's not expired
+export const findFEFOBatch = (medications: Medication[], name: string): Medication | null => {
+  const validBatches = medications
+    .filter(med => 
+      med.name === name && 
+      med.current_stock > 0 && 
+      !isExpiredBatch(med.expiry_date)
+    )
+    .sort((a, b) => new Date(a.expiry_date).getTime() - new Date(b.expiry_date).getTime());
+  
+  return validBatches.length > 0 ? validBatches[0] : null;
+};
 
 interface CompleteSaleParams {
   items: CartItem[];

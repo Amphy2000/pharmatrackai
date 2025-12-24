@@ -32,6 +32,7 @@ import { ROIDashboard } from '@/components/dashboard/ROIDashboard';
 import { LiveActivityFeed } from '@/components/dashboard/LiveActivityFeed';
 import { ProductTour } from '@/components/ProductTour';
 import { PWAInstallPrompt } from '@/components/pwa/PWAInstallPrompt';
+import { AlertSummaryWidget } from '@/components/dashboard/AlertSummaryWidget';
 import { startOfDay, endOfDay, parseISO } from 'date-fns';
 import { 
   Package, 
@@ -315,6 +316,9 @@ const Dashboard = () => {
                 </Card>
               </div>
             </motion.section>
+
+            {/* Alert Summary Widget */}
+            <AlertSummaryWidget />
 
             {/* Money Saver Summary - ROI Dashboard */}
             {isOwnerOrManager && (

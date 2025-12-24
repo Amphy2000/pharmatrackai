@@ -39,6 +39,7 @@ import { ReceiptPreviewModal } from '@/components/pos/ReceiptPreviewModal';
 import { PatientSelector } from '@/components/pos/PatientSelector';
 import { PrescriptionImageUpload } from '@/components/pos/PrescriptionImageUpload';
 import { KeyboardShortcutsOverlay } from '@/components/pos/KeyboardShortcutsOverlay';
+import { ExpiredBatchWarningDialog } from '@/components/pos/ExpiredBatchWarningDialog';
 import { Customer } from '@/types/customer';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -110,6 +111,12 @@ const Checkout = () => {
   const [selectedPatient, setSelectedPatient] = useState<Customer | null>(null);
   const [prescriptionImages, setPrescriptionImages] = useState<string[]>([]);
   const [showShortcuts, setShowShortcuts] = useState(false);
+  const [expiredWarning, setExpiredWarning] = useState<{ open: boolean; name: string; expiry: string; id: string }>({
+    open: false,
+    name: '',
+    expiry: '',
+    id: '',
+  });
 
   // Global barcode scanner - works without focusing search bar
   const isExpired = (expiryDate: string): boolean => {
@@ -297,6 +304,18 @@ const Checkout = () => {
   const handleCompleteSale = async () => {
     if (cart.items.length === 0) return;
 
+    // FEFO Check: Verify no expired items are in the cart
+    const expiredItem = cart.items.find(item => isExpired(item.medication.expiry_date));
+    if (expiredItem) {
+      setExpiredWarning({
+        open: true,
+        name: expiredItem.medication.name,
+        expiry: expiredItem.medication.expiry_date,
+        id: expiredItem.medication.id,
+      });
+      return;
+    }
+
     setIsProcessing(true);
     
     // Store cart items before clearing
@@ -441,8 +460,28 @@ const Checkout = () => {
     setPreviewOpen(false);
   };
 
+  const handleRemoveExpiredFromCart = () => {
+    if (expiredWarning.id) {
+      cart.removeItem(expiredWarning.id);
+      setExpiredWarning({ open: false, name: '', expiry: '', id: '' });
+      toast({
+        title: 'Expired item removed',
+        description: `${expiredWarning.name} has been removed from the cart.`,
+      });
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/30">
+      {/* Expired Batch Warning Dialog */}
+      <ExpiredBatchWarningDialog
+        open={expiredWarning.open}
+        onOpenChange={(open) => setExpiredWarning(prev => ({ ...prev, open }))}
+        medicationName={expiredWarning.name}
+        expiryDate={expiredWarning.expiry}
+        onConfirmRemove={handleRemoveExpiredFromCart}
+      />
+
       {/* Keyboard Shortcuts Overlay */}
       <KeyboardShortcutsOverlay 
         open={showShortcuts} 
