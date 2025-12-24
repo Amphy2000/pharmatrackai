@@ -11,28 +11,32 @@ interface UpgradePromptProps {
 
 const plans = [
   {
-    name: 'Starter',
-    price: '₦15,000',
+    name: 'Switch & Save',
+    price: '₦10,000',
     period: '/month',
+    setup: '₦150,000 one-time',
     features: [
-      'Up to 500 medications',
-      '1 user account',
-      'Basic POS',
-      'Email support',
+      'Lifetime License Feel',
+      'Cloud Backups',
+      '1 User Account',
+      'Unlimited SKUs',
+      'Basic POS System',
+      'Expiry Tracking',
     ],
     popular: false,
   },
   {
-    name: 'Pro',
+    name: 'AI Powerhouse',
     price: '₦35,000',
     period: '/month',
+    setup: '₦0 Setup',
     features: [
-      'Unlimited medications',
-      'Up to 5 users',
-      'Advanced analytics',
-      'Multi-branch support',
-      'Priority support',
-      'AI insights',
+      'Automated Expiry Discounting',
+      'Demand Forecasting AI',
+      'Unlimited Users',
+      'Multi-Branch Ready',
+      'NAFDAC Compliance Reports',
+      'Priority Support',
     ],
     popular: true,
   },
@@ -40,13 +44,14 @@ const plans = [
     name: 'Enterprise',
     price: 'Custom',
     period: '',
+    setup: 'Custom Quote',
     features: [
       'Everything in Pro',
-      'Unlimited users',
-      'Custom integrations',
-      'Dedicated support',
-      'SLA guarantee',
-      'On-premise option',
+      'White-label Options',
+      'Custom API Access',
+      'Dedicated Account Manager',
+      '24/7 Priority Support',
+      'SLA Guarantee',
     ],
     popular: false,
   },
@@ -121,6 +126,9 @@ export const UpgradePrompt = ({ inline = false, onUpgrade }: UpgradePromptProps)
                 <span className="text-3xl font-bold">{planOption.price}</span>
                 <span className="text-muted-foreground">{planOption.period}</span>
               </div>
+              {planOption.setup && (
+                <p className="text-xs text-muted-foreground mt-1">{planOption.setup}</p>
+              )}
             </CardHeader>
             <CardContent className="space-y-3">
               {planOption.features.map((feature) => (
