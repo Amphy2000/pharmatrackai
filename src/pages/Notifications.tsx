@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -13,7 +13,12 @@ import {
   XCircle,
   ExternalLink,
   TrendingDown,
-  Clock
+  Clock,
+  Phone,
+  Send,
+  Loader2,
+  Zap,
+  Settings
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -21,16 +26,40 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAlertEngine, SystemAlert } from '@/hooks/useAlertEngine';
+import { useAlerts } from '@/hooks/useAlerts';
 import { usePharmacy } from '@/hooks/usePharmacy';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { useToast } from '@/hooks/use-toast';
+import { differenceInDays } from 'date-fns';
+
+const ALERT_SETTINGS_KEY = 'pharmatrack_alert_settings';
 
 const Notifications = () => {
   const { alerts, alertCounts, generateWhatsAppMessage } = useAlertEngine();
+  const { sendExpiryAlert, sendLowStockAlert, sendExpiredAlert, isSending } = useAlerts();
   const { pharmacy } = usePharmacy();
   const { formatPrice } = useCurrency();
   const { toast } = useToast();
   const [filter, setFilter] = useState<'all' | 'high' | 'medium' | 'low'>('all');
+  const [savedPhone, setSavedPhone] = useState<string>('');
+  const [useWhatsApp, setUseWhatsApp] = useState(false);
+  const [sendingAlertId, setSendingAlertId] = useState<string | null>(null);
+
+  // Load saved settings
+  useEffect(() => {
+    if (pharmacy?.id) {
+      const savedSettings = localStorage.getItem(`${ALERT_SETTINGS_KEY}_${pharmacy.id}`);
+      if (savedSettings) {
+        try {
+          const settings = JSON.parse(savedSettings);
+          setSavedPhone(settings.phone || '');
+          setUseWhatsApp(settings.useWhatsApp || false);
+        } catch (e) {
+          console.error('Failed to parse saved alert settings');
+        }
+      }
+    }
+  }, [pharmacy?.id]);
 
   const filteredAlerts = filter === 'all' 
     ? alerts 
@@ -72,6 +101,92 @@ const Notifications = () => {
     });
   };
 
+  const handleSendSMSAlert = async (alert: SystemAlert) => {
+    if (!savedPhone) {
+      toast({
+        title: 'Phone not configured',
+        description: 'Please set up your phone number in Settings → Alerts',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setSendingAlertId(alert.id);
+    const channel = useWhatsApp ? 'whatsapp' : 'sms';
+
+    try {
+      if (alert.type === 'expiry') {
+        await sendExpiryAlert(
+          [{
+            name: alert.title,
+            expiryDate: alert.expiryDate || 'Soon',
+            value: alert.valueAtRisk,
+            daysLeft: alert.expiryDate ? differenceInDays(new Date(alert.expiryDate), new Date()) : undefined,
+          }],
+          savedPhone,
+          channel
+        );
+      } else if (alert.type === 'low_stock' || alert.type === 'out_of_stock') {
+        await sendLowStockAlert(
+          [{
+            name: alert.title,
+            stock: alert.currentStock || 0,
+            reorderLevel: alert.suggestedReorderQty,
+          }],
+          savedPhone,
+          channel
+        );
+      }
+    } finally {
+      setSendingAlertId(null);
+    }
+  };
+
+  const handleSendAllAlerts = async () => {
+    if (!savedPhone) {
+      toast({
+        title: 'Phone not configured',
+        description: 'Please set up your phone number in Settings → Alerts',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    const channel = useWhatsApp ? 'whatsapp' : 'sms';
+    const expiryAlerts = alerts.filter(a => a.type === 'expiry');
+    const stockAlerts = alerts.filter(a => a.type === 'low_stock' || a.type === 'out_of_stock');
+
+    if (expiryAlerts.length > 0) {
+      await sendExpiryAlert(
+        expiryAlerts.map(a => ({
+          name: a.title,
+          expiryDate: a.expiryDate || 'Soon',
+          value: a.valueAtRisk,
+          daysLeft: a.expiryDate ? differenceInDays(new Date(a.expiryDate), new Date()) : undefined,
+        })),
+        savedPhone,
+        channel
+      );
+    }
+
+    if (stockAlerts.length > 0) {
+      await sendLowStockAlert(
+        stockAlerts.map(a => ({
+          name: a.title,
+          stock: a.currentStock || 0,
+          reorderLevel: a.suggestedReorderQty,
+        })),
+        savedPhone,
+        channel
+      );
+    }
+
+    toast({
+      title: 'All alerts sent!',
+      description: `Sent ${expiryAlerts.length + stockAlerts.length} alerts via ${channel.toUpperCase()}`,
+    });
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/30">
       {/* Header */}
@@ -96,6 +211,48 @@ const Notifications = () => {
       </header>
 
       <main className="container mx-auto px-4 py-6 space-y-6 max-w-4xl">
+        {/* Quick Send All Button */}
+        {alerts.length > 0 && savedPhone && (
+          <Card className="bg-gradient-to-r from-green-500/10 to-emerald-500/10 border-green-500/30">
+            <CardContent className="p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-lg bg-green-500/20 flex items-center justify-center">
+                  <Zap className="h-5 w-5 text-green-500" />
+                </div>
+                <div>
+                  <p className="font-medium">Send All Alerts via {useWhatsApp ? 'WhatsApp' : 'SMS'}</p>
+                  <p className="text-xs text-muted-foreground">{alerts.length} alerts ready to send to {savedPhone}</p>
+                </div>
+              </div>
+              <Button 
+                onClick={handleSendAllAlerts} 
+                disabled={isSending}
+                className="gap-2 bg-green-500 hover:bg-green-600 text-white"
+              >
+                {isSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                Send All Now
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+        {!savedPhone && (
+          <Card className="bg-warning/10 border-warning/30">
+            <CardContent className="p-4 flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <Phone className="h-5 w-5 text-warning" />
+                <p className="text-sm">Set up your phone number to receive SMS/WhatsApp alerts</p>
+              </div>
+              <Link to="/settings">
+                <Button size="sm" variant="outline" className="gap-2">
+                  <Settings className="h-4 w-4" />
+                  Configure
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Alert Summary Cards */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           <Card className="bg-destructive/10 border-destructive/30">

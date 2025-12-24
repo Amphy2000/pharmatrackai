@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { usePharmacy } from '@/hooks/usePharmacy';
 import { toast } from 'sonner';
 
-type AlertType = 'low_stock' | 'expiring' | 'expired' | 'custom';
+type AlertType = 'low_stock' | 'expiring' | 'expired' | 'custom' | 'daily_summary';
 type AlertChannel = 'sms' | 'whatsapp';
 
 interface SendAlertParams {
@@ -11,6 +11,19 @@ interface SendAlertParams {
   message: string;
   recipientPhone: string;
   channel: AlertChannel;
+  itemName?: string;
+  itemValue?: number;
+  daysLeft?: number;
+  currentStock?: number;
+  suggestedReorder?: number;
+}
+
+interface AlertResult {
+  success: boolean;
+  error?: string;
+  data?: any;
+  messageId?: string;
+  balance?: number;
 }
 
 export const useAlerts = () => {
@@ -34,7 +47,7 @@ export const useAlerts = () => {
     return error?.message || 'Failed to send alert';
   };
 
-  const sendAlert = async ({ alertType, message, recipientPhone, channel }: SendAlertParams) => {
+  const sendAlert = async (params: SendAlertParams): Promise<AlertResult> => {
     if (!pharmacy?.id) {
       toast.error('Pharmacy not found');
       return { success: false, error: 'Pharmacy not found' };
@@ -42,25 +55,49 @@ export const useAlerts = () => {
 
     setIsSending(true);
     try {
-      const { data, error } = await supabase.functions.invoke('send-alert', {
+      // Try Termii first (preferred for Nigeria)
+      const { data, error } = await supabase.functions.invoke('termii-alert', {
         body: {
           pharmacyId: pharmacy.id,
-          alertType,
-          message,
-          recipientPhone,
-          channel,
+          ...params,
         },
       });
 
       if (error) {
-        console.error('Alert error:', error);
+        console.error('Termii alert error:', error);
         const errorMessage = await getFunctionsErrorMessage(error);
-        toast.error(errorMessage);
-        return { success: false, error: errorMessage };
+        
+        // If Termii fails, fall back to Twilio
+        console.log('Falling back to Twilio...');
+        const { data: twilioData, error: twilioError } = await supabase.functions.invoke('send-alert', {
+          body: {
+            pharmacyId: pharmacy.id,
+            alertType: params.alertType,
+            message: params.message,
+            recipientPhone: params.recipientPhone,
+            channel: params.channel,
+          },
+        });
+
+        if (twilioError) {
+          const twilioErrorMessage = await getFunctionsErrorMessage(twilioError);
+          toast.error(`Failed to send: ${twilioErrorMessage}`);
+          return { success: false, error: twilioErrorMessage };
+        }
+
+        toast.success(`${params.channel.toUpperCase()} alert sent via backup provider!`);
+        return { success: true, data: twilioData };
       }
 
-      toast.success(`${channel.toUpperCase()} alert sent successfully!`);
-      return { success: true, data };
+      toast.success(`${params.channel.toUpperCase()} alert sent successfully!`, {
+        description: data.balance !== undefined ? `Termii balance: ${data.balance}` : undefined,
+      });
+      return { 
+        success: true, 
+        data, 
+        messageId: data.messageId,
+        balance: data.balance 
+      };
     } catch (err: any) {
       console.error('Alert exception:', err);
       const errorMessage = err?.message || 'Failed to send alert';
@@ -71,22 +108,123 @@ export const useAlerts = () => {
     }
   };
 
-  const sendLowStockAlert = async (items: { name: string; stock: number }[], recipientPhone: string, channel: AlertChannel) => {
+  const sendLowStockAlert = async (
+    items: { name: string; stock: number; reorderLevel?: number }[], 
+    recipientPhone: string, 
+    channel: AlertChannel
+  ): Promise<AlertResult> => {
+    if (items.length === 1) {
+      const item = items[0];
+      return sendAlert({
+        alertType: 'low_stock',
+        message: `${item.name} is running low: ${item.stock} units left`,
+        recipientPhone,
+        channel,
+        itemName: item.name,
+        currentStock: item.stock,
+        suggestedReorder: Math.max(50, (item.reorderLevel || 20) * 3),
+      });
+    }
+
     const itemList = items.slice(0, 5).map(i => `• ${i.name}: ${i.stock} units`).join('\n');
     const message = `${items.length} items are running low on stock:\n\n${itemList}${items.length > 5 ? `\n\n...and ${items.length - 5} more` : ''}`;
-    return sendAlert({ alertType: 'low_stock', message, recipientPhone, channel });
+    
+    return sendAlert({ 
+      alertType: 'low_stock', 
+      message, 
+      recipientPhone, 
+      channel 
+    });
   };
 
-  const sendExpiryAlert = async (items: { name: string; expiryDate: string }[], recipientPhone: string, channel: AlertChannel) => {
+  const sendExpiryAlert = async (
+    items: { name: string; expiryDate: string; value?: number; daysLeft?: number }[], 
+    recipientPhone: string, 
+    channel: AlertChannel
+  ): Promise<AlertResult> => {
+    if (items.length === 1) {
+      const item = items[0];
+      return sendAlert({
+        alertType: 'expiring',
+        message: `${item.name} expires ${item.expiryDate}`,
+        recipientPhone,
+        channel,
+        itemName: item.name,
+        itemValue: item.value,
+        daysLeft: item.daysLeft,
+      });
+    }
+
     const itemList = items.slice(0, 5).map(i => `• ${i.name}: expires ${i.expiryDate}`).join('\n');
     const message = `${items.length} items are expiring soon:\n\n${itemList}${items.length > 5 ? `\n\n...and ${items.length - 5} more` : ''}`;
-    return sendAlert({ alertType: 'expiring', message, recipientPhone, channel });
+    
+    return sendAlert({ 
+      alertType: 'expiring', 
+      message, 
+      recipientPhone, 
+      channel 
+    });
+  };
+
+  const sendExpiredAlert = async (
+    items: { name: string; value?: number }[], 
+    recipientPhone: string, 
+    channel: AlertChannel
+  ): Promise<AlertResult> => {
+    if (items.length === 1) {
+      const item = items[0];
+      return sendAlert({
+        alertType: 'expired',
+        message: `${item.name} has EXPIRED! Remove from shelves immediately.`,
+        recipientPhone,
+        channel,
+        itemName: item.name,
+        itemValue: item.value,
+      });
+    }
+
+    const itemList = items.slice(0, 5).map(i => `• ${i.name}`).join('\n');
+    const message = `🚨 URGENT: ${items.length} items have EXPIRED:\n\n${itemList}\n\nRemove from shelves immediately!`;
+    
+    return sendAlert({ 
+      alertType: 'expired', 
+      message, 
+      recipientPhone, 
+      channel 
+    });
+  };
+
+  const sendDailySummary = async (
+    summary: {
+      todaySales: number;
+      expiringCount: number;
+      lowStockCount: number;
+      protectedValue: number;
+    },
+    recipientPhone: string,
+    channel: AlertChannel
+  ): Promise<AlertResult> => {
+    const message = `📊 Today's Summary:
+
+💰 Sales: ₦${summary.todaySales.toLocaleString()}
+🛡️ Value Protected: ₦${summary.protectedValue.toLocaleString()}
+⚠️ Expiring Soon: ${summary.expiringCount} items
+📉 Low Stock: ${summary.lowStockCount} items`;
+
+    return sendAlert({
+      alertType: 'daily_summary',
+      message,
+      recipientPhone,
+      channel,
+    });
   };
 
   return {
     sendAlert,
     sendLowStockAlert,
     sendExpiryAlert,
+    sendExpiredAlert,
+    sendDailySummary,
     isSending,
   };
 };

@@ -9,6 +9,9 @@ verify_jwt = true
 [functions.send-alert]
 verify_jwt = true
 
+[functions.termii-alert]
+verify_jwt = true
+
 [functions.check-drug-interactions]
 verify_jwt = true
 
