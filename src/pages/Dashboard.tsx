@@ -261,13 +261,13 @@ const Dashboard = () => {
               </div>
             </motion.section>
 
-            {/* 3 Key Metrics - Today's Sales, Protected Value, Pending Alerts */}
+            {/* Key Metrics - Today's Sales, Protected Value */}
             <motion.section 
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
             >
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                 <Card className="glass-card border-border/50 overflow-hidden">
                   <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-transparent" />
                   <CardContent className="pt-6 relative">
