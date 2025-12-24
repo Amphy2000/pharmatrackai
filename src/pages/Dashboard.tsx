@@ -1,12 +1,15 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, Variants } from 'framer-motion';
 import { useMedications } from '@/hooks/useMedications';
+import { useSales } from '@/hooks/useSales';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePharmacy } from '@/hooks/usePharmacy';
 import { useShifts } from '@/hooks/useShifts';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useCurrency } from '@/contexts/CurrencyContext';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { Header } from '@/components/Header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -29,6 +32,7 @@ import { ROIDashboard } from '@/components/dashboard/ROIDashboard';
 import { LiveActivityFeed } from '@/components/dashboard/LiveActivityFeed';
 import { ProductTour } from '@/components/ProductTour';
 import { PWAInstallPrompt } from '@/components/pwa/PWAInstallPrompt';
+import { startOfDay, endOfDay, parseISO } from 'date-fns';
 import { 
   Package, 
   AlertTriangle, 
@@ -69,9 +73,57 @@ const Dashboard = () => {
   const { user, isLoading: authLoading } = useAuth();
   const { pharmacy, isLoading: pharmacyLoading } = usePharmacy();
   const { medications, isLoading: medsLoading, getMetrics } = useMedications();
+  const { sales } = useSales();
   const { activeShift } = useShifts();
   const { isOwnerOrManager, userRole, hasPermission, isLoading: permissionsLoading } = usePermissions();
   const { formatPrice } = useCurrency();
+
+  // Fetch audit log count for ROI dashboard (price change attempts)
+  const { data: auditLogCount = 0 } = useQuery({
+    queryKey: ['audit-log-count', pharmacy?.id],
+    queryFn: async () => {
+      if (!pharmacy?.id) return 0;
+      const { count, error } = await supabase
+        .from('audit_logs')
+        .select('*', { count: 'exact', head: true })
+        .eq('pharmacy_id', pharmacy.id)
+        .eq('action', 'price_change_blocked');
+      if (error) return 0;
+      return count || 0;
+    },
+    enabled: !!pharmacy?.id,
+  });
+
+  // Calculate today's sales from real data
+  const todaysSales = useMemo(() => {
+    if (!sales || sales.length === 0) return 0;
+    const today = new Date();
+    const dayStart = startOfDay(today);
+    const dayEnd = endOfDay(today);
+    
+    return sales
+      .filter(sale => {
+        const saleDate = parseISO(sale.sale_date);
+        return saleDate >= dayStart && saleDate <= dayEnd;
+      })
+      .reduce((sum, sale) => sum + sale.total_price, 0);
+  }, [sales]);
+
+  // Count invoices scanned from audit logs
+  const { data: invoicesScanned = 0 } = useQuery({
+    queryKey: ['invoices-scanned', pharmacy?.id],
+    queryFn: async () => {
+      if (!pharmacy?.id) return 0;
+      const { count, error } = await supabase
+        .from('audit_logs')
+        .select('*', { count: 'exact', head: true })
+        .eq('pharmacy_id', pharmacy.id)
+        .eq('action', 'invoice_scanned');
+      if (error) return 0;
+      return count || 0;
+    },
+    enabled: !!pharmacy?.id,
+  });
 
   // Loading state
   if (authLoading || pharmacyLoading || permissionsLoading) {
@@ -224,7 +276,7 @@ const Dashboard = () => {
                       </div>
                       <div>
                         <p className="text-sm text-muted-foreground mb-1">Today's Sales</p>
-                        <p className="text-2xl sm:text-3xl font-bold font-display">{formatPrice(0)}</p>
+                        <p className="text-2xl sm:text-3xl font-bold font-display">{formatPrice(todaysSales)}</p>
                       </div>
                     </div>
                   </CardContent>
@@ -271,7 +323,7 @@ const Dashboard = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3 }}
               >
-                <ROIDashboard invoicesScanned={12} auditLogCount={3} />
+                <ROIDashboard invoicesScanned={invoicesScanned} auditLogCount={auditLogCount} />
               </motion.section>
             )}
 

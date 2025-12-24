@@ -293,9 +293,45 @@ export const MultiImageInvoiceScanner = ({ open, onOpenChange }: MultiImageInvoi
         });
       }
 
+      // Add NEW items to inventory automatically
+      for (const item of newItems) {
+        if (item.unitPrice && item.expiryDate) {
+          await addMedication.mutateAsync({
+            name: item.productName,
+            category: 'Other',
+            batch_number: item.batchNumber || `BATCH-${Date.now()}`,
+            current_stock: item.quantity,
+            reorder_level: 10,
+            expiry_date: item.expiryDate,
+            unit_price: item.unitPrice,
+            selling_price: item.suggestedSellingPrice || item.unitPrice,
+          });
+        }
+      }
+
+      // Log the invoice scan to audit for ROI tracking
+      if (pharmacy?.id) {
+        const { data: authData } = await supabase.auth.getUser();
+        await supabase.from('audit_logs').insert({
+          pharmacy_id: pharmacy.id,
+          user_id: authData?.user?.id || null,
+          action: 'invoice_scanned',
+          entity_type: 'invoice',
+          details: {
+            itemCount: extractedItems.length,
+            matchedCount: matchedItems.length,
+            newItemsCount: newItems.length,
+            totalValue: grandTotal,
+          },
+        });
+      }
+
+      const addedNewItems = newItems.filter(i => i.unitPrice && i.expiryDate).length;
+      const skippedNewItems = newItems.length - addedNewItems;
+
       toast({
-        title: 'Inventory updated',
-        description: `Updated ${matchedItems.length} items. ${newItems.length} new items need manual addition.`,
+        title: 'Inventory updated successfully',
+        description: `Updated ${matchedItems.length} existing items, added ${addedNewItems} new items.${skippedNewItems > 0 ? ` ${skippedNewItems} items skipped (missing price/expiry).` : ''}`,
       });
 
       // Reset and close
