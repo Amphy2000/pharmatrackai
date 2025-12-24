@@ -32,3 +32,6 @@ verify_jwt = false
 
 [functions.daily-alert-digest]
 verify_jwt = false
+
+[functions.verify-admin-pin]
+verify_jwt = true

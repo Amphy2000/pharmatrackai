@@ -34,27 +34,36 @@ serve(async (req) => {
     const body = await req.text();
     const signature = req.headers.get("x-paystack-signature");
 
-    // Verify webhook signature using Web Crypto API
-    if (signature) {
-      const encoder = new TextEncoder();
-      const key = await globalThis.crypto.subtle.importKey(
-        "raw",
-        encoder.encode(paystackSecret),
-        { name: "HMAC", hash: "SHA-512" },
-        false,
-        ["sign"]
-      );
-      const signatureBuffer = await globalThis.crypto.subtle.sign("HMAC", key, encoder.encode(body));
-      const computedSignature = bytesToHex(new Uint8Array(signatureBuffer));
-
-      if (computedSignature !== signature) {
-        console.error("Invalid Paystack signature");
-        return new Response(JSON.stringify({ error: "Invalid signature" }), {
-          status: 401,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
+    // SECURITY: Require signature for all webhook requests
+    if (!signature) {
+      console.error("Missing Paystack signature - rejecting request");
+      return new Response(JSON.stringify({ error: "Missing signature" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
+
+    // Verify webhook signature using Web Crypto API
+    const encoder = new TextEncoder();
+    const key = await globalThis.crypto.subtle.importKey(
+      "raw",
+      encoder.encode(paystackSecret),
+      { name: "HMAC", hash: "SHA-512" },
+      false,
+      ["sign"]
+    );
+    const signatureBuffer = await globalThis.crypto.subtle.sign("HMAC", key, encoder.encode(body));
+    const computedSignature = bytesToHex(new Uint8Array(signatureBuffer));
+
+    if (computedSignature !== signature) {
+      console.error("Invalid Paystack signature - rejecting request");
+      return new Response(JSON.stringify({ error: "Invalid signature" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    
+    console.log("Paystack webhook signature verified successfully");
 
     const event = JSON.parse(body);
     console.log("Paystack event:", event.event, JSON.stringify(event.data, null, 2));
