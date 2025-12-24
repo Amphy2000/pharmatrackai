@@ -12,6 +12,7 @@ interface MetricCardProps {
   trendLabel?: string;
   className?: string;
   action?: ReactNode;
+  onClick?: () => void;
 }
 
 const variantStyles = {
@@ -52,6 +53,7 @@ export const MetricCard = ({
   trendLabel,
   className,
   action,
+  onClick,
 }: MetricCardProps) => {
   const styles = variantStyles[variant];
 
@@ -61,11 +63,16 @@ export const MetricCard = ({
   return (
     <div 
       className={cn(
-        'metric-card group cursor-pointer',
+        'metric-card group',
+        onClick && 'cursor-pointer active:scale-[0.98]',
         styles.border,
         styles.glow,
         className
       )}
+      onClick={onClick}
+      role={onClick ? 'button' : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      onKeyDown={onClick ? (e) => e.key === 'Enter' && onClick() : undefined}
     >
       {/* Gradient overlay on hover */}
       <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-secondary/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-2xl" />
