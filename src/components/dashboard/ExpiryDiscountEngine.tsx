@@ -5,14 +5,17 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
-import { AlertTriangle, Percent, Clock, DollarSign, TrendingDown } from 'lucide-react';
+import { AlertTriangle, Percent, Clock, DollarSign, TrendingDown, Loader2 } from 'lucide-react';
 import { differenceInDays, format } from 'date-fns';
 import { useState } from 'react';
+import { useToast } from '@/hooks/use-toast';
 
 export const ExpiryDiscountEngine = () => {
-  const { medications } = useMedications();
+  const { medications, updateMedication } = useMedications();
   const { formatPrice } = useCurrency();
+  const { toast } = useToast();
   const [autoDiscountEnabled, setAutoDiscountEnabled] = useState(true);
+  const [applyingId, setApplyingId] = useState<string | null>(null);
 
   // Find products expiring within 60 days
   const today = new Date();
@@ -72,63 +75,84 @@ export const ExpiryDiscountEngine = () => {
     return 'Soon';
   };
 
+  // Apply discount to a medication
+  const handleApplyDiscount = async (product: typeof expiringProducts[0]) => {
+    setApplyingId(product.id);
+    try {
+      await updateMedication.mutateAsync({
+        id: product.id,
+        selling_price: product.discountedPrice,
+      });
+      toast({
+        title: 'Discount applied',
+        description: `${product.name} now sells at ${formatPrice(product.discountedPrice)} (${product.suggestedDiscount}% off)`,
+      });
+    } catch (error) {
+      toast({
+        title: 'Failed to apply discount',
+        description: 'Please try again',
+        variant: 'destructive',
+      });
+    } finally {
+      setApplyingId(null);
+    }
+  };
+
   return (
     <Card className="glass-card mb-8">
       <CardHeader>
-        <div className="flex items-center justify-between">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-warning/20 flex items-center justify-center">
+            <div className="h-10 w-10 rounded-xl bg-warning/20 flex items-center justify-center flex-shrink-0">
               <Percent className="h-5 w-5 text-warning" />
             </div>
             <div>
-              <CardTitle className="text-lg">Expiry Discount Engine</CardTitle>
-              <CardDescription>Recover value from expiring stock with smart discounts</CardDescription>
+              <CardTitle className="text-base sm:text-lg">Expiry Discount Engine</CardTitle>
+              <CardDescription className="text-xs sm:text-sm">Recover value from expiring stock</CardDescription>
             </div>
           </div>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <Switch 
-                id="auto-discount" 
-                checked={autoDiscountEnabled}
-                onCheckedChange={setAutoDiscountEnabled}
-              />
-              <Label htmlFor="auto-discount" className="text-sm">
-                Auto-suggest at POS
-              </Label>
-            </div>
+          <div className="flex items-center gap-2 ml-13 sm:ml-0">
+            <Switch 
+              id="auto-discount" 
+              checked={autoDiscountEnabled}
+              onCheckedChange={setAutoDiscountEnabled}
+            />
+            <Label htmlFor="auto-discount" className="text-xs sm:text-sm">
+              Auto-suggest at POS
+            </Label>
           </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Summary Stats */}
-        <div className="grid grid-cols-4 gap-4">
-          <div className="p-4 rounded-xl bg-destructive/10 border border-destructive/20">
+        {/* Summary Stats - Mobile Responsive */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+          <div className="p-3 sm:p-4 rounded-xl bg-destructive/10 border border-destructive/20">
             <div className="flex items-center gap-2 mb-1">
-              <AlertTriangle className="h-4 w-4 text-destructive" />
-              <p className="text-sm text-muted-foreground">At Risk</p>
+              <AlertTriangle className="h-3 w-3 sm:h-4 sm:w-4 text-destructive" />
+              <p className="text-xs sm:text-sm text-muted-foreground">At Risk</p>
             </div>
-            <p className="text-2xl font-bold text-destructive">{formatPrice(totalAtRisk)}</p>
+            <p className="text-lg sm:text-2xl font-bold text-destructive">{formatPrice(totalAtRisk)}</p>
           </div>
-          <div className="p-4 rounded-xl bg-success/10 border border-success/20">
+          <div className="p-3 sm:p-4 rounded-xl bg-success/10 border border-success/20">
             <div className="flex items-center gap-2 mb-1">
-              <DollarSign className="h-4 w-4 text-success" />
-              <p className="text-sm text-muted-foreground">Recoverable</p>
+              <DollarSign className="h-3 w-3 sm:h-4 sm:w-4 text-success" />
+              <p className="text-xs sm:text-sm text-muted-foreground">Recoverable</p>
             </div>
-            <p className="text-2xl font-bold text-success">{formatPrice(totalRecoverable)}</p>
+            <p className="text-lg sm:text-2xl font-bold text-success">{formatPrice(totalRecoverable)}</p>
           </div>
-          <div className="p-4 rounded-xl bg-muted/50">
+          <div className="p-3 sm:p-4 rounded-xl bg-muted/50">
             <div className="flex items-center gap-2 mb-1">
-              <Clock className="h-4 w-4 text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">Products</p>
+              <Clock className="h-3 w-3 sm:h-4 sm:w-4 text-muted-foreground" />
+              <p className="text-xs sm:text-sm text-muted-foreground">Products</p>
             </div>
-            <p className="text-2xl font-bold">{expiringProducts.length}</p>
+            <p className="text-lg sm:text-2xl font-bold">{expiringProducts.length}</p>
           </div>
-          <div className="p-4 rounded-xl bg-warning/10 border border-warning/20">
+          <div className="p-3 sm:p-4 rounded-xl bg-warning/10 border border-warning/20">
             <div className="flex items-center gap-2 mb-1">
-              <TrendingDown className="h-4 w-4 text-warning" />
-              <p className="text-sm text-muted-foreground">Avg Discount</p>
+              <TrendingDown className="h-3 w-3 sm:h-4 sm:w-4 text-warning" />
+              <p className="text-xs sm:text-sm text-muted-foreground">Avg Discount</p>
             </div>
-            <p className="text-2xl font-bold text-warning">
+            <p className="text-lg sm:text-2xl font-bold text-warning">
               {expiringProducts.length > 0 
                 ? Math.round(expiringProducts.reduce((sum, p) => sum + p.suggestedDiscount, 0) / expiringProducts.length)
                 : 0}%
@@ -144,40 +168,48 @@ export const ExpiryDiscountEngine = () => {
               {expiringProducts.slice(0, 6).map((product) => (
                 <div 
                   key={product.id}
-                  className={`flex items-center justify-between p-4 rounded-xl border ${
+                  className={`flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-4 rounded-xl border gap-3 ${
                     product.daysUntilExpiry <= 14 
                       ? 'bg-destructive/5 border-destructive/20' 
                       : 'bg-muted/30 border-border'
                   }`}
                 >
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <p className="font-medium">{product.name}</p>
-                      <Badge variant="outline" className={getUrgencyColor(product.daysUntilExpiry)}>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1 flex-wrap">
+                      <p className="font-medium text-sm sm:text-base truncate">{product.name}</p>
+                      <Badge variant="outline" className={`text-xs ${getUrgencyColor(product.daysUntilExpiry)}`}>
                         {getUrgencyLabel(product.daysUntilExpiry)}
                       </Badge>
                     </div>
-                    <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                      <span>Expires: {format(new Date(product.expiryDate), 'MMM dd, yyyy')}</span>
-                      <span>{product.daysUntilExpiry} days left</span>
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-4 text-xs sm:text-sm text-muted-foreground">
+                      <span>{product.daysUntilExpiry}d left</span>
                       <span>{product.currentStock} units</span>
-                      <span>Batch: {product.batchNumber}</span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-4">
-                    <div className="text-right">
-                      <p className="text-sm text-muted-foreground line-through">
+                  <div className="flex items-center gap-2 sm:gap-4 justify-between sm:justify-end">
+                    <div className="text-left sm:text-right">
+                      <p className="text-xs text-muted-foreground line-through">
                         {formatPrice(product.originalPrice)}
                       </p>
-                      <p className="text-lg font-bold text-success">
+                      <p className="text-sm sm:text-lg font-bold text-success">
                         {formatPrice(product.discountedPrice)}
                       </p>
                     </div>
-                    <Badge className="bg-gradient-primary text-primary-foreground h-10 px-4 text-lg">
+                    <Badge className="bg-gradient-primary text-primary-foreground h-8 sm:h-10 px-2 sm:px-4 text-sm sm:text-lg">
                       -{product.suggestedDiscount}%
                     </Badge>
-                    <Button size="sm" variant="outline">
-                      Apply
+                    <Button 
+                      size="sm" 
+                      variant="outline"
+                      disabled={applyingId === product.id}
+                      onClick={() => handleApplyDiscount(product)}
+                      className="h-8 sm:h-9"
+                    >
+                      {applyingId === product.id ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        'Apply'
+                      )}
                     </Button>
                   </div>
                 </div>
