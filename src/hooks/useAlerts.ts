@@ -55,7 +55,6 @@ export const useAlerts = () => {
 
     setIsSending(true);
     try {
-      // Try Termii first (preferred for Nigeria)
       const { data, error } = await supabase.functions.invoke('termii-alert', {
         body: {
           pharmacyId: pharmacy.id,
@@ -66,27 +65,8 @@ export const useAlerts = () => {
       if (error) {
         console.error('Termii alert error:', error);
         const errorMessage = await getFunctionsErrorMessage(error);
-        
-        // If Termii fails, fall back to Twilio
-        console.log('Falling back to Twilio...');
-        const { data: twilioData, error: twilioError } = await supabase.functions.invoke('send-alert', {
-          body: {
-            pharmacyId: pharmacy.id,
-            alertType: params.alertType,
-            message: params.message,
-            recipientPhone: params.recipientPhone,
-            channel: params.channel,
-          },
-        });
-
-        if (twilioError) {
-          const twilioErrorMessage = await getFunctionsErrorMessage(twilioError);
-          toast.error(`Failed to send: ${twilioErrorMessage}`);
-          return { success: false, error: twilioErrorMessage };
-        }
-
-        toast.success(`${params.channel.toUpperCase()} alert sent via backup provider!`);
-        return { success: true, data: twilioData };
+        toast.error(`Failed to send: ${errorMessage}`);
+        return { success: false, error: errorMessage };
       }
 
       toast.success(`${params.channel.toUpperCase()} alert sent successfully!`, {

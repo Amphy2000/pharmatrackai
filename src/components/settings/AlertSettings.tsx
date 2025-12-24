@@ -20,14 +20,16 @@ import { format, addDays, isBefore, differenceInDays } from 'date-fns';
 const ALERT_SETTINGS_KEY = 'pharmatrack_alert_settings';
 
 export const AlertSettings = () => {
-  const { pharmacy } = usePharmacy();
+  const { pharmacy, updatePharmacySettings } = usePharmacy();
   const [phone, setPhone] = useState('');
+  const [senderId, setSenderId] = useState('');
   const [useWhatsApp, setUseWhatsApp] = useState(false);
   const [lowStockEnabled, setLowStockEnabled] = useState(true);
   const [expiryEnabled, setExpiryEnabled] = useState(true);
   const [dailySummaryEnabled, setDailySummaryEnabled] = useState(true);
   const [autoAlertsEnabled, setAutoAlertsEnabled] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
+  const [isSavingSenderId, setIsSavingSenderId] = useState(false);
   const [lastAlertSent, setLastAlertSent] = useState<string | null>(null);
   const { sendLowStockAlert, sendExpiryAlert, sendExpiredAlert, sendDailySummary, sendAlert, isSending } = useAlerts();
   const { medications } = useMedications();
@@ -36,6 +38,9 @@ export const AlertSettings = () => {
   // Load saved settings
   useEffect(() => {
     if (pharmacy?.id) {
+      // Load Sender ID from DB
+      setSenderId((pharmacy as any)?.termii_sender_id || '');
+      
       const savedSettings = localStorage.getItem(`${ALERT_SETTINGS_KEY}_${pharmacy.id}`);
       if (savedSettings) {
         try {
@@ -53,7 +58,7 @@ export const AlertSettings = () => {
         }
       }
     }
-  }, [pharmacy?.id]);
+  }, [pharmacy?.id, (pharmacy as any)?.termii_sender_id]);
 
   const lowStockItems = medications?.filter(m => m.current_stock <= m.reorder_level) || [];
   const expiringItems = medications?.filter(m => {
@@ -99,6 +104,42 @@ export const AlertSettings = () => {
     toast.success('Alert settings saved! 🎉', {
       description: autoAlertsEnabled ? 'Automated alerts are now active' : undefined,
     });
+  };
+
+  const handleSaveSenderId = async () => {
+    if (!pharmacy?.id) {
+      toast.error('Pharmacy not found');
+      return;
+    }
+
+    if (!senderId.trim()) {
+      toast.error('Please enter a Termii Sender ID');
+      return;
+    }
+
+    // Validate sender ID (alphanumeric, max 11 chars)
+    const cleanSenderId = senderId.trim().replace(/\s+/g, '');
+    if (cleanSenderId.length > 11) {
+      toast.error('Sender ID must be 11 characters or less');
+      return;
+    }
+
+    if (!/^[a-zA-Z0-9]+$/.test(cleanSenderId)) {
+      toast.error('Sender ID must be alphanumeric only');
+      return;
+    }
+
+    setIsSavingSenderId(true);
+    try {
+      await updatePharmacySettings.mutateAsync({ termii_sender_id: cleanSenderId });
+      toast.success('Termii Sender ID saved!', {
+        description: `Using "${cleanSenderId}" for all alerts`,
+      });
+    } catch (error) {
+      toast.error('Failed to save Sender ID');
+    } finally {
+      setIsSavingSenderId(false);
+    }
   };
 
   const handleSendTestAlert = async () => {
@@ -285,6 +326,42 @@ Stay profitable! 💰`,
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
+          {/* Termii Sender ID - CRITICAL */}
+          <div className="p-4 rounded-xl border-2 border-amber-500/50 bg-amber-500/5">
+            <Label htmlFor="senderId" className="flex items-center gap-2 mb-2">
+              <Zap className="h-4 w-4 text-amber-500" />
+              Termii Sender ID
+              <Badge variant="outline" className="text-amber-500 border-amber-500/50">Required</Badge>
+            </Label>
+            <div className="flex gap-2">
+              <Input
+                id="senderId"
+                type="text"
+                placeholder="e.g. PharmaTrak"
+                value={senderId}
+                onChange={(e) => setSenderId(e.target.value)}
+                className="flex-1"
+                maxLength={11}
+              />
+              <Button
+                onClick={handleSaveSenderId}
+                disabled={isSavingSenderId || !senderId.trim()}
+                className="gap-2"
+              >
+                {isSavingSenderId ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Save className="h-4 w-4" />
+                )}
+                Save
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground mt-2">
+              ⚠️ This must match your <strong>registered Sender ID</strong> in your Termii dashboard. 
+              Max 11 alphanumeric characters. <a href="https://accounts.termii.com/#/sms/sender-id-management" target="_blank" rel="noopener noreferrer" className="text-primary underline">Manage Sender IDs →</a>
+            </p>
+          </div>
+
           {/* Phone Number Input */}
           <div className="space-y-2">
             <Label htmlFor="phone" className="flex items-center gap-2">
