@@ -1,0 +1,676 @@
+import { useState, useCallback, useEffect } from 'react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Progress } from '@/components/ui/progress';
+import { Checkbox } from '@/components/ui/checkbox';
+import { 
+  Camera, FileImage, Upload, Check, X, Loader2, AlertCircle, 
+  Plus, Minus, Trash2, Calendar, ChevronDown, ChevronUp,
+  Edit3, Save, RefreshCw, Eye
+} from 'lucide-react';
+import { useMedications } from '@/hooks/useMedications';
+import { usePharmacy } from '@/hooks/usePharmacy';
+import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { useCurrency } from '@/contexts/CurrencyContext';
+import { format, addYears } from 'date-fns';
+import { motion, AnimatePresence } from 'framer-motion';
+import type { Medication } from '@/types/medication';
+
+interface MultiImageInvoiceScannerProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+interface ExtractedItem {
+  id: string;
+  productName: string;
+  quantity: number;
+  unitPrice: number | null;
+  suggestedSellingPrice: number | null;
+  batchNumber: string | null;
+  expiryDate: string | null;
+  matched: Medication | null;
+  isNew: boolean;
+  isEditing: boolean;
+  hasError: boolean;
+}
+
+interface UploadedImage {
+  id: string;
+  file: File;
+  preview: string;
+  processed: boolean;
+}
+
+export const MultiImageInvoiceScanner = ({ open, onOpenChange }: MultiImageInvoiceScannerProps) => {
+  const { medications, updateMedication, addMedication } = useMedications();
+  const { pharmacy } = usePharmacy();
+  const { toast } = useToast();
+  const { formatPrice } = useCurrency();
+  
+  // Image upload state
+  const [uploadedImages, setUploadedImages] = useState<UploadedImage[]>([]);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [processingProgress, setProcessingProgress] = useState(0);
+  const [currentProcessingPage, setCurrentProcessingPage] = useState(0);
+  
+  // Extracted items state
+  const [extractedItems, setExtractedItems] = useState<ExtractedItem[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  
+  // Review dashboard state
+  const [showReviewDashboard, setShowReviewDashboard] = useState(false);
+  const [globalExpiryDate, setGlobalExpiryDate] = useState('');
+  const [verifyAll, setVerifyAll] = useState(false);
+  const [isApplying, setIsApplying] = useState(false);
+  
+  // Get default margin from pharmacy settings
+  const defaultMargin = (pharmacy as any)?.default_margin_percent || 20;
+
+  // Calculate suggested selling price based on cost and margin
+  const calculateSellingPrice = (costPrice: number): number => {
+    return Math.round(costPrice * (1 + defaultMargin / 100));
+  };
+
+  // Generate unique ID
+  const generateId = () => `item-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+
+  // Handle multiple file upload
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    const newImages: UploadedImage[] = [];
+    
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      const preview = await new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (event) => resolve(event.target?.result as string);
+        reader.readAsDataURL(file);
+      });
+      
+      newImages.push({
+        id: generateId(),
+        file,
+        preview,
+        processed: false,
+      });
+    }
+    
+    setUploadedImages(prev => [...prev, ...newImages]);
+    setError(null);
+  };
+
+  // Remove image from upload queue
+  const removeImage = (id: string) => {
+    setUploadedImages(prev => prev.filter(img => img.id !== id));
+  };
+
+  // Process all images with AI
+  const handleProcessImages = async () => {
+    if (uploadedImages.length === 0) return;
+
+    setIsProcessing(true);
+    setProcessingProgress(0);
+    setError(null);
+    setExtractedItems([]);
+
+    const allItems: ExtractedItem[] = [];
+    const totalImages = uploadedImages.length;
+
+    try {
+      for (let i = 0; i < uploadedImages.length; i++) {
+        setCurrentProcessingPage(i + 1);
+        setProcessingProgress(((i) / totalImages) * 100);
+
+        const image = uploadedImages[i];
+        
+        const { data, error: fnError } = await supabase.functions.invoke('scan-invoice', {
+          body: { 
+            imageUrl: image.preview,
+            isMultiPage: true,
+            pageNumber: i + 1,
+            totalPages: totalImages
+          },
+        });
+
+        if (fnError) {
+          console.error(`Error processing page ${i + 1}:`, fnError);
+          continue;
+        }
+
+        if (data.items && Array.isArray(data.items)) {
+          const processedItems: ExtractedItem[] = data.items.map((item: any) => {
+            const matched = medications.find(
+              (med) =>
+                med.name.toLowerCase().includes(item.productName.toLowerCase()) ||
+                item.productName.toLowerCase().includes(med.name.toLowerCase()) ||
+                (item.batchNumber && med.batch_number === item.batchNumber)
+            );
+
+            const suggestedSellingPrice = item.unitPrice 
+              ? calculateSellingPrice(item.unitPrice) 
+              : null;
+
+            return {
+              id: generateId(),
+              productName: item.productName,
+              quantity: item.quantity || 1,
+              unitPrice: item.unitPrice || null,
+              suggestedSellingPrice,
+              batchNumber: item.batchNumber || null,
+              expiryDate: item.expiryDate || null,
+              matched: matched || null,
+              isNew: !matched,
+              isEditing: false,
+              hasError: false,
+            };
+          });
+
+          allItems.push(...processedItems);
+        }
+
+        // Mark image as processed
+        setUploadedImages(prev => prev.map(img => 
+          img.id === image.id ? { ...img, processed: true } : img
+        ));
+
+        setProcessingProgress(((i + 1) / totalImages) * 100);
+      }
+
+      // Deduplicate items by product name (combine quantities for same products)
+      const deduplicatedItems = allItems.reduce((acc, item) => {
+        const existingIndex = acc.findIndex(
+          existing => existing.productName.toLowerCase() === item.productName.toLowerCase() &&
+                      existing.batchNumber === item.batchNumber
+        );
+        
+        if (existingIndex >= 0) {
+          acc[existingIndex].quantity += item.quantity;
+        } else {
+          acc.push(item);
+        }
+        
+        return acc;
+      }, [] as ExtractedItem[]);
+
+      setExtractedItems(deduplicatedItems);
+      setShowReviewDashboard(true);
+
+      toast({
+        title: 'Invoice processing complete',
+        description: `Extracted ${deduplicatedItems.length} unique items from ${totalImages} pages`,
+      });
+
+    } catch (err) {
+      console.error('Error processing invoices:', err);
+      setError('Failed to process invoices. Please try again.');
+    } finally {
+      setIsProcessing(false);
+      setProcessingProgress(100);
+    }
+  };
+
+  // Update item field inline
+  const updateItem = (id: string, field: keyof ExtractedItem, value: any) => {
+    setExtractedItems(prev => prev.map(item => {
+      if (item.id === id) {
+        const updated = { ...item, [field]: value };
+        // Validate for errors
+        updated.hasError = !updated.quantity || updated.quantity <= 0 || !updated.unitPrice || updated.unitPrice <= 0;
+        return updated;
+      }
+      return item;
+    }));
+  };
+
+  // Remove item from list
+  const removeItem = (id: string) => {
+    setExtractedItems(prev => prev.filter(item => item.id !== id));
+  };
+
+  // Apply global expiry date to all empty fields
+  const applyGlobalExpiry = () => {
+    if (!globalExpiryDate) return;
+    
+    setExtractedItems(prev => prev.map(item => ({
+      ...item,
+      expiryDate: item.expiryDate || globalExpiryDate,
+    })));
+
+    toast({
+      title: 'Expiry date applied',
+      description: 'Date applied to all items with empty expiry fields',
+    });
+  };
+
+  // Quick date presets
+  const applyQuickExpiry = (years: number) => {
+    const date = format(addYears(new Date(), years), 'yyyy-MM-dd');
+    setGlobalExpiryDate(date);
+  };
+
+  // Calculate grand total
+  const grandTotal = extractedItems.reduce((sum, item) => {
+    return sum + ((item.unitPrice || 0) * item.quantity);
+  }, 0);
+
+  // Check if all items are valid
+  const hasInvalidItems = extractedItems.some(item => 
+    !item.quantity || item.quantity <= 0 || !item.unitPrice || item.unitPrice <= 0
+  );
+
+  // Apply items to inventory
+  const handleApplyToInventory = async () => {
+    if (hasInvalidItems) {
+      toast({
+        title: 'Validation error',
+        description: 'Please fix all highlighted fields before submitting',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsApplying(true);
+
+    try {
+      const matchedItems = extractedItems.filter(item => item.matched);
+      const newItems = extractedItems.filter(item => !item.matched);
+
+      // Update existing medications
+      for (const item of matchedItems) {
+        await updateMedication.mutateAsync({
+          id: item.matched!.id,
+          current_stock: item.matched!.current_stock + item.quantity,
+          unit_price: item.unitPrice || item.matched!.unit_price,
+          ...(item.suggestedSellingPrice ? { selling_price: item.suggestedSellingPrice } : {}),
+          ...(item.expiryDate ? { expiry_date: item.expiryDate } : {}),
+        });
+      }
+
+      toast({
+        title: 'Inventory updated',
+        description: `Updated ${matchedItems.length} items. ${newItems.length} new items need manual addition.`,
+      });
+
+      // Reset and close
+      resetScanner();
+      onOpenChange(false);
+
+    } catch (err) {
+      console.error('Error applying to inventory:', err);
+      toast({
+        title: 'Error',
+        description: 'Failed to update inventory',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsApplying(false);
+    }
+  };
+
+  // Reset scanner
+  const resetScanner = () => {
+    setUploadedImages([]);
+    setExtractedItems([]);
+    setShowReviewDashboard(false);
+    setProcessingProgress(0);
+    setCurrentProcessingPage(0);
+    setGlobalExpiryDate('');
+    setVerifyAll(false);
+    setError(null);
+  };
+
+  const matchedCount = extractedItems.filter(i => i.matched).length;
+
+  return (
+    <Dialog open={open} onOpenChange={(open) => {
+      if (!open) resetScanner();
+      onOpenChange(open);
+    }}>
+      <DialogContent className="max-w-6xl max-h-[95vh] overflow-hidden flex flex-col">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2 text-xl">
+            <FileImage className="h-5 w-5 text-primary" />
+            AI Multi-Page Invoice Scanner
+            <Badge variant="outline" className="ml-2 text-xs">
+              Auto-Margin: {defaultMargin}%
+            </Badge>
+          </DialogTitle>
+          <DialogDescription>
+            Upload multiple invoice pages - AI extracts and combines all products
+          </DialogDescription>
+        </DialogHeader>
+
+        {!showReviewDashboard ? (
+          // Upload & Processing View
+          <div className="flex-1 flex flex-col gap-4 overflow-hidden">
+            {/* Image Upload Area */}
+            <div className="flex gap-4">
+              <label className="flex-shrink-0 w-32 h-32 border-2 border-dashed rounded-lg flex flex-col items-center justify-center cursor-pointer hover:bg-muted/50 transition-colors">
+                <Camera className="h-8 w-8 text-muted-foreground mb-1" />
+                <span className="text-xs text-muted-foreground text-center">Add Pages</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handleFileUpload}
+                  className="hidden"
+                />
+              </label>
+
+              {/* Image Thumbnails */}
+              <ScrollArea className="flex-1">
+                <div className="flex gap-2 pb-2">
+                  {uploadedImages.map((img, index) => (
+                    <div key={img.id} className="relative flex-shrink-0">
+                      <img
+                        src={img.preview}
+                        alt={`Page ${index + 1}`}
+                        className={`w-28 h-28 object-cover rounded-lg border-2 ${
+                          img.processed ? 'border-green-500' : 'border-border'
+                        }`}
+                      />
+                      <Badge 
+                        variant="secondary" 
+                        className="absolute top-1 left-1 text-[10px] h-5"
+                      >
+                        Page {index + 1}
+                      </Badge>
+                      {img.processed && (
+                        <div className="absolute top-1 right-1 h-5 w-5 bg-green-500 rounded-full flex items-center justify-center">
+                          <Check className="h-3 w-3 text-white" />
+                        </div>
+                      )}
+                      <Button
+                        variant="destructive"
+                        size="icon"
+                        className="absolute bottom-1 right-1 h-6 w-6"
+                        onClick={() => removeImage(img.id)}
+                        disabled={isProcessing}
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            </div>
+
+            {/* Processing Progress */}
+            {isProcessing && (
+              <div className="space-y-2 p-4 border rounded-lg bg-muted/20">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="flex items-center gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Processing Page {currentProcessingPage} of {uploadedImages.length}...
+                  </span>
+                  <span className="text-muted-foreground">{Math.round(processingProgress)}%</span>
+                </div>
+                <Progress value={processingProgress} className="h-2" />
+              </div>
+            )}
+
+            {/* Error Display */}
+            {error && (
+              <div className="flex items-center gap-2 p-3 border border-destructive/30 bg-destructive/5 rounded-lg">
+                <AlertCircle className="h-4 w-4 text-destructive" />
+                <span className="text-sm text-destructive">{error}</span>
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="flex gap-2">
+              <Button
+                className="flex-1"
+                onClick={handleProcessImages}
+                disabled={isProcessing || uploadedImages.length === 0}
+              >
+                {isProcessing ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Processing...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="h-4 w-4 mr-2" />
+                    Extract from {uploadedImages.length} Page{uploadedImages.length !== 1 ? 's' : ''}
+                  </>
+                )}
+              </Button>
+              {uploadedImages.length > 0 && (
+                <Button variant="outline" onClick={resetScanner} disabled={isProcessing}>
+                  <RefreshCw className="h-4 w-4 mr-2" />
+                  Clear All
+                </Button>
+              )}
+            </div>
+          </div>
+        ) : (
+          // Review Dashboard
+          <div className="flex-1 flex flex-col gap-4 overflow-hidden">
+            {/* Toolbar */}
+            <div className="flex flex-wrap items-center gap-3 p-3 border rounded-lg bg-muted/20">
+              {/* Quick Expiry Picker */}
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium">Quick Expiry:</span>
+                <div className="flex gap-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => applyQuickExpiry(1)}
+                    className="h-7 text-xs"
+                  >
+                    +1 Year
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => applyQuickExpiry(2)}
+                    className="h-7 text-xs"
+                  >
+                    +2 Years
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => applyQuickExpiry(3)}
+                    className="h-7 text-xs"
+                  >
+                    +3 Years
+                  </Button>
+                </div>
+              </div>
+
+              <div className="h-6 w-px bg-border" />
+
+              {/* Global Expiry Input */}
+              <div className="flex items-center gap-2">
+                <Input
+                  type="date"
+                  value={globalExpiryDate}
+                  onChange={(e) => setGlobalExpiryDate(e.target.value)}
+                  className="h-7 w-36 text-xs"
+                />
+                <Button
+                  variant="secondary"
+                  size="sm"
+                  onClick={applyGlobalExpiry}
+                  disabled={!globalExpiryDate}
+                  className="h-7 text-xs"
+                >
+                  Apply to Empty
+                </Button>
+              </div>
+
+              <div className="flex-1" />
+
+              {/* Verify All Checkbox */}
+              <div className="flex items-center gap-2">
+                <Checkbox
+                  id="verifyAll"
+                  checked={verifyAll}
+                  onCheckedChange={(checked) => setVerifyAll(!!checked)}
+                />
+                <label htmlFor="verifyAll" className="text-sm cursor-pointer">
+                  Verify All
+                </label>
+              </div>
+
+              {/* Summary Badge */}
+              <Badge variant="secondary">
+                {matchedCount}/{extractedItems.length} matched
+              </Badge>
+            </div>
+
+            {/* Data Table */}
+            <ScrollArea className="flex-1 border rounded-lg">
+              <div className="min-w-[700px]">
+                {/* Table Header */}
+                <div className="grid grid-cols-[50px_1fr_80px_100px_120px_60px] gap-2 p-3 border-b bg-muted/30 font-medium text-sm sticky top-0 z-10">
+                  <div>S/N</div>
+                  <div>Product Name</div>
+                  <div className="text-center">Qty</div>
+                  <div className="text-right">Unit Cost</div>
+                  <div className="text-center">Expiry Date</div>
+                  <div></div>
+                </div>
+
+                {/* Table Body */}
+                <AnimatePresence>
+                  {extractedItems.map((item, index) => (
+                    <motion.div
+                      key={item.id}
+                      initial={{ opacity: 0, x: -20 }}
+                      animate={{ opacity: 1, x: 0 }}
+                      exit={{ opacity: 0, x: 20 }}
+                      transition={{ delay: index * 0.03 }}
+                      className={`grid grid-cols-[50px_1fr_80px_100px_120px_60px] gap-2 p-3 border-b items-center text-sm ${
+                        item.hasError ? 'bg-destructive/10 border-destructive/30' : 
+                        item.matched ? 'bg-green-500/5' : 'bg-warning/5'
+                      }`}
+                    >
+                      {/* S/N */}
+                      <div className="text-muted-foreground">{index + 1}</div>
+
+                      {/* Product Name - Inline Editable */}
+                      <div className="flex flex-col">
+                        <Input
+                          value={item.productName}
+                          onChange={(e) => updateItem(item.id, 'productName', e.target.value)}
+                          className="h-7 text-sm font-medium border-transparent hover:border-border focus:border-primary"
+                        />
+                        {item.matched ? (
+                          <span className="text-xs text-green-600 mt-0.5">
+                            ✓ {item.matched.name}
+                          </span>
+                        ) : (
+                          <span className="text-xs text-warning mt-0.5">⚠ New item</span>
+                        )}
+                      </div>
+
+                      {/* Quantity - Inline Editable */}
+                      <Input
+                        type="number"
+                        min={1}
+                        value={item.quantity}
+                        onChange={(e) => updateItem(item.id, 'quantity', parseInt(e.target.value) || 0)}
+                        className={`h-7 text-center text-sm ${
+                          !item.quantity || item.quantity <= 0 ? 'border-destructive' : ''
+                        }`}
+                      />
+
+                      {/* Unit Cost - Inline Editable */}
+                      <Input
+                        type="number"
+                        min={0}
+                        step={0.01}
+                        value={item.unitPrice || ''}
+                        onChange={(e) => updateItem(item.id, 'unitPrice', parseFloat(e.target.value) || null)}
+                        className={`h-7 text-right text-sm ${
+                          !item.unitPrice || item.unitPrice <= 0 ? 'border-destructive' : ''
+                        }`}
+                        placeholder="0.00"
+                      />
+
+                      {/* Expiry Date - Inline Editable */}
+                      <Input
+                        type="date"
+                        value={item.expiryDate || ''}
+                        onChange={(e) => updateItem(item.id, 'expiryDate', e.target.value || null)}
+                        className="h-7 text-xs"
+                      />
+
+                      {/* Remove Button */}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-7 w-7"
+                        onClick={() => removeItem(item.id)}
+                      >
+                        <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive" />
+                      </Button>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+              </div>
+            </ScrollArea>
+
+            {/* Footer with Grand Total */}
+            <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/20">
+              <div className="flex items-center gap-4">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowReviewDashboard(false)}
+                >
+                  <ChevronUp className="h-4 w-4 mr-2" />
+                  Back to Upload
+                </Button>
+
+                {hasInvalidItems && (
+                  <Badge variant="destructive" className="animate-pulse">
+                    <AlertCircle className="h-3 w-3 mr-1" />
+                    {extractedItems.filter(i => i.hasError).length} items need attention
+                  </Badge>
+                )}
+              </div>
+
+              <div className="flex items-center gap-4">
+                <div className="text-right">
+                  <div className="text-sm text-muted-foreground">Grand Total</div>
+                  <div className="text-2xl font-bold text-primary">
+                    {formatPrice(grandTotal)}
+                  </div>
+                </div>
+
+                <Button
+                  size="lg"
+                  onClick={handleApplyToInventory}
+                  disabled={isApplying || hasInvalidItems || extractedItems.length === 0}
+                  className="min-w-[150px]"
+                >
+                  {isApplying ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Applying...
+                    </>
+                  ) : (
+                    <>
+                      <Check className="h-4 w-4 mr-2" />
+                      Apply to Inventory
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
+  );
+};

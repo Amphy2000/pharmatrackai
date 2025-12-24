@@ -118,6 +118,8 @@ TABLE EXTRACTION RULES:
 1. Identify horizontal rows in the invoice - each row is typically one product
 2. Look for the "Total Amount" at the bottom to verify prices
 3. Look for the "Date" at the top for invoice date reference
+4. IGNORE page headers/footers, invoice numbers, company addresses, and terms/conditions - these are NOT products
+5. Skip rows that contain only text like "Thank you", "Terms", "Subtotal", "VAT", "Discount", etc.
 
 DATE PATTERN PRIORITIZATION:
 - If you see a 4-digit year near a 2-digit month (e.g., 05/2027, 2027-05), prioritize it as Expiry Date for that row
@@ -128,8 +130,8 @@ BATCH NUMBER PATTERNS:
 - Alphanumeric strings like "BN2044", "LOT-A123", "B/N: 45678"
 - Usually 4-10 characters
 
-For each item found, identify:
-- productName: The medication or product name (REQUIRED)
+For each PRODUCT item found (ignore non-product rows), identify:
+- productName: The medication or product name (REQUIRED - must be an actual product, not a header or footer)
 - quantity: The quantity purchased (default to 1 if unclear)
 - unitPrice: Price per unit/cost price if visible (optional)
 - sellingPrice: Retail/selling price if different from unit price (optional)

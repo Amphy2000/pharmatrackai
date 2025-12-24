@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -14,12 +14,20 @@ export const PriceShieldSettings = () => {
   const { pharmacy, updatePharmacySettings } = usePharmacy();
   const { toast } = useToast();
   
-  const [priceLockEnabled, setPriceLockEnabled] = useState((pharmacy as any)?.price_lock_enabled || false);
-  const [defaultMargin, setDefaultMargin] = useState((pharmacy as any)?.default_margin_percent || 20);
+  const [priceLockEnabled, setPriceLockEnabled] = useState(false);
+  const [defaultMargin, setDefaultMargin] = useState(20);
   const [newPin, setNewPin] = useState('');
   const [confirmPin, setConfirmPin] = useState('');
   const [showPin, setShowPin] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+
+  // Sync state when pharmacy data loads
+  useEffect(() => {
+    if (pharmacy) {
+      setPriceLockEnabled((pharmacy as any)?.price_lock_enabled || false);
+      setDefaultMargin((pharmacy as any)?.default_margin_percent || 20);
+    }
+  }, [pharmacy]);
 
   const hasExistingPin = !!(pharmacy as any)?.admin_pin_hash;
 
