@@ -21,7 +21,8 @@ import {
   History,
   RefreshCw,
   Trash2,
-  DollarSign
+  DollarSign,
+  Check
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -34,6 +35,7 @@ import { useDbNotifications } from '@/hooks/useDbNotifications';
 import { usePharmacy } from '@/hooks/usePharmacy';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { useToast } from '@/hooks/use-toast';
+import { usePermissions } from '@/hooks/usePermissions';
 import { differenceInDays, formatDistanceToNow, format } from 'date-fns';
 
 const ALERT_SETTINGS_KEY = 'pharmatrack_alert_settings';
@@ -54,11 +56,13 @@ const Notifications = () => {
   const { pharmacy } = usePharmacy();
   const { formatPrice } = useCurrency();
   const { toast } = useToast();
+  const { isOwnerOrManager } = usePermissions();
   const [filter, setFilter] = useState<'all' | 'high' | 'medium' | 'low'>('all');
   const [savedPhone, setSavedPhone] = useState<string>('');
   const [useWhatsApp, setUseWhatsApp] = useState(true);
   const [sendingAlertId, setSendingAlertId] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [sentAlertIds, setSentAlertIds] = useState<Set<string>>(new Set());
 
   // Calculate total value at risk
   const totalValueAtRisk = alerts
@@ -67,6 +71,7 @@ const Notifications = () => {
 
   // Get owner phone from pharmacy settings (dynamic routing)
   const ownerPhone = pharmacy?.phone || savedPhone;
+  const ownerName = pharmacy?.name || 'Owner';
 
   // Load saved settings
   useEffect(() => {
@@ -118,10 +123,22 @@ const Notifications = () => {
   const handleSendWhatsApp = (alert: SystemAlert) => {
     const url = generateWhatsAppMessage(alert, ownerPhone);
     window.open(url, '_blank');
+    
+    // Mark as sent with visual feedback
+    setSentAlertIds(prev => new Set([...prev, alert.id]));
     toast({
-      title: 'WhatsApp Opened',
-      description: 'Message prepared and ready to send.',
+      title: '✓ WhatsApp Opened',
+      description: 'Message ready to send.',
     });
+    
+    // Reset sent state after 3 seconds
+    setTimeout(() => {
+      setSentAlertIds(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(alert.id);
+        return newSet;
+      });
+    }, 3000);
   };
 
   // Send bundled digest via WhatsApp (single message for all alerts)
@@ -137,8 +154,8 @@ const Notifications = () => {
     const url = generateDigestWhatsAppUrl(alerts, ownerPhone);
     window.open(url, '_blank');
     toast({
-      title: 'Daily Digest Ready',
-      description: `${alerts.length} alerts bundled into one message.`,
+      title: '✓ Daily Digest Ready',
+      description: `${alerts.length} alerts bundled for ${ownerName}.`,
     });
   };
 
@@ -277,8 +294,8 @@ const Notifications = () => {
       </header>
 
       <main className="container mx-auto px-4 py-6 space-y-6 max-w-4xl">
-        {/* Quick Send All Button */}
-        {alerts.length > 0 && ownerPhone && (
+        {/* Quick Send All Button - Only for Admin/Manager */}
+        {alerts.length > 0 && ownerPhone && isOwnerOrManager && (
           <Card className="bg-gradient-to-r from-green-500/10 to-emerald-500/10 border-green-500/30">
             <CardContent className="p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
               <div className="flex items-center gap-3">
@@ -286,8 +303,8 @@ const Notifications = () => {
                   <Zap className="h-5 w-5 text-green-500" />
                 </div>
                 <div>
-                  <p className="font-medium">Send Daily Digest via WhatsApp</p>
-                  <p className="text-xs text-muted-foreground">{alerts.length} alerts bundled • {ownerPhone}</p>
+                  <p className="font-medium">Send Daily Digest to {ownerName}</p>
+                  <p className="text-xs text-muted-foreground">{alerts.length} alerts bundled into one WhatsApp message</p>
                 </div>
               </div>
               <Button 
@@ -296,7 +313,7 @@ const Notifications = () => {
                 className="gap-2 bg-green-500 hover:bg-green-600 text-white"
               >
                 {isSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageCircle className="h-4 w-4" />}
-                Send All Now
+                Send All via WhatsApp
               </Button>
             </CardContent>
           </Card>
@@ -445,16 +462,27 @@ const Notifications = () => {
                                 )}
 
                                 <div className="flex gap-2 flex-wrap">
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="gap-1.5 text-xs"
-                                    onClick={() => handleSendWhatsApp(alert)}
-                                  >
-                                    <MessageCircle className="h-3.5 w-3.5" />
-                                    WhatsApp
-                                  </Button>
-                                  {savedPhone && (
+                                  {isOwnerOrManager && (
+                                    <Button
+                                      size="sm"
+                                      variant={sentAlertIds.has(alert.id) ? "default" : "outline"}
+                                      className={`gap-1.5 text-xs transition-all ${sentAlertIds.has(alert.id) ? 'bg-green-500 hover:bg-green-500 text-white' : ''}`}
+                                      onClick={() => handleSendWhatsApp(alert)}
+                                    >
+                                      {sentAlertIds.has(alert.id) ? (
+                                        <>
+                                          <Check className="h-3.5 w-3.5" />
+                                          Sent!
+                                        </>
+                                      ) : (
+                                        <>
+                                          <MessageCircle className="h-3.5 w-3.5" />
+                                          WhatsApp
+                                        </>
+                                      )}
+                                    </Button>
+                                  )}
+                                  {isOwnerOrManager && savedPhone && (
                                     <Button
                                       size="sm"
                                       variant="secondary"
@@ -557,15 +585,26 @@ const Notifications = () => {
                                 )}
 
                                 <div className="flex gap-2 flex-wrap">
-                                  <Button
-                                    size="sm"
-                                    variant="outline"
-                                    className="gap-1.5 text-xs"
-                                    onClick={() => handleSendWhatsApp(alert)}
-                                  >
-                                    <MessageCircle className="h-3.5 w-3.5" />
-                                    WhatsApp
-                                  </Button>
+                                  {isOwnerOrManager && (
+                                    <Button
+                                      size="sm"
+                                      variant={sentAlertIds.has(alert.id) ? "default" : "outline"}
+                                      className={`gap-1.5 text-xs transition-all ${sentAlertIds.has(alert.id) ? 'bg-green-500 hover:bg-green-500 text-white' : ''}`}
+                                      onClick={() => handleSendWhatsApp(alert)}
+                                    >
+                                      {sentAlertIds.has(alert.id) ? (
+                                        <>
+                                          <Check className="h-3.5 w-3.5" />
+                                          Sent!
+                                        </>
+                                      ) : (
+                                        <>
+                                          <MessageCircle className="h-3.5 w-3.5" />
+                                          WhatsApp
+                                        </>
+                                      )}
+                                    </Button>
+                                  )}
                                   <Link to="/suppliers">
                                     <Button size="sm" variant="ghost" className="gap-1.5 text-xs">
                                       <ExternalLink className="h-3.5 w-3.5" />
