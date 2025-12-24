@@ -8,7 +8,6 @@ import {
   Package, 
   Calendar,
   MessageCircle,
-  Filter,
   CheckCircle,
   XCircle,
   ExternalLink,
@@ -18,7 +17,11 @@ import {
   Send,
   Loader2,
   Zap,
-  Settings
+  Settings,
+  History,
+  RefreshCw,
+  Trash2,
+  DollarSign
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -27,23 +30,40 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAlertEngine, SystemAlert } from '@/hooks/useAlertEngine';
 import { useAlerts } from '@/hooks/useAlerts';
+import { useDbNotifications } from '@/hooks/useDbNotifications';
 import { usePharmacy } from '@/hooks/usePharmacy';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { useToast } from '@/hooks/use-toast';
-import { differenceInDays } from 'date-fns';
+import { differenceInDays, formatDistanceToNow, format } from 'date-fns';
 
 const ALERT_SETTINGS_KEY = 'pharmatrack_alert_settings';
 
 const Notifications = () => {
   const { alerts, alertCounts, generateWhatsAppMessage } = useAlertEngine();
-  const { sendExpiryAlert, sendLowStockAlert, sendExpiredAlert, isSending } = useAlerts();
+  const { sendExpiryAlert, sendLowStockAlert, isSending } = useAlerts();
+  const { 
+    notifications: dbNotifications, 
+    sentAlerts, 
+    unreadCount,
+    markAsRead,
+    markAllAsRead,
+    clearAll,
+    generateInventoryNotifications,
+    loading: notificationsLoading
+  } = useDbNotifications();
   const { pharmacy } = usePharmacy();
   const { formatPrice } = useCurrency();
   const { toast } = useToast();
   const [filter, setFilter] = useState<'all' | 'high' | 'medium' | 'low'>('all');
   const [savedPhone, setSavedPhone] = useState<string>('');
-  const [useWhatsApp, setUseWhatsApp] = useState(false);
+  const [useWhatsApp, setUseWhatsApp] = useState(true);
   const [sendingAlertId, setSendingAlertId] = useState<string | null>(null);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Calculate total value at risk
+  const totalValueAtRisk = alerts
+    .filter(a => a.type === 'expiry')
+    .reduce((sum, a) => sum + (a.valueAtRisk || 0), 0);
 
   // Load saved settings
   useEffect(() => {
@@ -53,7 +73,7 @@ const Notifications = () => {
         try {
           const settings = JSON.parse(savedSettings);
           setSavedPhone(settings.phone || '');
-          setUseWhatsApp(settings.useWhatsApp || false);
+          setUseWhatsApp(settings.useWhatsApp !== false);
         } catch (e) {
           console.error('Failed to parse saved alert settings');
         }
@@ -93,7 +113,7 @@ const Notifications = () => {
   };
 
   const handleSendWhatsApp = (alert: SystemAlert) => {
-    const url = generateWhatsAppMessage(alert, pharmacy?.phone || '');
+    const url = generateWhatsAppMessage(alert, savedPhone || pharmacy?.phone || '');
     window.open(url, '_blank');
     toast({
       title: 'WhatsApp Opened',
@@ -118,10 +138,10 @@ const Notifications = () => {
       if (alert.type === 'expiry') {
         await sendExpiryAlert(
           [{
-            name: alert.title,
+            name: alert.productName,
             expiryDate: alert.expiryDate || 'Soon',
             value: alert.valueAtRisk,
-            daysLeft: alert.expiryDate ? differenceInDays(new Date(alert.expiryDate), new Date()) : undefined,
+            daysLeft: alert.daysUntilExpiry,
           }],
           savedPhone,
           channel
@@ -129,7 +149,7 @@ const Notifications = () => {
       } else if (alert.type === 'low_stock' || alert.type === 'out_of_stock') {
         await sendLowStockAlert(
           [{
-            name: alert.title,
+            name: alert.productName,
             stock: alert.currentStock || 0,
             reorderLevel: alert.suggestedReorderQty,
           }],
@@ -156,35 +176,49 @@ const Notifications = () => {
     const expiryAlerts = alerts.filter(a => a.type === 'expiry');
     const stockAlerts = alerts.filter(a => a.type === 'low_stock' || a.type === 'out_of_stock');
 
-    if (expiryAlerts.length > 0) {
-      await sendExpiryAlert(
-        expiryAlerts.map(a => ({
-          name: a.title,
-          expiryDate: a.expiryDate || 'Soon',
-          value: a.valueAtRisk,
-          daysLeft: a.expiryDate ? differenceInDays(new Date(a.expiryDate), new Date()) : undefined,
-        })),
-        savedPhone,
-        channel
-      );
-    }
+    try {
+      if (expiryAlerts.length > 0) {
+        await sendExpiryAlert(
+          expiryAlerts.map(a => ({
+            name: a.productName,
+            expiryDate: a.expiryDate || 'Soon',
+            value: a.valueAtRisk,
+            daysLeft: a.daysUntilExpiry,
+          })),
+          savedPhone,
+          channel
+        );
+      }
 
-    if (stockAlerts.length > 0) {
-      await sendLowStockAlert(
-        stockAlerts.map(a => ({
-          name: a.title,
-          stock: a.currentStock || 0,
-          reorderLevel: a.suggestedReorderQty,
-        })),
-        savedPhone,
-        channel
-      );
-    }
+      if (stockAlerts.length > 0) {
+        await sendLowStockAlert(
+          stockAlerts.map(a => ({
+            name: a.productName,
+            stock: a.currentStock || 0,
+            reorderLevel: a.suggestedReorderQty,
+          })),
+          savedPhone,
+          channel
+        );
+      }
 
-    toast({
-      title: 'All alerts sent!',
-      description: `Sent ${expiryAlerts.length + stockAlerts.length} alerts via ${channel.toUpperCase()}`,
-    });
+      toast({
+        title: 'All alerts sent!',
+        description: `Sent ${expiryAlerts.length + stockAlerts.length} alerts via ${channel.toUpperCase()}`,
+      });
+    } catch (error) {
+      toast({
+        title: 'Failed to send some alerts',
+        description: 'Check your Termii configuration in settings',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await generateInventoryNotifications();
+    setRefreshing(false);
   };
 
   return (
@@ -204,8 +238,21 @@ const Notifications = () => {
                   <Bell className="h-4 w-4 text-white" />
                 </div>
                 Notifications Center
+                {unreadCount > 0 && (
+                  <Badge variant="destructive" className="ml-2">{unreadCount} new</Badge>
+                )}
               </h1>
             </div>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleRefresh}
+              disabled={refreshing}
+              className="gap-1"
+            >
+              {refreshing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+              <span className="hidden sm:inline">Refresh</span>
+            </Button>
           </div>
         </div>
       </header>
@@ -220,8 +267,8 @@ const Notifications = () => {
                   <Zap className="h-5 w-5 text-green-500" />
                 </div>
                 <div>
-                  <p className="font-medium">Send All Alerts via {useWhatsApp ? 'WhatsApp' : 'SMS'}</p>
-                  <p className="text-xs text-muted-foreground">{alerts.length} alerts ready to send to {savedPhone}</p>
+                  <p className="font-medium">Send Daily Digest via {useWhatsApp ? 'WhatsApp' : 'SMS'}</p>
+                  <p className="text-xs text-muted-foreground">{alerts.length} alerts ready • {savedPhone}</p>
                 </div>
               </div>
               <Button 
@@ -241,7 +288,10 @@ const Notifications = () => {
             <CardContent className="p-4 flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 <Phone className="h-5 w-5 text-warning" />
-                <p className="text-sm">Set up your phone number to receive SMS/WhatsApp alerts</p>
+                <div>
+                  <p className="text-sm font-medium">Set up automated alerts</p>
+                  <p className="text-xs text-muted-foreground">Add your phone to receive daily SMS/WhatsApp digests</p>
+                </div>
               </div>
               <Link to="/settings">
                 <Button size="sm" variant="outline" className="gap-2">
@@ -254,43 +304,56 @@ const Notifications = () => {
         )}
 
         {/* Alert Summary Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
           <Card className="bg-destructive/10 border-destructive/30">
-            <CardContent className="p-4 text-center">
-              <p className="text-2xl sm:text-3xl font-bold text-destructive">{alertCounts.high}</p>
-              <p className="text-xs text-destructive/80">High Priority</p>
+            <CardContent className="p-3 text-center">
+              <p className="text-2xl font-bold text-destructive">{alertCounts.high}</p>
+              <p className="text-[10px] text-destructive/80 uppercase">Urgent</p>
             </CardContent>
           </Card>
           <Card className="bg-warning/10 border-warning/30">
-            <CardContent className="p-4 text-center">
-              <p className="text-2xl sm:text-3xl font-bold text-warning">{alertCounts.medium}</p>
-              <p className="text-xs text-warning/80">Medium</p>
+            <CardContent className="p-3 text-center">
+              <p className="text-2xl font-bold text-warning">{alertCounts.medium}</p>
+              <p className="text-[10px] text-warning/80 uppercase">Medium</p>
             </CardContent>
           </Card>
           <Card className="bg-info/10 border-info/30">
-            <CardContent className="p-4 text-center">
-              <p className="text-2xl sm:text-3xl font-bold text-info">{alertCounts.expiry}</p>
-              <p className="text-xs text-info/80">Expiring</p>
+            <CardContent className="p-3 text-center">
+              <p className="text-2xl font-bold text-info">{alertCounts.expiry}</p>
+              <p className="text-[10px] text-info/80 uppercase">Expiring</p>
             </CardContent>
           </Card>
           <Card className="bg-muted border-border">
-            <CardContent className="p-4 text-center">
-              <p className="text-2xl sm:text-3xl font-bold">{alertCounts.lowStock}</p>
-              <p className="text-xs text-muted-foreground">Low Stock</p>
+            <CardContent className="p-3 text-center">
+              <p className="text-2xl font-bold">{alertCounts.lowStock}</p>
+              <p className="text-[10px] text-muted-foreground uppercase">Low Stock</p>
+            </CardContent>
+          </Card>
+          <Card className="bg-destructive/5 border-destructive/20 col-span-2 sm:col-span-1">
+            <CardContent className="p-3 text-center">
+              <div className="flex items-center justify-center gap-1 text-destructive">
+                <DollarSign className="h-4 w-4" />
+                <p className="text-lg font-bold">{formatPrice(totalValueAtRisk)}</p>
+              </div>
+              <p className="text-[10px] text-destructive/80 uppercase">At Risk</p>
             </CardContent>
           </Card>
         </div>
 
-        {/* Tabs for filtering */}
-        <Tabs defaultValue="all" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="expiry" className="gap-2">
+        {/* Main Tabs */}
+        <Tabs defaultValue="expiry" className="w-full">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="expiry" className="gap-1 text-xs sm:text-sm">
               <Calendar className="h-4 w-4" />
-              Expiry Alerts
+              <span className="hidden xs:inline">Expiry</span>
             </TabsTrigger>
-            <TabsTrigger value="stock" className="gap-2">
+            <TabsTrigger value="stock" className="gap-1 text-xs sm:text-sm">
               <Package className="h-4 w-4" />
-              Stock Alerts
+              <span className="hidden xs:inline">Stock</span>
+            </TabsTrigger>
+            <TabsTrigger value="history" className="gap-1 text-xs sm:text-sm">
+              <History className="h-4 w-4" />
+              <span className="hidden xs:inline">Sent</span>
             </TabsTrigger>
           </TabsList>
 
@@ -302,20 +365,20 @@ const Notifications = () => {
                   variant={filter === f ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => setFilter(f)}
-                  className="capitalize"
+                  className="capitalize text-xs"
                 >
-                  {f === 'all' ? 'All' : `${f} Priority`}
+                  {f === 'all' ? 'All' : f}
                 </Button>
               ))}
             </div>
-            <ScrollArea className="h-[60vh]">
-              <AnimatePresence>
+            <ScrollArea className="h-[55vh]">
+              <AnimatePresence mode="popLayout">
                 <div className="space-y-3">
                   {filteredAlerts.filter(a => a.type === 'expiry').length === 0 ? (
                     <Card className="p-8 text-center">
                       <CheckCircle className="h-12 w-12 mx-auto text-success mb-4" />
                       <p className="text-lg font-medium">No Expiry Alerts</p>
-                      <p className="text-sm text-muted-foreground">All your stock is within safe expiry dates.</p>
+                      <p className="text-sm text-muted-foreground">All stock is within safe expiry dates.</p>
                     </Card>
                   ) : (
                     filteredAlerts.filter(a => a.type === 'expiry').map((alert, index) => (
@@ -323,26 +386,27 @@ const Notifications = () => {
                         key={alert.id}
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: index * 0.05 }}
+                        exit={{ opacity: 0, x: -20 }}
+                        transition={{ delay: index * 0.03 }}
                       >
                         <Card className={`border ${getPriorityColor(alert.priority)}`}>
                           <CardContent className="p-4">
-                            <div className="flex items-start gap-4">
-                              <div className={`p-2 rounded-lg ${getPriorityColor(alert.priority)}`}>
+                            <div className="flex items-start gap-3">
+                              <div className={`p-2 rounded-lg shrink-0 ${getPriorityColor(alert.priority)}`}>
                                 {getTypeIcon(alert.type)}
                               </div>
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 flex-wrap mb-1">
-                                  <h3 className="font-semibold">{alert.title}</h3>
+                                  <h3 className="font-semibold text-sm">{alert.productName}</h3>
                                   {getPriorityBadge(alert.priority)}
                                 </div>
-                                <p className="text-sm text-muted-foreground mb-2">{alert.message}</p>
+                                <p className="text-xs text-muted-foreground mb-2">{alert.message}</p>
                                 
                                 <div className="grid grid-cols-2 gap-2 text-xs mb-3">
                                   <div className="bg-muted/50 p-2 rounded">
                                     <span className="text-muted-foreground">Expiry:</span>
                                     <p className="font-medium">
-                                      {alert.expiryDate ? new Date(alert.expiryDate).toLocaleDateString() : 'N/A'}
+                                      {alert.expiryDate ? format(new Date(alert.expiryDate), 'dd MMM yyyy') : 'N/A'}
                                     </p>
                                   </div>
                                   <div className="bg-muted/50 p-2 rounded">
@@ -356,7 +420,7 @@ const Notifications = () => {
                                 {alert.suggestedAction && (
                                   <div className="bg-primary/5 border border-primary/20 rounded-lg p-2 mb-3">
                                     <p className="text-xs text-primary">
-                                      💡 <strong>AI Suggestion:</strong> {alert.suggestedAction}
+                                      💡 <strong>AI:</strong> {alert.suggestedAction}
                                     </p>
                                   </div>
                                 )}
@@ -365,16 +429,32 @@ const Notifications = () => {
                                   <Button
                                     size="sm"
                                     variant="outline"
-                                    className="gap-2"
+                                    className="gap-1.5 text-xs"
                                     onClick={() => handleSendWhatsApp(alert)}
                                   >
-                                    <MessageCircle className="h-4 w-4" />
-                                    Send to WhatsApp
+                                    <MessageCircle className="h-3.5 w-3.5" />
+                                    WhatsApp
                                   </Button>
+                                  {savedPhone && (
+                                    <Button
+                                      size="sm"
+                                      variant="secondary"
+                                      className="gap-1.5 text-xs"
+                                      onClick={() => handleSendSMSAlert(alert)}
+                                      disabled={sendingAlertId === alert.id}
+                                    >
+                                      {sendingAlertId === alert.id ? (
+                                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                      ) : (
+                                        <Send className="h-3.5 w-3.5" />
+                                      )}
+                                      Send via Termii
+                                    </Button>
+                                  )}
                                   <Link to="/inventory">
-                                    <Button size="sm" variant="ghost" className="gap-2">
-                                      <ExternalLink className="h-4 w-4" />
-                                      View in Inventory
+                                    <Button size="sm" variant="ghost" className="gap-1.5 text-xs">
+                                      <ExternalLink className="h-3.5 w-3.5" />
+                                      View
                                     </Button>
                                   </Link>
                                 </div>
@@ -398,20 +478,20 @@ const Notifications = () => {
                   variant={filter === f ? 'default' : 'outline'}
                   size="sm"
                   onClick={() => setFilter(f)}
-                  className="capitalize"
+                  className="capitalize text-xs"
                 >
-                  {f === 'all' ? 'All' : `${f} Priority`}
+                  {f === 'all' ? 'All' : f}
                 </Button>
               ))}
             </div>
-            <ScrollArea className="h-[60vh]">
-              <AnimatePresence>
+            <ScrollArea className="h-[55vh]">
+              <AnimatePresence mode="popLayout">
                 <div className="space-y-3">
                   {filteredAlerts.filter(a => a.type === 'low_stock' || a.type === 'out_of_stock').length === 0 ? (
                     <Card className="p-8 text-center">
                       <CheckCircle className="h-12 w-12 mx-auto text-success mb-4" />
                       <p className="text-lg font-medium">Stock Levels Healthy</p>
-                      <p className="text-sm text-muted-foreground">All items are above reorder levels.</p>
+                      <p className="text-sm text-muted-foreground">All items above reorder levels.</p>
                     </Card>
                   ) : (
                     filteredAlerts.filter(a => a.type === 'low_stock' || a.type === 'out_of_stock').map((alert, index) => (
@@ -419,20 +499,21 @@ const Notifications = () => {
                         key={alert.id}
                         initial={{ opacity: 0, y: 20 }}
                         animate={{ opacity: 1, y: 0 }}
-                        transition={{ delay: index * 0.05 }}
+                        exit={{ opacity: 0, x: -20 }}
+                        transition={{ delay: index * 0.03 }}
                       >
                         <Card className={`border ${getPriorityColor(alert.priority)}`}>
                           <CardContent className="p-4">
-                            <div className="flex items-start gap-4">
-                              <div className={`p-2 rounded-lg ${getPriorityColor(alert.priority)}`}>
+                            <div className="flex items-start gap-3">
+                              <div className={`p-2 rounded-lg shrink-0 ${getPriorityColor(alert.priority)}`}>
                                 {getTypeIcon(alert.type)}
                               </div>
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 flex-wrap mb-1">
-                                  <h3 className="font-semibold">{alert.title}</h3>
+                                  <h3 className="font-semibold text-sm">{alert.productName}</h3>
                                   {getPriorityBadge(alert.priority)}
                                 </div>
-                                <p className="text-sm text-muted-foreground mb-2">{alert.message}</p>
+                                <p className="text-xs text-muted-foreground mb-2">{alert.message}</p>
                                 
                                 <div className="grid grid-cols-2 gap-2 text-xs mb-3">
                                   <div className="bg-muted/50 p-2 rounded">
@@ -451,7 +532,7 @@ const Notifications = () => {
                                 {alert.suggestedReorderQty && (
                                   <div className="bg-primary/5 border border-primary/20 rounded-lg p-2 mb-3">
                                     <p className="text-xs text-primary">
-                                      🛒 <strong>Suggested Reorder:</strong> {alert.suggestedReorderQty} units
+                                      🛒 <strong>Suggested:</strong> Reorder {alert.suggestedReorderQty} units
                                     </p>
                                   </div>
                                 )}
@@ -460,15 +541,15 @@ const Notifications = () => {
                                   <Button
                                     size="sm"
                                     variant="outline"
-                                    className="gap-2"
+                                    className="gap-1.5 text-xs"
                                     onClick={() => handleSendWhatsApp(alert)}
                                   >
-                                    <MessageCircle className="h-4 w-4" />
-                                    Send to WhatsApp
+                                    <MessageCircle className="h-3.5 w-3.5" />
+                                    WhatsApp
                                   </Button>
                                   <Link to="/suppliers">
-                                    <Button size="sm" variant="ghost" className="gap-2">
-                                      <ExternalLink className="h-4 w-4" />
+                                    <Button size="sm" variant="ghost" className="gap-1.5 text-xs">
+                                      <ExternalLink className="h-3.5 w-3.5" />
                                       Create Order
                                     </Button>
                                   </Link>
@@ -482,6 +563,72 @@ const Notifications = () => {
                   )}
                 </div>
               </AnimatePresence>
+            </ScrollArea>
+          </TabsContent>
+
+          <TabsContent value="history" className="mt-4">
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-sm text-muted-foreground">
+                Automated alerts sent via Termii
+              </p>
+              {sentAlerts.length > 0 && (
+                <Badge variant="outline">{sentAlerts.length} sent</Badge>
+              )}
+            </div>
+            <ScrollArea className="h-[55vh]">
+              <div className="space-y-3">
+                {sentAlerts.length === 0 ? (
+                  <Card className="p-8 text-center">
+                    <History className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
+                    <p className="text-lg font-medium">No Sent Alerts Yet</p>
+                    <p className="text-sm text-muted-foreground">
+                      Automated daily digests will appear here once the 8 AM cron job runs.
+                    </p>
+                  </Card>
+                ) : (
+                  sentAlerts.map((alert, index) => (
+                    <motion.div
+                      key={alert.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: index * 0.03 }}
+                    >
+                      <Card className="border">
+                        <CardContent className="p-4">
+                          <div className="flex items-start gap-3">
+                            <div className={`p-2 rounded-lg shrink-0 ${
+                              alert.channel === 'whatsapp' ? 'bg-green-500/20' : 'bg-blue-500/20'
+                            }`}>
+                              {alert.channel === 'whatsapp' ? (
+                                <MessageCircle className="h-5 w-5 text-green-500" />
+                              ) : (
+                                <Phone className="h-5 w-5 text-blue-500" />
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap mb-1">
+                                <h3 className="font-semibold text-sm capitalize">{alert.alert_type.replace('_', ' ')}</h3>
+                                <Badge variant={alert.status === 'sent' ? 'default' : alert.status === 'delivered' ? 'secondary' : 'destructive'} className="text-[10px]">
+                                  {alert.status}
+                                </Badge>
+                                <Badge variant="outline" className="text-[10px]">
+                                  {alert.channel.toUpperCase()}
+                                </Badge>
+                              </div>
+                              <p className="text-xs text-muted-foreground mb-2 line-clamp-2">{alert.message.substring(0, 150)}...</p>
+                              <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
+                                <span>To: {alert.recipient_phone}</span>
+                                <span>•</span>
+                                <span>{formatDistanceToNow(new Date(alert.created_at), { addSuffix: true })}</span>
+                              </div>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </motion.div>
+                  ))
+                )}
+              </div>
             </ScrollArea>
           </TabsContent>
         </Tabs>
