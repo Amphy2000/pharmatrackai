@@ -91,7 +91,7 @@ const AdminDashboard = () => {
   const { formatPrice } = useCurrency();
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const { isAdmin, isSuperAdmin, isLoading: adminLoading, isDevEmail, bootstrapAdmin, isBootstrapping } = usePlatformAdmin();
+  const { isAdmin, isSuperAdmin, isLoading: adminLoading, bootstrapAdmin, isBootstrapping } = usePlatformAdmin();
   
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedPharmacy, setSelectedPharmacy] = useState<PharmacyWithMetrics | null>(null);
@@ -107,9 +107,9 @@ const AdminDashboard = () => {
     status: 'trial' as string,
   });
 
-  // Redirect non-admins (unless they're the dev who can bootstrap)
+  // Redirect non-admins after loading is complete
   useEffect(() => {
-    if (!adminLoading && !isAdmin && !isDevEmail) {
+    if (!adminLoading && !isAdmin) {
       toast({
         title: 'Access Denied',
         description: 'You do not have permission to access the admin dashboard',
@@ -117,7 +117,7 @@ const AdminDashboard = () => {
       });
       navigate('/dashboard');
     }
-  }, [adminLoading, isAdmin, isDevEmail, navigate, toast]);
+  }, [adminLoading, isAdmin, navigate, toast]);
 
   // Fetch all pharmacies with metrics
   const { data: pharmacies = [], isLoading: loadingPharmacies } = useQuery({
@@ -168,7 +168,7 @@ const AdminDashboard = () => {
 
       return pharmaciesWithMetrics;
     },
-    enabled: isAdmin || isDevEmail,
+    enabled: isAdmin,
   });
 
   // Fetch subscription payments for platform revenue calculation
@@ -183,7 +183,7 @@ const AdminDashboard = () => {
       if (error) throw error;
       return data || [];
     },
-    enabled: isAdmin || isDevEmail,
+    enabled: isAdmin,
   });
 
   // Fetch custom features for selected pharmacy
@@ -328,62 +328,6 @@ const AdminDashboard = () => {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  // Bootstrap screen for dev who isn't admin yet
-  if (!isAdmin && isDevEmail) {
-    return (
-      <div className="min-h-screen bg-background">
-        <Header />
-        <main className="container mx-auto px-4 py-16">
-          <Card className="max-w-md mx-auto glass-card">
-            <CardHeader className="text-center">
-              <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center mx-auto mb-4">
-                <Shield className="h-8 w-8 text-white" />
-              </div>
-              <CardTitle>Platform Admin Access</CardTitle>
-              <CardDescription>
-                You're recognized as the platform developer. Click below to activate your super admin privileges.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="text-center">
-              <Button 
-                size="lg" 
-                onClick={async () => {
-                  const result = await bootstrapAdmin();
-                  if (result.error) {
-                    toast({
-                      title: 'Activation Failed',
-                      description: result.error,
-                      variant: 'destructive',
-                    });
-                  } else {
-                    toast({
-                      title: 'Admin Activated!',
-                      description: 'You now have super admin access.',
-                    });
-                  }
-                }}
-                disabled={isBootstrapping}
-                className="gap-2"
-              >
-                {isBootstrapping ? (
-                  <>
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Activating...
-                  </>
-                ) : (
-                  <>
-                    <Crown className="h-4 w-4" />
-                    Activate Super Admin
-                  </>
-                )}
-              </Button>
-            </CardContent>
-          </Card>
-        </main>
       </div>
     );
   }

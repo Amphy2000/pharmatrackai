@@ -2,8 +2,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
-const DEV_EMAIL = "amphy2000@gmail.com";
-
 interface PlatformAdmin {
   id: string;
   user_id: string;
@@ -18,9 +16,8 @@ export const usePlatformAdmin = () => {
   const [adminRecord, setAdminRecord] = useState<PlatformAdmin | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isBootstrapping, setIsBootstrapping] = useState(false);
-
-  // Check if current user is the dev (can become admin)
-  const isDevEmail = user?.email === DEV_EMAIL;
+  // Note: Bootstrap authorization is now handled entirely server-side
+  // The edge function validates against BOOTSTRAP_ADMIN_EMAIL env var
 
   const checkAdminStatus = useCallback(async () => {
     if (!user) {
@@ -79,7 +76,7 @@ export const usePlatformAdmin = () => {
   }, [checkAdminStatus]);
 
   const bootstrapAdmin = async () => {
-    if (!isDevEmail) return { error: 'Not authorized', data: null };
+    // Authorization is handled server-side via BOOTSTRAP_ADMIN_EMAIL env var
     
     setIsBootstrapping(true);
     try {
@@ -110,7 +107,6 @@ export const usePlatformAdmin = () => {
     isSuperAdmin,
     adminRecord,
     isLoading,
-    isDevEmail,
     isBootstrapping,
     bootstrapAdmin,
     refetch: checkAdminStatus,
