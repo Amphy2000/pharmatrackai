@@ -60,12 +60,12 @@ export const Header = () => {
   const { signOut } = useAuth();
   const { isOwnerOrManager, userRole, hasPermission, isLoading: permissionsLoading } = usePermissions();
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
-  const { isAdmin, isDevEmail } = usePlatformAdmin();
+  const { isAdmin } = usePlatformAdmin();
   const { currentBranchId, setCurrentBranchId } = useBranchContext();
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   
-  // Show admin link for admins or the dev email
-  const showAdminLink = isAdmin || isDevEmail;
+  // Show admin link only for verified admins
+  const showAdminLink = isAdmin;
   
   // Only owners can see Settings
   const canSeeSettings = userRole === 'owner';

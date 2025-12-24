@@ -6,8 +6,10 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// Hardcoded developer email - this is the only email that can bootstrap admin
-const DEV_EMAIL = "amphy2000@gmail.com";
+// Get bootstrap admin email from environment variable for security
+const getBootstrapEmail = (): string | null => {
+  return Deno.env.get("BOOTSTRAP_ADMIN_EMAIL") || null;
+};
 
 serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
@@ -44,8 +46,18 @@ serve(async (req: Request) => {
       );
     }
 
-    // Check if user email matches dev email
-    if (user.email !== DEV_EMAIL) {
+    // Check if user email matches bootstrap admin email from env
+    const bootstrapEmail = getBootstrapEmail();
+    if (!bootstrapEmail) {
+      console.error("BOOTSTRAP_ADMIN_EMAIL environment variable not configured");
+      return new Response(
+        JSON.stringify({ error: "Bootstrap not configured" }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    
+    if (user.email !== bootstrapEmail) {
+      console.log(`Unauthorized bootstrap attempt by: ${user.email}`);
       return new Response(
         JSON.stringify({ error: "Not authorized to become admin" }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
