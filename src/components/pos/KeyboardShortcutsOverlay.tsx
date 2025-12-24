@@ -14,7 +14,7 @@ const shortcuts: ShortcutItem[] = [
   { keys: ['Enter'], description: 'Open checkout', icon: <ShoppingCart className="h-4 w-4" /> },
   { keys: ['H'], description: 'Hold sale', icon: <Pause className="h-4 w-4" /> },
   { keys: ['I'], description: 'Invoice', icon: <FileText className="h-4 w-4" /> },
-  { keys: ['S'], description: 'Toggle help', icon: <HelpCircle className="h-4 w-4" /> },
+  { keys: ['/'], description: 'Toggle help', icon: <HelpCircle className="h-4 w-4" /> },
 ];
 
 interface KeyboardShortcutsOverlayProps {
@@ -100,7 +100,7 @@ export const KeyboardShortcutsOverlay = ({ open, onClose }: KeyboardShortcutsOve
         {/* Footer */}
         <div className="p-4 border-t border-border/50 bg-muted/20 rounded-b-2xl">
           <p className="text-xs text-center text-muted-foreground">
-            Press <kbd className="px-1.5 py-0.5 text-[10px] font-mono bg-background border border-border rounded">S</kbd> anytime to toggle this overlay
+            Press <kbd className="px-1.5 py-0.5 text-[10px] font-mono bg-background border border-border rounded">/</kbd> anytime to toggle this overlay
           </p>
         </div>
       </div>

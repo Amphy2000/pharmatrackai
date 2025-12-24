@@ -168,8 +168,8 @@ const Checkout = () => {
       const target = e.target as HTMLElement;
       const isInputField = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
       
-      // S key to toggle shortcuts overlay (works anywhere except input fields)
-      if (e.key.toLowerCase() === 's' && !isInputField) {
+      // / key to toggle shortcuts overlay (works anywhere except input fields)
+      if (e.key === '/' && !isInputField) {
         e.preventDefault();
         setShowShortcuts(prev => !prev);
         return;
@@ -526,7 +526,7 @@ const Checkout = () => {
                 size="icon"
                 onClick={() => setShowShortcuts(true)}
                 className="h-8 w-8 sm:h-9 sm:w-9 rounded-lg text-muted-foreground hover:text-foreground"
-                title="Keyboard shortcuts (S)"
+                title="Keyboard shortcuts (/)"
               >
                 <Keyboard className="h-4 w-4" />
               </Button>
