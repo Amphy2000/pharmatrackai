@@ -14,15 +14,13 @@ import {
   Loader2, 
   Globe, 
   Upload, 
-  Scan, 
   Check, 
   ArrowRight, 
   ArrowLeft,
-  FileSpreadsheet,
-  QrCode
+  FileSpreadsheet
 } from 'lucide-react';
 
-type Step = 'country' | 'pharmacy' | 'import' | 'scan';
+type Step = 'country' | 'pharmacy' | 'import';
 
 const OnboardingWizard = () => {
   const [currentStep, setCurrentStep] = useState<Step>('country');
@@ -41,13 +39,11 @@ const OnboardingWizard = () => {
 
   // Import state
   const [importComplete, setImportComplete] = useState(false);
-  const [scanComplete, setScanComplete] = useState(false);
 
   const steps = [
     { id: 'country', label: 'Region', icon: Globe },
     { id: 'pharmacy', label: 'Pharmacy', icon: Building2 },
     { id: 'import', label: 'Import', icon: Upload },
-    { id: 'scan', label: 'First Scan', icon: Scan },
   ];
 
   const currentStepIndex = steps.findIndex(s => s.id === currentStep);
@@ -121,10 +117,6 @@ const OnboardingWizard = () => {
   };
 
   const handleSkipImport = () => {
-    setCurrentStep('scan');
-  };
-
-  const handleSkipScan = () => {
     navigate('/dashboard');
   };
 
@@ -376,59 +368,8 @@ const OnboardingWizard = () => {
                   </Button>
                   <Button 
                     className="flex-1 bg-gradient-primary text-primary-foreground"
-                    onClick={() => setCurrentStep('scan')}
-                    disabled={!importComplete}
-                  >
-                    Continue
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
-                </div>
-              </CardContent>
-            </>
-          )}
-
-          {/* Step 4: First Scan */}
-          {currentStep === 'scan' && (
-            <>
-              <CardHeader className="text-center">
-                <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-premium text-primary-foreground">
-                  <QrCode className="h-8 w-8" />
-                </div>
-                <CardTitle className="text-2xl font-display">Scan Your First Item</CardTitle>
-                <CardDescription>
-                  Try scanning a product barcode to see how easy stocking is
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                <div 
-                  className="border-2 border-dashed border-border rounded-xl p-12 text-center hover:border-primary/50 transition-colors cursor-pointer"
-                  onClick={() => setScanComplete(true)}
-                >
-                  <Scan className="h-16 w-16 mx-auto mb-4 text-muted-foreground animate-pulse" />
-                  <p className="font-medium mb-2">Point your camera at a barcode</p>
-                  <p className="text-sm text-muted-foreground">
-                    Or click here to enter manually
-                  </p>
-                </div>
-
-                {scanComplete && (
-                  <div className="p-4 rounded-xl bg-success/10 border border-success/20 flex items-center gap-3">
-                    <Check className="h-5 w-5 text-success" />
-                    <p className="text-success font-medium">Great! You've scanned your first item.</p>
-                  </div>
-                )}
-
-                <div className="flex gap-3">
-                  <Button 
-                    variant="outline" 
-                    onClick={handleSkipScan}
-                    className="flex-1"
-                  >
-                    Skip for now
-                  </Button>
-                  <Button 
-                    className="flex-1 bg-gradient-primary text-primary-foreground"
                     onClick={handleComplete}
+                    disabled={!importComplete}
                   >
                     Go to Dashboard
                     <ArrowRight className="ml-2 h-4 w-4" />
