@@ -299,7 +299,10 @@ const Dashboard = () => {
                   </CardContent>
                 </Card>
 
-                <Card className="glass-card border-border/50 overflow-hidden">
+                <Card 
+                  className="glass-card border-border/50 overflow-hidden cursor-pointer hover:border-amber-500/50 transition-colors"
+                  onClick={() => navigate('/notifications')}
+                >
                   <div className="absolute inset-0 bg-gradient-to-br from-amber-500/10 to-transparent" />
                   <CardContent className="pt-6 relative">
                     <div className="flex items-center gap-4">
@@ -309,7 +312,7 @@ const Dashboard = () => {
                       <div>
                         <p className="text-sm text-muted-foreground mb-1">Pending Alerts</p>
                         <p className="text-2xl sm:text-3xl font-bold font-display">{pendingAlerts}</p>
-                        <p className="text-xs text-muted-foreground">Low stock, expired, expiring</p>
+                        <p className="text-xs text-muted-foreground">Tap to view all →</p>
                       </div>
                     </div>
                   </CardContent>

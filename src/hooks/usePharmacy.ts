@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 interface PharmacySettings {
   enable_logo_on_print?: boolean;
   pharmacist_in_charge?: string;
+  termii_sender_id?: string;
 }
 
 export const usePharmacy = () => {

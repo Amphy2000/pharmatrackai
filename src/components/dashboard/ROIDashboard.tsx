@@ -192,7 +192,7 @@ export const ROIDashboard = ({ invoicesScanned = 0, auditLogCount = 0 }: ROIDash
             <div>
               <p className="text-sm text-muted-foreground mb-1">Total PharmaTrack ROI Value</p>
               <p className="text-4xl font-display font-bold text-gradient">
-                {formatPrice(metrics.totalROIValue)}
+                ₦{metrics.totalROIValue.toLocaleString('en-NG', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
               </p>
               <p className="text-xs text-muted-foreground mt-1">
                 This month's savings from AI automation
@@ -201,9 +201,9 @@ export const ROIDashboard = ({ invoicesScanned = 0, auditLogCount = 0 }: ROIDash
             <div className="text-center md:text-right">
               <p className="text-xs text-muted-foreground mb-1">vs. Monthly Cost</p>
               <p className="text-lg font-medium">
-                <span className="text-success">{formatPrice(metrics.totalROIValue)}</span>
+                <span className="text-success">₦{metrics.totalROIValue.toLocaleString('en-NG')}</span>
                 <span className="text-muted-foreground mx-2">÷</span>
-                <span className="text-destructive">{formatPrice(35000)}</span>
+                <span className="text-destructive">₦35,000</span>
               </p>
               <Badge className="mt-2 bg-success/20 text-success border-success/30">
                 The app pays for itself {metrics.roiMultiple}x over

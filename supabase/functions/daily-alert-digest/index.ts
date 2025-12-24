@@ -58,10 +58,10 @@ serve(async (req) => {
     const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
     const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
-    // Get all pharmacies with their owner phones
+    // Get all pharmacies with their owner phones and Termii sender ID
     const { data: pharmacies, error: pharmacyError } = await supabaseAdmin
       .from('pharmacies')
-      .select('id, name, phone, owner_id');
+      .select('id, name, phone, owner_id, termii_sender_id');
 
     if (pharmacyError) {
       console.error('Error fetching pharmacies:', pharmacyError);
@@ -175,7 +175,10 @@ serve(async (req) => {
           formattedPhone = '234' + formattedPhone.substring(1);
         }
 
-        console.log(`Sending digest to ${pharmacy.name} (${formattedPhone}): ${totalAlerts} alerts`);
+        // Use configured sender ID or fallback to pharmacy name
+        const senderId = pharmacy.termii_sender_id || pharmacy.name.substring(0, 11).replace(/\s+/g, '');
+
+        console.log(`Sending digest to ${pharmacy.name} (${formattedPhone}) with sender ID "${senderId}": ${totalAlerts} alerts`);
 
         // Send via Termii WhatsApp
         const termiiResponse = await fetch(`${TERMII_BASE_URL}/send`, {
@@ -184,7 +187,7 @@ serve(async (req) => {
           body: JSON.stringify({
             api_key: termiiApiKey,
             to: formattedPhone,
-            from: pharmacy.name.substring(0, 11),
+            from: senderId,
             sms: message,
             type: 'plain',
             channel: 'whatsapp',
@@ -204,7 +207,7 @@ serve(async (req) => {
             body: JSON.stringify({
               api_key: termiiApiKey,
               to: formattedPhone,
-              from: pharmacy.name.substring(0, 11),
+              from: senderId,
               sms: message.substring(0, 900), // SMS character limit
               type: 'plain',
               channel: 'generic',

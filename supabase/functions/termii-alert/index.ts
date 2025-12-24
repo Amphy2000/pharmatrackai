@@ -103,14 +103,16 @@ serve(async (req) => {
       formattedPhone = '234' + formattedPhone.substring(1); // Default to Nigeria
     }
 
-    // Get pharmacy name for personalization
+    // Get pharmacy name and sender ID for personalization
     const { data: pharmacy } = await supabaseAdmin
       .from('pharmacies')
-      .select('name')
+      .select('name, termii_sender_id')
       .eq('id', pharmacyId)
       .single();
 
     const pharmacyName = pharmacy?.name || 'PharmaTrack';
+    // Use configured sender ID, or fallback to pharmacy name (first 11 chars)
+    const senderId = pharmacy?.termii_sender_id || pharmacyName.substring(0, 11).replace(/\s+/g, '');
 
     // Build formatted message based on alert type
     let formattedMessage = '';
@@ -181,7 +183,7 @@ ${message}`;
         body: JSON.stringify({
           api_key: termiiApiKey,
           to: formattedPhone,
-          from: pharmacyName.substring(0, 11), // Max 11 chars for sender ID
+          from: senderId,
           sms: formattedMessage,
           type: 'plain',
           channel: 'whatsapp',
@@ -197,7 +199,7 @@ ${message}`;
         body: JSON.stringify({
           api_key: termiiApiKey,
           to: formattedPhone,
-          from: pharmacyName.substring(0, 11), // Max 11 chars for sender ID
+          from: senderId,
           sms: formattedMessage,
           type: 'plain',
           channel: 'generic',
