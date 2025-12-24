@@ -39,7 +39,7 @@ import { differenceInDays, formatDistanceToNow, format } from 'date-fns';
 const ALERT_SETTINGS_KEY = 'pharmatrack_alert_settings';
 
 const Notifications = () => {
-  const { alerts, alertCounts, generateWhatsAppMessage } = useAlertEngine();
+  const { alerts, alertCounts, generateWhatsAppMessage, generateDigestWhatsAppUrl } = useAlertEngine();
   const { sendExpiryAlert, sendLowStockAlert, isSending } = useAlerts();
   const { 
     notifications: dbNotifications, 
@@ -64,6 +64,9 @@ const Notifications = () => {
   const totalValueAtRisk = alerts
     .filter(a => a.type === 'expiry')
     .reduce((sum, a) => sum + (a.valueAtRisk || 0), 0);
+
+  // Get owner phone from pharmacy settings (dynamic routing)
+  const ownerPhone = pharmacy?.phone || savedPhone;
 
   // Load saved settings
   useEffect(() => {
@@ -113,11 +116,29 @@ const Notifications = () => {
   };
 
   const handleSendWhatsApp = (alert: SystemAlert) => {
-    const url = generateWhatsAppMessage(alert, savedPhone || pharmacy?.phone || '');
+    const url = generateWhatsAppMessage(alert, ownerPhone);
     window.open(url, '_blank');
     toast({
       title: 'WhatsApp Opened',
       description: 'Message prepared and ready to send.',
+    });
+  };
+
+  // Send bundled digest via WhatsApp (single message for all alerts)
+  const handleSendDigestWhatsApp = () => {
+    if (!ownerPhone) {
+      toast({
+        title: 'Phone not configured',
+        description: 'Please set your phone number in Settings → Pharmacy settings',
+        variant: 'destructive',
+      });
+      return;
+    }
+    const url = generateDigestWhatsAppUrl(alerts, ownerPhone);
+    window.open(url, '_blank');
+    toast({
+      title: 'Daily Digest Ready',
+      description: `${alerts.length} alerts bundled into one message.`,
     });
   };
 
@@ -163,52 +184,50 @@ const Notifications = () => {
   };
 
   const handleSendAllAlerts = async () => {
-    if (!savedPhone) {
+    const phoneToUse = ownerPhone || savedPhone;
+    if (!phoneToUse) {
       toast({
         title: 'Phone not configured',
-        description: 'Please set up your phone number in Settings → Alerts',
+        description: 'Please set your phone number in Settings → Pharmacy settings',
         variant: 'destructive',
       });
       return;
     }
 
-    const channel = useWhatsApp ? 'whatsapp' : 'sms';
+    // For WhatsApp, open bundled digest message
+    if (useWhatsApp) {
+      handleSendDigestWhatsApp();
+      return;
+    }
+
+    // For SMS via Termii, send bundled digest
+    const channel = 'sms';
     const expiryAlerts = alerts.filter(a => a.type === 'expiry');
     const stockAlerts = alerts.filter(a => a.type === 'low_stock' || a.type === 'out_of_stock');
 
     try {
-      if (expiryAlerts.length > 0) {
+      // Send as single bundled digest
+      if (expiryAlerts.length > 0 || stockAlerts.length > 0) {
         await sendExpiryAlert(
-          expiryAlerts.map(a => ({
+          [...expiryAlerts, ...stockAlerts].map(a => ({
             name: a.productName,
-            expiryDate: a.expiryDate || 'Soon',
+            expiryDate: a.type === 'expiry' ? (a.expiryDate || 'Soon') : undefined,
             value: a.valueAtRisk,
             daysLeft: a.daysUntilExpiry,
+            stock: a.currentStock,
           })),
-          savedPhone,
-          channel
-        );
-      }
-
-      if (stockAlerts.length > 0) {
-        await sendLowStockAlert(
-          stockAlerts.map(a => ({
-            name: a.productName,
-            stock: a.currentStock || 0,
-            reorderLevel: a.suggestedReorderQty,
-          })),
-          savedPhone,
+          phoneToUse,
           channel
         );
       }
 
       toast({
-        title: 'All alerts sent!',
-        description: `Sent ${expiryAlerts.length + stockAlerts.length} alerts via ${channel.toUpperCase()}`,
+        title: 'Daily digest sent!',
+        description: `Sent bundled alert with ${alerts.length} items via ${channel.toUpperCase()}`,
       });
     } catch (error) {
       toast({
-        title: 'Failed to send some alerts',
+        title: 'Failed to send digest',
         description: 'Check your Termii configuration in settings',
         variant: 'destructive',
       });
@@ -259,7 +278,7 @@ const Notifications = () => {
 
       <main className="container mx-auto px-4 py-6 space-y-6 max-w-4xl">
         {/* Quick Send All Button */}
-        {alerts.length > 0 && savedPhone && (
+        {alerts.length > 0 && ownerPhone && (
           <Card className="bg-gradient-to-r from-green-500/10 to-emerald-500/10 border-green-500/30">
             <CardContent className="p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
               <div className="flex items-center gap-3">
@@ -267,36 +286,36 @@ const Notifications = () => {
                   <Zap className="h-5 w-5 text-green-500" />
                 </div>
                 <div>
-                  <p className="font-medium">Send Daily Digest via {useWhatsApp ? 'WhatsApp' : 'SMS'}</p>
-                  <p className="text-xs text-muted-foreground">{alerts.length} alerts ready • {savedPhone}</p>
+                  <p className="font-medium">Send Daily Digest via WhatsApp</p>
+                  <p className="text-xs text-muted-foreground">{alerts.length} alerts bundled • {ownerPhone}</p>
                 </div>
               </div>
               <Button 
-                onClick={handleSendAllAlerts} 
+                onClick={handleSendDigestWhatsApp} 
                 disabled={isSending}
                 className="gap-2 bg-green-500 hover:bg-green-600 text-white"
               >
-                {isSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                {isSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageCircle className="h-4 w-4" />}
                 Send All Now
               </Button>
             </CardContent>
           </Card>
         )}
 
-        {!savedPhone && (
+        {!ownerPhone && (
           <Card className="bg-warning/10 border-warning/30">
             <CardContent className="p-4 flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">
                 <Phone className="h-5 w-5 text-warning" />
                 <div>
-                  <p className="text-sm font-medium">Set up automated alerts</p>
-                  <p className="text-xs text-muted-foreground">Add your phone to receive daily SMS/WhatsApp digests</p>
+                  <p className="text-sm font-medium">Set up your pharmacy phone</p>
+                  <p className="text-xs text-muted-foreground">Add your phone in Settings to receive WhatsApp digests</p>
                 </div>
               </div>
               <Link to="/settings">
                 <Button size="sm" variant="outline" className="gap-2">
                   <Settings className="h-4 w-4" />
-                  Configure
+                  Settings
                 </Button>
               </Link>
             </CardContent>
