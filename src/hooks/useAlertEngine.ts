@@ -190,9 +190,59 @@ You are running out of a fast-moving item!
     return `https://wa.me/${cleanPhone}?text=${encodedMessage}`;
   };
 
+  // Generate bundled digest message for all alerts
+  const generateDigestMessage = (alertList: SystemAlert[]): string => {
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('en-GB', { 
+      weekday: 'long', 
+      day: 'numeric', 
+      month: 'short', 
+      year: 'numeric' 
+    });
+
+    const expiryAlerts = alertList.filter(a => a.type === 'expiry');
+    const stockAlerts = alertList.filter(a => a.type === 'low_stock' || a.type === 'out_of_stock');
+    const totalValueAtRisk = expiryAlerts.reduce((sum, a) => sum + (a.valueAtRisk || 0), 0);
+
+    let message = `📊 *PharmaTrack Daily Digest for ${dateStr}*\n\n`;
+    
+    if (expiryAlerts.length > 0) {
+      message += `⚠️ *Expiring Items (${expiryAlerts.length})*\n`;
+      expiryAlerts.forEach(a => {
+        const daysText = (a.daysUntilExpiry || 0) <= 0 ? 'EXPIRED' : `${a.daysUntilExpiry}d left`;
+        message += `• ${a.productName}: ${daysText} (₦${(a.valueAtRisk || 0).toLocaleString()})\n`;
+      });
+      message += '\n';
+    }
+
+    if (stockAlerts.length > 0) {
+      message += `📉 *Low Stock Items (${stockAlerts.length})*\n`;
+      stockAlerts.forEach(a => {
+        const stockText = a.currentStock === 0 ? 'OUT OF STOCK' : `${a.currentStock} units`;
+        message += `• ${a.productName}: ${stockText}\n`;
+      });
+      message += '\n';
+    }
+
+    message += `💰 *Total Value at Risk:* ₦${totalValueAtRisk.toLocaleString()}\n\n`;
+    message += `📱 Log in to PharmaTrack to take action.`;
+
+    return message;
+  };
+
+  const generateDigestWhatsAppUrl = (alertList: SystemAlert[], ownerPhone?: string): string => {
+    const phone = ownerPhone || pharmacy?.phone || '';
+    const message = generateDigestMessage(alertList);
+    const encodedMessage = encodeURIComponent(message);
+    const cleanPhone = phone.replace(/\D/g, '');
+    return `https://wa.me/${cleanPhone}?text=${encodedMessage}`;
+  };
+
   return {
     alerts,
     alertCounts,
     generateWhatsAppMessage,
+    generateDigestMessage,
+    generateDigestWhatsAppUrl,
   };
 };
