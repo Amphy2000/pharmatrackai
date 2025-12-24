@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   ArrowLeft, 
@@ -60,7 +60,16 @@ const Notifications = () => {
   
   // WhatsApp buttons visible to owner, manager, and all staff roles (pharmacist, inventory clerk, senior staff)
   const canSendAlerts = userRole !== null; // Any authenticated staff can send alerts
+  const [searchParams] = useSearchParams();
+  const urlFilter = searchParams.get('filter');
+  
   const [filter, setFilter] = useState<'all' | 'high' | 'medium' | 'low'>('all');
+  const [activeTab, setActiveTab] = useState<string>(() => {
+    // Set initial tab based on URL filter
+    if (urlFilter === 'expired' || urlFilter === 'expiring') return 'expiry';
+    if (urlFilter === 'low_stock') return 'stock';
+    return 'expiry';
+  });
   const [savedPhone, setSavedPhone] = useState<string>('');
   const [useWhatsApp, setUseWhatsApp] = useState(true);
   const [sendingAlertId, setSendingAlertId] = useState<string | null>(null);
@@ -380,7 +389,7 @@ const Notifications = () => {
         </div>
 
         {/* Main Tabs */}
-        <Tabs defaultValue="expiry" className="w-full">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="expiry" className="gap-1 text-xs sm:text-sm">
               <Calendar className="h-4 w-4" />

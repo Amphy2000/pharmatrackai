@@ -20,7 +20,8 @@ import {
   ShoppingCart,
   Loader2,
   Users,
-  PackageSearch
+  PackageSearch,
+  Sparkles
 } from 'lucide-react';
 
 const containerVariants: Variants = {
@@ -98,6 +99,12 @@ const StaffDashboard = () => {
               <p className="text-sm text-muted-foreground">
                 Here's what needs your attention at <span className="font-medium text-foreground">{pharmacy.name}</span>
               </p>
+              <div className="flex items-center gap-2 mt-2">
+                <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-xs font-medium text-primary">
+                  <Sparkles className="h-3 w-3" />
+                  AI Active
+                </span>
+              </div>
             </div>
             <div className="flex flex-wrap items-center gap-3">
               <Button 
@@ -143,6 +150,7 @@ const StaffDashboard = () => {
                 icon={<Package className="h-5 w-5 sm:h-7 sm:w-7" />}
                 variant="primary"
                 subtitle="Active medications"
+                onClick={() => navigate('/inventory')}
               />
             </motion.div>
             <motion.div variants={itemVariants}>
@@ -152,6 +160,7 @@ const StaffDashboard = () => {
                 icon={<AlertTriangle className="h-5 w-5 sm:h-7 sm:w-7" />}
                 variant="warning"
                 subtitle="Need reordering"
+                onClick={() => navigate('/notifications?filter=low_stock')}
               />
             </motion.div>
             <motion.div variants={itemVariants}>
@@ -161,6 +170,7 @@ const StaffDashboard = () => {
                 icon={<XCircle className="h-5 w-5 sm:h-7 sm:w-7" />}
                 variant="danger"
                 subtitle="Remove from shelf"
+                onClick={() => navigate('/notifications?filter=expired')}
               />
             </motion.div>
             <motion.div variants={itemVariants}>
@@ -170,6 +180,7 @@ const StaffDashboard = () => {
                 icon={<Clock className="h-5 w-5 sm:h-7 sm:w-7" />}
                 variant="success"
                 subtitle="Within 30 days"
+                onClick={() => navigate('/notifications?filter=expiring')}
               />
             </motion.div>
           </div>
