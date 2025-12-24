@@ -8,6 +8,7 @@ import { useMedications } from '@/hooks/useMedications';
 import { ReceiveStockModal } from '@/components/inventory/ReceiveStockModal';
 import { StockCountModal } from '@/components/inventory/StockCountModal';
 import { InvoiceScannerModal } from '@/components/inventory/InvoiceScannerModal';
+import { MultiImageInvoiceScanner } from '@/components/inventory/MultiImageInvoiceScanner';
 import { AddMedicationModal } from '@/components/inventory/AddMedicationModal';
 import { StockCSVImportModal } from '@/components/inventory/StockCSVImportModal';
 import { BulkPriceUpdateModal } from '@/components/inventory/BulkPriceUpdateModal';
@@ -46,6 +47,7 @@ const Inventory = () => {
   const [showReceiveStockModal, setShowReceiveStockModal] = useState(false);
   const [showStockCountModal, setShowStockCountModal] = useState(false);
   const [showInvoiceScannerModal, setShowInvoiceScannerModal] = useState(false);
+  const [showMultiImageScanner, setShowMultiImageScanner] = useState(false);
   const [showCSVImportModal, setShowCSVImportModal] = useState(false);
   const [showAddMedicationModal, setShowAddMedicationModal] = useState(false);
   const [showBulkPriceModal, setShowBulkPriceModal] = useState(false);
@@ -267,11 +269,27 @@ const Inventory = () => {
                 CSV Import
                 <Badge variant="outline" className="ml-1 text-xs">Bulk</Badge>
               </Button>
-              <Button onClick={() => setShowInvoiceScannerModal(true)} variant="outline" size="lg" className="gap-2">
-                <FileImage className="h-5 w-5" />
-                Scan Invoice
-                <Badge variant="outline" className="ml-1 text-xs bg-gradient-premium text-white border-0">AI</Badge>
-              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" size="lg" className="gap-2">
+                    <FileImage className="h-5 w-5" />
+                    Scan Invoice
+                    <Badge variant="outline" className="ml-1 text-xs bg-gradient-premium text-white border-0">AI</Badge>
+                    <ChevronDown className="h-4 w-4 ml-1" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => setShowInvoiceScannerModal(true)}>
+                    <FileImage className="h-4 w-4 mr-2" />
+                    Single Page Scan
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setShowMultiImageScanner(true)}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Multi-Page Scan
+                    <Badge variant="secondary" className="ml-2 text-[10px]">NEW</Badge>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </CardContent>
         </Card>
@@ -594,6 +612,11 @@ const Inventory = () => {
       <InvoiceScannerModal
         open={showInvoiceScannerModal}
         onOpenChange={setShowInvoiceScannerModal}
+      />
+      
+      <MultiImageInvoiceScanner
+        open={showMultiImageScanner}
+        onOpenChange={setShowMultiImageScanner}
       />
       
       <StockCSVImportModal
