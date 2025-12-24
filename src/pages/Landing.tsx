@@ -114,7 +114,7 @@ const Landing = () => {
     }
   };
 
-  // ShopKite vs PharmaTrack AI - Comprehensive Comparison Table
+  // Generic POS vs PharmaTrack AI - Comprehensive Comparison Table
   const comparisonData = [
     { feature: 'Inventory Entry', oldApp: 'Manual search of 100k items', pharmatrack: 'AI Invoice Scanner: Snap & Stock 50+ items in 10 secs', critical: true },
     { feature: 'Compliance', oldApp: 'Generic Expiry alerts only', pharmatrack: '2025 NAFDAC Ready: Auto-generates Batch/BN Traceability logs', critical: true },
@@ -122,7 +122,7 @@ const Landing = () => {
     { feature: 'Clinical Care', oldApp: 'Basic grocery-style receipt', pharmatrack: 'Digital Dispensing: Integrated Dosage & Ingredient Search', critical: true },
     { feature: 'Owner Alerts', oldApp: 'No automated notifications', pharmatrack: 'SMS & WhatsApp: Instant low-stock & expiry alerts to your phone', critical: true },
     { feature: 'Performance', oldApp: 'Bloated app; lags on older phones', pharmatrack: 'High-Speed Lite: Instant login on all Nigerian networks', critical: false },
-    { feature: 'Hardware', oldApp: '₦300k "Stella" Device needed', pharmatrack: 'Zero Hardware: Runs on the phone/laptop you already own', critical: false },
+    { feature: 'Hardware', oldApp: '₦300k dedicated device needed', pharmatrack: 'Zero Hardware: Runs on the phone/laptop you already own', critical: false },
   ];
 
   // Compliance badges for pharmacy-specific positioning
@@ -349,10 +349,10 @@ const Landing = () => {
               The Truth About General POS Apps
             </Badge>
             <h2 className="text-2xl sm:text-3xl md:text-4xl font-display font-bold mb-4 text-white">
-              General apps like ShopKite are built to sell <span className="text-warning">bread and soap</span>.
+              Traditional retail POS systems are built to sell <span className="text-warning">bread and soap</span>.
             </h2>
             <p className="text-xl text-white/90 font-medium">
-              PharmaTrack AI is built to <span className="text-success">protect a Pharmacy's license and profit</span>.
+              PharmaTrack AI is purpose-built to <span className="text-success">protect a Pharmacy's license and profit</span>.
             </p>
           </motion.div>
 
@@ -371,7 +371,7 @@ const Landing = () => {
                   </div>
                   <h3 className="text-lg font-display font-bold text-white mb-2">Stop Staff Fraud</h3>
                   <p className="text-white/80 text-sm">
-                    ShopKite allows staff to change prices during a sale—that's where your profit disappears. <span className="text-success font-medium">We lock your prices so only the Pharmacist has control.</span>
+                    Generic retail apps allow staff to change prices during a sale—that's where your profit disappears. <span className="text-success font-medium">We lock your prices so only the Pharmacist has control.</span>
                   </p>
                 </CardContent>
               </Card>
@@ -638,7 +638,7 @@ const Landing = () => {
         </div>
       </section>
 
-      {/* ShopKite vs PharmaTrack Comparison Table Section */}
+      {/* Generic POS vs PharmaTrack Comparison Table Section */}
       <section id="comparison" className="py-20 sm:py-32 relative bg-muted/20">
         <div className="container mx-auto px-4 sm:px-6">
           <motion.div 
@@ -649,10 +649,10 @@ const Landing = () => {
           >
             <Badge variant="outline" className="mb-4 border-destructive/30 text-destructive">Why Pharmacies Are Switching</Badge>
             <h2 className="text-3xl sm:text-4xl md:text-5xl font-display font-bold mb-4">
-              ShopKite (General POS) vs <span className="text-gradient">PharmaTrack AI</span>
+              Generic Retail POS vs <span className="text-gradient">PharmaTrack AI</span>
             </h2>
             <p className="text-lg text-muted-foreground max-w-xl mx-auto">
-              See why pharmacy-specific software beats general retail apps
+              Pharmacists deserve specialized tools, not supermarket software
             </p>
           </motion.div>
 
@@ -671,13 +671,13 @@ const Landing = () => {
                       <TableHead className="text-center text-white/90">
                         <div className="flex flex-col items-center gap-1">
                           <X className="h-5 w-5 text-destructive" />
-                          <span>ShopKite (General POS)</span>
+                          <span>Traditional Retail POS</span>
                         </div>
                       </TableHead>
                       <TableHead className="text-center text-white">
                         <div className="flex flex-col items-center gap-1">
                           <Check className="h-5 w-5 text-success" />
-                          <span className="font-bold">PharmaTrack AI (Specialist)</span>
+                          <span className="font-bold">PharmaTrack AI (Pharmacy Specialist)</span>
                         </div>
                       </TableHead>
                     </TableRow>
@@ -722,8 +722,8 @@ const Landing = () => {
                 className="p-4 rounded-xl bg-destructive/5 border border-destructive/20 text-center"
               >
                 <DollarSign className="h-6 w-6 mx-auto mb-2 text-destructive" />
-                <p className="text-sm font-medium">The "Stella" Device Trap</p>
-                <p className="text-xs text-muted-foreground">ShopKite wants ₦300k hardware. We give you freedom.</p>
+                <p className="text-sm font-medium">No Expensive Hardware</p>
+                <p className="text-xs text-muted-foreground">Generic systems need ₦300k devices. We run on your existing phone.</p>
               </motion.div>
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
