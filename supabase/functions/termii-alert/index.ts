@@ -174,7 +174,16 @@ ${message}`;
     let termiiData;
 
     if (channel === 'whatsapp') {
-      // Termii WhatsApp API
+      // Termii WhatsApp API - requires Device ID
+      const whatsappDeviceId = Deno.env.get('TERMII_WHATSAPP_DEVICE_ID');
+      if (!whatsappDeviceId) {
+        console.error('Missing TERMII_WHATSAPP_DEVICE_ID');
+        return new Response(
+          JSON.stringify({ error: 'WhatsApp Device ID not configured. Please add your TERMII_WHATSAPP_DEVICE_ID in settings.' }),
+          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      
       termiiResponse = await fetch(`${TERMII_BASE_URL}/send`, {
         method: 'POST',
         headers: {
@@ -187,6 +196,7 @@ ${message}`;
           sms: formattedMessage,
           type: 'plain',
           channel: 'whatsapp',
+          device_id: whatsappDeviceId,
         }),
       });
     } else {

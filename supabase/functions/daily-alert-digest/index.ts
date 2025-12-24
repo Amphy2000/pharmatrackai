@@ -180,26 +180,48 @@ serve(async (req) => {
 
         console.log(`Sending digest to ${pharmacy.name} (${formattedPhone}) with sender ID "${senderId}": ${totalAlerts} alerts`);
 
-        // Send via Termii WhatsApp
-        const termiiResponse = await fetch(`${TERMII_BASE_URL}/send`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            api_key: termiiApiKey,
-            to: formattedPhone,
-            from: senderId,
-            sms: message,
-            type: 'plain',
-            channel: 'whatsapp',
-          }),
-        });
+        // Send via Termii WhatsApp (requires Device ID)
+        const whatsappDeviceId = Deno.env.get('TERMII_WHATSAPP_DEVICE_ID');
+        let messageSent = false;
+        
+        if (whatsappDeviceId) {
+          const termiiResponse = await fetch(`${TERMII_BASE_URL}/send`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              api_key: termiiApiKey,
+              to: formattedPhone,
+              from: senderId,
+              sms: message,
+              type: 'plain',
+              channel: 'whatsapp',
+              device_id: whatsappDeviceId,
+            }),
+          });
 
-        const termiiData = await termiiResponse.json();
+          const termiiData = await termiiResponse.json();
 
-        if (!termiiResponse.ok || (termiiData.code && termiiData.code !== 'ok')) {
-          console.error(`Termii error for ${pharmacy.name}:`, termiiData);
-          
-          // Try SMS as fallback
+          if (termiiResponse.ok && (!termiiData.code || termiiData.code === 'ok')) {
+            // Log WhatsApp sent alert
+            await supabaseAdmin.from('sent_alerts').insert({
+              pharmacy_id: pharmacy.id,
+              alert_type: 'daily_digest',
+              channel: 'whatsapp',
+              recipient_phone: formattedPhone,
+              message: message,
+              status: 'sent',
+              termii_message_id: termiiData.message_id,
+              items_included: [...expiryAlerts.map(m => m.id), ...stockAlerts.map(m => m.id)],
+            });
+            messageSent = true;
+            results.push({ pharmacy: pharmacy.name, alerts: totalAlerts, sent: true });
+          } else {
+            console.error(`Termii WhatsApp error for ${pharmacy.name}:`, termiiData);
+          }
+        }
+
+        // Fallback to SMS if WhatsApp failed or no device ID
+        if (!messageSent) {
           console.log(`Trying SMS fallback for ${pharmacy.name}...`);
           const smsResponse = await fetch(`${TERMII_BASE_URL}/sms/send`, {
             method: 'POST',
@@ -230,20 +252,6 @@ serve(async (req) => {
             message: message.substring(0, 900),
             status: 'sent',
             termii_message_id: smsData.message_id,
-            items_included: [...expiryAlerts.map(m => m.id), ...stockAlerts.map(m => m.id)],
-          });
-
-          results.push({ pharmacy: pharmacy.name, alerts: totalAlerts, sent: true });
-        } else {
-          // Log WhatsApp sent alert
-          await supabaseAdmin.from('sent_alerts').insert({
-            pharmacy_id: pharmacy.id,
-            alert_type: 'daily_digest',
-            channel: 'whatsapp',
-            recipient_phone: formattedPhone,
-            message: message,
-            status: 'sent',
-            termii_message_id: termiiData.message_id,
             items_included: [...expiryAlerts.map(m => m.id), ...stockAlerts.map(m => m.id)],
           });
 

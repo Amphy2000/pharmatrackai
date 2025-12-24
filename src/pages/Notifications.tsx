@@ -56,7 +56,10 @@ const Notifications = () => {
   const { pharmacy } = usePharmacy();
   const { formatPrice } = useCurrency();
   const { toast } = useToast();
-  const { isOwnerOrManager } = usePermissions();
+  const { isOwnerOrManager, userRole } = usePermissions();
+  
+  // WhatsApp buttons visible to owner, manager, and all staff roles (pharmacist, inventory clerk, senior staff)
+  const canSendAlerts = userRole !== null; // Any authenticated staff can send alerts
   const [filter, setFilter] = useState<'all' | 'high' | 'medium' | 'low'>('all');
   const [savedPhone, setSavedPhone] = useState<string>('');
   const [useWhatsApp, setUseWhatsApp] = useState(true);
@@ -294,8 +297,8 @@ const Notifications = () => {
       </header>
 
       <main className="container mx-auto px-4 py-6 space-y-6 max-w-4xl">
-        {/* Quick Send All Button - Only for Admin/Manager */}
-        {alerts.length > 0 && ownerPhone && isOwnerOrManager && (
+        {/* Quick Send All Button - Visible to all staff */}
+        {alerts.length > 0 && ownerPhone && canSendAlerts && (
           <Card className="bg-gradient-to-r from-green-500/10 to-emerald-500/10 border-green-500/30">
             <CardContent className="p-4 flex flex-col sm:flex-row items-center justify-between gap-4">
               <div className="flex items-center gap-3">
@@ -462,7 +465,7 @@ const Notifications = () => {
                                 )}
 
                                 <div className="flex gap-2 flex-wrap">
-                                  {isOwnerOrManager && (
+                                  {canSendAlerts && (
                                     <Button
                                       size="sm"
                                       variant={sentAlertIds.has(alert.id) ? "default" : "outline"}
@@ -482,7 +485,7 @@ const Notifications = () => {
                                       )}
                                     </Button>
                                   )}
-                                  {isOwnerOrManager && savedPhone && (
+                                  {canSendAlerts && savedPhone && (
                                     <Button
                                       size="sm"
                                       variant="secondary"
@@ -585,7 +588,7 @@ const Notifications = () => {
                                 )}
 
                                 <div className="flex gap-2 flex-wrap">
-                                  {isOwnerOrManager && (
+                                  {canSendAlerts && (
                                     <Button
                                       size="sm"
                                       variant={sentAlertIds.has(alert.id) ? "default" : "outline"}
