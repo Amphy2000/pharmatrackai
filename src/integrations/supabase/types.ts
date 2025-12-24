@@ -406,6 +406,7 @@ export type Database = {
           id: string
           is_controlled: boolean
           is_shelved: boolean
+          last_notified_at: string | null
           location: string | null
           manufacturing_date: string | null
           metadata: Json | null
@@ -431,6 +432,7 @@ export type Database = {
           id?: string
           is_controlled?: boolean
           is_shelved?: boolean
+          last_notified_at?: string | null
           location?: string | null
           manufacturing_date?: string | null
           metadata?: Json | null
@@ -456,6 +458,7 @@ export type Database = {
           id?: string
           is_controlled?: boolean
           is_shelved?: boolean
+          last_notified_at?: string | null
           location?: string | null
           manufacturing_date?: string | null
           metadata?: Json | null
@@ -472,6 +475,59 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "medications_pharmacy_id_fkey"
+            columns: ["pharmacy_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notifications: {
+        Row: {
+          created_at: string
+          entity_id: string | null
+          entity_type: string | null
+          id: string
+          is_read: boolean
+          link: string | null
+          message: string
+          metadata: Json | null
+          pharmacy_id: string
+          priority: string
+          title: string
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          is_read?: boolean
+          link?: string | null
+          message: string
+          metadata?: Json | null
+          pharmacy_id: string
+          priority?: string
+          title: string
+          type?: string
+        }
+        Update: {
+          created_at?: string
+          entity_id?: string | null
+          entity_type?: string | null
+          id?: string
+          is_read?: boolean
+          link?: string | null
+          message?: string
+          metadata?: Json | null
+          pharmacy_id?: string
+          priority?: string
+          title?: string
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notifications_pharmacy_id_fkey"
             columns: ["pharmacy_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
@@ -1056,6 +1112,53 @@ export type Database = {
           },
         ]
       }
+      sent_alerts: {
+        Row: {
+          alert_type: string
+          channel: string
+          created_at: string
+          id: string
+          items_included: Json | null
+          message: string
+          pharmacy_id: string
+          recipient_phone: string
+          status: string
+          termii_message_id: string | null
+        }
+        Insert: {
+          alert_type: string
+          channel: string
+          created_at?: string
+          id?: string
+          items_included?: Json | null
+          message: string
+          pharmacy_id: string
+          recipient_phone: string
+          status?: string
+          termii_message_id?: string | null
+        }
+        Update: {
+          alert_type?: string
+          channel?: string
+          created_at?: string
+          id?: string
+          items_included?: Json | null
+          message?: string
+          pharmacy_id?: string
+          recipient_phone?: string
+          status?: string
+          termii_message_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sent_alerts_pharmacy_id_fkey"
+            columns: ["pharmacy_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       shelving_history: {
         Row: {
           action: string
@@ -1441,6 +1544,8 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      check_and_create_expiry_notifications: { Args: never; Returns: undefined }
+      check_and_create_stock_notifications: { Args: never; Returns: undefined }
       generate_internal_barcode: { Args: never; Returns: string }
       generate_receipt_id: { Args: never; Returns: string }
       get_user_pharmacy_id: { Args: { user_uuid: string }; Returns: string }
