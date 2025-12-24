@@ -207,7 +207,7 @@ const guideSections: GuideSection[] = [
       'Expiry Audit Trail: Full history of expiry actions and discounting decisions',
     ],
     tips: [
-      'Generic retail POS (ShopKite, etc.) cannot track controlled substances legally',
+      'Traditional retail POS systems cannot track controlled substances legally',
       'NAFDAC inspections require proper documentation that PharmaTrack generates automatically',
       'Drug interaction warnings can prevent patient harm and liability',
       'Manufacturing dates help verify product authenticity and shelf life',
@@ -253,8 +253,8 @@ const faqs = [
     answer: 'The Manufacturing Date helps track complete product lifecycle for compliance. It appears in NAFDAC audit reports. If not provided, the system estimates it as 2 years before expiry.',
   },
   {
-    question: 'Why can\'t I use a generic retail POS like ShopKite for my pharmacy?',
-    answer: 'Generic retail apps are built for supermarkets, not pharmacies. They lack critical legal compliance features: controlled drugs register, NAFDAC audit reports, drug interaction warnings, prescription management, and manufacturing date tracking. Using a non-compliant system puts you at legal risk during inspections.',
+    question: 'Why can\'t I use a generic retail POS for my pharmacy?',
+    answer: 'Traditional retail apps are designed for supermarkets and simple inventory, not the complex needs of healthcare professionals. They lack critical legal compliance features: controlled drugs register, NAFDAC audit reports, drug interaction warnings, prescription management, and manufacturing date tracking. Using a non-compliant system puts you at legal risk during inspections.',
   },
   {
     question: 'What makes PharmaTrack different from other inventory apps?',

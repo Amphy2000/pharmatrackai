@@ -244,7 +244,7 @@ const SalesPitch = () => {
     source: 'Operational efficiency study'
   }];
 
-  // ShopKite vs PharmaTrack AI - Premium Comparison Table
+  // Generic POS vs PharmaTrack AI - Premium Comparison Table
   const comparisonData = [{
     feature: 'Inventory Entry',
     old: 'Manual search of 100k items',
@@ -272,7 +272,7 @@ const SalesPitch = () => {
     impact: 'high'
   }, {
     feature: 'Hardware',
-    old: '₦300k "Stella" Device needed',
+    old: '₦300k dedicated device needed',
     pharmatrack: 'Zero Hardware: Runs on the phone/laptop you already own',
     impact: 'high'
   }];
@@ -322,11 +322,11 @@ const SalesPitch = () => {
 
   // "Stop the Leakage" pitch content
   const stopLeakagePitch = {
-    headline: "General apps like ShopKite are built to sell bread and soap.",
-    subline: "PharmaTrack AI is built to protect a Pharmacy's license and profit.",
+    headline: "Traditional retail POS systems are built to sell bread and soap.",
+    subline: "PharmaTrack AI is purpose-built to protect a Pharmacy's license and profit.",
     points: [{
       title: 'Stop Staff Fraud',
-      description: "ShopKite allows staff to change prices during a sale—that's where your profit disappears. We lock your prices so only the Pharmacist has control.",
+      description: "Generic inventory apps allow staff to change prices during a sale—that's where your profit disappears. We lock your prices so only the Pharmacist has control.",
       icon: Lock,
       color: 'destructive'
     }, {
@@ -579,7 +579,7 @@ const SalesPitch = () => {
               Why <span className="text-destructive">Generic Retail POS</span> Fails Pharmacies
             </h2>
             <p className="text-lg sm:text-xl text-muted-foreground max-w-3xl mx-auto">
-              Generic apps like ShopKite are built for supermarkets, not pharmacies. 
+              Traditional inventory systems are designed for supermarkets, not the complex needs of pharmacists. 
               <span className="text-primary font-semibold"> You need pharmacy-specific compliance features to avoid legal trouble.</span>
             </p>
           </motion.div>
