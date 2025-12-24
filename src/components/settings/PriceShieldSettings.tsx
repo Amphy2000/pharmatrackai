@@ -5,10 +5,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import { ShieldCheck, Lock, Eye, EyeOff, AlertTriangle, Check, Percent } from 'lucide-react';
+import { ShieldCheck, Lock, Eye, EyeOff, AlertTriangle, Check, Percent, Loader2 } from 'lucide-react';
 import { usePharmacy } from '@/hooks/usePharmacy';
 import { useToast } from '@/hooks/use-toast';
-import { hashPin } from '@/components/pos/AdminPinModal';
+import { supabase } from '@/integrations/supabase/client';
 
 export const PriceShieldSettings = () => {
   const { pharmacy, updatePharmacySettings } = usePharmacy();
@@ -20,6 +20,7 @@ export const PriceShieldSettings = () => {
   const [confirmPin, setConfirmPin] = useState('');
   const [showPin, setShowPin] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSavingPin, setIsSavingPin] = useState(false);
 
   // Sync state when pharmacy data loads
   useEffect(() => {
@@ -30,9 +31,19 @@ export const PriceShieldSettings = () => {
   }, [pharmacy]);
 
   const hasExistingPin = !!(pharmacy as any)?.admin_pin_hash;
+  const pharmacyId = pharmacy?.id;
 
-  const handleSaveSettings = async () => {
-    if (priceLockEnabled && newPin && newPin !== confirmPin) {
+  const handleSetPin = async () => {
+    if (!pharmacyId) {
+      toast({
+        title: 'Error',
+        description: 'Pharmacy not found',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (newPin !== confirmPin) {
       toast({
         title: 'PIN mismatch',
         description: 'The PINs you entered do not match',
@@ -41,15 +52,72 @@ export const PriceShieldSettings = () => {
       return;
     }
 
-    if (priceLockEnabled && newPin && newPin.length < 4) {
+    if (newPin.length < 4 || newPin.length > 6) {
       toast({
         title: 'Invalid PIN',
-        description: 'PIN must be at least 4 digits',
+        description: 'PIN must be 4-6 digits',
         variant: 'destructive',
       });
       return;
     }
 
+    if (!/^\d+$/.test(newPin)) {
+      toast({
+        title: 'Invalid PIN',
+        description: 'PIN must contain only numbers',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsSavingPin(true);
+
+    try {
+      const { data, error } = await supabase.functions.invoke('verify-admin-pin', {
+        body: {
+          pharmacyId,
+          pin: newPin,
+          action: 'set'
+        }
+      });
+
+      if (error) {
+        console.error('Error setting PIN:', error);
+        toast({
+          title: 'Error',
+          description: 'Failed to set PIN. Please try again.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      if (data.valid) {
+        toast({
+          title: 'PIN Set',
+          description: 'Admin PIN has been securely configured',
+        });
+        setNewPin('');
+        setConfirmPin('');
+      } else {
+        toast({
+          title: 'Error',
+          description: data.error || 'Failed to set PIN',
+          variant: 'destructive',
+        });
+      }
+    } catch (error) {
+      console.error('PIN setting exception:', error);
+      toast({
+        title: 'Error',
+        description: 'An error occurred while setting the PIN',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSavingPin(false);
+    }
+  };
+
+  const handleSaveSettings = async () => {
     setIsSaving(true);
 
     try {
@@ -58,20 +126,12 @@ export const PriceShieldSettings = () => {
         default_margin_percent: defaultMargin,
       };
 
-      // Only update PIN if a new one is provided
-      if (newPin && newPin.length >= 4) {
-        updates.admin_pin_hash = hashPin(newPin);
-      }
-
       await updatePharmacySettings.mutateAsync(updates);
 
       toast({
         title: 'Settings saved',
         description: 'Price Shield and margin settings updated successfully',
       });
-
-      setNewPin('');
-      setConfirmPin('');
     } catch (error) {
       toast({
         title: 'Error',
@@ -162,8 +222,29 @@ export const PriceShieldSettings = () => {
                 {hasExistingPin && (
                   <Badge variant="outline" className="text-success border-success/30">
                     <Check className="h-3 w-3 mr-1" />
-                    PIN already configured
+                    PIN already configured (securely hashed)
                   </Badge>
+                )}
+
+                {newPin.length >= 4 && confirmPin.length >= 4 && (
+                  <Button 
+                    onClick={handleSetPin} 
+                    disabled={isSavingPin || newPin !== confirmPin}
+                    variant="secondary"
+                    size="sm"
+                  >
+                    {isSavingPin ? (
+                      <>
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        Setting PIN...
+                      </>
+                    ) : (
+                      <>
+                        <Lock className="h-4 w-4 mr-2" />
+                        {hasExistingPin ? 'Update PIN' : 'Set PIN'}
+                      </>
+                    )}
+                  </Button>
                 )}
               </div>
             </div>

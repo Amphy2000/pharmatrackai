@@ -3,74 +3,100 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ShieldCheck, Lock, AlertTriangle } from 'lucide-react';
+import { ShieldCheck, Lock, AlertTriangle, Loader2 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface AdminPinModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
-  adminPinHash: string | null;
+  pharmacyId: string;
   title?: string;
   description?: string;
 }
-
-// Simple hash function for PIN verification (in production, use bcrypt on server)
-const hashPin = (pin: string): string => {
-  let hash = 0;
-  for (let i = 0; i < pin.length; i++) {
-    const char = pin.charCodeAt(i);
-    hash = ((hash << 5) - hash) + char;
-    hash = hash & hash;
-  }
-  return hash.toString();
-};
 
 export const AdminPinModal = ({ 
   open, 
   onOpenChange, 
   onSuccess, 
-  adminPinHash,
+  pharmacyId,
   title = 'Admin Authorization Required',
   description = 'Enter admin PIN to proceed with this action'
 }: AdminPinModalProps) => {
   const [pin, setPin] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const [attempts, setAttempts] = useState(0);
+  const [remainingAttempts, setRemainingAttempts] = useState<number | null>(null);
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [noPinSet, setNoPinSet] = useState(false);
 
-  const handleSubmit = () => {
-    if (!adminPinHash) {
-      // No PIN set, allow action (first-time setup)
-      onSuccess();
-      onOpenChange(false);
+  const handleSubmit = async () => {
+    if (!pharmacyId) {
+      setError('Pharmacy not found');
       return;
     }
 
-    const enteredHash = hashPin(pin);
-    
-    if (enteredHash === adminPinHash) {
-      setPin('');
-      setError(null);
-      setAttempts(0);
-      onSuccess();
-      onOpenChange(false);
-    } else {
-      setAttempts(a => a + 1);
-      setError(`Incorrect PIN. ${3 - attempts - 1} attempts remaining.`);
-      setPin('');
-      
-      if (attempts >= 2) {
-        setError('Too many failed attempts. Please contact admin.');
-        setTimeout(() => {
-          onOpenChange(false);
-          setAttempts(0);
-        }, 2000);
+    setIsVerifying(true);
+    setError(null);
+
+    try {
+      const { data, error: funcError } = await supabase.functions.invoke('verify-admin-pin', {
+        body: {
+          pharmacyId,
+          pin,
+          action: 'verify'
+        }
+      });
+
+      if (funcError) {
+        console.error('PIN verification error:', funcError);
+        setError('Failed to verify PIN. Please try again.');
+        return;
       }
+
+      if (data.noPinSet) {
+        // No PIN configured, allow action
+        setNoPinSet(true);
+        setPin('');
+        setError(null);
+        onSuccess();
+        onOpenChange(false);
+        return;
+      }
+
+      if (data.valid) {
+        setPin('');
+        setError(null);
+        setRemainingAttempts(null);
+        onSuccess();
+        onOpenChange(false);
+        toast.success('Admin PIN verified');
+      } else {
+        setRemainingAttempts(data.remainingAttempts ?? null);
+        
+        if (data.remainingAttempts === 0) {
+          setError('Too many failed attempts. Please try again in 15 minutes.');
+          setTimeout(() => {
+            onOpenChange(false);
+          }, 3000);
+        } else {
+          setError(`Incorrect PIN. ${data.remainingAttempts} attempts remaining.`);
+        }
+        setPin('');
+      }
+    } catch (err) {
+      console.error('PIN verification exception:', err);
+      setError('An error occurred. Please try again.');
+    } finally {
+      setIsVerifying(false);
     }
   };
 
   const handleClose = () => {
     setPin('');
     setError(null);
+    setRemainingAttempts(null);
+    setNoPinSet(false);
     onOpenChange(false);
   };
 
@@ -106,23 +132,24 @@ export const AdminPinModal = ({
                 setError(null);
               }}
               onKeyDown={(e) => {
-                if (e.key === 'Enter' && pin.length >= 4) {
+                if (e.key === 'Enter' && pin.length >= 4 && !isVerifying) {
                   handleSubmit();
                 }
               }}
               className="text-center text-2xl tracking-widest"
               autoFocus
+              disabled={isVerifying || remainingAttempts === 0}
             />
           </div>
 
           {error && (
             <div className="flex items-center gap-2 text-sm text-destructive bg-destructive/10 p-3 rounded-lg">
-              <AlertTriangle className="h-4 w-4" />
+              <AlertTriangle className="h-4 w-4 flex-shrink-0" />
               {error}
             </div>
           )}
 
-          {!adminPinHash && (
+          {noPinSet && (
             <div className="text-xs text-muted-foreground bg-muted/50 p-3 rounded-lg">
               No admin PIN has been set. Go to Settings to configure Price Shield protection.
             </div>
@@ -130,20 +157,24 @@ export const AdminPinModal = ({
         </div>
 
         <DialogFooter>
-          <Button variant="outline" onClick={handleClose}>
+          <Button variant="outline" onClick={handleClose} disabled={isVerifying}>
             Cancel
           </Button>
           <Button 
             onClick={handleSubmit} 
-            disabled={pin.length < 4 || attempts >= 3}
+            disabled={pin.length < 4 || isVerifying || remainingAttempts === 0}
           >
-            Verify PIN
+            {isVerifying ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Verifying...
+              </>
+            ) : (
+              'Verify PIN'
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 };
-
-// Export the hash function for setting PIN
-export { hashPin };
