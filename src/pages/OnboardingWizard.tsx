@@ -86,6 +86,23 @@ const OnboardingWizard = () => {
 
       if (staffError) throw staffError;
 
+      // Send welcome SMS (fire and forget - don't block registration)
+      if (phone) {
+        try {
+          const ownerName = user.user_metadata?.full_name || pharmacyName;
+          await supabase.functions.invoke('send-welcome-sms', {
+            body: {
+              pharmacyId: pharmacy.id,
+              ownerName,
+              phone,
+            },
+          });
+        } catch (smsError) {
+          // Log but don't fail - SMS is not critical
+          console.error('Failed to send welcome SMS:', smsError);
+        }
+      }
+
       toast({
         title: 'Pharmacy Created!',
         description: 'Your pharmacy has been set up successfully.',
