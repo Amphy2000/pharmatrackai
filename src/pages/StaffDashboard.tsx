@@ -12,6 +12,9 @@ import { MetricCard } from '@/components/dashboard/MetricCard';
 import { ShiftClock } from '@/components/dashboard/ShiftClock';
 import { StaffQuickActions } from '@/components/dashboard/StaffQuickActions';
 import { ExpiryDiscountEngine } from '@/components/dashboard/ExpiryDiscountEngine';
+import { QuickGlancePanel } from '@/components/dashboard/QuickGlancePanel';
+import { AlertSummaryWidget } from '@/components/dashboard/AlertSummaryWidget';
+import { LiveActivityFeed } from '@/components/dashboard/LiveActivityFeed';
 import { 
   Package, 
   AlertTriangle, 
@@ -20,7 +23,8 @@ import {
   ShoppingCart,
   Loader2,
   Users,
-  PackageSearch
+  PackageSearch,
+  Zap
 } from 'lucide-react';
 
 const containerVariants: Variants = {
@@ -83,7 +87,7 @@ const StaffDashboard = () => {
       <Header />
       
       <main className="container mx-auto px-4 sm:px-6 py-6 sm:py-8 max-w-[1400px]">
-        {/* Welcome Section */}
+        {/* Welcome Section with AI Badge */}
         <motion.section 
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -91,13 +95,20 @@ const StaffDashboard = () => {
           className="mb-8"
         >
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold font-display tracking-tight mb-1">
-                Welcome back, <span className="text-gradient">{user.user_metadata?.full_name || user.email?.split('@')[0]}</span>
-              </h1>
-              <p className="text-sm text-muted-foreground">
-                Here's what needs your attention at <span className="font-medium text-foreground">{pharmacy.name}</span>
-              </p>
+            <div className="flex items-center gap-4 flex-wrap">
+              <div>
+                <h1 className="text-2xl sm:text-3xl font-bold font-display tracking-tight mb-1">
+                  Welcome back, <span className="text-gradient">{user.user_metadata?.full_name || user.email?.split('@')[0]}</span>
+                </h1>
+                <p className="text-sm text-muted-foreground">
+                  Here's what needs your attention at <span className="font-medium text-foreground">{pharmacy.name}</span>
+                </p>
+              </div>
+              {/* AI Active Badge */}
+              <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary/10 border border-primary/20 backdrop-blur-sm">
+                <Zap className="h-4 w-4 text-primary animate-pulse" />
+                <span className="text-sm text-primary font-medium">AI Active</span>
+              </div>
             </div>
             <div className="flex flex-wrap items-center gap-3">
               <Button 
@@ -109,6 +120,33 @@ const StaffDashboard = () => {
               </Button>
             </div>
           </div>
+        </motion.section>
+
+        {/* Quick Glance & Live Activity Row */}
+        <motion.section 
+          variants={containerVariants}
+          initial="hidden"
+          animate="visible"
+          className="mb-8"
+        >
+          <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-3">
+            <motion.div variants={itemVariants} className="lg:col-span-2">
+              <QuickGlancePanel />
+            </motion.div>
+            <motion.div variants={itemVariants} className="lg:col-span-1">
+              <LiveActivityFeed />
+            </motion.div>
+          </div>
+        </motion.section>
+
+        {/* Alert Summary Widget */}
+        <motion.section 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.2 }}
+          className="mb-8"
+        >
+          <AlertSummaryWidget />
         </motion.section>
 
         {/* Shift Clock & Quick Actions */}
@@ -128,7 +166,7 @@ const StaffDashboard = () => {
           </div>
         </motion.section>
 
-        {/* Key Metrics - Clinical Focus (No Financial Data) */}
+        {/* Key Metrics - Clinical Focus */}
         <motion.section 
           variants={containerVariants}
           initial="hidden"
@@ -175,7 +213,7 @@ const StaffDashboard = () => {
           </div>
         </motion.section>
 
-        {/* Expiry Discount Engine - Helpful for staff */}
+        {/* Expiry Discount Engine */}
         {medications.length > 0 && (
           <motion.section 
             initial={{ opacity: 0, y: 20 }}
@@ -193,49 +231,54 @@ const StaffDashboard = () => {
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.5 }}
         >
-          <Card className="glass-card border-border/50">
-            <CardHeader>
+          <Card className="glass-card border-border/50 overflow-hidden">
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-accent/5 pointer-events-none" />
+            <CardHeader className="relative">
               <CardTitle className="font-display">Quick Actions</CardTitle>
               <CardDescription>Navigate to common tasks</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="relative">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <Button
                   variant="outline"
-                  className="h-24 flex flex-col items-center justify-center gap-3 hover:bg-primary/5 hover:border-primary/30 transition-all group"
+                  className="h-24 flex flex-col items-center justify-center gap-3 hover:bg-primary/10 hover:border-primary/40 hover:shadow-glow-primary/20 transition-all group relative overflow-hidden"
                   onClick={() => navigate('/checkout')}
                 >
-                  <ShoppingCart className="h-6 w-6 group-hover:text-primary transition-colors" />
-                  <span className="text-sm">Point of Sale</span>
+                  <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                  <ShoppingCart className="h-6 w-6 group-hover:text-primary group-hover:scale-110 transition-all" />
+                  <span className="text-sm font-medium relative z-10">Point of Sale</span>
                 </Button>
                 {hasPermission('access_inventory') && (
                   <Button
                     variant="outline"
-                    className="h-24 flex flex-col items-center justify-center gap-3 hover:bg-primary/5 hover:border-primary/30 transition-all group"
+                    className="h-24 flex flex-col items-center justify-center gap-3 hover:bg-primary/10 hover:border-primary/40 hover:shadow-glow-primary/20 transition-all group relative overflow-hidden"
                     onClick={() => navigate('/inventory')}
                   >
-                    <PackageSearch className="h-6 w-6 group-hover:text-primary transition-colors" />
-                    <span className="text-sm">Inventory</span>
+                    <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <PackageSearch className="h-6 w-6 group-hover:text-primary group-hover:scale-110 transition-all" />
+                    <span className="text-sm font-medium relative z-10">Inventory</span>
                   </Button>
                 )}
                 {hasPermission('access_customers') && (
                   <Button
                     variant="outline"
-                    className="h-24 flex flex-col items-center justify-center gap-3 hover:bg-primary/5 hover:border-primary/30 transition-all group"
+                    className="h-24 flex flex-col items-center justify-center gap-3 hover:bg-primary/10 hover:border-primary/40 hover:shadow-glow-primary/20 transition-all group relative overflow-hidden"
                     onClick={() => navigate('/customers')}
                   >
-                    <Users className="h-6 w-6 group-hover:text-primary transition-colors" />
-                    <span className="text-sm">Customers</span>
+                    <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <Users className="h-6 w-6 group-hover:text-primary group-hover:scale-110 transition-all" />
+                    <span className="text-sm font-medium relative z-10">Customers</span>
                   </Button>
                 )}
                 {(hasPermission('view_own_sales') || hasPermission('view_reports')) && (
                   <Button
                     variant="outline"
-                    className="h-24 flex flex-col items-center justify-center gap-3 hover:bg-primary/5 hover:border-primary/30 transition-all group"
+                    className="h-24 flex flex-col items-center justify-center gap-3 hover:bg-primary/10 hover:border-primary/40 hover:shadow-glow-primary/20 transition-all group relative overflow-hidden"
                     onClick={() => navigate('/my-sales')}
                   >
-                    <Clock className="h-6 w-6 group-hover:text-primary transition-colors" />
-                    <span className="text-sm">My Sales</span>
+                    <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <Clock className="h-6 w-6 group-hover:text-primary group-hover:scale-110 transition-all" />
+                    <span className="text-sm font-medium relative z-10">My Sales</span>
                   </Button>
                 )}
               </div>
