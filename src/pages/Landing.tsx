@@ -120,6 +120,7 @@ const Landing = () => {
     { feature: 'Compliance', oldApp: 'Generic Expiry alerts only', pharmatrack: '2025 NAFDAC Ready: Auto-generates Batch/BN Traceability logs', critical: true },
     { feature: 'Anti-Theft', oldApp: 'Staff can edit prices easily', pharmatrack: 'Locked Pricing: Zero-Price-Manipulation (Admin Only)', critical: true },
     { feature: 'Clinical Care', oldApp: 'Basic grocery-style receipt', pharmatrack: 'Digital Dispensing: Integrated Dosage & Ingredient Search', critical: true },
+    { feature: 'Owner Alerts', oldApp: 'No automated notifications', pharmatrack: 'SMS & WhatsApp: Instant low-stock & expiry alerts to your phone', critical: true },
     { feature: 'Performance', oldApp: 'Bloated app; lags on older phones', pharmatrack: 'High-Speed Lite: Instant login on all Nigerian networks', critical: false },
     { feature: 'Hardware', oldApp: '₦300k "Stella" Device needed', pharmatrack: 'Zero Hardware: Runs on the phone/laptop you already own', critical: false },
   ];
@@ -622,8 +623,8 @@ const Landing = () => {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {[
                 { icon: TrendingUp, label: 'Sales Analytics', desc: 'Real-time insights' },
+                { icon: Phone, label: 'Automated Alerts', desc: 'SMS & WhatsApp' },
                 { icon: ShieldCheck, label: 'NAFDAC Compliance', desc: 'Audit-ready reports' },
-                { icon: Calculator, label: 'Profit Tracking', desc: 'Margin analysis' },
                 { icon: Sparkles, label: 'Controlled Drugs', desc: 'Narcotics register' },
               ].map((feature, i) => (
                 <div key={i} className="p-4 rounded-xl bg-muted/30 border border-border/50 text-center hover:bg-muted/50 transition-colors">

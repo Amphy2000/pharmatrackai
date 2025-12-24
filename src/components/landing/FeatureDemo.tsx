@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Camera, Package, Lock, Shield, Zap, Timer, Check, X, Scan } from 'lucide-react';
+import { Camera, Package, Lock, Shield, Bell, Check, X, Scan, MessageCircle, Smartphone, Clock, AlertTriangle, Timer, Zap } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 
 const fadeInUp = {
@@ -78,6 +78,122 @@ const InvoiceScannerDemo = () => {
       {/* Label */}
       <div className="absolute bottom-2 left-2 text-[10px] text-muted-foreground font-medium">
         50+ items in 10 seconds
+      </div>
+    </div>
+  );
+};
+
+// Automated Alerts Animation - Owner's Peace of Mind
+const AutomatedAlertsDemo = () => {
+  return (
+    <div className="relative h-48 overflow-hidden rounded-xl bg-gradient-to-br from-success/5 to-success/10 border border-success/20">
+      {/* Phone showing WhatsApp/SMS */}
+      <motion.div 
+        className="absolute left-[20%] top-1/2 -translate-y-1/2 w-16 h-28 rounded-xl bg-background border-2 border-border shadow-xl overflow-hidden"
+        initial={{ scale: 0.8, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        transition={{ duration: 0.5 }}
+      >
+        {/* Phone screen */}
+        <div className="absolute inset-1 bg-muted/50 rounded-lg">
+          {/* Notification */}
+          <motion.div
+            className="absolute top-2 left-1 right-1 bg-success/20 rounded p-1"
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: [0, 1, 1, 0], y: [-10, 0, 0, 0] }}
+            transition={{ duration: 0.5, delay: 1, repeat: Infinity, repeatDelay: 4 }}
+          >
+            <div className="flex items-center gap-1">
+              <MessageCircle className="w-2 h-2 text-success" />
+              <div className="w-6 h-0.5 bg-success/50 rounded" />
+            </div>
+          </motion.div>
+          
+          {/* Second notification */}
+          <motion.div
+            className="absolute top-8 left-1 right-1 bg-warning/20 rounded p-1"
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: [0, 1, 1, 0], y: [-10, 0, 0, 0] }}
+            transition={{ duration: 0.5, delay: 2, repeat: Infinity, repeatDelay: 4 }}
+          >
+            <div className="flex items-center gap-1">
+              <Bell className="w-2 h-2 text-warning" />
+              <div className="w-5 h-0.5 bg-warning/50 rounded" />
+            </div>
+          </motion.div>
+        </div>
+      </motion.div>
+
+      {/* Inventory Issue Icons */}
+      <div className="absolute right-[15%] top-1/4 space-y-3">
+        {/* Low Stock Alert */}
+        <motion.div
+          className="flex items-center gap-2"
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: [0, 1], x: [20, 0] }}
+          transition={{ duration: 0.4, delay: 0.5, repeat: Infinity, repeatDelay: 4.5 }}
+        >
+          <div className="w-6 h-6 rounded-full bg-destructive/20 flex items-center justify-center">
+            <Package className="w-3 h-3 text-destructive" />
+          </div>
+          <div className="text-[8px] text-muted-foreground">Low Stock</div>
+        </motion.div>
+
+        {/* Expiry Alert */}
+        <motion.div
+          className="flex items-center gap-2"
+          initial={{ opacity: 0, x: 20 }}
+          animate={{ opacity: [0, 1], x: [20, 0] }}
+          transition={{ duration: 0.4, delay: 1.5, repeat: Infinity, repeatDelay: 4.5 }}
+        >
+          <div className="w-6 h-6 rounded-full bg-warning/20 flex items-center justify-center">
+            <Clock className="w-3 h-3 text-warning" />
+          </div>
+          <div className="text-[8px] text-muted-foreground">Expiring</div>
+        </motion.div>
+      </div>
+
+      {/* Arrow showing alert flow */}
+      <motion.div
+        className="absolute left-[45%] top-1/2 -translate-y-1/2"
+        initial={{ opacity: 0, scale: 0 }}
+        animate={{ opacity: [0, 1, 1, 0], scale: [0, 1, 1, 1] }}
+        transition={{ duration: 0.3, delay: 2.5, repeat: Infinity, repeatDelay: 4.2 }}
+      >
+        <svg width="24" height="12" viewBox="0 0 24 12" className="text-success">
+          <motion.path
+            d="M0 6 L20 6 M14 1 L20 6 L14 11"
+            stroke="currentColor"
+            strokeWidth="2"
+            fill="none"
+            initial={{ pathLength: 0 }}
+            animate={{ pathLength: 1 }}
+            transition={{ duration: 0.5, delay: 2.5, repeat: Infinity, repeatDelay: 4 }}
+          />
+        </svg>
+      </motion.div>
+
+      {/* Owner relaxing indicator */}
+      <motion.div
+        className="absolute right-3 bottom-8 bg-success/20 rounded-full px-2 py-1 flex items-center gap-1"
+        initial={{ opacity: 0, scale: 0 }}
+        animate={{ opacity: [0, 1], scale: [0, 1] }}
+        transition={{ duration: 0.3, delay: 3, repeat: Infinity, repeatDelay: 4.2 }}
+      >
+        <Check className="w-3 h-3 text-success" />
+        <span className="text-[8px] font-medium text-success">Alerted!</span>
+      </motion.div>
+
+      {/* Vibration effect on phone */}
+      <motion.div
+        className="absolute left-[20%] top-1/2 -translate-y-1/2 w-16 h-28"
+        animate={{ x: [0, -2, 2, -2, 2, 0] }}
+        transition={{ duration: 0.3, delay: 1.2, repeat: Infinity, repeatDelay: 4.2 }}
+      />
+
+      {/* Label */}
+      <div className="absolute bottom-2 left-2 text-[10px] text-muted-foreground font-medium">
+        Alerts while you sleep
       </div>
     </div>
   );
@@ -240,10 +356,10 @@ export const FeatureDemo = ({ isInternational = false }: FeatureDemoProps) => {
       color: 'destructive'
     },
     {
-      title: 'Lightning Fast',
-      description: 'Optimized for Nigerian networks. While other apps spin, PharmaTrack is already serving customers.',
-      icon: Zap,
-      demo: <SpeedComparisonDemo />,
+      title: 'Automated Alerts',
+      description: 'Get SMS & WhatsApp alerts when stock runs low or items expire. Stay informed even when you are away from the shop.',
+      icon: Bell,
+      demo: <AutomatedAlertsDemo />,
       color: 'success'
     }
   ];

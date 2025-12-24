@@ -81,6 +81,21 @@ export const ownerTourSteps: TourStep[] = [
     animation: 'scale',
   },
   {
+    id: 'alerts',
+    title: 'Automated Alerts That Work For You',
+    description: 'Never miss a critical inventory moment. Get instant SMS or WhatsApp alerts when stock runs low or items approach expiry—even when you\'re away from the shop.',
+    features: [
+      'Low stock SMS/WhatsApp alerts',
+      'Expiry warning notifications',
+      'Daily digest summaries',
+      'Customizable alert thresholds',
+      'Multi-channel delivery (SMS + WhatsApp)',
+      'One-click alert actions from your phone'
+    ],
+    icon: 'zap',
+    animation: 'bounce',
+  },
+  {
     id: 'staff',
     title: 'Team Management',
     description: 'Manage your staff efficiently with role-based access, shift tracking, and performance monitoring.',
@@ -147,7 +162,8 @@ export const staffTourSteps: TourStep[] = [
       'Clock in to start your shift',
       'View today\'s transactions',
       'Track items you\'ve sold',
-      'Quick access to POS'
+      'Quick access to POS',
+      'See manager alerts for low stock'
     ],
     icon: 'dashboard',
     animation: 'fade',
@@ -230,6 +246,7 @@ export const pharmacistTourSteps: TourStep[] = [
     features: [
       'Low stock notifications',
       'Expiry date alerts',
+      'Automated SMS/WhatsApp alerts',
       'Daily sales summary',
       'Quick navigation to key areas'
     ],
