@@ -81,7 +81,7 @@ export const VideoShowcase = () => {
           </p>
         </motion.div>
 
-        {/* Video Placeholder */}
+        {/* YouTube Video Embed */}
         <motion.div initial={{
         opacity: 0,
         scale: 0.95
@@ -91,51 +91,16 @@ export const VideoShowcase = () => {
       }} viewport={{
         once: true
       }} className="max-w-4xl mx-auto mb-20">
-          <Card className="overflow-hidden border-2 border-dashed border-primary/30 bg-gradient-to-br from-primary/5 to-primary/10">
+          <Card className="overflow-hidden border border-primary/20 shadow-xl shadow-primary/5">
             <CardContent className="p-0">
-              <div className="relative aspect-video flex items-center justify-center">
-                {/* Gradient Background */}
-                <div className="absolute inset-0 bg-gradient-to-br from-background via-primary/5 to-secondary/10" />
-                
-                {/* Decorative Elements */}
-                <motion.div className="absolute top-1/4 left-1/4 w-32 h-32 bg-primary/10 rounded-full blur-2xl" animate={{
-                scale: [1, 1.2, 1],
-                opacity: [0.5, 0.8, 0.5]
-              }} transition={{
-                duration: 4,
-                repeat: Infinity
-              }} />
-                <motion.div className="absolute bottom-1/4 right-1/4 w-24 h-24 bg-secondary/10 rounded-full blur-2xl" animate={{
-                scale: [1.2, 1, 1.2],
-                opacity: [0.8, 0.5, 0.8]
-              }} transition={{
-                duration: 4,
-                repeat: Infinity,
-                delay: 2
-              }} />
-                
-                {/* Play Button */}
-                <motion.div className="relative z-10 flex flex-col items-center gap-4" whileHover={{
-                scale: 1.05
-              }}>
-                  <motion.div className="w-20 h-20 rounded-full bg-primary/20 backdrop-blur-sm border border-primary/30 flex items-center justify-center cursor-pointer group" whileHover={{
-                  boxShadow: '0 0 30px hsl(var(--primary) / 0.4)'
-                }}>
-                    <Play className="w-8 h-8 text-primary ml-1 group-hover:scale-110 transition-transform" />
-                  </motion.div>
-                  <div className="text-center">
-                    <p className="text-lg font-display font-bold text-foreground">Full Demo Coming Soon</p>
-                    <p className="text-sm text-muted-foreground">3-minute walkthrough of all features</p>
-                  </div>
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                    <span className="flex items-center gap-1">
-                      <Clock className="w-4 h-4" /> 3 min
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Users className="w-4 h-4" /> For Pharmacists
-                    </span>
-                  </div>
-                </motion.div>
+              <div className="relative aspect-video">
+                <iframe
+                  src="https://www.youtube.com/embed/m_6VWIEABXQ?rel=0&modestbranding=1"
+                  title="PharmaTrack Demo Video"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  allowFullScreen
+                  className="absolute inset-0 w-full h-full"
+                />
               </div>
             </CardContent>
           </Card>
