@@ -50,7 +50,9 @@ import {
   CreditCard,
   Lock,
   Lightbulb,
+  Trash2,
 } from 'lucide-react';
+import { DeletePharmacyDialog } from '@/components/admin/DeletePharmacyDialog';
 import { format } from 'date-fns';
 import { FeatureRequestsPanel } from '@/components/admin/FeatureRequestsPanel';
 import { PlatformMetricsGrid } from '@/components/admin/PlatformMetricsGrid';
@@ -97,6 +99,8 @@ const AdminDashboard = () => {
   const [selectedPharmacy, setSelectedPharmacy] = useState<PharmacyWithMetrics | null>(null);
   const [featureDialogOpen, setFeatureDialogOpen] = useState(false);
   const [subscriptionDialogOpen, setSubscriptionDialogOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [pharmacyToDelete, setPharmacyToDelete] = useState<PharmacyWithMetrics | null>(null);
   const [newFeature, setNewFeature] = useState({
     feature_key: '',
     feature_name: '',
@@ -460,16 +464,32 @@ const AdminDashboard = () => {
                               {format(new Date(pharmacy.created_at), 'MMM dd, yyyy')}
                             </TableCell>
                             <TableCell className="text-center">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  openSubscriptionDialog(pharmacy);
-                                }}
-                              >
-                                <Edit className="h-4 w-4" />
-                              </Button>
+                              <div className="flex items-center justify-center gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    openSubscriptionDialog(pharmacy);
+                                  }}
+                                  title="Edit subscription"
+                                >
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="text-destructive hover:text-destructive hover:bg-destructive/10"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setPharmacyToDelete(pharmacy);
+                                    setDeleteDialogOpen(true);
+                                  }}
+                                  title="Delete pharmacy"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
                             </TableCell>
                           </TableRow>
                         ))}
@@ -725,6 +745,13 @@ const AdminDashboard = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Pharmacy Dialog */}
+      <DeletePharmacyDialog
+        pharmacy={pharmacyToDelete}
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+      />
     </div>
   );
 };
