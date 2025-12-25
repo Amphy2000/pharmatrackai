@@ -54,21 +54,23 @@ export const useDoctors = () => {
       const { data: userData } = await supabase.auth.getUser();
       if (!userData.user) throw new Error('Not authenticated');
 
-      const { data: staffData, error: staffError } = await supabase
+      const { data: staffRows, error: staffError } = await supabase
         .from('pharmacy_staff')
         .select('pharmacy_id')
         .eq('user_id', userData.user.id)
         .eq('is_active', true)
-        .maybeSingle();
+        .order('created_at', { ascending: false })
+        .limit(1);
 
       if (staffError) throw staffError;
-      if (!staffData) throw new Error('No pharmacy found');
+      const pharmacyId = staffRows?.[0]?.pharmacy_id;
+      if (!pharmacyId) throw new Error('No pharmacy found');
 
       const { data, error } = await supabase
         .from('doctors')
         .insert({
           ...doctor,
-          pharmacy_id: staffData.pharmacy_id,
+          pharmacy_id: pharmacyId,
           metadata: doctor.metadata || {},
         })
         .select()

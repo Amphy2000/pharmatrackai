@@ -171,14 +171,17 @@ export const useOfflineSync = () => {
         return;
       }
 
-      const { data: staffData } = await supabase
+      const { data: staffRows } = await supabase
         .from('pharmacy_staff')
         .select('pharmacy_id')
         .eq('user_id', user.id)
         .eq('is_active', true)
-        .maybeSingle();
+        .order('created_at', { ascending: false })
+        .limit(1);
 
-      if (!staffData?.pharmacy_id) {
+      const pharmacyId = staffRows?.[0]?.pharmacy_id;
+
+      if (!pharmacyId) {
         setState(prev => ({ ...prev, isSyncing: false }));
         return;
       }
@@ -193,7 +196,7 @@ export const useOfflineSync = () => {
           // Insert each sale item
           for (const item of sale.items) {
             await supabase.from('sales').insert({
-              pharmacy_id: staffData.pharmacy_id,
+              pharmacy_id: pharmacyId,
               medication_id: item.medicationId,
               quantity: item.quantity,
               unit_price: item.unitPrice,

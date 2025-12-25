@@ -22,10 +22,11 @@ export const usePharmacy = () => {
         .select('pharmacy_id')
         .eq('user_id', user.id)
         .eq('is_active', true)
-        .maybeSingle();
+        .order('created_at', { ascending: false })
+        .limit(1);
 
       if (error) throw error;
-      return data?.pharmacy_id || null;
+      return data?.[0]?.pharmacy_id || null;
     },
     enabled: !!user?.id,
   });
