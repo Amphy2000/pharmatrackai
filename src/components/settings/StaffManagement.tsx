@@ -188,8 +188,8 @@ export const StaffManagement = () => {
                       </div>
 
                       <div className="flex flex-wrap items-center gap-2">
-                        {/* Owner controls only */}
-                        {member.role !== 'owner' && userRole === 'owner' && (
+                        {/* Owner controls - full management */}
+                        {member.role !== 'owner' && isOwner && (
                           <>
                             {/* Branch Assignment */}
                             <Select
@@ -254,6 +254,52 @@ export const StaffManagement = () => {
                             </div>
                           </>
                         )}
+
+                        {/* Manager controls - can only manage staff (not managers/owners) */}
+                        {member.role === 'staff' && isManager && (
+                          <>
+                            {/* Permission Templates (role presets) */}
+                            <Select
+                              value=""
+                              onValueChange={(templateKey) => {
+                                const template = ROLE_TEMPLATES[templateKey];
+                                if (template) {
+                                  updateStaffPermissions(member.id, template.permissions);
+                                }
+                              }}
+                            >
+                              <SelectTrigger className="w-36">
+                                <SelectValue placeholder="Set Role" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {Object.entries(ROLE_TEMPLATES).map(([key, template]) => (
+                                  <SelectItem key={key} value={key}>
+                                    {template.name}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => navigateToPermissions(member.id)}
+                            >
+                              Permissions
+                              <ChevronRight className="h-4 w-4 ml-1" />
+                            </Button>
+
+                            <div className="flex items-center gap-2 ml-2">
+                              <Switch
+                                checked={member.is_active}
+                                onCheckedChange={(checked) => toggleStaffActive(member.id, checked)}
+                              />
+                              <span className="text-xs text-muted-foreground">
+                                {member.is_active ? 'Active' : 'Inactive'}
+                              </span>
+                            </div>
+                          </>
+                        )}
                       </div>
                     </div>
 
@@ -261,11 +307,11 @@ export const StaffManagement = () => {
                     {member.role === 'staff' && (
                       <div 
                         className={
-                          userRole === 'owner'
+                          isOwnerOrManager
                             ? 'mt-3 flex flex-wrap gap-1 cursor-pointer group'
                             : 'mt-3 flex flex-wrap gap-1'
                         }
-                        onClick={userRole === 'owner' ? () => navigateToPermissions(member.id) : undefined}
+                        onClick={isOwnerOrManager ? () => navigateToPermissions(member.id) : undefined}
                       >
                         {member.permissions.length > 0 ? (
                           <>
@@ -285,7 +331,7 @@ export const StaffManagement = () => {
                             POS access only - basic cashier permissions
                           </span>
                         )}
-                        {userRole === 'owner' && (
+                        {isOwnerOrManager && (
                           <span className="text-xs text-primary opacity-0 group-hover:opacity-100 transition-opacity ml-2">
                             Click to manage →
                           </span>
