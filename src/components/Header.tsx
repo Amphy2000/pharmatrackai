@@ -383,10 +383,13 @@ export const Header = () => {
                   <Shield className="mr-2 h-4 w-4" />
                   Security
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setPharmacySwitchOpen(true)}>
-                  <Building2 className="mr-2 h-4 w-4" />
-                  Switch Pharmacy
-                </DropdownMenuItem>
+                {/* Only owners can switch pharmacies */}
+                {userRole === 'owner' && (
+                  <DropdownMenuItem onClick={() => setPharmacySwitchOpen(true)}>
+                    <Building2 className="mr-2 h-4 w-4" />
+                    Switch Pharmacy
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem onClick={() => navigate('/profile?tab=help')}>
                   <HelpCircle className="mr-2 h-4 w-4" />
                   Help & Support

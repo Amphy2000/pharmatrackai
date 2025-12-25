@@ -30,6 +30,8 @@ import { useHeldTransactions } from '@/hooks/useHeldTransactions';
 import { usePharmacy } from '@/hooks/usePharmacy';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePendingTransactions } from '@/hooks/usePendingTransactions';
+import { useBranchContext } from '@/contexts/BranchContext';
+import { usePlanLimits } from '@/hooks/usePlanLimits';
 import { supabase } from '@/integrations/supabase/client';
 import { ProductGrid } from '@/components/pos/ProductGrid';
 import { CartPanel } from '@/components/pos/CartPanel';
@@ -70,6 +72,8 @@ const Checkout = () => {
   const { formatPrice, currency } = useCurrency();
   const { isSimpleMode, regulatory } = useRegionalSettings();
   const { pharmacy } = usePharmacy();
+  const { currentBranchName, isMainBranch } = useBranchContext();
+  const { plan } = usePlanLimits();
   const { user } = useAuth();
   const { toast } = useToast();
   const {
@@ -508,6 +512,11 @@ const Checkout = () => {
                     <Badge variant="secondary" className="text-[10px] gap-1 ml-1">
                       <Zap className="h-3 w-3" />
                       Simple
+                    </Badge>
+                  ) : plan !== 'starter' ? (
+                    <Badge variant="outline" className="text-[10px] gap-1 ml-1 border-primary/30 text-primary">
+                      <Building2 className="h-3 w-3" />
+                      {currentBranchName}
                     </Badge>
                   ) : (
                     <Badge variant="outline" className="text-[10px] gap-1 ml-1 border-primary/30 text-primary">
