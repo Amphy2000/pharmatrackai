@@ -92,14 +92,27 @@ export const AddStaffModal = ({ isOpen, onClose, onSuccess, mode = 'owner', forc
         },
       });
 
-      if (response.error) {
-        console.error('Edge function error:', response.error);
-        throw new Error(response.error.message || 'Failed to create staff member');
-      }
+      const rawErrorMessage =
+        (response.data as any)?.error ??
+        (response.error ? response.error.message : null);
 
-      if (response.data?.error) {
-        console.error('Response data error:', response.data.error);
-        throw new Error(response.data.error);
+      if (rawErrorMessage) {
+        const msg = String(rawErrorMessage);
+        console.error('Create staff failed:', { msg, response });
+
+        const lower = msg.toLowerCase();
+        const isEmailExists =
+          lower.includes('already been registered') ||
+          lower.includes('already registered');
+
+        toast({
+          title: isEmailExists ? 'Email Already Registered' : 'Failed to Add Staff',
+          description: isEmailExists
+            ? 'That email already has an account. Use a different email, or ask the user to reset their password.'
+            : msg,
+          variant: 'destructive',
+        });
+        return;
       }
 
       toast({
@@ -169,7 +182,7 @@ export const AddStaffModal = ({ isOpen, onClose, onSuccess, mode = 'owner', forc
             Add Staff Member
           </DialogTitle>
           <DialogDescription>
-            Create a new account for a team member. They will receive an email to verify their account.
+            Create a new account for a team member. They can log in immediately with these credentials.
           </DialogDescription>
         </DialogHeader>
 

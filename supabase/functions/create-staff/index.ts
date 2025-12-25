@@ -260,6 +260,15 @@ serve(async (req: Request) => {
     const body = await req.json();
     const { email, password, fullName, phone, role, pharmacyId, branchId, permissions } = validateInput(body);
 
+    console.log('[create-staff] request', {
+      requesting_user_id: requestingUser.id,
+      pharmacy_id: pharmacyId,
+      branch_id: branchId,
+      role,
+      email,
+      permissions_count: permissions.length,
+    });
+
     // Verify requesting user is owner of the pharmacy
     const { data: pharmacy, error: pharmacyError } = await supabaseAdmin
       .from('pharmacies')
@@ -330,8 +339,23 @@ serve(async (req: Request) => {
     });
 
     if (createError) {
+      console.warn('[create-staff] auth.admin.createUser failed', {
+        pharmacy_id: pharmacyId,
+        requesting_user_id: requestingUser.id,
+        email,
+        message: createError.message,
+      });
+
+      const lower = createError.message.toLowerCase();
+      const isEmailExists =
+        lower.includes('already been registered') ||
+        lower.includes('already registered');
+
       return new Response(
-        JSON.stringify({ error: createError.message }),
+        JSON.stringify({
+          error: createError.message,
+          code: isEmailExists ? 'EMAIL_EXISTS' : 'CREATE_USER_FAILED',
+        }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
