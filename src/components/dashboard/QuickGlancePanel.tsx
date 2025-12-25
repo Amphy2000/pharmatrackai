@@ -5,30 +5,43 @@ import { ShoppingBag, AlertTriangle, XCircle, TrendingUp } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useCurrency } from '@/contexts/CurrencyContext';
-import { useMedications } from '@/hooks/useMedications';
+import { useBranchInventory } from '@/hooks/useBranchInventory';
+import { usePharmacy } from '@/hooks/usePharmacy';
+import { useBranchContext } from '@/contexts/BranchContext';
 import { isBefore, parseISO, startOfDay } from 'date-fns';
 
 export const QuickGlancePanel = () => {
   const { formatPrice } = useCurrency();
-  const { medications } = useMedications();
+  const { pharmacyId } = usePharmacy();
+  const { currentBranchId } = useBranchContext();
+  const { medications } = useBranchInventory();
 
-  // Fetch today's sales
+  // Fetch today's sales (branch-scoped when a branch is selected)
   const { data: todaySales } = useQuery({
-    queryKey: ['today-sales-count'],
+    queryKey: ['today-sales-count', pharmacyId, currentBranchId],
     queryFn: async () => {
+      if (!pharmacyId) return { totalItems: 0, totalValue: 0, count: 0 };
+
       const today = startOfDay(new Date()).toISOString();
-      const { data, error } = await supabase
+      let query = supabase
         .from('sales')
         .select('quantity, total_price')
+        .eq('pharmacy_id', pharmacyId)
         .gte('sale_date', today);
-      
+
+      if (currentBranchId) {
+        query = query.eq('branch_id', currentBranchId);
+      }
+
+      const { data, error } = await query;
       if (error) throw error;
-      
+
       const totalItems = data?.reduce((sum, s) => sum + s.quantity, 0) || 0;
       const totalValue = data?.reduce((sum, s) => sum + Number(s.total_price), 0) || 0;
       return { totalItems, totalValue, count: data?.length || 0 };
     },
     refetchInterval: 30000,
+    enabled: !!pharmacyId,
   });
 
   const metrics = useMemo(() => {
@@ -40,15 +53,17 @@ export const QuickGlancePanel = () => {
     let expiredCount = 0;
     let lowStockCount = 0;
 
-    medications.forEach((med) => {
+    medications.forEach((med: any) => {
+      const stock = med.branch_stock ?? med.current_stock ?? 0;
+      const reorder = med.branch_reorder_level ?? med.reorder_level ?? 0;
       const isExpired = isBefore(parseISO(med.expiry_date), new Date());
-      const isLowStock = med.current_stock <= med.reorder_level && med.current_stock > 0;
-      
+      const isLowStock = stock <= reorder && stock > 0;
+
       if (isExpired && !med.is_shelved) {
-        expiredValue += med.current_stock * med.unit_price;
+        expiredValue += stock * Number(med.unit_price);
         expiredCount++;
       }
-      
+
       if (isLowStock && !isExpired) {
         lowStockCount++;
       }
@@ -105,7 +120,9 @@ export const QuickGlancePanel = () => {
             transition={{ delay: index * 0.1 }}
             className="flex flex-col items-center justify-center text-center p-3 rounded-xl bg-muted/30 border border-border/30"
           >
-            <div className={`h-9 w-9 rounded-lg bg-gradient-to-br ${stat.gradient} flex items-center justify-center mb-2 shadow-sm`}>
+            <div
+              className={`h-9 w-9 rounded-lg bg-gradient-to-br ${stat.gradient} flex items-center justify-center mb-2 shadow-sm`}
+            >
               <stat.icon className="h-4 w-4 text-white" />
             </div>
             <p className="text-2xl font-bold tabular-nums leading-none">{stat.value}</p>
@@ -117,3 +134,4 @@ export const QuickGlancePanel = () => {
     </div>
   );
 };
+

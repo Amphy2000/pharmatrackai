@@ -67,17 +67,16 @@ export const SalesAnalytics = () => {
           unit_price,
           total_price,
           sale_date,
+          branch_id,
           medications (unit_price)
         `)
         .eq('pharmacy_id', pharmacyId)
         .gte('sale_date', dateRange.start.toISOString())
         .lte('sale_date', dateRange.end.toISOString());
 
-      // Note: Sales don't have branch_id yet, but this prepares for future enhancement
-      // When sales get branch_id, uncomment:
-      // if (branchFilter !== 'all') {
-      //   query = query.eq('branch_id', branchFilter);
-      // }
+      if (branchFilter !== 'all') {
+        query = query.eq('branch_id', branchFilter);
+      }
 
       const { data, error } = await query;
       if (error) throw error;
@@ -100,11 +99,16 @@ export const SalesAnalytics = () => {
           unit_price,
           total_price,
           sale_date,
+          branch_id,
           medications (unit_price)
         `)
         .eq('pharmacy_id', pharmacyId)
         .gte('sale_date', dateRange.prevStart.toISOString())
         .lte('sale_date', dateRange.prevEnd.toISOString());
+
+      if (branchFilter !== 'all') {
+        query = query.eq('branch_id', branchFilter);
+      }
 
       const { data, error } = await query;
       if (error) throw error;

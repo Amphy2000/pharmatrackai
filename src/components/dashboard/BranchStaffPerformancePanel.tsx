@@ -41,10 +41,12 @@ export const BranchStaffPerformancePanel = () => {
   // Filter shifts to only this branch
   const branchShifts = useMemo(() => {
     if (!allShifts || !currentBranchId) return [];
-    // Filter by period
-    return allShifts.filter(s => {
+
+    // Filter by period AND branch
+    return allShifts.filter((s) => {
       const clockIn = parseISO(s.clock_in);
-      return clockIn >= periodStart;
+      const staffBranchId = (s as any).staff?.branch_id ?? null;
+      return clockIn >= periodStart && staffBranchId === currentBranchId;
     });
   }, [allShifts, currentBranchId, periodStart]);
 
@@ -65,12 +67,13 @@ export const BranchStaffPerformancePanel = () => {
         existing.hoursWorked += hours;
         existing.isActive = existing.isActive || isActiveNow;
       } else {
-        const staffMember = (shift as any).pharmacy_staff;
-        const profile = staffMember?.profiles;
+        const staffName = (shift as any).staff?.profile?.full_name || 'Staff Member';
+        const staffRole = (shift as any).staff?.role || 'staff';
+
         statsMap.set(shift.staff_id, {
           staffId: shift.staff_id,
-          staffName: profile?.full_name || 'Staff Member',
-          role: staffMember?.role || 'staff',
+          staffName,
+          role: staffRole,
           totalSales: shift.total_sales || 0,
           totalTransactions: shift.total_transactions || 0,
           hoursWorked: hours,

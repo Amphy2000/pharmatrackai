@@ -1,50 +1,48 @@
-import { useMedications } from '@/hooks/useMedications';
+import { useMemo } from 'react';
+import { useBranchInventory } from '@/hooks/useBranchInventory';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import { TrendingUp, DollarSign } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell } from 'recharts';
 
 export const ProfitMarginAnalyzer = () => {
-  const { medications } = useMedications();
+  const { medications } = useBranchInventory();
   const { formatPrice } = useCurrency();
 
-  // Calculate profit margins for each product
-  const productsWithMargin = (medications || [])
-    .filter(med => med.selling_price && med.selling_price > 0)
-    .map(med => {
-      const costPrice = med.unit_price;
-      const sellingPrice = med.selling_price || med.unit_price;
-      const margin = ((sellingPrice - costPrice) / sellingPrice) * 100;
-      const profit = sellingPrice - costPrice;
-      
-      return {
-        id: med.id,
-        name: med.name,
-        costPrice,
-        sellingPrice,
-        margin: Math.round(margin * 10) / 10,
-        profit,
-        stock: med.current_stock,
-        potentialProfit: profit * med.current_stock,
-      };
-    })
-    .sort((a, b) => b.margin - a.margin);
+  const productsWithMargin = useMemo(() => {
+    return (medications || [])
+      .filter((med: any) => med.selling_price && med.selling_price > 0)
+      .map((med: any) => {
+        const costPrice = Number(med.unit_price);
+        const sellingPrice = Number(med.selling_price || med.unit_price);
+        const margin = ((sellingPrice - costPrice) / sellingPrice) * 100;
+        const profit = sellingPrice - costPrice;
+        const stock = Number(med.branch_stock ?? med.current_stock ?? 0);
 
-  // Top 20% most profitable
+        return {
+          id: med.id,
+          name: med.name,
+          costPrice,
+          sellingPrice,
+          margin: Math.round(margin * 10) / 10,
+          profit,
+          stock,
+          potentialProfit: profit * stock,
+        };
+      })
+      .sort((a, b) => b.margin - a.margin);
+  }, [medications]);
+
   const top20Percent = productsWithMargin.slice(0, Math.ceil(productsWithMargin.length * 0.2));
-  
-  // Average margin
+
   const avgMargin = productsWithMargin.length > 0
     ? productsWithMargin.reduce((sum, p) => sum + p.margin, 0) / productsWithMargin.length
     : 0;
 
-  // Total potential profit
   const totalPotentialProfit = productsWithMargin.reduce((sum, p) => sum + p.potentialProfit, 0);
 
-  // Chart data - top 10 by margin
-  const chartData = productsWithMargin.slice(0, 10).map(p => ({
+  const chartData = productsWithMargin.slice(0, 10).map((p) => ({
     name: p.name.length > 15 ? p.name.slice(0, 15) + '...' : p.name,
     margin: p.margin,
     profit: p.profit,
@@ -77,7 +75,6 @@ export const ProfitMarginAnalyzer = () => {
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Summary Stats */}
         <div className="grid grid-cols-3 gap-4">
           <div className="p-4 rounded-xl bg-muted/50">
             <p className="text-sm text-muted-foreground">Avg Margin</p>
@@ -93,27 +90,22 @@ export const ProfitMarginAnalyzer = () => {
           </div>
         </div>
 
-        {/* Chart */}
         {chartData.length > 0 && (
           <div className="h-72">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart 
-                data={chartData} 
-                layout="vertical" 
-                margin={{ left: 10, right: 30, top: 10, bottom: 10 }}
-              >
+              <BarChart data={chartData} layout="vertical" margin={{ left: 10, right: 30, top: 10, bottom: 10 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" horizontal={false} />
-                <XAxis 
-                  type="number" 
-                  domain={[0, 'dataMax']} 
+                <XAxis
+                  type="number"
+                  domain={[0, 'dataMax']}
                   tickFormatter={(v) => `${v}%`}
                   tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
                   axisLine={{ stroke: 'hsl(var(--border))' }}
                   tickLine={{ stroke: 'hsl(var(--border))' }}
                 />
-                <YAxis 
-                  type="category" 
-                  dataKey="name" 
+                <YAxis
+                  type="category"
+                  dataKey="name"
                   width={130}
                   tick={{ fontSize: 11, fill: 'hsl(var(--foreground))' }}
                   axisLine={false}
@@ -141,7 +133,6 @@ export const ProfitMarginAnalyzer = () => {
           </div>
         )}
 
-        {/* Top 5 Products */}
         <div className="space-y-3">
           <h4 className="text-sm font-medium">Top 5 Most Profitable</h4>
           {top20Percent.slice(0, 5).map((product, index) => (
@@ -156,15 +147,17 @@ export const ProfitMarginAnalyzer = () => {
                 </div>
               </div>
               <div className="text-right">
-                <Badge 
-                  variant="outline" 
-                  className={`${product.margin >= 25 ? 'bg-success/10 text-success border-success/20' : 'bg-primary/10 text-primary border-primary/20'}`}
+                <Badge
+                  variant="outline"
+                  className={
+                    product.margin >= 25
+                      ? 'bg-success/10 text-success border-success/20'
+                      : 'bg-primary/10 text-primary border-primary/20'
+                  }
                 >
                   {product.margin}% margin
                 </Badge>
-                <p className="text-xs text-muted-foreground mt-1">
-                  {formatPrice(product.profit)} per unit
-                </p>
+                <p className="text-xs text-muted-foreground mt-1">{formatPrice(product.profit)} per unit</p>
               </div>
             </div>
           ))}
@@ -180,3 +173,4 @@ export const ProfitMarginAnalyzer = () => {
     </Card>
   );
 };
+

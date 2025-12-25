@@ -23,7 +23,7 @@ interface AddStaffModalProps {
 
 export const AddStaffModal = ({ isOpen, onClose, onSuccess, mode = 'owner', forcedBranchId = null }: AddStaffModalProps) => {
   const { pharmacy } = usePharmacy();
-  const { branches } = useBranches();
+  const { branches = [] } = useBranches();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
