@@ -6,9 +6,10 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { UserPlus, Loader2, Mail, Lock, User, Shield } from 'lucide-react';
+import { UserPlus, Loader2, Mail, Lock, User, Shield, Building2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { usePharmacy } from '@/hooks/usePharmacy';
+import { useBranches } from '@/hooks/useBranches';
 import { useToast } from '@/hooks/use-toast';
 import { PERMISSION_LABELS, ROLE_TEMPLATES, PermissionKey } from '@/hooks/usePermissions';
 
@@ -20,6 +21,7 @@ interface AddStaffModalProps {
 
 export const AddStaffModal = ({ isOpen, onClose, onSuccess }: AddStaffModalProps) => {
   const { pharmacy } = usePharmacy();
+  const { branches } = useBranches();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -28,6 +30,7 @@ export const AddStaffModal = ({ isOpen, onClose, onSuccess }: AddStaffModalProps
     fullName: '',
     phone: '',
     role: 'staff' as 'manager' | 'staff',
+    branchId: '' as string,
   });
   const [selectedPermissions, setSelectedPermissions] = useState<PermissionKey[]>([]);
 
@@ -47,6 +50,7 @@ export const AddStaffModal = ({ isOpen, onClose, onSuccess }: AddStaffModalProps
           phone: formData.phone,
           role: formData.role,
           pharmacyId: pharmacy.id,
+          branchId: formData.branchId || null, // null means all branches
           permissions: formData.role === 'staff' ? selectedPermissions : [],
         },
       });
@@ -71,6 +75,7 @@ export const AddStaffModal = ({ isOpen, onClose, onSuccess }: AddStaffModalProps
         fullName: '',
         phone: '',
         role: 'staff',
+        branchId: '',
       });
       setSelectedPermissions([]);
       onSuccess();
@@ -203,6 +208,35 @@ export const AddStaffModal = ({ isOpen, onClose, onSuccess }: AddStaffModalProps
                   </SelectContent>
                 </Select>
               </div>
+
+              {/* Branch Assignment */}
+              {branches.length > 0 && (
+                <div>
+                  <Label className="flex items-center gap-2">
+                    <Building2 className="h-4 w-4" />
+                    Assigned Branch
+                  </Label>
+                  <Select
+                    value={formData.branchId}
+                    onValueChange={(value) => setFormData(prev => ({ ...prev, branchId: value }))}
+                  >
+                    <SelectTrigger className="mt-1.5">
+                      <SelectValue placeholder="All Branches (Full Access)" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">All Branches (Full Access)</SelectItem>
+                      {branches.filter(b => b.is_active).map((branch) => (
+                        <SelectItem key={branch.id} value={branch.id}>
+                          {branch.name} {branch.is_main_branch ? '(Main)' : ''}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Staff assigned to a branch will only see that branch's data.
+                  </p>
+                </div>
+              )}
 
               {/* Permissions (only for staff role) */}
               {formData.role === 'staff' && (

@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useCurrency } from '@/contexts/CurrencyContext';
+import { usePharmacy } from '@/hooks/usePharmacy';
 import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays, subMonths, subYears, parseISO } from 'date-fns';
 import { TrendingUp, TrendingDown, DollarSign, ShoppingCart, Target, Calendar, ChevronDown, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -13,6 +14,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
+import { BranchFilter } from './BranchFilter';
 
 type Period = 'today' | 'week' | 'month' | 'year';
 
@@ -22,6 +24,7 @@ interface SalesWithMedication {
   unit_price: number;
   total_price: number;
   sale_date: string;
+  branch_id?: string | null;
   medications: {
     unit_price: number;
   } | null;
@@ -29,8 +32,10 @@ interface SalesWithMedication {
 
 export const SalesAnalytics = () => {
   const { formatPrice } = useCurrency();
+  const { pharmacyId } = usePharmacy();
   const { toast } = useToast();
   const [period, setPeriod] = useState<Period>('month');
+  const [branchFilter, setBranchFilter] = useState<string>('all');
 
   const getDateRange = (p: Period) => {
     const now = new Date();
@@ -50,9 +55,11 @@ export const SalesAnalytics = () => {
 
   // Fetch current period sales
   const { data: currentSales = [], isLoading: loadingCurrent } = useQuery({
-    queryKey: ['sales-analytics-current', period],
+    queryKey: ['sales-analytics-current', period, branchFilter, pharmacyId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      if (!pharmacyId) return [];
+      
+      let query = supabase
         .from('sales')
         .select(`
           id,
@@ -62,19 +69,30 @@ export const SalesAnalytics = () => {
           sale_date,
           medications (unit_price)
         `)
+        .eq('pharmacy_id', pharmacyId)
         .gte('sale_date', dateRange.start.toISOString())
         .lte('sale_date', dateRange.end.toISOString());
 
+      // Note: Sales don't have branch_id yet, but this prepares for future enhancement
+      // When sales get branch_id, uncomment:
+      // if (branchFilter !== 'all') {
+      //   query = query.eq('branch_id', branchFilter);
+      // }
+
+      const { data, error } = await query;
       if (error) throw error;
       return data as SalesWithMedication[];
     },
+    enabled: !!pharmacyId,
   });
 
   // Fetch previous period sales for comparison
   const { data: previousSales = [], isLoading: loadingPrevious } = useQuery({
-    queryKey: ['sales-analytics-previous', period],
+    queryKey: ['sales-analytics-previous', period, branchFilter, pharmacyId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      if (!pharmacyId) return [];
+      
+      let query = supabase
         .from('sales')
         .select(`
           id,
@@ -84,12 +102,15 @@ export const SalesAnalytics = () => {
           sale_date,
           medications (unit_price)
         `)
+        .eq('pharmacy_id', pharmacyId)
         .gte('sale_date', dateRange.prevStart.toISOString())
         .lte('sale_date', dateRange.prevEnd.toISOString());
 
+      const { data, error } = await query;
       if (error) throw error;
       return data as SalesWithMedication[];
     },
+    enabled: !!pharmacyId,
   });
 
   const analytics = useMemo(() => {
@@ -201,7 +222,8 @@ export const SalesAnalytics = () => {
           <h3 className="text-base sm:text-lg font-bold font-display truncate">Sales & Profit Analytics</h3>
           <p className="text-xs text-muted-foreground">Track your pharmacy's financial performance</p>
         </div>
-        <div className="flex items-center gap-2 flex-shrink-0">
+        <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
+          <BranchFilter value={branchFilter} onChange={setBranchFilter} showLabel={false} />
           <Button variant="outline" size="sm" onClick={exportToCSV} className="gap-1.5 h-8 px-2.5">
             <Download className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Export</span>
