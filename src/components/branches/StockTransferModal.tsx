@@ -3,8 +3,14 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { useBranches } from '@/hooks/useBranches';
 import { usePharmacy } from '@/hooks/usePharmacy';
 import { useMedications } from '@/hooks/useMedications';
@@ -51,7 +57,7 @@ export const StockTransferModal = ({ open, onOpenChange }: StockTransferModalPro
   const [medicationSearch, setMedicationSearch] = useState('');
 
   // Get or create the main branch (HQ)
-  const { data: mainBranch, isLoading: isLoadingMainBranch } = useQuery({
+  const { data: mainBranch } = useQuery({
     queryKey: ['main-branch', pharmacyId],
     queryFn: async () => {
       if (!pharmacyId) return null;
@@ -196,201 +202,143 @@ export const StockTransferModal = ({ open, onOpenChange }: StockTransferModalPro
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl p-0 gap-0 overflow-hidden">
-        <DialogHeader className="p-6 pb-4 border-b bg-muted/30">
-          <DialogTitle className="flex items-center gap-3 text-xl">
-            <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center">
-              <ArrowLeftRight className="h-5 w-5 text-primary" />
+      <DialogContent className="max-w-lg p-0 gap-0 max-h-[85vh] flex flex-col">
+        <DialogHeader className="p-5 pb-4 border-b bg-muted/30 shrink-0">
+          <DialogTitle className="flex items-center gap-3">
+            <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center">
+              <ArrowLeftRight className="h-4 w-4 text-primary" />
             </div>
             <div>
-              <span>Stock Transfer</span>
-              <p className="text-sm font-normal text-muted-foreground mt-0.5">
+              <span className="text-lg">Stock Transfer</span>
+              <p className="text-xs font-normal text-muted-foreground mt-0.5">
                 Move inventory between locations
               </p>
             </div>
           </DialogTitle>
         </DialogHeader>
         
-        <form onSubmit={handleSubmit} className="flex flex-col">
-          <div className="p-6 space-y-6">
-            {/* Branch Selection Cards */}
-            <div className="grid grid-cols-[1fr,auto,1fr] gap-3 items-end">
-              {/* Source Branch */}
-              <div className="space-y-2">
-                <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  Source Branch
-                </Label>
-                <div className="space-y-2">
-                  {activeBranches
-                    .filter(b => b.id !== formData.to_branch_id)
-                    .map(branch => (
-                      <button
-                        key={branch.id}
-                        type="button"
-                        onClick={() => handleSourceChange(branch.id)}
-                        className={cn(
-                          "w-full p-3 rounded-xl border-2 text-left transition-all duration-200",
-                          "hover:border-primary/50 hover:bg-primary/5",
-                          formData.from_branch_id === branch.id
-                            ? "border-primary bg-primary/10 shadow-sm"
-                            : "border-border bg-card"
-                        )}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className={cn(
-                            "h-8 w-8 rounded-lg flex items-center justify-center shrink-0",
-                            formData.from_branch_id === branch.id
-                              ? "bg-primary text-primary-foreground"
-                              : "bg-muted"
-                          )}>
-                            <Building2 className="h-4 w-4" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium truncate text-sm">{branch.name}</span>
-                              {branch.is_main_branch && (
-                                <Badge variant="secondary" className="text-[10px] px-1.5 py-0 shrink-0">
-                                  HQ
-                                </Badge>
-                              )}
-                            </div>
-                          </div>
-                          {formData.from_branch_id === branch.id && (
-                            <Check className="h-4 w-4 text-primary shrink-0" />
+        <form onSubmit={handleSubmit} className="flex flex-col flex-1 min-h-0">
+          <div className="p-5 space-y-4 overflow-y-auto flex-1">
+            {/* Branch Selection - Compact Dropdowns */}
+            <div className="flex items-end gap-2">
+              <div className="flex-1 space-y-1.5">
+                <Label className="text-xs text-muted-foreground">From</Label>
+                <Select value={formData.from_branch_id} onValueChange={handleSourceChange}>
+                  <SelectTrigger className="h-10">
+                    <SelectValue placeholder="Select source">
+                      {sourceBranch && (
+                        <div className="flex items-center gap-2">
+                          <Building2 className="h-3.5 w-3.5 shrink-0" />
+                          <span className="truncate">{sourceBranch.name}</span>
+                          {sourceBranch.is_main_branch && (
+                            <Badge variant="secondary" className="text-[10px] px-1 py-0 ml-auto">HQ</Badge>
                           )}
                         </div>
-                      </button>
+                      )}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent className="z-[200]">
+                    {activeBranches.filter(b => b.id !== formData.to_branch_id).map(branch => (
+                      <SelectItem key={branch.id} value={branch.id}>
+                        <div className="flex items-center gap-2">
+                          <Building2 className="h-3.5 w-3.5" />
+                          <span>{branch.name}</span>
+                          {branch.is_main_branch && (
+                            <Badge variant="secondary" className="text-[10px] px-1 py-0 ml-1">HQ</Badge>
+                          )}
+                        </div>
+                      </SelectItem>
                     ))}
-                </div>
+                  </SelectContent>
+                </Select>
               </div>
 
-              {/* Swap Button */}
-              <div className="pb-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  className="h-10 w-10 rounded-full border-2 hover:border-primary hover:bg-primary/10"
-                  onClick={swapBranches}
-                  disabled={!formData.from_branch_id || !formData.to_branch_id}
+              <Button
+                type="button"
+                variant="outline"
+                size="icon"
+                className="h-10 w-10 shrink-0"
+                onClick={swapBranches}
+                disabled={!formData.from_branch_id || !formData.to_branch_id}
+              >
+                <ArrowLeftRight className="h-4 w-4" />
+              </Button>
+
+              <div className="flex-1 space-y-1.5">
+                <Label className="text-xs text-muted-foreground">To</Label>
+                <Select 
+                  value={formData.to_branch_id} 
+                  onValueChange={(v) => setFormData({ ...formData, to_branch_id: v })}
                 >
-                  <ArrowLeftRight className="h-4 w-4" />
-                </Button>
-              </div>
-
-              {/* Destination Branch */}
-              <div className="space-y-2">
-                <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                  Destination Branch
-                </Label>
-                <div className="space-y-2">
-                  {activeBranches
-                    .filter(b => b.id !== formData.from_branch_id)
-                    .map(branch => (
-                      <button
-                        key={branch.id}
-                        type="button"
-                        onClick={() => setFormData({ ...formData, to_branch_id: branch.id })}
-                        className={cn(
-                          "w-full p-3 rounded-xl border-2 text-left transition-all duration-200",
-                          "hover:border-primary/50 hover:bg-primary/5",
-                          formData.to_branch_id === branch.id
-                            ? "border-primary bg-primary/10 shadow-sm"
-                            : "border-border bg-card"
-                        )}
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className={cn(
-                            "h-8 w-8 rounded-lg flex items-center justify-center shrink-0",
-                            formData.to_branch_id === branch.id
-                              ? "bg-primary text-primary-foreground"
-                              : "bg-muted"
-                          )}>
-                            <Building2 className="h-4 w-4" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium truncate text-sm">{branch.name}</span>
-                              {branch.is_main_branch && (
-                                <Badge variant="secondary" className="text-[10px] px-1.5 py-0 shrink-0">
-                                  HQ
-                                </Badge>
-                              )}
-                            </div>
-                          </div>
-                          {formData.to_branch_id === branch.id && (
-                            <Check className="h-4 w-4 text-primary shrink-0" />
+                  <SelectTrigger className="h-10">
+                    <SelectValue placeholder="Select destination">
+                      {destBranch && (
+                        <div className="flex items-center gap-2">
+                          <Building2 className="h-3.5 w-3.5 shrink-0" />
+                          <span className="truncate">{destBranch.name}</span>
+                          {destBranch.is_main_branch && (
+                            <Badge variant="secondary" className="text-[10px] px-1 py-0 ml-auto">HQ</Badge>
                           )}
                         </div>
-                      </button>
+                      )}
+                    </SelectValue>
+                  </SelectTrigger>
+                  <SelectContent className="z-[200]">
+                    {activeBranches.filter(b => b.id !== formData.from_branch_id).map(branch => (
+                      <SelectItem key={branch.id} value={branch.id}>
+                        <div className="flex items-center gap-2">
+                          <Building2 className="h-3.5 w-3.5" />
+                          <span>{branch.name}</span>
+                          {branch.is_main_branch && (
+                            <Badge variant="secondary" className="text-[10px] px-1 py-0 ml-1">HQ</Badge>
+                          )}
+                        </div>
+                      </SelectItem>
                     ))}
-                </div>
+                  </SelectContent>
+                </Select>
               </div>
             </div>
 
             {/* Transfer Direction Summary */}
             {sourceBranch && destBranch && (
-              <div className="flex items-center justify-center gap-4 py-3 px-5 rounded-xl bg-gradient-to-r from-primary/10 via-primary/5 to-primary/10 border border-primary/20">
-                <div className="flex items-center gap-2">
-                  <Building2 className="h-4 w-4 text-primary" />
-                  <span className="font-semibold text-sm">{sourceBranch.name}</span>
-                </div>
-                <div className="flex items-center gap-1">
-                  <div className="h-px w-6 bg-primary/40" />
-                  <ArrowRight className="h-4 w-4 text-primary" />
-                  <div className="h-px w-6 bg-primary/40" />
-                </div>
-                <div className="flex items-center gap-2">
-                  <Building2 className="h-4 w-4 text-primary" />
-                  <span className="font-semibold text-sm">{destBranch.name}</span>
-                </div>
+              <div className="flex items-center justify-center gap-3 py-2 px-4 rounded-lg bg-primary/5 border border-primary/20">
+                <span className="text-sm font-medium truncate">{sourceBranch.name}</span>
+                <ArrowRight className="h-4 w-4 text-primary shrink-0" />
+                <span className="text-sm font-medium truncate">{destBranch.name}</span>
               </div>
             )}
 
             {/* Medication Selection */}
-            <div className="space-y-3">
-              <Label className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                Select Medication
-              </Label>
+            <div className="space-y-2">
+              <Label className="text-xs text-muted-foreground">Medication</Label>
               
               {!formData.from_branch_id ? (
-                <div className="flex items-center gap-4 p-4 rounded-xl bg-muted/50 border border-dashed">
-                  <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center">
-                    <AlertCircle className="h-5 w-5 text-muted-foreground" />
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    Select a source branch to view available stock
-                  </p>
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 border border-dashed">
+                  <AlertCircle className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <p className="text-sm text-muted-foreground">Select a source branch first</p>
                 </div>
               ) : availableMedications.length === 0 ? (
-                <div className="flex items-center gap-4 p-4 rounded-xl bg-muted/50 border border-dashed">
-                  <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center">
-                    <Package className="h-5 w-5 text-muted-foreground" />
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    No stock available at <span className="font-medium">{sourceBranch?.name}</span>
-                  </p>
+                <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50 border border-dashed">
+                  <Package className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <p className="text-sm text-muted-foreground">No stock at {sourceBranch?.name}</p>
                 </div>
               ) : (
-                <div className="space-y-3">
-                  {/* Search */}
+                <div className="space-y-2">
                   <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
                       placeholder="Search medications..."
                       value={medicationSearch}
                       onChange={(e) => setMedicationSearch(e.target.value)}
-                      className="pl-9"
+                      className="pl-9 h-9"
                     />
                   </div>
                   
-                  {/* Medication Grid */}
-                  <ScrollArea className="h-[180px] rounded-xl border bg-card">
-                    <div className="p-2 space-y-1">
+                  <ScrollArea className="h-[140px] rounded-lg border bg-card">
+                    <div className="p-1">
                       {filteredMedications.length === 0 ? (
-                        <p className="text-center py-6 text-sm text-muted-foreground">
-                          No medications match your search
-                        </p>
+                        <p className="text-center py-4 text-sm text-muted-foreground">No results</p>
                       ) : (
                         filteredMedications.map(med => (
                           <button
@@ -398,39 +346,25 @@ export const StockTransferModal = ({ open, onOpenChange }: StockTransferModalPro
                             type="button"
                             onClick={() => setFormData({ ...formData, medication_id: med.id, quantity: 1 })}
                             className={cn(
-                              "w-full p-3 rounded-lg text-left transition-all duration-150",
+                              "w-full p-2.5 rounded-md text-left transition-colors",
                               "hover:bg-muted/80",
-                              formData.medication_id === med.id
-                                ? "bg-primary/10 ring-1 ring-primary"
-                                : "bg-transparent"
+                              formData.medication_id === med.id && "bg-primary/10 ring-1 ring-primary"
                             )}
                           >
-                            <div className="flex items-center justify-between gap-3">
-                              <div className="flex items-center gap-3 min-w-0">
-                                <div className={cn(
-                                  "h-8 w-8 rounded-lg flex items-center justify-center shrink-0",
-                                  formData.medication_id === med.id
-                                    ? "bg-primary text-primary-foreground"
-                                    : "bg-muted"
-                                )}>
-                                  <Package className="h-4 w-4" />
-                                </div>
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-2 min-w-0">
+                                <Package className={cn(
+                                  "h-4 w-4 shrink-0",
+                                  formData.medication_id === med.id ? "text-primary" : "text-muted-foreground"
+                                )} />
                                 <div className="min-w-0">
-                                  <p className="font-medium text-sm truncate">{med.name}</p>
+                                  <p className="text-sm font-medium truncate">{med.name}</p>
                                   <p className="text-xs text-muted-foreground">{med.category}</p>
                                 </div>
                               </div>
-                              <div className="flex items-center gap-2 shrink-0">
-                                <Badge 
-                                  variant={med.stock > 10 ? "secondary" : "destructive"}
-                                  className="font-mono"
-                                >
-                                  {med.stock} units
-                                </Badge>
-                                {formData.medication_id === med.id && (
-                                  <Check className="h-4 w-4 text-primary" />
-                                )}
-                              </div>
+                              <Badge variant={med.stock > 10 ? "secondary" : "destructive"} className="shrink-0 text-xs">
+                                {med.stock}
+                              </Badge>
                             </div>
                           </button>
                         ))
@@ -441,45 +375,33 @@ export const StockTransferModal = ({ open, onOpenChange }: StockTransferModalPro
               )}
             </div>
 
-            {/* Quantity & Notes - Side by Side */}
+            {/* Quantity & Notes */}
             {selectedMed && (
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="quantity" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                    Quantity
-                  </Label>
-                  <div className="relative">
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Quantity</Label>
+                  <div className="flex items-center gap-2">
                     <Input
-                      id="quantity"
                       type="number"
                       min={1}
                       max={selectedMed.stock}
                       value={formData.quantity}
                       onChange={(e) => setFormData({ ...formData, quantity: parseInt(e.target.value) || 1 })}
-                      className="pr-20"
+                      className="h-9"
                     />
-                    <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                      <Badge variant="outline" className="text-xs">
-                        max {selectedMed.stock}
-                      </Badge>
-                    </div>
+                    <Badge variant="outline" className="shrink-0 text-xs">
+                      /{selectedMed.stock}
+                    </Badge>
                   </div>
-                  {formData.quantity > selectedMed.stock && (
-                    <p className="text-xs text-destructive">
-                      Exceeds available stock
-                    </p>
-                  )}
                 </div>
                 
-                <div className="space-y-2">
-                  <Label htmlFor="notes" className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                    Notes (Optional)
-                  </Label>
+                <div className="space-y-1.5">
+                  <Label className="text-xs text-muted-foreground">Notes</Label>
                   <Input
-                    id="notes"
                     value={formData.notes}
                     onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
-                    placeholder="Reason for transfer..."
+                    placeholder="Optional..."
+                    className="h-9"
                   />
                 </div>
               </div>
@@ -487,21 +409,17 @@ export const StockTransferModal = ({ open, onOpenChange }: StockTransferModalPro
           </div>
 
           {/* Footer */}
-          <div className="p-6 pt-4 border-t bg-muted/30">
-            <Button
-              type="submit"
-              className="w-full h-12 text-base font-semibold"
-              disabled={!isFormValid || createTransfer.isPending}
-            >
+          <div className="p-5 pt-4 border-t bg-muted/30 shrink-0">
+            <Button type="submit" className="w-full" disabled={!isFormValid || createTransfer.isPending}>
               {createTransfer.isPending ? (
                 <>
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Processing Transfer...
+                  Processing...
                 </>
               ) : (
                 <>
                   <ArrowRight className="h-4 w-4 mr-2" />
-                  Create Transfer Request
+                  Create Transfer
                 </>
               )}
             </Button>
