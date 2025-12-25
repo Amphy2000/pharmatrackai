@@ -347,6 +347,7 @@ export const useBranches = () => {
     branchInventory,
     transfers,
     isLoading: branchesLoading || inventoryLoading || transfersLoading,
+    branchesLoading,
     addBranch,
     updateBranch,
     deleteBranch,

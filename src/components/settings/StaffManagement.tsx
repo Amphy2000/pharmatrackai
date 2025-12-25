@@ -21,7 +21,7 @@ export const StaffManagement = () => {
   const { staff, isLoading, refetch, updateStaffPermissions, updateStaffRole, updateStaffBranch, toggleStaffActive } = useStaffManagement();
   const { isOwnerOrManager, userRole } = usePermissions();
   const { maxUsers, planName, plan } = usePlanLimits();
-  const { branches } = useBranches();
+  const { branches, branchesLoading } = useBranches();
   const { userAssignedBranchId } = useBranchContext();
   const [showAddStaffModal, setShowAddStaffModal] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);

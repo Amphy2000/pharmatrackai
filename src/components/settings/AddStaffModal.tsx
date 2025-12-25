@@ -22,8 +22,8 @@ interface AddStaffModalProps {
 }
 
 export const AddStaffModal = ({ isOpen, onClose, onSuccess, mode = 'owner', forcedBranchId = null }: AddStaffModalProps) => {
-  const { pharmacy } = usePharmacy();
-  const { branches = [] } = useBranches();
+  const { pharmacy, isLoading: pharmacyLoading } = usePharmacy();
+  const { branches, branchesLoading } = useBranches();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -35,6 +35,9 @@ export const AddStaffModal = ({ isOpen, onClose, onSuccess, mode = 'owner', forc
     branchId: '' as string,
   });
   const [selectedPermissions, setSelectedPermissions] = useState<PermissionKey[]>([]);
+
+  // Safe branches array
+  const safeBranches = branches || [];
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -143,6 +146,20 @@ export const AddStaffModal = ({ isOpen, onClose, onSuccess, mode = 'owner', forc
     }
   };
 
+  // Show loading while context is being prepared
+  if (pharmacyLoading || branchesLoading) {
+    return (
+      <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
+        <DialogContent className="max-w-lg">
+          <div className="flex items-center justify-center py-8">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <span className="ml-2 text-muted-foreground">Loading...</span>
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
+
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-hidden flex flex-col">
@@ -248,7 +265,7 @@ export const AddStaffModal = ({ isOpen, onClose, onSuccess, mode = 'owner', forc
               )}
 
               {/* Branch Assignment */}
-              {mode !== 'manager' && branches.length > 0 && (
+              {mode !== 'manager' && safeBranches.length > 0 && (
                 <div>
                   <Label className="flex items-center gap-2">
                     <Building2 className="h-4 w-4" />
@@ -263,7 +280,7 @@ export const AddStaffModal = ({ isOpen, onClose, onSuccess, mode = 'owner', forc
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="">All Branches (Full Access)</SelectItem>
-                      {branches.filter(b => b.is_active).map((branch) => (
+                      {safeBranches.filter(b => b.is_active).map((branch) => (
                         <SelectItem key={branch.id} value={branch.id}>
                           {branch.name} {branch.is_main_branch ? '(Main)' : ''}
                         </SelectItem>
