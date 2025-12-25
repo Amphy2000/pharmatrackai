@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Progress } from '@/components/ui/progress';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Users, Shield, Crown, Briefcase, User, UserPlus, Lock, Zap, ChevronRight, Building2, MapPin } from 'lucide-react';
+import { useBranchContext } from '@/contexts/BranchContext';
 import { useStaffManagement } from '@/hooks/useStaffManagement';
 import { usePermissions, PERMISSION_LABELS, ROLE_TEMPLATES, PermissionKey } from '@/hooks/usePermissions';
 import { usePlanLimits } from '@/hooks/usePlanLimits';
@@ -21,11 +22,15 @@ export const StaffManagement = () => {
   const { isOwnerOrManager, userRole } = usePermissions();
   const { maxUsers, planName, plan } = usePlanLimits();
   const { branches } = useBranches();
+  const { userAssignedBranchId } = useBranchContext();
   const [showAddStaffModal, setShowAddStaffModal] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
-  // Count active users (excluding inactive)
-  const activeUserCount = staff.filter(s => s.is_active).length;
+  // Filter staff for managers - they can only see/manage staff in their branch
+  const visibleStaff = userRole === 'owner' 
+    ? staff 
+    : staff.filter(s => s.branch_id === userAssignedBranchId && s.role === 'staff');
+  const activeUserCount = visibleStaff.filter(s => s.is_active).length;
   const isAtLimit = activeUserCount >= maxUsers;
   const usagePercent = Math.min((activeUserCount / maxUsers) * 100, 100);
 
@@ -132,13 +137,13 @@ export const StaffManagement = () => {
             </div>
 
             <div className="space-y-4">
-              {staff.length === 0 ? (
+              {visibleStaff.length === 0 ? (
                 <div className="text-center py-8 text-muted-foreground">
                   <Users className="h-12 w-12 mx-auto mb-4 opacity-30" />
-                  <p>No staff members yet</p>
+                  <p>{userRole === 'manager' ? 'No staff in your branch yet' : 'No staff members yet'}</p>
                 </div>
               ) : (
-                staff.map((member) => (
+                visibleStaff.map((member) => (
                   <div
                     key={member.id}
                     className={`p-4 rounded-lg border ${
