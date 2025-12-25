@@ -5,36 +5,22 @@ import { ShoppingBag, AlertTriangle, XCircle, TrendingUp } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { useCurrency } from '@/contexts/CurrencyContext';
-import { useBranchInventory } from '@/hooks/useBranchInventory';
-import { useBranchContext } from '@/contexts/BranchContext';
-import { usePharmacy } from '@/hooks/usePharmacy';
+import { useMedications } from '@/hooks/useMedications';
 import { isBefore, parseISO, startOfDay } from 'date-fns';
 
 export const QuickGlancePanel = () => {
   const { formatPrice } = useCurrency();
-  const { medications } = useBranchInventory();
-  const { currentBranchId } = useBranchContext();
-  const { pharmacyId } = usePharmacy();
+  const { medications } = useMedications();
 
-  // Fetch today's sales - branch-scoped
+  // Fetch today's sales
   const { data: todaySales } = useQuery({
-    queryKey: ['today-sales-count', pharmacyId, currentBranchId],
+    queryKey: ['today-sales-count'],
     queryFn: async () => {
-      if (!pharmacyId) return { totalItems: 0, totalValue: 0, count: 0 };
-      
       const today = startOfDay(new Date()).toISOString();
-      let query = supabase
+      const { data, error } = await supabase
         .from('sales')
         .select('quantity, total_price')
-        .eq('pharmacy_id', pharmacyId)
         .gte('sale_date', today);
-      
-      // Filter by branch if one is selected
-      if (currentBranchId) {
-        query = query.eq('branch_id', currentBranchId);
-      }
-      
-      const { data, error } = await query;
       
       if (error) throw error;
       
@@ -42,7 +28,6 @@ export const QuickGlancePanel = () => {
       const totalValue = data?.reduce((sum, s) => sum + Number(s.total_price), 0) || 0;
       return { totalItems, totalValue, count: data?.length || 0 };
     },
-    enabled: !!pharmacyId,
     refetchInterval: 30000,
   });
 
@@ -57,12 +42,10 @@ export const QuickGlancePanel = () => {
 
     medications.forEach((med) => {
       const isExpired = isBefore(parseISO(med.expiry_date), new Date());
-      // Use branch_stock for branch-specific metrics
-      const stock = med.branch_stock;
-      const isLowStock = stock <= med.branch_reorder_level && stock > 0;
+      const isLowStock = med.current_stock <= med.reorder_level && med.current_stock > 0;
       
-      if (isExpired && !med.is_shelved && stock > 0) {
-        expiredValue += stock * med.unit_price;
+      if (isExpired && !med.is_shelved) {
+        expiredValue += med.current_stock * med.unit_price;
         expiredCount++;
       }
       

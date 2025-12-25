@@ -558,13 +558,13 @@ const Dashboard = () => {
             )}
 
             {/* Financial Summary - Owner/Manager Only */}
-            {isOwnerOrManager && branchMedications.length > 0 && (
+            {isOwnerOrManager && medications.length > 0 && (
               <motion.section 
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.5 }}
               >
-                <FinancialSummary medications={branchMedications} />
+                <FinancialSummary medications={medications} />
               </motion.section>
             )}
 

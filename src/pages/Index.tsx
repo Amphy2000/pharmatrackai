@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Package, AlertTriangle, XCircle, Clock, Plus, ShoppingCart, Upload, Zap, Archive, Sparkles } from 'lucide-react';
 import { useMedications } from '@/hooks/useMedications';
-import { useBranchInventory } from '@/hooks/useBranchInventory';
 import { usePermissions } from '@/hooks/usePermissions';
 import { Medication } from '@/types/medication';
 import { Header } from '@/components/Header';
@@ -99,7 +98,6 @@ const BulkUnshelveButton = ({ medications }: { medications: Medication[] }) => {
 
 const Index = () => {
   const { medications, isLoading, getMetrics, isLowStock } = useMedications();
-  const { medications: branchMedications, getMetrics: getBranchMetrics } = useBranchInventory();
   const { isOwnerOrManager } = usePermissions();
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState('');
@@ -109,7 +107,6 @@ const Index = () => {
   const [editingMedication, setEditingMedication] = useState<Medication | null>(null);
 
   const metrics = getMetrics();
-  const branchMetricsData = getBranchMetrics();
 
   // Low stock notifications
   useEffect(() => {
@@ -232,9 +229,9 @@ const Index = () => {
         </section>
 
         {/* Financial Summary - Only visible to owners/managers */}
-        {!isLoading && branchMedications.length > 0 && isOwnerOrManager && (
+        {!isLoading && medications.length > 0 && isOwnerOrManager && (
           <section className="mb-8 sm:mb-10 animate-slide-up" style={{ animationDelay: '100ms' }}>
-            <FinancialSummary medications={branchMedications} />
+            <FinancialSummary medications={medications} />
           </section>
         )}
 
