@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, forwardRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Clock, LogIn, LogOut, Timer, DollarSign, History, Wifi, WifiOff, Lock, QrCode, Check } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -10,7 +10,7 @@ import { format, formatDistanceToNow } from 'date-fns';
 import { QRScannerModal } from '@/components/shifts/QRScannerModal';
 import { motion, AnimatePresence } from 'framer-motion';
 
-export const ShiftClock = () => {
+export const ShiftClock = forwardRef<HTMLDivElement>((_, ref) => {
   const navigate = useNavigate();
   const { activeShift, clockIn, clockOut, isLoadingActiveShift } = useShifts();
   const { formatPrice } = useCurrency();
@@ -285,4 +285,6 @@ export const ShiftClock = () => {
       )}
     </div>
   );
-};
+});
+
+ShiftClock.displayName = 'ShiftClock';
