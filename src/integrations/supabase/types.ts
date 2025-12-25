@@ -1606,12 +1606,20 @@ export type Database = {
       check_and_create_stock_notifications: { Args: never; Returns: undefined }
       generate_internal_barcode: { Args: never; Returns: string }
       generate_receipt_id: { Args: never; Returns: string }
+      get_manager_branch_id: {
+        Args: { _pharmacy_id: string; _user_id: string }
+        Returns: string
+      }
       get_user_pharmacy_id: { Args: { user_uuid: string }; Returns: string }
       has_pharmacy_role: {
         Args: {
           required_role: Database["public"]["Enums"]["pharmacy_role"]
           user_uuid: string
         }
+        Returns: boolean
+      }
+      is_manager_for_pharmacy: {
+        Args: { _pharmacy_id: string; _user_id: string }
         Returns: boolean
       }
       is_pharmacy_owner: {
