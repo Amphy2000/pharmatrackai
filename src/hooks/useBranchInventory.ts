@@ -55,8 +55,8 @@ export const useBranchInventory = () => {
       
       if (medsError) throw medsError;
       
-      // If no branch selected or main branch manages all, return main stock
-      if (!currentBranchId) {
+      // Main branch uses the "central" stock on the medications table
+      if (!currentBranchId || isMainBranch) {
         return (meds || []).map(m => ({
           ...m,
           branch_stock: m.current_stock,
@@ -135,8 +135,8 @@ export const useBranchInventory = () => {
   // Update branch stock
   const updateBranchStock = useMutation({
     mutationFn: async ({ medicationId, newStock }: { medicationId: string; newStock: number }) => {
-      if (!currentBranchId) {
-        // Update main stock directly on medications table
+      if (!currentBranchId || isMainBranch) {
+        // Update main (HQ) stock directly on medications table
         const { error } = await supabase
           .from('medications')
           .update({ current_stock: newStock })
@@ -187,8 +187,8 @@ export const useBranchInventory = () => {
       
       const newStock = medication.branch_stock + quantity;
       
-      if (!currentBranchId) {
-        // Update main stock
+      if (!currentBranchId || isMainBranch) {
+        // Update main (HQ) stock
         const { error } = await supabase
           .from('medications')
           .update({ current_stock: newStock })
@@ -240,8 +240,8 @@ export const useBranchInventory = () => {
       
       const newStock = medication.branch_stock - quantity;
       
-      if (!currentBranchId) {
-        // Update main stock
+      if (!currentBranchId || isMainBranch) {
+        // Update main (HQ) stock
         const { error } = await supabase
           .from('medications')
           .update({ current_stock: newStock })

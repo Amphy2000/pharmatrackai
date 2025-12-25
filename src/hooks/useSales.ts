@@ -71,7 +71,7 @@ export const useSales = () => {
   const { toast } = useToast();
   const { pharmacyId } = usePharmacy();
   const { isOnline, addPendingSale } = useOfflineSync();
-  const { currentBranchId } = useBranchContext();
+  const { currentBranchId, isMainBranch } = useBranchContext();
 
   // Query to fetch sales - filtered by branch for staff
   const { data: sales = [], isLoading } = useQuery({
@@ -201,14 +201,33 @@ export const useSales = () => {
         const totalPrice = price * item.quantity;
         totalSaleAmount += totalPrice;
 
-        // Get the current stock from DB
-        const { data: medicationData } = await supabase
-          .from('medications')
-          .select('current_stock')
-          .eq('id', item.medication.id)
-          .maybeSingle();
-        
-        const currentStock = medicationData?.current_stock ?? item.medication.current_stock ?? 0;
+        let currentStock = 0;
+
+        if (currentBranchId && !isMainBranch) {
+          const { data: branchInv, error: branchInvError } = await supabase
+            .from('branch_inventory')
+            .select('id, current_stock')
+            .eq('branch_id', currentBranchId)
+            .eq('medication_id', item.medication.id)
+            .maybeSingle();
+
+          if (branchInvError) throw branchInvError;
+          if (!branchInv) {
+            throw new Error('No stock record for this branch. Receive stock first.');
+          }
+
+          currentStock = branchInv.current_stock ?? 0;
+        } else {
+          const { data: medicationData, error: medicationError } = await supabase
+            .from('medications')
+            .select('current_stock')
+            .eq('id', item.medication.id)
+            .maybeSingle();
+
+          if (medicationError) throw medicationError;
+          currentStock = medicationData?.current_stock ?? item.medication.current_stock ?? 0;
+        }
+
         const newStock = Math.max(0, currentStock - item.quantity);
 
         // Generate unique receipt_id for each sale record
@@ -237,14 +256,16 @@ export const useSales = () => {
           throw saleError;
         }
 
-        // Update medication stock (central catalog)
-        await supabase
-          .from('medications')
-          .update({ current_stock: newStock })
-          .eq('id', item.medication.id);
+        // Update main (HQ) stock only when selling from HQ
+        if (!currentBranchId || isMainBranch) {
+          await supabase
+            .from('medications')
+            .update({ current_stock: newStock })
+            .eq('id', item.medication.id);
+        }
 
-        // Also update branch_inventory if we have a branch
-        if (currentBranchId) {
+        // Update branch stock when selling from a non-HQ branch
+        if (currentBranchId && !isMainBranch) {
           const { data: branchInv } = await supabase
             .from('branch_inventory')
             .select('id, current_stock')
