@@ -122,8 +122,9 @@ export const PharmacySelector = ({ onSelect }: PharmacySelectorProps) => {
           {pharmacies.map((item) => (
             <button
               key={item.pharmacy_id}
-              onClick={() => onSelect(item.pharmacy_id)}
-              className="w-full p-4 rounded-xl border border-border hover:border-primary/50 hover:bg-primary/5 transition-all duration-200 text-left group"
+              disabled={!item.is_active}
+              onClick={() => item.is_active && onSelect(item.pharmacy_id)}
+              className="w-full p-4 rounded-xl border border-border hover:border-primary/50 hover:bg-primary/5 transition-all duration-200 text-left group disabled:opacity-60 disabled:cursor-not-allowed disabled:hover:border-border disabled:hover:bg-transparent"
             >
               <div className="flex items-center justify-between">
                 <div className="flex-1 min-w-0">

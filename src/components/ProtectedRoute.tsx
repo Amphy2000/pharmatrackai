@@ -9,6 +9,7 @@ import { Header } from '@/components/Header';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { PharmacySelector } from '@/components/pharmacy/PharmacySelector';
+import { clearSelectedPharmacyId, getSelectedPharmacyId, setSelectedPharmacyId } from '@/hooks/useSelectedPharmacy';
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -16,7 +17,6 @@ interface ProtectedRouteProps {
 }
 
 const CACHE_KEY = 'pharmatrack_pharmacy_staff';
-const SELECTED_PHARMACY_KEY = 'pharmatrack_selected_pharmacy';
 const PHARMACY_SELECTOR_SHOWN_KEY = 'pharmatrack_pharmacy_selector_shown';
 
 interface CachedPharmacyStaff {
@@ -131,7 +131,7 @@ export const ProtectedRoute = ({ children, requireSubscription = true }: Protect
         setPharmacyList(data);
 
         // Check if user has a previously selected pharmacy
-        const selectedPharmacyId = localStorage.getItem(SELECTED_PHARMACY_KEY);
+        const selectedPharmacyId = getSelectedPharmacyId();
         const matchingStaff = selectedPharmacyId 
           ? data.find(s => s.pharmacy_id === selectedPharmacyId)
           : null;
@@ -156,12 +156,12 @@ export const ProtectedRoute = ({ children, requireSubscription = true }: Protect
           role: staffRow.role,
           cachedAt: Date.now(),
         });
-        localStorage.setItem(SELECTED_PHARMACY_KEY, staffRow.pharmacy_id);
+        setSelectedPharmacyId(staffRow.pharmacy_id);
         setHasPharmacy(true);
       } else {
         // Clear any stale cache if user truly has no pharmacy
         localStorage.removeItem(CACHE_KEY);
-        localStorage.removeItem(SELECTED_PHARMACY_KEY);
+        clearSelectedPharmacyId();
         setHasPharmacy(false);
       }
       setOfflineError(false);
@@ -245,7 +245,7 @@ export const ProtectedRoute = ({ children, requireSubscription = true }: Protect
   // Show pharmacy selector if user has multiple pharmacies and hasn't selected one
   if (showPharmacySelector && pharmacyCount > 1) {
     const handlePharmacySelect = (pharmacyId: string) => {
-      localStorage.setItem(SELECTED_PHARMACY_KEY, pharmacyId);
+      setSelectedPharmacyId(pharmacyId);
       sessionStorage.setItem(PHARMACY_SELECTOR_SHOWN_KEY, 'true');
       setShowPharmacySelector(false);
       setCheckingPharmacy(true);

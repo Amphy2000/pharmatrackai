@@ -54,6 +54,7 @@ import { usePlatformAdmin } from '@/hooks/usePlatformAdmin';
 import { BranchSwitcher } from '@/components/header/BranchSwitcher';
 import { useBranchContext } from '@/contexts/BranchContext';
 import { OfflineIndicator } from '@/components/header/OfflineIndicator';
+import { PharmacySwitchDialog } from '@/components/pharmacy/PharmacySwitchDialog';
 
 export const Header = () => {
   const location = useLocation();
@@ -64,6 +65,7 @@ export const Header = () => {
   const { isAdmin } = usePlatformAdmin();
   const { currentBranchId, setCurrentBranchId } = useBranchContext();
   const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [pharmacySwitchOpen, setPharmacySwitchOpen] = useState(false);
   
   // Show admin link only for verified admins
   const showAdminLink = isAdmin;
@@ -381,6 +383,10 @@ export const Header = () => {
                   <Shield className="mr-2 h-4 w-4" />
                   Security
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setPharmacySwitchOpen(true)}>
+                  <Building2 className="mr-2 h-4 w-4" />
+                  Switch Pharmacy
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => navigate('/profile?tab=help')}>
                   <HelpCircle className="mr-2 h-4 w-4" />
                   Help & Support
@@ -395,6 +401,8 @@ export const Header = () => {
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
+
+            <PharmacySwitchDialog open={pharmacySwitchOpen} onOpenChange={setPharmacySwitchOpen} />
           </div>
         </div>
       </div>
