@@ -5,6 +5,7 @@ import { CartItem, Medication } from '@/types/medication';
 import { useToast } from '@/hooks/use-toast';
 import { usePharmacy } from '@/hooks/usePharmacy';
 import { useOfflineSync } from '@/hooks/useOfflineSync';
+import { useBranchContext } from '@/contexts/BranchContext';
 import { isBefore, parseISO } from 'date-fns';
 
 // Check if a medication batch is expired
@@ -47,6 +48,7 @@ interface SaleWithMedication {
   sold_by_name: string | null;
   receipt_id: string | null;
   shift_id: string | null;
+  branch_id: string | null;
   created_at: string;
   medication: {
     name: string;
@@ -69,14 +71,15 @@ export const useSales = () => {
   const { toast } = useToast();
   const { pharmacyId } = usePharmacy();
   const { isOnline, addPendingSale } = useOfflineSync();
+  const { currentBranchId } = useBranchContext();
 
-  // Query to fetch sales
+  // Query to fetch sales - filtered by branch for staff
   const { data: sales = [], isLoading } = useQuery({
-    queryKey: ['sales', pharmacyId],
+    queryKey: ['sales', pharmacyId, currentBranchId],
     queryFn: async () => {
       if (!pharmacyId) return [];
       
-      const { data, error } = await supabase
+      let query = supabase
         .from('sales')
         .select(`
           id,
@@ -90,6 +93,7 @@ export const useSales = () => {
           sold_by_name,
           receipt_id,
           shift_id,
+          branch_id,
           created_at,
           medication:medications (
             name,
@@ -99,6 +103,13 @@ export const useSales = () => {
         .eq('pharmacy_id', pharmacyId)
         .order('sale_date', { ascending: false })
         .limit(500);
+      
+      // Filter by branch if one is selected (for branch isolation)
+      if (currentBranchId) {
+        query = query.eq('branch_id', currentBranchId);
+      }
+      
+      const { data, error } = await query;
       
       if (error) throw error;
       return data as SaleWithMedication[];
@@ -121,7 +132,7 @@ export const useSales = () => {
           filter: `pharmacy_id=eq.${pharmacyId}`,
         },
         () => {
-          queryClient.invalidateQueries({ queryKey: ['sales', pharmacyId] });
+          queryClient.invalidateQueries({ queryKey: ['sales', pharmacyId, currentBranchId] });
         }
       )
       .subscribe();
@@ -129,7 +140,7 @@ export const useSales = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [pharmacyId, queryClient]);
+  }, [pharmacyId, currentBranchId, queryClient]);
 
   const completeSale = useMutation({
     mutationFn: async ({ items, customerName, customerId, shiftId, staffName, paymentMethod, prescriptionImages }: CompleteSaleParams) => {
@@ -203,7 +214,7 @@ export const useSales = () => {
         // Generate unique receipt_id for each sale record
         const itemReceiptId = items.length > 1 ? `${receiptId}-${index + 1}` : receiptId;
 
-        // Insert sale record
+        // Insert sale record WITH branch_id for isolation
         const { data: saleData, error: saleError } = await supabase.from('sales').insert({
           medication_id: item.medication.id,
           quantity: item.quantity,
@@ -212,6 +223,7 @@ export const useSales = () => {
           customer_name: customerName || null,
           customer_id: customerId || null,
           pharmacy_id: pharmacyId,
+          branch_id: currentBranchId || null, // Add branch isolation
           sold_by: user?.id || null,
           sold_by_name: staffName || null,
           receipt_id: itemReceiptId,
@@ -225,11 +237,28 @@ export const useSales = () => {
           throw saleError;
         }
 
-        // Update medication stock
+        // Update medication stock (central catalog)
         await supabase
           .from('medications')
           .update({ current_stock: newStock })
           .eq('id', item.medication.id);
+
+        // Also update branch_inventory if we have a branch
+        if (currentBranchId) {
+          const { data: branchInv } = await supabase
+            .from('branch_inventory')
+            .select('id, current_stock')
+            .eq('branch_id', currentBranchId)
+            .eq('medication_id', item.medication.id)
+            .maybeSingle();
+
+          if (branchInv) {
+            await supabase
+              .from('branch_inventory')
+              .update({ current_stock: Math.max(0, branchInv.current_stock - item.quantity) })
+              .eq('id', branchInv.id);
+          }
+        }
 
         results.push({ item, newStock, receiptId: saleData?.receipt_id || itemReceiptId });
       }
@@ -267,7 +296,9 @@ export const useSales = () => {
 
       // Force immediate refetch of medications
       await queryClient.refetchQueries({ queryKey: ['medications'], type: 'active' });
+      await queryClient.refetchQueries({ queryKey: ['branch-medications'], type: 'active' });
       queryClient.invalidateQueries({ queryKey: ['sales'] });
+      queryClient.invalidateQueries({ queryKey: ['branch-inventory'] });
       
       // Check for low stock alerts
       const lowStockItems = results.filter(

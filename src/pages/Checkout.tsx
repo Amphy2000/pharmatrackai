@@ -72,7 +72,7 @@ const Checkout = () => {
   const { formatPrice, currency } = useCurrency();
   const { isSimpleMode, regulatory } = useRegionalSettings();
   const { pharmacy } = usePharmacy();
-  const { currentBranchName, isMainBranch } = useBranchContext();
+  const { currentBranchId, currentBranchName, isMainBranch } = useBranchContext();
   const { plan } = usePlanLimits();
   const { user } = useAuth();
   const { toast } = useToast();
@@ -212,8 +212,23 @@ const Checkout = () => {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [cart, checkoutOpen, previewOpen, heldPanelOpen, showShortcuts]);
+  // Get current branch details for receipts
+  const { data: currentBranchDetails } = useQuery({
+    queryKey: ['branch-details', currentBranchId],
+    queryFn: async () => {
+      if (!currentBranchId) return null;
+      const { data, error } = await supabase
+        .from('branches')
+        .select('name, address, phone')
+        .eq('id', currentBranchId)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!currentBranchId,
+  });
 
-  // Helper to get receipt params
+  // Helper to get receipt params - includes branch-specific branding
   const getReceiptParams = (isPaid: boolean = true, isDigital: boolean = false, method: PaymentMethod = paymentMethod) => ({
     pharmacyName: pharmacy?.name || 'PharmaTrack Pharmacy',
     pharmacyAddress: pharmacy?.address || undefined,
@@ -226,6 +241,10 @@ const Checkout = () => {
     paymentMethod: method,
     enableLogoOnPrint: (pharmacy as any)?.enable_logo_on_print !== false,
     isDigitalReceipt: isDigital,
+    // Branch-specific branding - overrides pharmacy defaults
+    branchName: currentBranchDetails?.name || undefined,
+    branchAddress: currentBranchDetails?.address || undefined,
+    branchPhone: currentBranchDetails?.phone || undefined,
   });
 
   const handleHoldSale = () => {

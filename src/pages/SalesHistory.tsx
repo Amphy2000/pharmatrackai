@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Header } from '@/components/Header';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useBranchContext } from '@/contexts/BranchContext';
 import { format, parseISO, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import { 
   Search, 
@@ -66,6 +67,7 @@ interface SaleWithMedication {
   sold_by: string | null;
   sold_by_name: string | null;
   receipt_id: string | null;
+  branch_id: string | null;
   created_at: string;
   medications: {
     name: string;
@@ -77,6 +79,7 @@ const SalesHistory = () => {
   const { formatPrice, currency } = useCurrency();
   const { isOwnerOrManager } = usePermissions();
   const { pharmacy } = usePharmacy();
+  const { currentBranchId, currentBranchName } = useBranchContext();
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState('');
   const [dateRange, setDateRange] = useState<{ from: Date | undefined; to: Date | undefined }>({
@@ -88,9 +91,9 @@ const SalesHistory = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  // Fetch sales with medication details
+  // Fetch sales with medication details - FILTERED BY BRANCH
   const { data: sales = [], isLoading } = useQuery({
-    queryKey: ['sales-history', dateRange],
+    queryKey: ['sales-history', dateRange, currentBranchId],
     queryFn: async () => {
       let query = supabase
         .from('sales')
@@ -105,6 +108,7 @@ const SalesHistory = () => {
           sold_by,
           sold_by_name,
           receipt_id,
+          branch_id,
           created_at,
           medications (
             name,
@@ -118,6 +122,11 @@ const SalesHistory = () => {
       }
       if (dateRange.to) {
         query = query.lte('sale_date', dateRange.to.toISOString());
+      }
+
+      // Filter by branch for isolation
+      if (currentBranchId) {
+        query = query.eq('branch_id', currentBranchId);
       }
 
       const { data, error } = await query;
@@ -232,7 +241,9 @@ const SalesHistory = () => {
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-3xl font-bold font-display text-gradient">Sales History</h1>
-            <p className="text-muted-foreground mt-1">Track and analyze your pharmacy transactions</p>
+            <p className="text-muted-foreground mt-1">
+              {currentBranchName ? `${currentBranchName} transactions` : 'Track and analyze your pharmacy transactions'}
+            </p>
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
