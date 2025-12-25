@@ -6,6 +6,7 @@ import { usePharmacy } from '@/hooks/usePharmacy';
 import { formatDistanceToNow } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { useCurrency } from '@/contexts/CurrencyContext';
+import { useBranchContext } from '@/contexts/BranchContext';
 
 interface ActivityItem {
   id: string;
@@ -21,21 +22,28 @@ export const LiveActivityFeed = () => {
   const [isExpanded, setIsExpanded] = useState(false);
   const { pharmacy } = usePharmacy();
   const { formatPrice } = useCurrency();
+  const { currentBranchId, isMainBranch } = useBranchContext();
 
   useEffect(() => {
     if (!pharmacy?.id) return;
 
-    // Fetch recent sales
     const fetchRecentActivity = async () => {
-      const { data: salesData } = await supabase
+      let salesQuery = supabase
         .from('sales')
         .select('id, total_price, created_at, sold_by_name')
         .eq('pharmacy_id', pharmacy.id)
         .order('created_at', { ascending: false })
         .limit(5);
 
+      // Branch isolation: when a branch is selected, show only that branch's activity.
+      if (currentBranchId) {
+        salesQuery = salesQuery.eq('branch_id', currentBranchId);
+      }
+
+      const { data: salesData } = await salesQuery;
+
       if (salesData) {
-        const saleActivities: ActivityItem[] = salesData.map(sale => ({
+        const saleActivities: ActivityItem[] = salesData.map((sale) => ({
           id: `sale-${sale.id}`,
           type: 'sale',
           title: 'New Sale',
@@ -49,12 +57,15 @@ export const LiveActivityFeed = () => {
 
     fetchRecentActivity();
 
-    // Subscribe to real-time updates
+    const salesFilter = currentBranchId
+      ? `branch_id=eq.${currentBranchId}`
+      : `pharmacy_id=eq.${pharmacy.id}`;
+
     const channel = supabase
       .channel('live-activity-feed')
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'sales', filter: `pharmacy_id=eq.${pharmacy.id}` },
+        { event: 'INSERT', schema: 'public', table: 'sales', filter: salesFilter },
         (payload) => {
           const newSale = payload.new as any;
           const newActivity: ActivityItem = {
@@ -65,10 +76,13 @@ export const LiveActivityFeed = () => {
             timestamp: new Date(newSale.created_at),
             icon: 'cart',
           };
-          setActivities(prev => [newActivity, ...prev.slice(0, 4)]);
+          setActivities((prev) => [newActivity, ...prev.slice(0, 4)]);
         }
-      )
-      .on(
+      );
+
+    // Stock updates: only subscribe to HQ stock changes on the main branch.
+    if (!currentBranchId || isMainBranch) {
+      channel.on(
         'postgres_changes',
         { event: 'UPDATE', schema: 'public', table: 'medications', filter: `pharmacy_id=eq.${pharmacy.id}` },
         (payload) => {
@@ -81,21 +95,26 @@ export const LiveActivityFeed = () => {
             timestamp: new Date(),
             icon: 'package',
           };
-          setActivities(prev => [newActivity, ...prev.slice(0, 4)]);
+          setActivities((prev) => [newActivity, ...prev.slice(0, 4)]);
         }
-      )
-      .subscribe();
+      );
+    }
+
+    channel.subscribe();
 
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [pharmacy?.id, formatPrice]);
+  }, [pharmacy?.id, currentBranchId, isMainBranch, formatPrice]);
 
   const getIcon = (icon: string) => {
     switch (icon) {
-      case 'cart': return <ShoppingCart className="h-3 w-3" />;
-      case 'package': return <Package className="h-3 w-3" />;
-      default: return <Clock className="h-3 w-3" />;
+      case 'cart':
+        return <ShoppingCart className="h-3 w-3" />;
+      case 'package':
+        return <Package className="h-3 w-3" />;
+      default:
+        return <Clock className="h-3 w-3" />;
     }
   };
 
@@ -118,7 +137,7 @@ export const LiveActivityFeed = () => {
           <span className="text-[10px] font-medium text-success uppercase tracking-wide">Live</span>
         </div>
       </div>
-      
+
       <div className="flex-1 min-h-0">
         {activities.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center py-6">
@@ -160,9 +179,13 @@ export const LiveActivityFeed = () => {
           onClick={() => setIsExpanded(!isExpanded)}
         >
           {isExpanded ? (
-            <>Show Less <ChevronUp className="h-3 w-3 ml-1" /></>
+            <>
+              Show Less <ChevronUp className="h-3 w-3 ml-1" />
+            </>
           ) : (
-            <>Show More ({activities.length - 3} more) <ChevronDown className="h-3 w-3 ml-1" /></>
+            <>
+              Show More ({activities.length - 3} more) <ChevronDown className="h-3 w-3 ml-1" />
+            </>
           )}
         </Button>
       )}

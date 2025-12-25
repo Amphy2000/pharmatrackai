@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { useMedications } from '@/hooks/useMedications';
+import { useBranchInventory } from '@/hooks/useBranchInventory';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { usePharmacy } from '@/hooks/usePharmacy';
 import { useSuppliers } from '@/hooks/useSuppliers';
@@ -8,7 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Brain, TrendingUp, Package, AlertTriangle, ShoppingCart, Loader2, FileText } from 'lucide-react';
+import { Brain, TrendingUp, Package, AlertTriangle, Loader2, FileText } from 'lucide-react';
 import { subDays } from 'date-fns';
 import { useToast } from '@/hooks/use-toast';
 import { generatePurchaseOrder, generateOrderNumber } from '@/utils/purchaseOrderGenerator';
@@ -29,27 +29,34 @@ interface ForecastItem {
 }
 
 export const DemandForecasting = () => {
-  const { medications } = useMedications();
+  const { medications } = useBranchInventory();
   const { formatPrice, currency } = useCurrency();
   const { pharmacyId, pharmacy } = usePharmacy();
   const { suppliers } = useSuppliers();
   const { toast } = useToast();
   const [isGenerating, setIsGenerating] = useState(false);
 
-  // Fetch sales data separately
+  // Fetch sales data separately (branch-scoped because useSales writes branch_id)
+  const { currentBranchId } = useBranchInventory();
   const { data: sales = [] } = useQuery({
-    queryKey: ['sales-history', pharmacyId],
+    queryKey: ['sales-history', pharmacyId, currentBranchId],
     queryFn: async () => {
       if (!pharmacyId) return [];
-      
+
       const thirtyDaysAgo = subDays(new Date(), 30).toISOString();
-      
-      const { data, error } = await supabase
+
+      let query = supabase
         .from('sales')
         .select('*')
         .eq('pharmacy_id', pharmacyId)
         .gte('sale_date', thirtyDaysAgo)
         .order('sale_date', { ascending: false });
+
+      if (currentBranchId) {
+        query = query.eq('branch_id', currentBranchId);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       return data || [];
@@ -69,26 +76,31 @@ export const DemandForecasting = () => {
     salesByMedication[sale.medication_id].count += 1;
   });
 
-  // Calculate forecasts with supplier info
+  // Calculate forecasts with supplier info (branch stock + branch reorder level)
   const forecasts: ForecastItem[] = (medications || [])
-    .map(med => {
+    .map((med: any) => {
       const salesData = salesByMedication[med.id] || { quantity: 0, revenue: 0, count: 0 };
       const dailyAvg = salesData.quantity / 30;
       const monthlyForecast = Math.ceil(dailyAvg * 30);
-      const daysOfStockLeft = dailyAvg > 0 ? Math.floor(med.current_stock / dailyAvg) : 999;
-      const recommendedReorder = Math.max(0, monthlyForecast - med.current_stock);
-      const reorderCost = recommendedReorder * med.unit_price;
-      
+
+      const currentStock = Number(med.branch_stock ?? med.current_stock ?? 0);
+      const reorderLevel = Number(med.branch_reorder_level ?? med.reorder_level ?? 0);
+
+      const daysOfStockLeft = dailyAvg > 0 ? Math.floor(currentStock / dailyAvg) : 999;
+      const recommendedReorder = Math.max(0, monthlyForecast - currentStock);
+      const reorderCost = recommendedReorder * Number(med.unit_price);
+
       // Find supplier for this medication
-      const supplier = suppliers?.find(s => s.name === med.supplier);
-      
-      const velocity: 'high' | 'medium' | 'low' = salesData.quantity > 20 ? 'high' : salesData.quantity > 5 ? 'medium' : 'low';
-      
+      const supplier = suppliers?.find((s) => s.name === med.supplier);
+
+      const velocity: 'high' | 'medium' | 'low' =
+        salesData.quantity > 20 ? 'high' : salesData.quantity > 5 ? 'medium' : 'low';
+
       return {
         id: med.id,
         name: med.name,
-        currentStock: med.current_stock,
-        reorderLevel: med.reorder_level,
+        currentStock,
+        reorderLevel,
         dailyAvg: Math.round(dailyAvg * 10) / 10,
         monthlyForecast,
         daysOfStockLeft,
@@ -99,7 +111,7 @@ export const DemandForecasting = () => {
         supplierName: med.supplier || 'Unknown Supplier',
       };
     })
-    .filter(f => f.dailyAvg > 0 || f.currentStock < f.reorderLevel)
+    .filter((f) => f.dailyAvg > 0 || f.currentStock < f.reorderLevel)
     .sort((a, b) => a.daysOfStockLeft - b.daysOfStockLeft);
 
   // Critical items (less than 7 days of stock)
