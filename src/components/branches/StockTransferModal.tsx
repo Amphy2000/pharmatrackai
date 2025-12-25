@@ -16,7 +16,7 @@ import { useBranches } from '@/hooks/useBranches';
 import { usePharmacy } from '@/hooks/usePharmacy';
 import { useMedications } from '@/hooks/useMedications';
 import { supabase } from '@/integrations/supabase/client';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { ArrowRight, ArrowLeftRight, AlertTriangle, Package, Building2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 
@@ -34,8 +34,9 @@ interface AvailableMedication {
 
 export const StockTransferModal = ({ open, onOpenChange }: StockTransferModalProps) => {
   const { branches, createTransfer } = useBranches();
-  const { pharmacyId } = usePharmacy();
+  const { pharmacyId, pharmacy } = usePharmacy();
   const { medications: allMedications } = useMedications();
+  const queryClient = useQueryClient();
   
   const [formData, setFormData] = useState({
     from_branch_id: '',
@@ -45,10 +46,59 @@ export const StockTransferModal = ({ open, onOpenChange }: StockTransferModalPro
     notes: '',
   });
 
-  // All active branches can be source or destination (including main branch)
-  const activeBranches = branches.filter(b => b.is_active);
+  // Get or create the main branch (HQ)
+  const { data: mainBranch, isLoading: isLoadingMainBranch } = useQuery({
+    queryKey: ['main-branch', pharmacyId],
+    queryFn: async () => {
+      if (!pharmacyId) return null;
+      
+      // Check if a main branch exists
+      const { data: existing, error: fetchError } = await supabase
+        .from('branches')
+        .select('*')
+        .eq('pharmacy_id', pharmacyId)
+        .eq('is_main_branch', true)
+        .maybeSingle();
+      
+      if (fetchError) throw fetchError;
+      
+      if (existing) return existing;
+      
+      // Auto-create main branch (HQ) if none exists
+      const { data: newMain, error: createError } = await supabase
+        .from('branches')
+        .insert({
+          pharmacy_id: pharmacyId,
+          name: pharmacy?.name ? `${pharmacy.name} (HQ)` : 'Main Warehouse (HQ)',
+          is_main_branch: true,
+          is_active: true,
+        })
+        .select()
+        .single();
+      
+      if (createError) throw createError;
+      
+      // Invalidate branches query to refresh the list
+      queryClient.invalidateQueries({ queryKey: ['branches', pharmacyId] });
+      
+      return newMain;
+    },
+    enabled: !!pharmacyId && open,
+  });
 
-  // Fetch branch inventory for all branches
+  // All active branches (will include the main branch once created/loaded)
+  const activeBranches = useMemo(() => {
+    const active = branches.filter(b => b.is_active);
+    
+    // Include mainBranch if it's not already in the list
+    if (mainBranch && !active.find(b => b.id === mainBranch.id)) {
+      return [mainBranch as any, ...active];
+    }
+    
+    return active;
+  }, [branches, mainBranch]);
+
+  // Fetch branch inventory for all non-main branches
   const { data: branchInventoryData = [] } = useQuery({
     queryKey: ['all-branch-inventory-for-transfer', pharmacyId],
     queryFn: async () => {
@@ -70,8 +120,9 @@ export const StockTransferModal = ({ open, onOpenChange }: StockTransferModalPro
     if (!formData.from_branch_id) return [];
     
     const sourceBranch = activeBranches.find(b => b.id === formData.from_branch_id);
+    const isMainBranchSource = sourceBranch?.is_main_branch || formData.from_branch_id === 'main-hq';
     
-    if (sourceBranch?.is_main_branch) {
+    if (isMainBranchSource) {
       // Main branch uses medications table current_stock
       return allMedications
         .filter(m => m.current_stock > 0)
