@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,6 +14,7 @@ import { generateLocationQRCode } from '@/components/shifts/LocationQRScanner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 
 export const ClockInSecuritySettings = () => {
+  const queryClient = useQueryClient();
   const { pharmacy, pharmacyId, updatePharmacySettings } = usePharmacy();
   const [wifiName, setWifiName] = useState(pharmacy?.shop_wifi_name || '');
   const [isCapturing, setIsCapturing] = useState(false);
@@ -88,6 +90,10 @@ export const ClockInSecuritySettings = () => {
         .eq('id', pharmacyId);
 
       if (error) throw error;
+      
+      // Invalidate pharmacy queries to refresh the UI
+      queryClient.invalidateQueries({ queryKey: ['pharmacy-details'] });
+      queryClient.invalidateQueries({ queryKey: ['user-pharmacy'] });
       
       toast.success(enabled ? 'Clock-in verification enabled' : 'Clock-in verification disabled');
     } catch (error: any) {

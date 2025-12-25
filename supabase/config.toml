@@ -38,3 +38,6 @@ verify_jwt = true
 
 [functions.send-welcome-sms]
 verify_jwt = false
+
+[functions.subscription-reminder]
+verify_jwt = false
