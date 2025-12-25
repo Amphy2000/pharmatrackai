@@ -68,6 +68,14 @@ const ManagerDashboard = () => {
   const { formatPrice } = useCurrency();
   const { currentBranchName, currentBranchId, userAssignedBranchId } = useBranchContext();
 
+  // Map branch medications to include current_stock for compatibility with components expecting Medication[]
+  const compatibleMedications = useMemo((): Medication[] => {
+    return branchMedications.map(m => ({
+      ...m,
+      current_stock: m.branch_stock,
+    } as Medication));
+  }, [branchMedications]);
+
   // Filter sales to only this branch
   const branchSales = useMemo(() => {
     if (!sales || !currentBranchId) return [];
@@ -88,6 +96,28 @@ const ManagerDashboard = () => {
       })
       .reduce((sum, sale) => sum + sale.total_price, 0);
   }, [branchSales]);
+
+  // Calculate branch inventory value
+  const totalInventoryValue = useMemo(() => {
+    return branchMedications?.reduce((sum, med) => {
+      return sum + (med.branch_stock * med.unit_price);
+    }, 0) || 0;
+  }, [branchMedications]);
+
+  // Calculate protected value (expiring soon inventory) - branch-specific only
+  const protectedValue = useMemo(() => {
+    return branchMedications?.reduce((sum, med) => {
+      const expiryDate = new Date(med.expiry_date);
+      const today = new Date();
+      const daysUntilExpiry = Math.ceil((expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      if (daysUntilExpiry <= 30 && med.branch_stock > 0) {
+        return sum + (med.branch_stock * med.unit_price);
+      }
+      return sum;
+    }, 0) || 0;
+  }, [branchMedications]);
+
+  const branchMetrics = getMetrics();
 
   // Loading state
   if (authLoading || pharmacyLoading || permissionsLoading) {
@@ -128,32 +158,6 @@ const ManagerDashboard = () => {
     navigate('/staff-dashboard', { replace: true });
     return null;
   }
-
-  const branchMetrics = getMetrics();
-
-  // Map branch medications to include current_stock for compatibility with components expecting Medication[]
-  const compatibleMedications = useMemo((): Medication[] => {
-    return branchMedications.map(m => ({
-      ...m,
-      current_stock: m.branch_stock,
-    } as Medication));
-  }, [branchMedications]);
-
-  // Calculate branch inventory value
-  const totalInventoryValue = branchMedications?.reduce((sum, med) => {
-    return sum + (med.branch_stock * med.unit_price);
-  }, 0) || 0;
-
-  // Calculate protected value (expiring soon inventory) - branch-specific only
-  const protectedValue = branchMedications?.reduce((sum, med) => {
-    const expiryDate = new Date(med.expiry_date);
-    const today = new Date();
-    const daysUntilExpiry = Math.ceil((expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-    if (daysUntilExpiry <= 30 && med.branch_stock > 0) {
-      return sum + (med.branch_stock * med.unit_price);
-    }
-    return sum;
-  }, 0) || 0;
 
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">
