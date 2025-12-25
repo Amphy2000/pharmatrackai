@@ -11,8 +11,9 @@ import { usePharmacy } from '@/hooks/usePharmacy';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
-import { Crown, Check, Zap, Calendar, CreditCard, Loader2 } from 'lucide-react';
+import { Crown, Check, Zap, Calendar, CreditCard, Loader2, RefreshCw, Key } from 'lucide-react';
 import { format } from 'date-fns';
+import { Separator } from '@/components/ui/separator';
 
 const plans = [
   {
@@ -72,6 +73,7 @@ export const SubscriptionManagement = () => {
   const { toast } = useToast();
   const [isProcessing, setIsProcessing] = useState<string | null>(null);
   const [isAnnual, setIsAnnual] = useState(false);
+  const [autoRenew, setAutoRenew] = useState(true);
 
   // Fetch billing history
   const { data: payments = [], isLoading: paymentsLoading } = useQuery({
@@ -187,10 +189,13 @@ export const SubscriptionManagement = () => {
             {getStatusBadge()}
           </div>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg">
-            <div>
-              <p className="font-semibold text-lg capitalize">{currentPlan} Plan</p>
+        <CardContent className="space-y-6">
+          {/* Plan Status Card */}
+          <div className="flex items-center justify-between p-4 bg-muted/50 rounded-lg border">
+            <div className="space-y-1">
+              <p className="font-semibold text-lg">
+                {plans.find(p => p.id === currentPlan)?.name || 'Starter'} Plan
+              </p>
               <p className="text-sm text-muted-foreground">
                 {isTrial && daysRemaining !== null && (
                   <>Trial ends in {daysRemaining} day{daysRemaining !== 1 ? 's' : ''}</>
@@ -202,21 +207,68 @@ export const SubscriptionManagement = () => {
               </p>
             </div>
             <div className="text-right">
-              <p className="text-2xl font-bold">
+              <p className="text-2xl font-bold text-primary">
                 {plans.find(p => p.id === currentPlan)?.monthly || '₦0'}
               </p>
               <p className="text-sm text-muted-foreground">/month</p>
             </div>
           </div>
 
+          {/* Renewal Date */}
           {pharmacy?.subscription_ends_at && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Calendar className="h-4 w-4" />
               <span>
-                Next billing date: {format(new Date(pharmacy.subscription_ends_at), 'MMMM d, yyyy')}
+                Next renewal date: {format(new Date(pharmacy.subscription_ends_at), 'MMMM d, yyyy')}
               </span>
             </div>
           )}
+
+          <Separator />
+
+          {/* Auto-Renew Toggle */}
+          <div className="flex items-center justify-between">
+            <div className="space-y-1">
+              <div className="flex items-center gap-2">
+                <RefreshCw className="h-4 w-4 text-muted-foreground" />
+                <Label htmlFor="auto-renew" className="font-medium">Auto-Renewal</Label>
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Automatically renew your subscription when it expires
+              </p>
+            </div>
+            <Switch
+              id="auto-renew"
+              checked={autoRenew}
+              onCheckedChange={(checked) => {
+                setAutoRenew(checked);
+                toast({
+                  title: checked ? 'Auto-renewal enabled' : 'Auto-renewal disabled',
+                  description: checked 
+                    ? 'Your subscription will automatically renew.' 
+                    : 'You will need to manually renew your subscription.',
+                });
+              }}
+            />
+          </div>
+
+          <Separator />
+
+          {/* Paystack Subscription Code */}
+          <div className="space-y-2">
+            <div className="flex items-center gap-2">
+              <Key className="h-4 w-4 text-muted-foreground" />
+              <Label className="font-medium">Subscription Code</Label>
+            </div>
+            <div className="flex items-center gap-2">
+              <code className="flex-1 px-3 py-2 bg-muted rounded-md text-sm font-mono text-muted-foreground">
+                {pharmacy?.paystack_subscription_code || 'No active subscription'}
+              </code>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              This code identifies your recurring subscription with our payment provider
+            </p>
+          </div>
         </CardContent>
       </Card>
 
