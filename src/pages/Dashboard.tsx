@@ -2,12 +2,14 @@ import { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, Variants } from 'framer-motion';
 import { useMedications } from '@/hooks/useMedications';
+import { useBranchInventory } from '@/hooks/useBranchInventory';
 import { useSales } from '@/hooks/useSales';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePharmacy } from '@/hooks/usePharmacy';
 import { useShifts } from '@/hooks/useShifts';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useCurrency } from '@/contexts/CurrencyContext';
+import { useBranchContext } from '@/contexts/BranchContext';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Header } from '@/components/Header';
@@ -32,8 +34,9 @@ import { ROIDashboard } from '@/components/dashboard/ROIDashboard';
 import { LiveActivityFeed } from '@/components/dashboard/LiveActivityFeed';
 import { ProductTour } from '@/components/ProductTour';
 import { PWAInstallPrompt } from '@/components/pwa/PWAInstallPrompt';
-import { AlertSummaryWidget } from '@/components/dashboard/AlertSummaryWidget';
+import { BranchAlertSummaryWidget } from '@/components/dashboard/BranchAlertSummaryWidget';
 import { BranchComparisonPanel } from '@/components/dashboard/BranchComparisonPanel';
+import { ConsolidatedReportsPanel } from '@/components/dashboard/ConsolidatedReportsPanel';
 import { startOfDay, endOfDay, parseISO } from 'date-fns';
 import { 
   Package, 
@@ -49,7 +52,8 @@ import {
   Bell,
   DollarSign,
   BarChart3,
-  Home
+  Home,
+  Building2
 } from 'lucide-react';
 
 // Animation variants with proper typing
@@ -75,10 +79,12 @@ const Dashboard = () => {
   const { user, isLoading: authLoading } = useAuth();
   const { pharmacy, isLoading: pharmacyLoading } = usePharmacy();
   const { medications, isLoading: medsLoading, getMetrics } = useMedications();
+  const { medications: branchMedications, getMetrics: getBranchMetrics } = useBranchInventory();
   const { sales } = useSales();
   const { activeShift } = useShifts();
   const { isOwnerOrManager, userRole, hasPermission, isLoading: permissionsLoading } = usePermissions();
   const { formatPrice } = useCurrency();
+  const { currentBranchName, currentBranchId } = useBranchContext();
 
   // Fetch audit log count for ROI dashboard (price change attempts)
   const { data: auditLogCount = 0 } = useQuery({
@@ -172,25 +178,27 @@ const Dashboard = () => {
 
   // Owner and Manager get the full dashboard (continue rendering below)
   const metrics = getMetrics();
+  // Branch-specific metrics for dashboard display
+  const branchMetrics = getBranchMetrics();
 
-  // Calculate total inventory value
-  const totalInventoryValue = medications?.reduce((sum, med) => {
-    return sum + (med.current_stock * med.unit_price);
+  // Calculate total inventory value (branch-specific)
+  const totalInventoryValue = branchMedications?.reduce((sum, med) => {
+    return sum + (med.branch_stock * med.unit_price);
   }, 0) || 0;
 
-  // Calculate protected value (expired + expiring soon inventory value)
-  const protectedValue = medications?.reduce((sum, med) => {
+  // Calculate protected value (expired + expiring soon inventory value) - branch-specific
+  const protectedValue = branchMedications?.reduce((sum, med) => {
     const expiryDate = new Date(med.expiry_date);
     const today = new Date();
     const daysUntilExpiry = Math.ceil((expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-    if (daysUntilExpiry <= 30) {
-      return sum + (med.current_stock * med.unit_price);
+    if (daysUntilExpiry <= 30 && med.branch_stock > 0) {
+      return sum + (med.branch_stock * med.unit_price);
     }
     return sum;
   }, 0) || 0;
 
-  // Calculate pending alerts count
-  const pendingAlerts = (metrics.lowStockItems || 0) + (metrics.expiredItems || 0) + (metrics.expiringWithin30Days || 0);
+  // Calculate pending alerts count (branch-specific)
+  const pendingAlerts = (branchMetrics.lowStock || 0) + (branchMetrics.expired || 0) + (branchMetrics.expiringSoon || 0);
 
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">
@@ -215,9 +223,17 @@ const Dashboard = () => {
                 Here's what's happening at <span className="text-foreground font-medium">{pharmacy.name}</span> today.
               </p>
             </div>
-            <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary/10 border border-primary/20">
-              <Zap className="h-4 w-4 text-primary" />
-              <span className="text-sm text-primary font-medium">AI Active</span>
+            <div className="flex items-center gap-3">
+              {currentBranchName && (
+                <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-muted border border-border">
+                  <Building2 className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">{currentBranchName}</span>
+                </div>
+              )}
+              <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary/10 border border-primary/20">
+                <Zap className="h-4 w-4 text-primary" />
+                <span className="text-sm text-primary font-medium">AI Active</span>
+              </div>
             </div>
           </div>
         </motion.section>
@@ -303,8 +319,8 @@ const Dashboard = () => {
               </div>
             </motion.section>
 
-            {/* Alert Summary Widget */}
-            <AlertSummaryWidget />
+            {/* Branch-Specific Alert Summary Widget */}
+            <BranchAlertSummaryWidget />
 
             {/* Money Saver Summary - ROI Dashboard */}
             {isOwnerOrManager && (
@@ -422,10 +438,10 @@ const Dashboard = () => {
                 <motion.div variants={itemVariants}>
                   <MetricCard
                     title="Total SKUs"
-                    value={metrics.totalSKUs}
+                    value={branchMetrics.totalSKUs}
                     icon={<Package className="h-5 w-5 sm:h-7 sm:w-7" />}
                     variant="primary"
-                    subtitle="Active medications"
+                    subtitle={currentBranchName ? `In ${currentBranchName}` : "Active medications"}
                     trend={12}
                     trendLabel="vs last month"
                   />
@@ -433,7 +449,7 @@ const Dashboard = () => {
                 <motion.div variants={itemVariants}>
                   <MetricCard
                     title="Low Stock"
-                    value={metrics.lowStockItems}
+                    value={branchMetrics.lowStock}
                     icon={<AlertTriangle className="h-5 w-5 sm:h-7 sm:w-7" />}
                     variant="warning"
                     subtitle="Below reorder level"
@@ -444,7 +460,7 @@ const Dashboard = () => {
                 <motion.div variants={itemVariants}>
                   <MetricCard
                     title="Expired"
-                    value={metrics.expiredItems}
+                    value={branchMetrics.expired}
                     icon={<XCircle className="h-5 w-5 sm:h-7 sm:w-7" />}
                     variant="danger"
                     subtitle="Require disposal"
@@ -453,7 +469,7 @@ const Dashboard = () => {
                 <motion.div variants={itemVariants}>
                   <MetricCard
                     title="Expiring Soon"
-                    value={metrics.expiringWithin30Days}
+                    value={branchMetrics.expiringSoon}
                     icon={<Clock className="h-5 w-5 sm:h-7 sm:w-7" />}
                     variant="success"
                     subtitle="Within 30 days"
@@ -473,12 +489,23 @@ const Dashboard = () => {
               </motion.section>
             )}
 
-            {/* Branch Comparison - Owner/Manager Only */}
+            {/* Consolidated Reports - Owner/Manager Only */}
             {isOwnerOrManager && (
               <motion.section 
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.32 }}
+              >
+                <ConsolidatedReportsPanel />
+              </motion.section>
+            )}
+
+            {/* Branch Comparison - Owner/Manager Only */}
+            {isOwnerOrManager && (
+              <motion.section 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.34 }}
               >
                 <BranchComparisonPanel />
               </motion.section>
