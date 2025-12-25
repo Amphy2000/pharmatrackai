@@ -278,7 +278,7 @@ const ManagerDashboard = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.4 }}
               >
-                <AIInsightsPanel medications={compatibleMedications} />
+                <AIInsightsPanel medications={compatibleMedications} branchName={currentBranchName} />
               </motion.section>
             )}
 

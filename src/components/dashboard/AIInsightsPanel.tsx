@@ -4,9 +4,11 @@ import { Medication } from '@/types/medication';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useCurrency } from '@/contexts/CurrencyContext';
+import { useBranchContext } from '@/contexts/BranchContext';
 
 interface AIInsightsPanelProps {
   medications: Medication[];
+  branchName?: string;
 }
 
 interface Insight {
@@ -20,11 +22,14 @@ interface Insight {
   category?: 'urgent' | 'expiry' | 'reorder' | 'profit' | 'demand' | 'savings';
 }
 
-export const AIInsightsPanel = ({ medications }: AIInsightsPanelProps) => {
+export const AIInsightsPanel = ({ medications, branchName }: AIInsightsPanelProps) => {
   const [insights, setInsights] = useState<Insight[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { formatPrice, currency } = useCurrency();
+  const { currentBranchName } = useBranchContext();
   const currencySymbol = currency === 'NGN' ? '₦' : '$';
+  
+  const displayBranchName = branchName || currentBranchName || 'Your Branch';
 
   useEffect(() => {
     const generateInsights = async () => {
@@ -244,7 +249,7 @@ export const AIInsightsPanel = ({ medications }: AIInsightsPanelProps) => {
                 AI Business Insights
                 <span className="px-2 py-0.5 text-xs font-medium bg-secondary/20 text-secondary rounded-full">LIVE</span>
               </h2>
-              <p className="text-sm text-muted-foreground">Actionable recommendations to maximize profit</p>
+              <p className="text-sm text-muted-foreground">Actionable recommendations for {displayBranchName}</p>
             </div>
           </div>
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
