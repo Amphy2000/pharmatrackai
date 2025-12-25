@@ -83,7 +83,10 @@ export const BranchProvider = ({ children }: { children: ReactNode }) => {
 
   const currentBranch = branches.find(b => b.id === currentBranchId);
   const currentBranchName = currentBranch?.name || 'Main Branch';
-  const isMainBranch = currentBranch?.is_main_branch || false;
+  
+  // Consider it "main branch" if no branch is selected OR if the selected branch is explicitly marked as main
+  // This ensures backward compatibility with pharmacies that haven't set up branches yet
+  const isMainBranch = !currentBranchId || currentBranch?.is_main_branch || branches.length === 0;
 
   return (
     <BranchContext.Provider value={{ 

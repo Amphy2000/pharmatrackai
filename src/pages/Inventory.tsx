@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Package, AlertTriangle, PackagePlus, ClipboardList, FileImage, Zap, Clock, FileSpreadsheet, TrendingDown, Calendar, Download, FileText, ChevronDown, Plus, DollarSign, LayoutGrid, List, Search, Trash2, CheckSquare, Building2 } from 'lucide-react';
+import { useBranchInventory, BranchMedication } from '@/hooks/useBranchInventory';
 import { useMedications } from '@/hooks/useMedications';
 import { ReceiveStockModal } from '@/components/inventory/ReceiveStockModal';
 import { StockCountModal } from '@/components/inventory/StockCountModal';
@@ -45,7 +46,14 @@ import {
 import { MedicationDetailModal } from '@/components/inventory/MedicationDetailModal';
 
 const Inventory = () => {
-  const { medications, deleteMedication, updateMedication } = useMedications();
+  // Use branch-specific inventory for display (clean slate for new branches)
+  const { medications: branchMedications, allCatalogMedications, isMainBranch: isBranchMain, getMetrics } = useBranchInventory();
+  // Also get mutations from useMedications for editing
+  const { deleteMedication, updateMedication } = useMedications();
+  
+  // Use branch-specific meds for all displays (expiry, low stock, etc.)
+  // This ensures new branches show 0 items until stock is transferred
+  const medications = branchMedications as unknown as Medication[];
   const [showReceiveStockModal, setShowReceiveStockModal] = useState(false);
   const [showStockCountModal, setShowStockCountModal] = useState(false);
   const [showInvoiceScannerModal, setShowInvoiceScannerModal] = useState(false);
@@ -160,24 +168,30 @@ const Inventory = () => {
   };
 
   const today = new Date();
-  const lowStockCount = medications.filter(m => m.current_stock <= m.reorder_level).length;
-  const totalProducts = medications.length;
+  // Use branch_stock for branch-specific counts (handles both main and non-main branches)
+  const branchMetrics = getMetrics();
+  const lowStockCount = branchMetrics.lowStock;
+  const totalProducts = branchMetrics.totalSKUs;
   
-  // Calculate expiring items with more detail
-  const expiringItems = medications.filter(m => {
+  // Calculate expiring items with more detail - using branch-specific stock
+  // Cast to BranchMedication to access branch_stock
+  const branchMeds = branchMedications as BranchMedication[];
+  
+  const expiringItems = branchMeds.filter(m => {
     const expiryDate = parseISO(m.expiry_date);
     const daysToExpiry = differenceInDays(expiryDate, today);
-    return daysToExpiry > 0 && daysToExpiry <= 30;
+    return daysToExpiry > 0 && daysToExpiry <= 30 && m.branch_stock > 0;
   });
   
-  const expiredItems = medications.filter(m => parseISO(m.expiry_date) <= today);
+  const expiredItems = branchMeds.filter(m => parseISO(m.expiry_date) <= today && m.branch_stock > 0);
   
-  const lowStockMedications = medications
-    .filter(m => m.current_stock <= m.reorder_level)
+  const lowStockMedications = branchMeds
+    .filter(m => m.branch_stock > 0 && m.branch_stock <= m.branch_reorder_level)
     .slice(0, 10);
   
-  // Items expiring soon sorted by urgency
-  const expiryUrgentItems = medications
+  // Items expiring soon sorted by urgency - only show items with stock
+  const expiryUrgentItems = branchMeds
+    .filter(m => m.branch_stock > 0) // Only items with stock in this branch
     .map(m => ({
       ...m,
       daysToExpiry: differenceInDays(parseISO(m.expiry_date), today)
@@ -442,7 +456,7 @@ const Inventory = () => {
               ) : (
                 <div className="space-y-3">
                   {lowStockMedications.map((medication) => {
-                    const stockPercentage = Math.round((medication.current_stock / medication.reorder_level) * 100);
+                    const stockPercentage = Math.round((medication.branch_stock / medication.branch_reorder_level) * 100);
                     return (
                       <div
                         key={medication.id}
@@ -455,9 +469,9 @@ const Inventory = () => {
                           </p>
                         </div>
                         <div className="text-right shrink-0">
-                          <p className="font-bold text-destructive">{medication.current_stock}</p>
+                          <p className="font-bold text-destructive">{medication.branch_stock}</p>
                           <p className="text-xs text-muted-foreground">
-                            / {medication.reorder_level}
+                            / {medication.branch_reorder_level}
                           </p>
                         </div>
                         <div className="w-16">
