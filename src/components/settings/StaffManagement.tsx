@@ -8,17 +8,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Progress } from '@/components/ui/progress';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Users, Shield, Crown, Briefcase, User, UserPlus, Lock, Zap, ChevronRight } from 'lucide-react';
+import { Users, Shield, Crown, Briefcase, User, UserPlus, Lock, Zap, ChevronRight, Building2, MapPin } from 'lucide-react';
 import { useStaffManagement } from '@/hooks/useStaffManagement';
 import { usePermissions, PERMISSION_LABELS, ROLE_TEMPLATES, PermissionKey } from '@/hooks/usePermissions';
 import { usePlanLimits } from '@/hooks/usePlanLimits';
+import { useBranches } from '@/hooks/useBranches';
 import { AddStaffModal } from './AddStaffModal';
 
 export const StaffManagement = () => {
   const navigate = useNavigate();
-  const { staff, isLoading, refetch, updateStaffPermissions, updateStaffRole, toggleStaffActive } = useStaffManagement();
+  const { staff, isLoading, refetch, updateStaffPermissions, updateStaffRole, updateStaffBranch, toggleStaffActive } = useStaffManagement();
   const { isOwnerOrManager, userRole } = usePermissions();
   const { maxUsers, planName, plan } = usePlanLimits();
+  const { branches } = useBranches();
   const [showAddStaffModal, setShowAddStaffModal] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
@@ -88,7 +90,7 @@ export const StaffManagement = () => {
                   Staff Management
                 </CardTitle>
                 <CardDescription>
-                  Manage your team members and their access permissions
+                  Manage your team members, branch assignments, and access permissions
                 </CardDescription>
               </div>
               {userRole === 'owner' && (
@@ -143,13 +145,13 @@ export const StaffManagement = () => {
                       member.is_active ? 'bg-card' : 'bg-muted/50 opacity-60'
                     }`}
                   >
-                    <div className="flex items-center justify-between gap-4">
+                    <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                       <div className="flex items-center gap-3 flex-1">
                         <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
                           {getRoleIcon(member.role)}
                         </div>
                         <div>
-                          <div className="font-medium flex items-center gap-2">
+                          <div className="font-medium flex items-center gap-2 flex-wrap">
                             {member.profile?.full_name || 'Unnamed Staff'}
                             <Badge variant={getRoleBadgeVariant(member.role)}>
                               {member.role === 'staff' ? 'Staff' : member.role.charAt(0).toUpperCase() + member.role.slice(1)}
@@ -158,21 +160,60 @@ export const StaffManagement = () => {
                               <Badge variant="destructive">Inactive</Badge>
                             )}
                           </div>
-                          <div className="text-sm text-muted-foreground">
+                          <div className="text-sm text-muted-foreground flex items-center gap-2">
                             {member.profile?.phone || 'No phone'}
+                            {member.branch ? (
+                              <span className="flex items-center gap-1 text-primary">
+                                <Building2 className="h-3 w-3" />
+                                {member.branch.name}
+                              </span>
+                            ) : (
+                              <span className="flex items-center gap-1 text-muted-foreground">
+                                <MapPin className="h-3 w-3" />
+                                All Branches
+                              </span>
+                            )}
                           </div>
                         </div>
                       </div>
 
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         {/* Role can't be changed for owner */}
                         {member.role !== 'owner' && (
                           <>
+                            {/* Branch Assignment */}
+                            <Select
+                              value={member.branch_id || 'all'}
+                              onValueChange={(value) => updateStaffBranch(member.id, value === 'all' ? null : value)}
+                            >
+                              <SelectTrigger className="w-36">
+                                <Building2 className="h-4 w-4 mr-1 text-muted-foreground" />
+                                <SelectValue placeholder="Branch" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="all">
+                                  <span className="flex items-center gap-2">
+                                    <MapPin className="h-3 w-3" />
+                                    All Branches
+                                  </span>
+                                </SelectItem>
+                                {branches?.map(branch => (
+                                  <SelectItem key={branch.id} value={branch.id}>
+                                    <span className="flex items-center gap-2">
+                                      <Building2 className="h-3 w-3" />
+                                      {branch.name}
+                                    </span>
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+
+                            {/* Role Selection */}
                             <Select
                               value={member.role}
                               onValueChange={(value) => updateStaffRole(member.id, value as 'manager' | 'staff')}
                             >
-                              <SelectTrigger className="w-32">
+                              <SelectTrigger className="w-28">
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>

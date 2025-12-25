@@ -11,11 +11,16 @@ interface StaffMember {
   role: 'owner' | 'manager' | 'staff';
   is_active: boolean;
   created_at: string;
+  branch_id: string | null;
   profile?: {
     full_name: string | null;
     phone: string | null;
     avatar_url: string | null;
   };
+  branch?: {
+    id: string;
+    name: string;
+  } | null;
   permissions: PermissionKey[];
 }
 
@@ -37,10 +42,16 @@ export const useStaffManagement = () => {
     if (!pharmacy?.id) return;
 
     try {
-      // Fetch staff members
+      // Fetch staff members with branch info
       const { data: staffData, error: staffError } = await supabase
         .from('pharmacy_staff')
-        .select('*')
+        .select(`
+          *,
+          branches:branch_id (
+            id,
+            name
+          )
+        `)
         .eq('pharmacy_id', pharmacy.id)
         .order('created_at', { ascending: true });
 
@@ -72,6 +83,7 @@ export const useStaffManagement = () => {
           return {
             ...s,
             profile: profileData || undefined,
+            branch: s.branches || null,
             permissions,
           } as StaffMember;
         })
@@ -158,6 +170,31 @@ export const useStaffManagement = () => {
     }
   };
 
+  const updateStaffBranch = async (staffId: string, branchId: string | null) => {
+    try {
+      const { error } = await supabase
+        .from('pharmacy_staff')
+        .update({ branch_id: branchId })
+        .eq('id', staffId);
+
+      if (error) throw error;
+
+      toast({
+        title: 'Success',
+        description: branchId ? 'Staff assigned to branch' : 'Staff can access all branches',
+      });
+
+      await fetchStaff();
+    } catch (error) {
+      console.error('Error updating branch:', error);
+      toast({
+        title: 'Error',
+        description: 'Failed to update branch assignment',
+        variant: 'destructive',
+      });
+    }
+  };
+
   const toggleStaffActive = async (staffId: string, isActive: boolean) => {
     try {
       const { error } = await supabase
@@ -189,6 +226,7 @@ export const useStaffManagement = () => {
     refetch: fetchStaff,
     updateStaffPermissions,
     updateStaffRole,
+    updateStaffBranch,
     toggleStaffActive,
   };
 };

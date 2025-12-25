@@ -33,6 +33,7 @@ import { LiveActivityFeed } from '@/components/dashboard/LiveActivityFeed';
 import { ProductTour } from '@/components/ProductTour';
 import { PWAInstallPrompt } from '@/components/pwa/PWAInstallPrompt';
 import { AlertSummaryWidget } from '@/components/dashboard/AlertSummaryWidget';
+import { BranchComparisonPanel } from '@/components/dashboard/BranchComparisonPanel';
 import { startOfDay, endOfDay, parseISO } from 'date-fns';
 import { 
   Package, 
@@ -469,6 +470,17 @@ const Dashboard = () => {
                 transition={{ delay: 0.3 }}
               >
                 <StaffPerformancePanel />
+              </motion.section>
+            )}
+
+            {/* Branch Comparison - Owner/Manager Only */}
+            {isOwnerOrManager && (
+              <motion.section 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.32 }}
+              >
+                <BranchComparisonPanel />
               </motion.section>
             )}
 
