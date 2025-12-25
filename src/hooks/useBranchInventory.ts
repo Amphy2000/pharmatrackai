@@ -42,7 +42,7 @@ export const useBranchInventory = () => {
 
   // Fetch ALL medications with branch-specific stock (full catalog)
   const { data: allMedications = [], isLoading } = useQuery({
-    queryKey: ['branch-medications', pharmacyId, currentBranchId],
+    queryKey: ['branch-medications', pharmacyId, currentBranchId, isMainBranch],
     queryFn: async () => {
       if (!pharmacyId) return [];
       
@@ -117,7 +117,7 @@ export const useBranchInventory = () => {
           filter: `pharmacy_id=eq.${pharmacyId}`,
         },
         () => {
-          queryClient.invalidateQueries({ queryKey: ['branch-medications', pharmacyId, currentBranchId] });
+          queryClient.invalidateQueries({ queryKey: ['branch-medications', pharmacyId] });
         }
       )
       .subscribe();
@@ -132,7 +132,7 @@ export const useBranchInventory = () => {
           table: 'branch_inventory',
         },
         () => {
-          queryClient.invalidateQueries({ queryKey: ['branch-medications', pharmacyId, currentBranchId] });
+          queryClient.invalidateQueries({ queryKey: ['branch-medications', pharmacyId] });
         }
       )
       .subscribe();
