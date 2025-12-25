@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Activity, ShoppingCart, Package, Clock, ChevronDown, ChevronUp } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { usePharmacy } from '@/hooks/usePharmacy';
+import { useBranchContext } from '@/contexts/BranchContext';
 import { formatDistanceToNow } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { useCurrency } from '@/contexts/CurrencyContext';
@@ -20,19 +21,27 @@ export const LiveActivityFeed = () => {
   const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [isExpanded, setIsExpanded] = useState(false);
   const { pharmacy } = usePharmacy();
+  const { currentBranchId, currentBranchName } = useBranchContext();
   const { formatPrice } = useCurrency();
 
   useEffect(() => {
     if (!pharmacy?.id) return;
 
-    // Fetch recent sales
+    // Fetch recent sales - branch-scoped
     const fetchRecentActivity = async () => {
-      const { data: salesData } = await supabase
+      let query = supabase
         .from('sales')
-        .select('id, total_price, created_at, sold_by_name')
+        .select('id, total_price, created_at, sold_by_name, branch_id')
         .eq('pharmacy_id', pharmacy.id)
         .order('created_at', { ascending: false })
         .limit(5);
+      
+      // Filter by branch if one is selected
+      if (currentBranchId) {
+        query = query.eq('branch_id', currentBranchId);
+      }
+      
+      const { data: salesData } = await query;
 
       if (salesData) {
         const saleActivities: ActivityItem[] = salesData.map(sale => ({
@@ -49,14 +58,17 @@ export const LiveActivityFeed = () => {
 
     fetchRecentActivity();
 
-    // Subscribe to real-time updates
+    // Subscribe to real-time updates - branch-scoped
     const channel = supabase
-      .channel('live-activity-feed')
+      .channel(`live-activity-feed-${currentBranchId || 'all'}`)
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'sales', filter: `pharmacy_id=eq.${pharmacy.id}` },
         (payload) => {
           const newSale = payload.new as any;
+          // Only show if matches current branch or no branch filter
+          if (currentBranchId && newSale.branch_id !== currentBranchId) return;
+          
           const newActivity: ActivityItem = {
             id: `sale-${newSale.id}`,
             type: 'sale',
@@ -89,7 +101,7 @@ export const LiveActivityFeed = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [pharmacy?.id, formatPrice]);
+  }, [pharmacy?.id, currentBranchId, formatPrice]);
 
   const getIcon = (icon: string) => {
     switch (icon) {

@@ -1,12 +1,12 @@
 import { DollarSign, TrendingDown, AlertTriangle, ShieldCheck } from 'lucide-react';
-import { Medication } from '@/types/medication';
+import { BranchMedication } from '@/hooks/useBranchInventory';
 import { useMemo } from 'react';
 import { differenceInDays, parseISO } from 'date-fns';
 import { cn } from '@/lib/utils';
 import { useCurrency } from '@/contexts/CurrencyContext';
 
 interface FinancialSummaryProps {
-  medications: Medication[];
+  medications: BranchMedication[];
 }
 
 export const FinancialSummary = ({ medications }: FinancialSummaryProps) => {
@@ -20,7 +20,9 @@ export const FinancialSummary = ({ medications }: FinancialSummaryProps) => {
     let potentialSavings = 0;
 
     medications.forEach(med => {
-      const value = med.current_stock * Number(med.unit_price);
+      // Use branch_stock for branch-specific metrics
+      const stock = med.branch_stock;
+      const value = stock * Number(med.unit_price);
       const expiryDate = parseISO(med.expiry_date);
       const daysUntilExpiry = differenceInDays(expiryDate, today);
 
@@ -28,10 +30,10 @@ export const FinancialSummary = ({ medications }: FinancialSummaryProps) => {
 
       if (daysUntilExpiry < 0) {
         expiredLoss += value;
-        potentialSavings += value; // Could have been saved with better management
+        potentialSavings += value;
       } else if (daysUntilExpiry <= 30) {
         atRiskValue += value;
-        potentialSavings += value * 0.5; // 50% could potentially be saved
+        potentialSavings += value * 0.5;
       }
     });
 

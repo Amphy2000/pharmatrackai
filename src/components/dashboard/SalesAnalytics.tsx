@@ -3,6 +3,8 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { usePharmacy } from '@/hooks/usePharmacy';
+import { useBranchContext } from '@/contexts/BranchContext';
+import { useManagerScope } from '@/hooks/useManagerScope';
 import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays, subMonths, subYears, parseISO } from 'date-fns';
 import { TrendingUp, TrendingDown, DollarSign, ShoppingCart, Target, Calendar, ChevronDown, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -33,9 +35,14 @@ interface SalesWithMedication {
 export const SalesAnalytics = () => {
   const { formatPrice } = useCurrency();
   const { pharmacyId } = usePharmacy();
+  const { currentBranchId } = useBranchContext();
+  const { isOwner, assignedBranchId } = useManagerScope();
   const { toast } = useToast();
   const [period, setPeriod] = useState<Period>('month');
-  const [branchFilter, setBranchFilter] = useState<string>('all');
+  
+  // Managers can only see their branch, owners can filter
+  const effectiveBranchId = isOwner ? null : (assignedBranchId || currentBranchId);
+  const [branchFilter, setBranchFilter] = useState<string>(effectiveBranchId || 'all');
 
   const getDateRange = (p: Period) => {
     const now = new Date();
@@ -53,9 +60,9 @@ export const SalesAnalytics = () => {
 
   const dateRange = getDateRange(period);
 
-  // Fetch current period sales
+  // Fetch current period sales - branch-scoped for managers
   const { data: currentSales = [], isLoading: loadingCurrent } = useQuery({
-    queryKey: ['sales-analytics-current', period, branchFilter, pharmacyId],
+    queryKey: ['sales-analytics-current', period, branchFilter, effectiveBranchId, pharmacyId],
     queryFn: async () => {
       if (!pharmacyId) return [];
       
@@ -67,17 +74,18 @@ export const SalesAnalytics = () => {
           unit_price,
           total_price,
           sale_date,
+          branch_id,
           medications (unit_price)
         `)
         .eq('pharmacy_id', pharmacyId)
         .gte('sale_date', dateRange.start.toISOString())
         .lte('sale_date', dateRange.end.toISOString());
 
-      // Note: Sales don't have branch_id yet, but this prepares for future enhancement
-      // When sales get branch_id, uncomment:
-      // if (branchFilter !== 'all') {
-      //   query = query.eq('branch_id', branchFilter);
-      // }
+      // Apply branch filter
+      const filterBranch = effectiveBranchId || (branchFilter !== 'all' ? branchFilter : null);
+      if (filterBranch) {
+        query = query.eq('branch_id', filterBranch);
+      }
 
       const { data, error } = await query;
       if (error) throw error;
@@ -88,7 +96,7 @@ export const SalesAnalytics = () => {
 
   // Fetch previous period sales for comparison
   const { data: previousSales = [], isLoading: loadingPrevious } = useQuery({
-    queryKey: ['sales-analytics-previous', period, branchFilter, pharmacyId],
+    queryKey: ['sales-analytics-previous', period, branchFilter, effectiveBranchId, pharmacyId],
     queryFn: async () => {
       if (!pharmacyId) return [];
       
@@ -100,11 +108,18 @@ export const SalesAnalytics = () => {
           unit_price,
           total_price,
           sale_date,
+          branch_id,
           medications (unit_price)
         `)
         .eq('pharmacy_id', pharmacyId)
         .gte('sale_date', dateRange.prevStart.toISOString())
         .lte('sale_date', dateRange.prevEnd.toISOString());
+
+      // Apply branch filter
+      const filterBranch = effectiveBranchId || (branchFilter !== 'all' ? branchFilter : null);
+      if (filterBranch) {
+        query = query.eq('branch_id', filterBranch);
+      }
 
       const { data, error } = await query;
       if (error) throw error;
@@ -223,7 +238,8 @@ export const SalesAnalytics = () => {
           <p className="text-xs text-muted-foreground">Track your pharmacy's financial performance</p>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
-          <BranchFilter value={branchFilter} onChange={setBranchFilter} showLabel={false} />
+          {/* Only show branch filter to owners */}
+          {isOwner && <BranchFilter value={branchFilter} onChange={setBranchFilter} showLabel={false} />}
           <Button variant="outline" size="sm" onClick={exportToCSV} className="gap-1.5 h-8 px-2.5">
             <Download className="h-3.5 w-3.5" />
             <span className="hidden sm:inline">Export</span>
