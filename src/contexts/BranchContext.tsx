@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
 import { useBranches } from '@/hooks/useBranches';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useAuth } from '@/contexts/AuthContext';
@@ -71,6 +71,17 @@ export const BranchProvider = ({ children }: { children: ReactNode }) => {
       }
     }
   }, [branches, userAssignedBranchId, isOwner, currentBranchId]);
+
+  // Clear cart when branch changes (for owners switching branches) - prevents cross-branch cart leakage
+  const prevBranchIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (prevBranchIdRef.current && prevBranchIdRef.current !== currentBranchId) {
+      // Branch changed - clear cart to prevent cross-branch cart leakage
+      localStorage.removeItem('pharmatrack_cart');
+      console.log('Cart cleared due to branch switch');
+    }
+    prevBranchIdRef.current = currentBranchId;
+  }, [currentBranchId]);
 
   // Custom setter that respects role restrictions
   const setCurrentBranchId = (id: string) => {

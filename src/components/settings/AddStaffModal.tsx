@@ -36,7 +36,32 @@ export const AddStaffModal = ({ isOpen, onClose, onSuccess }: AddStaffModalProps
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!pharmacy?.id) return;
+    if (!pharmacy?.id) {
+      toast({
+        title: 'Error',
+        description: 'Pharmacy not found. Please try again.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (!formData.email || !formData.password || !formData.fullName) {
+      toast({
+        title: 'Missing Information',
+        description: 'Please fill in all required fields.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    if (formData.password.length < 6) {
+      toast({
+        title: 'Password Too Short',
+        description: 'Password must be at least 6 characters.',
+        variant: 'destructive',
+      });
+      return;
+    }
 
     setIsLoading(true);
 
@@ -44,10 +69,10 @@ export const AddStaffModal = ({ isOpen, onClose, onSuccess }: AddStaffModalProps
       // Call edge function to create staff (avoids session switching)
       const response = await supabase.functions.invoke('create-staff', {
         body: {
-          email: formData.email,
+          email: formData.email.trim(),
           password: formData.password,
-          fullName: formData.fullName,
-          phone: formData.phone,
+          fullName: formData.fullName.trim(),
+          phone: formData.phone?.trim() || null,
           role: formData.role,
           pharmacyId: pharmacy.id,
           branchId: formData.branchId || null, // null means all branches
@@ -56,10 +81,12 @@ export const AddStaffModal = ({ isOpen, onClose, onSuccess }: AddStaffModalProps
       });
 
       if (response.error) {
+        console.error('Edge function error:', response.error);
         throw new Error(response.error.message || 'Failed to create staff member');
       }
 
       if (response.data?.error) {
+        console.error('Response data error:', response.data.error);
         throw new Error(response.data.error);
       }
 
@@ -83,8 +110,8 @@ export const AddStaffModal = ({ isOpen, onClose, onSuccess }: AddStaffModalProps
     } catch (error: any) {
       console.error('Error adding staff:', error);
       toast({
-        title: 'Error',
-        description: error.message || 'Failed to add staff member',
+        title: 'Failed to Add Staff',
+        description: error.message || 'An unexpected error occurred. Please try again.',
         variant: 'destructive',
       });
     } finally {
