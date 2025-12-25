@@ -99,6 +99,7 @@ const App = () => (
                   <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
                   <Route path="/audit-log" element={<ProtectedRoute><AuditLog /></ProtectedRoute>} />
                   <Route path="/shift-history" element={<ProtectedRoute><ShiftHistory /></ProtectedRoute>} />
+                  <Route path="/shifts" element={<ProtectedRoute><ShiftHistory /></ProtectedRoute>} />
                   <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
                   {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                   <Route path="*" element={<NotFound />} />

@@ -8,6 +8,7 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { usePharmacy } from '@/hooks/usePharmacy';
 import { AddBranchModal } from '@/components/branches/AddBranchModal';
 import { StockTransferModal } from '@/components/branches/StockTransferModal';
+import { AssignBranchManagerModal } from '@/components/branches/AssignBranchManagerModal';
 import { BranchInventoryTable } from '@/components/branches/BranchInventoryTable';
 import { TransfersTable } from '@/components/branches/TransfersTable';
 import { Button } from '@/components/ui/button';
@@ -25,6 +26,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
+  DropdownMenuSeparator,
 } from '@/components/ui/dropdown-menu';
 import {
   Building2,
@@ -37,17 +39,19 @@ import {
   MoreVertical,
   Edit,
   Trash2,
+  UserCog,
 } from 'lucide-react';
 import { Branch } from '@/types/branch';
 
 const Branches = () => {
   const { branches, branchInventory, transfers, deleteBranch, isLoading } = useBranches();
   const { formatPrice } = useCurrency();
-  const { isOwnerOrManager, hasPermission } = usePermissions();
+  const { isOwnerOrManager, hasPermission, userRole } = usePermissions();
   const { pharmacyId } = usePharmacy();
   const [showAddBranch, setShowAddBranch] = useState(false);
   const [showTransfer, setShowTransfer] = useState(false);
   const [editingBranch, setEditingBranch] = useState<Branch | null>(null);
+  const [assigningManagerBranch, setAssigningManagerBranch] = useState<Branch | null>(null);
 
   // Fetch medications for main branch stats
   const { data: medications = [] } = useQuery({
@@ -219,22 +223,31 @@ const Branches = () => {
                               <MoreVertical className="h-4 w-4" />
                             </Button>
                           </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => {
-                              setEditingBranch(branch);
-                              setShowAddBranch(true);
-                            }}>
-                              <Edit className="h-4 w-4 mr-2" />
-                              Edit
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              onClick={() => deleteBranch.mutate(branch.id)}
-                              className="text-destructive"
-                            >
-                              <Trash2 className="h-4 w-4 mr-2" />
-                              Delete
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
+                        <DropdownMenuContent align="end">
+                                            <DropdownMenuItem onClick={() => {
+                                              setEditingBranch(branch);
+                                              setShowAddBranch(true);
+                                            }}>
+                                              <Edit className="h-4 w-4 mr-2" />
+                                              Edit Branch
+                                            </DropdownMenuItem>
+                                            {userRole === 'owner' && (
+                                              <>
+                                                <DropdownMenuItem onClick={() => setAssigningManagerBranch(branch)}>
+                                                  <UserCog className="h-4 w-4 mr-2" />
+                                                  Assign Manager
+                                                </DropdownMenuItem>
+                                                <DropdownMenuSeparator />
+                                                <DropdownMenuItem
+                                                  onClick={() => deleteBranch.mutate(branch.id)}
+                                                  className="text-destructive"
+                                                >
+                                                  <Trash2 className="h-4 w-4 mr-2" />
+                                                  Delete
+                                                </DropdownMenuItem>
+                                              </>
+                                            )}
+                                          </DropdownMenuContent>
                         </DropdownMenu>
                       )}
                     </div>
@@ -316,6 +329,13 @@ const Branches = () => {
         editingBranch={editingBranch}
       />
       <StockTransferModal open={showTransfer} onOpenChange={setShowTransfer} />
+      <AssignBranchManagerModal
+        open={!!assigningManagerBranch}
+        onOpenChange={(open) => {
+          if (!open) setAssigningManagerBranch(null);
+        }}
+        branch={assigningManagerBranch}
+      />
     </div>
   );
 };

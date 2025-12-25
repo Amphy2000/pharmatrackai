@@ -15,22 +15,19 @@ const MAX_PASSWORD_LENGTH = 128;
 const MAX_PERMISSIONS = 50;
 const ALLOWED_ROLES = ['manager', 'staff'] as const;
 
-// Allowed permission keys
+// Allowed permission keys - must match frontend PERMISSION_KEYS
 const ALLOWED_PERMISSIONS = [
-  'view_inventory',
-  'edit_inventory',
-  'add_inventory',
-  'delete_inventory',
-  'view_sales',
-  'make_sales',
-  'refund_sales',
-  'view_customers',
-  'edit_customers',
-  'view_suppliers',
-  'edit_suppliers',
+  'view_dashboard',
+  'access_inventory',
+  'access_customers',
+  'access_branches',
+  'access_suppliers',
   'view_reports',
-  'export_reports',
-  'manage_settings',
+  'view_analytics',
+  'view_all_sales',
+  'view_own_sales',
+  'view_financial_data',
+  'manage_stock_transfers',
 ];
 
 interface CreateStaffRequest {
