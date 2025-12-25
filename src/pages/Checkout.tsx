@@ -68,11 +68,13 @@ const Checkout = () => {
   const { medications: branchMedications, isLoading } = useBranchInventory();
   
   // Map branch medications to match expected Medication type with current_stock from branch_stock
-  // Use type assertion to handle string enums from database
-  const medications = branchMedications.map(m => ({
-    ...m,
-    current_stock: m.branch_stock, // Use branch-specific stock
-  })) as unknown as import('@/types/medication').Medication[];
+  // Filter to only show items with stock > 0 (for POS, we only want sellable items)
+  const medications = branchMedications
+    .filter(m => m.branch_stock > 0) // Only show items that can be sold
+    .map(m => ({
+      ...m,
+      current_stock: m.branch_stock, // Use branch-specific stock
+    })) as unknown as import('@/types/medication').Medication[];
   const { completeSale } = useSales();
   const { activeShift } = useShifts();
   const cart = useCart();
