@@ -600,6 +600,7 @@ export type Database = {
           email: string
           enable_logo_on_print: boolean | null
           id: string
+          is_gifted: boolean
           license_number: string | null
           logo_url: string | null
           max_users: number
@@ -628,6 +629,7 @@ export type Database = {
           email: string
           enable_logo_on_print?: boolean | null
           id?: string
+          is_gifted?: boolean
           license_number?: string | null
           logo_url?: string | null
           max_users?: number
@@ -656,6 +658,7 @@ export type Database = {
           email?: string
           enable_logo_on_print?: boolean | null
           id?: string
+          is_gifted?: boolean
           license_number?: string | null
           logo_url?: string | null
           max_users?: number
@@ -1388,6 +1391,7 @@ export type Database = {
           created_at: string
           currency: string
           id: string
+          is_gift: boolean
           payment_date: string
           paystack_reference: string | null
           paystack_transaction_id: string | null
@@ -1400,6 +1404,7 @@ export type Database = {
           created_at?: string
           currency?: string
           id?: string
+          is_gift?: boolean
           payment_date?: string
           paystack_reference?: string | null
           paystack_transaction_id?: string | null
@@ -1412,6 +1417,7 @@ export type Database = {
           created_at?: string
           currency?: string
           id?: string
+          is_gift?: boolean
           payment_date?: string
           paystack_reference?: string | null
           paystack_transaction_id?: string | null

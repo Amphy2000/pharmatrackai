@@ -43,6 +43,7 @@ interface SubscriptionPayment {
   amount: number;
   status: string;
   payment_date: string;
+  is_gift?: boolean;
 }
 
 interface PlatformMetricsGridProps {
@@ -90,9 +91,9 @@ export const PlatformMetricsGrid = ({ pharmacies, subscriptionPayments = [], isL
     const proPlan = pharmacies.filter(p => p.subscription_plan === 'pro').length;
     const enterprisePlan = pharmacies.filter(p => p.subscription_plan === 'enterprise').length;
 
-    // Platform revenue from actual subscription payments (successful payments only)
+    // Platform revenue from actual subscription payments (successful payments only, excluding gifts)
     const platformRevenue = subscriptionPayments
-      .filter(p => p.status === 'success' || p.status === 'completed')
+      .filter(p => (p.status === 'success' || p.status === 'completed') && !p.is_gift)
       .reduce((sum, p) => sum + p.amount, 0);
 
     // Average metrics

@@ -51,6 +51,7 @@ import {
   Lock,
   Lightbulb,
   Trash2,
+  Gift,
 } from 'lucide-react';
 import { DeletePharmacyDialog } from '@/components/admin/DeletePharmacyDialog';
 import { format } from 'date-fns';
@@ -109,6 +110,7 @@ const AdminDashboard = () => {
   const [subscriptionEdit, setSubscriptionEdit] = useState({
     plan: 'starter' as string,
     status: 'trial' as string,
+    isGift: false,
   });
 
   // Redirect non-admins after loading is complete
@@ -251,13 +253,14 @@ const AdminDashboard = () => {
 
   // Update subscription
   const updateSubscriptionMutation = useMutation({
-    mutationFn: async ({ pharmacyId, plan, status }: { pharmacyId: string; plan: 'starter' | 'pro' | 'enterprise'; status: 'trial' | 'active' | 'expired' | 'cancelled' }) => {
+    mutationFn: async ({ pharmacyId, plan, status, isGift }: { pharmacyId: string; plan: 'starter' | 'pro' | 'enterprise'; status: 'trial' | 'active' | 'expired' | 'cancelled'; isGift: boolean }) => {
       const { data, error } = await supabase
         .from('pharmacies')
         .update({ 
           subscription_plan: plan,
           subscription_status: status,
           subscription_ends_at: status === 'active' ? new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString() : null,
+          is_gifted: isGift,
         })
         .eq('id', pharmacyId)
         .select()
@@ -323,6 +326,7 @@ const AdminDashboard = () => {
     setSubscriptionEdit({
       plan: pharmacy.subscription_plan,
       status: pharmacy.subscription_status,
+      isGift: (pharmacy as any).is_gifted || false,
     });
     setSubscriptionDialogOpen(true);
   };
@@ -715,6 +719,24 @@ const AdminDashboard = () => {
                 </SelectContent>
               </Select>
             </div>
+
+            <div className="flex items-center justify-between p-4 rounded-xl bg-amber-500/10 border border-amber-500/20">
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-xl bg-amber-500/20 flex items-center justify-center">
+                  <Gift className="h-5 w-5 text-amber-600" />
+                </div>
+                <div>
+                  <p className="font-medium text-amber-600">Gift Subscription</p>
+                  <p className="text-xs text-muted-foreground">
+                    Give full benefits without counting as platform revenue
+                  </p>
+                </div>
+              </div>
+              <Switch
+                checked={subscriptionEdit.isGift}
+                onCheckedChange={(checked) => setSubscriptionEdit({ ...subscriptionEdit, isGift: checked })}
+              />
+            </div>
           </div>
 
           <DialogFooter>
@@ -728,6 +750,7 @@ const AdminDashboard = () => {
                     pharmacyId: selectedPharmacy.id,
                     plan: subscriptionEdit.plan as 'starter' | 'pro' | 'enterprise',
                     status: subscriptionEdit.status as 'trial' | 'active' | 'expired' | 'cancelled',
+                    isGift: subscriptionEdit.isGift,
                   });
                 }
               }}
