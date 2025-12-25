@@ -37,6 +37,7 @@ import { PWAInstallPrompt } from '@/components/pwa/PWAInstallPrompt';
 import { BranchAlertSummaryWidget } from '@/components/dashboard/BranchAlertSummaryWidget';
 import { BranchComparisonPanel } from '@/components/dashboard/BranchComparisonPanel';
 import { ConsolidatedReportsPanel } from '@/components/dashboard/ConsolidatedReportsPanel';
+import { OwnerBranchReportsPanel } from '@/components/dashboard/OwnerBranchReportsPanel';
 import { startOfDay, endOfDay, parseISO } from 'date-fns';
 import { 
   Package, 
@@ -489,12 +490,23 @@ const Dashboard = () => {
               </motion.section>
             )}
 
-            {/* Consolidated Reports - Owner/Manager Only */}
+            {/* Multi-Branch Reports - Owner/Manager Only */}
             {isOwnerOrManager && (
               <motion.section 
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.32 }}
+              >
+                <OwnerBranchReportsPanel />
+              </motion.section>
+            )}
+
+            {/* Consolidated Reports - Owner/Manager Only */}
+            {isOwnerOrManager && (
+              <motion.section 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.35 }}
               >
                 <ConsolidatedReportsPanel />
               </motion.section>
