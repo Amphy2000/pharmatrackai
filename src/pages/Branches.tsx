@@ -1,8 +1,11 @@
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { Header } from '@/components/Header';
 import { useBranches } from '@/hooks/useBranches';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { usePermissions } from '@/hooks/usePermissions';
+import { usePharmacy } from '@/hooks/usePharmacy';
 import { AddBranchModal } from '@/components/branches/AddBranchModal';
 import { StockTransferModal } from '@/components/branches/StockTransferModal';
 import { BranchInventoryTable } from '@/components/branches/BranchInventoryTable';
@@ -41,22 +44,50 @@ const Branches = () => {
   const { branches, branchInventory, transfers, deleteBranch, isLoading } = useBranches();
   const { formatPrice } = useCurrency();
   const { isOwnerOrManager, hasPermission } = usePermissions();
+  const { pharmacyId } = usePharmacy();
   const [showAddBranch, setShowAddBranch] = useState(false);
   const [showTransfer, setShowTransfer] = useState(false);
   const [editingBranch, setEditingBranch] = useState<Branch | null>(null);
 
+  // Fetch medications for main branch stats
+  const { data: medications = [] } = useQuery({
+    queryKey: ['medications-for-branches', pharmacyId],
+    queryFn: async () => {
+      if (!pharmacyId) return [];
+      const { data, error } = await supabase
+        .from('medications')
+        .select('*')
+        .eq('pharmacy_id', pharmacyId);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!pharmacyId,
+  });
+
   // Staff with manage_stock_transfers permission can also transfer stock
   const canTransferStock = isOwnerOrManager || hasPermission('manage_stock_transfers') || hasPermission('view_dashboard');
 
-  // Calculate stats per branch
+  // Calculate stats per branch - USE medications table for main branch
   const branchStats = branches.map(branch => {
+    if (branch.is_main_branch) {
+      // Main branch uses the medications table directly
+      const totalStock = medications.reduce((sum, m) => sum + m.current_stock, 0);
+      const totalValue = medications.reduce(
+        (sum, m) => sum + m.current_stock * (m.selling_price || m.unit_price || 0),
+        0
+      );
+      const lowStockCount = medications.filter(m => m.current_stock <= m.reorder_level && m.current_stock > 0).length;
+      return { branch, totalStock, totalValue, lowStockCount, itemCount: medications.length };
+    }
+    
+    // Non-main branches use branch_inventory
     const inventory = branchInventory.filter(inv => inv.branch_id === branch.id);
     const totalStock = inventory.reduce((sum, inv) => sum + inv.current_stock, 0);
     const totalValue = inventory.reduce(
       (sum, inv) => sum + inv.current_stock * (inv.medications?.selling_price || inv.medications?.unit_price || 0),
       0
     );
-    const lowStockCount = inventory.filter(inv => inv.current_stock <= inv.reorder_level).length;
+    const lowStockCount = inventory.filter(inv => inv.current_stock <= inv.reorder_level && inv.current_stock > 0).length;
 
     return { branch, totalStock, totalValue, lowStockCount, itemCount: inventory.length };
   });
