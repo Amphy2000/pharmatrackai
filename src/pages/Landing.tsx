@@ -5,7 +5,7 @@ import {
   Clock, ShieldCheck, Globe, Smartphone, Sparkles, Check, Calculator,
   ArrowRight, Star, Zap, TrendingUp, Lock, BadgeCheck, ChevronRight,
   FileUp, Wand2, Timer, WifiOff, Database, Headphones, X, DollarSign, AlertTriangle,
-  Phone, MessageCircle, Menu
+  Phone, MessageCircle, Menu, Play
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/Logo';
@@ -16,6 +16,7 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableHeader, TableBody, TableHead, TableRow, TableCell } from '@/components/ui/table';
 import { useAuth } from '@/contexts/AuthContext';
+import { useDemo } from '@/contexts/DemoContext';
 import { ProfitProtectorCalculator } from '@/components/landing/ProfitProtectorCalculator';
 import { FeatureDemo } from '@/components/landing/FeatureDemo';
 import { VideoShowcase } from '@/components/landing/VideoShowcase';
@@ -44,6 +45,7 @@ const scaleIn = {
 
 const Landing = () => {
   const { user, isLoading } = useAuth();
+  const { enableDemoMode } = useDemo();
   const navigate = useNavigate();
   const [isInternational, setIsInternational] = useState(false);
   const [monthlyRevenue, setMonthlyRevenue] = useState('');
@@ -53,6 +55,11 @@ const Landing = () => {
       navigate('/dashboard');
     }
   }, [user, isLoading, navigate]);
+
+  const handleTryDemo = () => {
+    enableDemoMode();
+    navigate('/demo');
+  };
 
   const calculateSavings = () => {
     const revenue = parseFloat(monthlyRevenue.replace(/,/g, '')) || 0;
@@ -290,10 +297,21 @@ const Landing = () => {
                   </Button>
                 </motion.div>
               </Link>
-              <p className="text-sm text-muted-foreground flex items-center gap-2">
-                <Check className="h-4 w-4 text-success" />No credit card required
-              </p>
+              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.98 }}>
+                <Button 
+                  size="lg" 
+                  variant="outline"
+                  onClick={handleTryDemo}
+                  className="text-lg px-8 py-6 border-2 border-primary/30 hover:bg-primary/5 hover:border-primary/50 font-semibold"
+                >
+                  <Play className="mr-2 h-5 w-5" />
+                  Try Demo
+                </Button>
+              </motion.div>
             </motion.div>
+            <p className="text-sm text-muted-foreground flex items-center justify-center gap-2 mt-4">
+              <Check className="h-4 w-4 text-success" />No credit card required
+            </p>
 
             {/* Trust Indicators */}
             <motion.div 
