@@ -20,7 +20,7 @@ import {
   Camera,
   ChevronDown
 } from 'lucide-react';
-import { useMedications } from '@/hooks/useMedications';
+import { useBranchInventory } from '@/hooks/useBranchInventory';
 import { useCart } from '@/hooks/useCart';
 import { useSales } from '@/hooks/useSales';
 import { useShifts } from '@/hooks/useShifts';
@@ -65,7 +65,14 @@ import jsPDF from 'jspdf';
 import { FileText, Banknote, CreditCard as CreditCardIcon, Landmark } from 'lucide-react';
 
 const Checkout = () => {
-  const { medications, isLoading } = useMedications();
+  const { medications: branchMedications, isLoading } = useBranchInventory();
+  
+  // Map branch medications to match expected Medication type with current_stock from branch_stock
+  // Use type assertion to handle string enums from database
+  const medications = branchMedications.map(m => ({
+    ...m,
+    current_stock: m.branch_stock, // Use branch-specific stock
+  })) as unknown as import('@/types/medication').Medication[];
   const { completeSale } = useSales();
   const { activeShift } = useShifts();
   const cart = useCart();
