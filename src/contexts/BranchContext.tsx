@@ -44,29 +44,24 @@ export const BranchProvider = ({ children }: { children: ReactNode }) => {
   });
 
   const userAssignedBranchId = staffRecord?.branch_id || null;
-  const isOwner = userRole === 'owner';
-  const isManager = userRole === 'manager';
-  const isStaff = userRole === 'staff';
+  const isCashier = userRole === 'staff'; // Cashiers are 'staff' role
+  const isOwnerOrManager = userRole === 'owner' || userRole === 'manager';
   
-  // Managers with assigned branch are also locked to their branch (branch managers)
-  const isBranchManager = isManager && !!userAssignedBranchId;
-  
-  // Only owners and managers without branch assignment can switch branches
-  // Branch managers are locked to their assigned branch, just like staff
-  const canSwitchBranch = isOwner || (isManager && !userAssignedBranchId);
+  // Cashiers cannot switch branches - they're locked to their assigned branch
+  const canSwitchBranch = isOwnerOrManager;
 
-  // Auto-route staff/branch managers to their assigned branch on mount
+  // Auto-route staff to their assigned branch on mount
   useEffect(() => {
     if (branches.length === 0) return;
     
-    // If user has an assigned branch and they can't switch, lock them to it
-    if (userAssignedBranchId && !canSwitchBranch) {
+    // If staff has an assigned branch and they're not owner/manager, lock them to it
+    if (userAssignedBranchId && !isOwnerOrManager) {
       setCurrentBranchIdState(userAssignedBranchId);
       localStorage.setItem('currentBranchId', userAssignedBranchId);
       return;
     }
     
-    // For owners/floating managers, use stored or default to main
+    // For owners/managers or staff without assigned branch, use stored or default to main
     if (!currentBranchId || !branches.find(b => b.id === currentBranchId)) {
       const mainBranch = branches.find(b => b.is_main_branch) || branches[0];
       if (mainBranch) {
@@ -74,11 +69,11 @@ export const BranchProvider = ({ children }: { children: ReactNode }) => {
         localStorage.setItem('currentBranchId', mainBranch.id);
       }
     }
-  }, [branches, userAssignedBranchId, canSwitchBranch, currentBranchId]);
+  }, [branches, userAssignedBranchId, isOwnerOrManager, currentBranchId]);
 
   // Custom setter that respects role restrictions
   const setCurrentBranchId = (id: string) => {
-    // Users who can't switch branches are locked to their assigned branch
+    // Cashiers cannot switch branches
     if (!canSwitchBranch && userAssignedBranchId && id !== userAssignedBranchId) {
       return;
     }
