@@ -20,6 +20,7 @@ export interface StaffShift {
     id: string;
     user_id: string;
     role: 'owner' | 'manager' | 'staff';
+    branch_id?: string | null;
     profile?: {
       full_name: string | null;
     };
@@ -87,7 +88,8 @@ export const useShifts = () => {
           staff:pharmacy_staff(
             id,
             user_id,
-            role
+            role,
+            branch_id
           )
         `)
         .eq('pharmacy_id', pharmacyId)
