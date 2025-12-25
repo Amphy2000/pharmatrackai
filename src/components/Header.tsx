@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, forwardRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { TrialBanner } from '@/components/subscription';
 import { SubscriptionExpiryBanner } from '@/components/subscription/SubscriptionExpiryBanner';
@@ -56,7 +56,7 @@ import { useBranchContext } from '@/contexts/BranchContext';
 import { OfflineIndicator } from '@/components/header/OfflineIndicator';
 import { PharmacySwitchDialog } from '@/components/pharmacy/PharmacySwitchDialog';
 
-export const Header = () => {
+export const Header = forwardRef<HTMLDivElement>((_, ref) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { signOut } = useAuth();
@@ -413,4 +413,6 @@ export const Header = () => {
     </>
     </TooltipProvider>
   );
-};
+});
+
+Header.displayName = 'Header';
