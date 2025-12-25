@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, forwardRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { QrCode, Camera, X, Check, AlertCircle } from 'lucide-react';
@@ -12,7 +12,7 @@ interface QRScannerModalProps {
   onSuccess: () => void;
 }
 
-export const QRScannerModal = ({ open, onOpenChange, pharmacyId, onSuccess }: QRScannerModalProps) => {
+export const QRScannerModal = forwardRef<HTMLDivElement, QRScannerModalProps>(({ open, onOpenChange, pharmacyId, onSuccess }, ref) => {
   const [scanResult, setScanResult] = useState<{ isValid: boolean; message: string } | null>(null);
   const [isScanning, setIsScanning] = useState(false);
 
@@ -124,4 +124,6 @@ export const QRScannerModal = ({ open, onOpenChange, pharmacyId, onSuccess }: QR
       </DialogContent>
     </Dialog>
   );
-};
+});
+
+QRScannerModal.displayName = 'QRScannerModal';
