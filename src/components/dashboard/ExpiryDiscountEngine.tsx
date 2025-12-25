@@ -1,5 +1,5 @@
 import { useMedications } from '@/hooks/useMedications';
-import { useCurrency } from '@/contexts/CurrencyContext';
+import { useBranchInventory } from '@/hooks/useBranchInventory';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -11,7 +11,8 @@ import { useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 
 export const ExpiryDiscountEngine = () => {
-  const { medications, updateMedication } = useMedications();
+  const { updateMedication } = useMedications();
+  const { medications: branchMedications } = useBranchInventory();
   const { formatPrice } = useCurrency();
   const { toast } = useToast();
   const [autoDiscountEnabled, setAutoDiscountEnabled] = useState(true);
@@ -20,11 +21,11 @@ export const ExpiryDiscountEngine = () => {
   // Find products expiring within 60 days
   const today = new Date();
   
-  const expiringProducts = (medications || [])
+  const expiringProducts = (branchMedications || [])
     .map(med => {
       const expiryDate = new Date(med.expiry_date);
       const daysUntilExpiry = differenceInDays(expiryDate, today);
-      
+
       // Calculate suggested discount based on urgency
       let suggestedDiscount = 0;
       if (daysUntilExpiry <= 14) {
@@ -34,25 +35,28 @@ export const ExpiryDiscountEngine = () => {
       } else if (daysUntilExpiry <= 60) {
         suggestedDiscount = 10; // 10% off for 2 months
       }
-      
-      const originalValue = (med.selling_price || med.unit_price) * med.current_stock;
-      const discountedPrice = (med.selling_price || med.unit_price) * (1 - suggestedDiscount / 100);
-      const potentialRecovery = discountedPrice * med.current_stock;
+
+      const stock = (med as any).branch_stock ?? (med as any).current_stock ?? 0;
+      const price = (med as any).selling_price || (med as any).unit_price;
+
+      const originalValue = price * stock;
+      const discountedPrice = price * (1 - suggestedDiscount / 100);
+      const potentialRecovery = discountedPrice * stock;
       const lossIfExpired = originalValue;
-      
+
       return {
         id: med.id,
         name: med.name,
         expiryDate: med.expiry_date,
         daysUntilExpiry,
-        currentStock: med.current_stock,
-        originalPrice: med.selling_price || med.unit_price,
+        currentStock: stock,
+        originalPrice: price,
         suggestedDiscount,
         discountedPrice,
         originalValue,
         potentialRecovery,
         lossIfExpired,
-        batchNumber: med.batch_number,
+        batchNumber: (med as any).batch_number,
       };
     })
     .filter(p => p.daysUntilExpiry > 0 && p.daysUntilExpiry <= 60 && p.currentStock > 0)

@@ -1,6 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import { motion, Variants } from 'framer-motion';
-import { useMedications } from '@/hooks/useMedications';
+import { useBranchInventory } from '@/hooks/useBranchInventory';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePharmacy } from '@/hooks/usePharmacy';
 import { useShifts } from '@/hooks/useShifts';
@@ -12,7 +12,7 @@ import { MetricCard } from '@/components/dashboard/MetricCard';
 import { ShiftClock } from '@/components/dashboard/ShiftClock';
 import { StaffQuickActions } from '@/components/dashboard/StaffQuickActions';
 import { ExpiryDiscountEngine } from '@/components/dashboard/ExpiryDiscountEngine';
-import { AlertSummaryWidget } from '@/components/dashboard/AlertSummaryWidget';
+import { BranchAlertSummaryWidget } from '@/components/dashboard/BranchAlertSummaryWidget';
 import { 
   Package, 
   AlertTriangle, 
@@ -46,7 +46,7 @@ const StaffDashboard = () => {
   const navigate = useNavigate();
   const { user, isLoading: authLoading } = useAuth();
   const { pharmacy, isLoading: pharmacyLoading } = usePharmacy();
-  const { medications, getMetrics } = useMedications();
+  const { medications: branchMedications, getMetrics } = useBranchInventory();
   const { activeShift } = useShifts();
   const { hasPermission } = usePermissions();
 
@@ -98,7 +98,8 @@ const StaffDashboard = () => {
                 Welcome back, <span className="text-gradient">{user.user_metadata?.full_name || user.email?.split('@')[0]}</span>
               </h1>
               <p className="text-sm text-muted-foreground">
-                Here's what needs your attention at <span className="font-medium text-foreground">{pharmacy.name}</span>
+                Here's what needs your attention at{' '}
+                <span className="font-medium text-foreground">{pharmacy.name}</span>
               </p>
               <div className="flex items-center gap-2 mt-2">
                 <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-xs font-medium text-primary">
@@ -157,7 +158,7 @@ const StaffDashboard = () => {
             <motion.div variants={itemVariants}>
               <MetricCard
                 title="Low Stock"
-                value={metrics.lowStockItems}
+                value={metrics.lowStock}
                 icon={<AlertTriangle className="h-5 w-5 sm:h-7 sm:w-7" />}
                 variant="warning"
                 subtitle="Need reordering"
@@ -167,7 +168,7 @@ const StaffDashboard = () => {
             <motion.div variants={itemVariants}>
               <MetricCard
                 title="Expired"
-                value={metrics.expiredItems}
+                value={metrics.expired}
                 icon={<XCircle className="h-5 w-5 sm:h-7 sm:w-7" />}
                 variant="danger"
                 subtitle="Remove from shelf"
@@ -177,7 +178,7 @@ const StaffDashboard = () => {
             <motion.div variants={itemVariants}>
               <MetricCard
                 title="Expiring Soon"
-                value={metrics.expiringWithin30Days}
+                value={metrics.expiringSoon}
                 icon={<Clock className="h-5 w-5 sm:h-7 sm:w-7" />}
                 variant="success"
                 subtitle="Within 30 days"
@@ -188,12 +189,12 @@ const StaffDashboard = () => {
 
           {/* Pending Alerts Summary */}
           <div className="mt-6">
-            <AlertSummaryWidget />
+            <BranchAlertSummaryWidget />
           </div>
         </motion.section>
 
-        {/* Expiry Discount Engine - Helpful for staff */}
-        {medications.length > 0 && (
+        {/* Expiry Discount Engine - Branch-aware */}
+        {branchMedications.length > 0 && (
           <motion.section 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
