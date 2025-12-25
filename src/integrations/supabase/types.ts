@@ -595,6 +595,9 @@ export type Database = {
         Row: {
           address: string | null
           admin_pin_hash: string | null
+          auto_renew: boolean | null
+          cancellation_reason: string | null
+          cancelled_at: string | null
           created_at: string
           default_margin_percent: number | null
           email: string
@@ -624,6 +627,9 @@ export type Database = {
         Insert: {
           address?: string | null
           admin_pin_hash?: string | null
+          auto_renew?: boolean | null
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
           created_at?: string
           default_margin_percent?: number | null
           email: string
@@ -653,6 +659,9 @@ export type Database = {
         Update: {
           address?: string | null
           admin_pin_hash?: string | null
+          auto_renew?: boolean | null
+          cancellation_reason?: string | null
+          cancelled_at?: string | null
           created_at?: string
           default_margin_percent?: number | null
           email?: string

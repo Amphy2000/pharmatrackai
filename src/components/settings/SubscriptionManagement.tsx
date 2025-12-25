@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -6,12 +6,15 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useSubscription } from '@/hooks/useSubscription';
 import { usePharmacy } from '@/hooks/usePharmacy';
 import { supabase } from '@/integrations/supabase/client';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
-import { Crown, Check, Zap, Calendar, CreditCard, Loader2, RefreshCw, Key } from 'lucide-react';
+import { Crown, Check, Zap, Calendar, CreditCard, Loader2, RefreshCw, Key, XCircle, AlertTriangle } from 'lucide-react';
 import { format } from 'date-fns';
 import { Separator } from '@/components/ui/separator';
 
@@ -66,14 +69,38 @@ const plans = [
   },
 ];
 
+const CANCELLATION_REASONS = [
+  { value: 'too_expensive', label: 'Too expensive for my budget' },
+  { value: 'not_using', label: 'Not using it enough' },
+  { value: 'missing_features', label: 'Missing features I need' },
+  { value: 'switching_competitor', label: 'Switching to a competitor' },
+  { value: 'closing_business', label: 'Closing my business' },
+  { value: 'other', label: 'Other reason' },
+];
+
 export const SubscriptionManagement = () => {
   const navigate = useNavigate();
   const { state, plan: currentPlan, daysRemaining, isTrial, isExpired } = useSubscription();
   const { pharmacy } = usePharmacy();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [isProcessing, setIsProcessing] = useState<string | null>(null);
   const [isAnnual, setIsAnnual] = useState(false);
-  const [autoRenew, setAutoRenew] = useState(true);
+  const [autoRenew, setAutoRenew] = useState(pharmacy?.auto_renew ?? true);
+  const [isTogglingAutoRenew, setIsTogglingAutoRenew] = useState(false);
+  
+  // Cancel subscription state
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
+  const [cancelFeedback, setCancelFeedback] = useState('');
+  const [isCancelling, setIsCancelling] = useState(false);
+
+  // Sync autoRenew with pharmacy data
+  useEffect(() => {
+    if (pharmacy?.auto_renew !== undefined) {
+      setAutoRenew(pharmacy.auto_renew);
+    }
+  }, [pharmacy?.auto_renew]);
 
   // Fetch billing history
   const { data: payments = [], isLoading: paymentsLoading } = useQuery({
@@ -164,7 +191,85 @@ export const SubscriptionManagement = () => {
     }
   };
 
+  const handleToggleAutoRenew = async () => {
+    setIsTogglingAutoRenew(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast({ title: 'Please sign in', variant: 'destructive' });
+        return;
+      }
+
+      const response = await supabase.functions.invoke('manage-subscription', {
+        body: { action: 'toggle_auto_renew' },
+      });
+
+      if (response.error) throw new Error(response.error.message);
+
+      const newValue = response.data?.auto_renew;
+      setAutoRenew(newValue);
+      queryClient.invalidateQueries({ queryKey: ['pharmacy-details'] });
+      
+      toast({
+        title: newValue ? 'Auto-renewal enabled' : 'Auto-renewal disabled',
+        description: newValue 
+          ? 'Your subscription will automatically renew.' 
+          : 'You will need to manually renew your subscription.',
+      });
+    } catch (error: unknown) {
+      console.error('Toggle auto-renew error:', error);
+      const message = error instanceof Error ? error.message : 'Failed to update setting';
+      toast({ title: 'Error', description: message, variant: 'destructive' });
+    } finally {
+      setIsTogglingAutoRenew(false);
+    }
+  };
+
+  const handleCancelSubscription = async () => {
+    if (!cancelReason) {
+      toast({ title: 'Please select a reason', variant: 'destructive' });
+      return;
+    }
+
+    setIsCancelling(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast({ title: 'Please sign in', variant: 'destructive' });
+        return;
+      }
+
+      const fullReason = cancelReason === 'other' && cancelFeedback 
+        ? `Other: ${cancelFeedback}` 
+        : CANCELLATION_REASONS.find(r => r.value === cancelReason)?.label || cancelReason;
+
+      const response = await supabase.functions.invoke('manage-subscription', {
+        body: { 
+          action: 'cancel',
+          cancellation_reason: fullReason,
+        },
+      });
+
+      if (response.error) throw new Error(response.error.message);
+
+      queryClient.invalidateQueries({ queryKey: ['pharmacy-details'] });
+      setShowCancelDialog(false);
+      
+      toast({
+        title: 'Subscription cancelled',
+        description: 'We\'re sorry to see you go. Your access continues until the end of your billing period.',
+      });
+    } catch (error: unknown) {
+      console.error('Cancel subscription error:', error);
+      const message = error instanceof Error ? error.message : 'Failed to cancel subscription';
+      toast({ title: 'Error', description: message, variant: 'destructive' });
+    } finally {
+      setIsCancelling(false);
+    }
+  };
+
   const getStatusBadge = () => {
+    if (state === 'cancelled') return <Badge variant="destructive">Cancelled</Badge>;
     if (isExpired) return <Badge variant="destructive">Expired</Badge>;
     if (isTrial) return <Badge variant="secondary">Trial</Badge>;
     if (state === 'active') return <Badge className="bg-green-500">Active</Badge>;
@@ -230,7 +335,7 @@ export const SubscriptionManagement = () => {
           <div className="flex items-center justify-between">
             <div className="space-y-1">
               <div className="flex items-center gap-2">
-                <RefreshCw className="h-4 w-4 text-muted-foreground" />
+                <RefreshCw className={`h-4 w-4 text-muted-foreground ${isTogglingAutoRenew ? 'animate-spin' : ''}`} />
                 <Label htmlFor="auto-renew" className="font-medium">Auto-Renewal</Label>
               </div>
               <p className="text-sm text-muted-foreground">
@@ -240,15 +345,8 @@ export const SubscriptionManagement = () => {
             <Switch
               id="auto-renew"
               checked={autoRenew}
-              onCheckedChange={(checked) => {
-                setAutoRenew(checked);
-                toast({
-                  title: checked ? 'Auto-renewal enabled' : 'Auto-renewal disabled',
-                  description: checked 
-                    ? 'Your subscription will automatically renew.' 
-                    : 'You will need to manually renew your subscription.',
-                });
-              }}
+              disabled={isTogglingAutoRenew || state === 'cancelled'}
+              onCheckedChange={handleToggleAutoRenew}
             />
           </div>
 
@@ -269,8 +367,97 @@ export const SubscriptionManagement = () => {
               This code identifies your recurring subscription with our payment provider
             </p>
           </div>
+
+          {/* Cancel Subscription */}
+          {(state === 'active' || isTrial) && state !== 'cancelled' && (
+            <>
+              <Separator />
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <XCircle className="h-4 w-4 text-destructive" />
+                    <Label className="font-medium text-destructive">Cancel Subscription</Label>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Cancel your subscription at the end of the billing period
+                  </p>
+                </div>
+                <Button 
+                  variant="destructive" 
+                  size="sm"
+                  onClick={() => setShowCancelDialog(true)}
+                >
+                  Cancel Plan
+                </Button>
+              </div>
+            </>
+          )}
         </CardContent>
       </Card>
+
+      {/* Cancel Subscription Dialog */}
+      <Dialog open={showCancelDialog} onOpenChange={setShowCancelDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              Cancel Subscription
+            </DialogTitle>
+            <DialogDescription>
+              We're sorry to see you go. Please let us know why you're leaving so we can improve.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4 py-4">
+            <RadioGroup value={cancelReason} onValueChange={setCancelReason}>
+              {CANCELLATION_REASONS.map((reason) => (
+                <div key={reason.value} className="flex items-center space-x-2">
+                  <RadioGroupItem value={reason.value} id={reason.value} />
+                  <Label htmlFor={reason.value} className="cursor-pointer">
+                    {reason.label}
+                  </Label>
+                </div>
+              ))}
+            </RadioGroup>
+
+            {cancelReason === 'other' && (
+              <Textarea
+                placeholder="Please tell us more..."
+                value={cancelFeedback}
+                onChange={(e) => setCancelFeedback(e.target.value)}
+                className="min-h-[80px]"
+              />
+            )}
+
+            <div className="rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 p-3">
+              <p className="text-sm text-amber-800 dark:text-amber-200">
+                <strong>Note:</strong> You'll continue to have access until the end of your current billing period. 
+                You can reactivate anytime before then.
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button variant="outline" onClick={() => setShowCancelDialog(false)}>
+              Keep Subscription
+            </Button>
+            <Button 
+              variant="destructive" 
+              onClick={handleCancelSubscription}
+              disabled={isCancelling || !cancelReason}
+            >
+              {isCancelling ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  Cancelling...
+                </>
+              ) : (
+                'Confirm Cancellation'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Available Plans */}
       <Card>
