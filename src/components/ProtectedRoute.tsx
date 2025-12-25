@@ -17,6 +17,7 @@ interface ProtectedRouteProps {
 
 const CACHE_KEY = 'pharmatrack_pharmacy_staff';
 const SELECTED_PHARMACY_KEY = 'pharmatrack_selected_pharmacy';
+const PHARMACY_SELECTOR_SHOWN_KEY = 'pharmatrack_pharmacy_selector_shown';
 
 interface CachedPharmacyStaff {
   id: string;
@@ -35,6 +36,7 @@ export const ProtectedRoute = ({ children, requireSubscription = true }: Protect
   const [offlineError, setOfflineError] = useState(false);
   const [showPharmacySelector, setShowPharmacySelector] = useState(false);
   const [pharmacyCount, setPharmacyCount] = useState(0);
+  const [pharmacyList, setPharmacyList] = useState<Array<{ id: string; pharmacy_id: string; role: string }>>([]);
   const { canAccessFeatures, isLoading: isLoadingSubscription } = useSubscription();
 
   // Listen for online/offline events
@@ -126,6 +128,7 @@ export const ProtectedRoute = ({ children, requireSubscription = true }: Protect
 
       if (data && data.length > 0) {
         setPharmacyCount(data.length);
+        setPharmacyList(data);
 
         // Check if user has a previously selected pharmacy
         const selectedPharmacyId = localStorage.getItem(SELECTED_PHARMACY_KEY);
@@ -133,8 +136,11 @@ export const ProtectedRoute = ({ children, requireSubscription = true }: Protect
           ? data.find(s => s.pharmacy_id === selectedPharmacyId)
           : null;
 
-        // If multiple pharmacies and no valid selection, show selector
-        if (data.length > 1 && !matchingStaff) {
+        // Check if we've shown the selector this session
+        const selectorShownThisSession = sessionStorage.getItem(PHARMACY_SELECTOR_SHOWN_KEY);
+
+        // If multiple pharmacies and either no valid selection OR haven't shown selector this session
+        if (data.length > 1 && (!matchingStaff || !selectorShownThisSession)) {
           setShowPharmacySelector(true);
           setCheckingPharmacy(false);
           return;
@@ -240,6 +246,7 @@ export const ProtectedRoute = ({ children, requireSubscription = true }: Protect
   if (showPharmacySelector && pharmacyCount > 1) {
     const handlePharmacySelect = (pharmacyId: string) => {
       localStorage.setItem(SELECTED_PHARMACY_KEY, pharmacyId);
+      sessionStorage.setItem(PHARMACY_SELECTOR_SHOWN_KEY, 'true');
       setShowPharmacySelector(false);
       setCheckingPharmacy(true);
       checkPharmacyData();
