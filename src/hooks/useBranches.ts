@@ -235,42 +235,93 @@ export const useBranches = () => {
       if (status === 'completed') {
         const transfer = data as StockTransfer;
         
-        // Decrease from source branch
-        const { data: sourceInv } = await supabase
-          .from('branch_inventory')
-          .select('*')
-          .eq('branch_id', transfer.from_branch_id)
-          .eq('medication_id', transfer.medication_id)
-          .maybeSingle();
+        // Find source branch to check if it's main branch
+        const sourceBranch = await supabase
+          .from('branches')
+          .select('is_main_branch')
+          .eq('id', transfer.from_branch_id)
+          .single();
         
-        if (sourceInv) {
-          await supabase
+        const destBranch = await supabase
+          .from('branches')
+          .select('is_main_branch')
+          .eq('id', transfer.to_branch_id)
+          .single();
+        
+        const isSourceMainBranch = sourceBranch.data?.is_main_branch || false;
+        const isDestMainBranch = destBranch.data?.is_main_branch || false;
+        
+        // Decrease from source
+        if (isSourceMainBranch) {
+          // Main branch uses medications.current_stock
+          const { data: med } = await supabase
+            .from('medications')
+            .select('current_stock')
+            .eq('id', transfer.medication_id)
+            .single();
+          
+          if (med) {
+            await supabase
+              .from('medications')
+              .update({ current_stock: Math.max(0, med.current_stock - transfer.quantity) })
+              .eq('id', transfer.medication_id);
+          }
+        } else {
+          // Non-main branch uses branch_inventory
+          const { data: sourceInv } = await supabase
             .from('branch_inventory')
-            .update({ current_stock: sourceInv.current_stock - transfer.quantity })
-            .eq('id', sourceInv.id);
+            .select('*')
+            .eq('branch_id', transfer.from_branch_id)
+            .eq('medication_id', transfer.medication_id)
+            .maybeSingle();
+          
+          if (sourceInv) {
+            await supabase
+              .from('branch_inventory')
+              .update({ current_stock: Math.max(0, sourceInv.current_stock - transfer.quantity) })
+              .eq('id', sourceInv.id);
+          }
         }
 
-        // Increase at destination branch
-        const { data: destInv } = await supabase
-          .from('branch_inventory')
-          .select('*')
-          .eq('branch_id', transfer.to_branch_id)
-          .eq('medication_id', transfer.medication_id)
-          .maybeSingle();
-
-        if (destInv) {
-          await supabase
-            .from('branch_inventory')
-            .update({ current_stock: destInv.current_stock + transfer.quantity })
-            .eq('id', destInv.id);
+        // Increase at destination
+        if (isDestMainBranch) {
+          // Main branch uses medications.current_stock
+          const { data: med } = await supabase
+            .from('medications')
+            .select('current_stock')
+            .eq('id', transfer.medication_id)
+            .single();
+          
+          if (med) {
+            await supabase
+              .from('medications')
+              .update({ current_stock: med.current_stock + transfer.quantity })
+              .eq('id', transfer.medication_id);
+          }
         } else {
-          await supabase
+          // Non-main branch uses branch_inventory
+          const { data: destInv } = await supabase
             .from('branch_inventory')
-            .insert({
-              branch_id: transfer.to_branch_id,
-              medication_id: transfer.medication_id,
-              current_stock: transfer.quantity,
-            });
+            .select('*')
+            .eq('branch_id', transfer.to_branch_id)
+            .eq('medication_id', transfer.medication_id)
+            .maybeSingle();
+
+          if (destInv) {
+            await supabase
+              .from('branch_inventory')
+              .update({ current_stock: destInv.current_stock + transfer.quantity })
+              .eq('id', destInv.id);
+          } else {
+            // Create new branch_inventory entry for destination
+            await supabase
+              .from('branch_inventory')
+              .insert({
+                branch_id: transfer.to_branch_id,
+                medication_id: transfer.medication_id,
+                current_stock: transfer.quantity,
+              });
+          }
         }
       }
 
@@ -279,6 +330,8 @@ export const useBranches = () => {
     onSuccess: (_, { status }) => {
       queryClient.invalidateQueries({ queryKey: ['stock-transfers'] });
       queryClient.invalidateQueries({ queryKey: ['branch-inventory'] });
+      queryClient.invalidateQueries({ queryKey: ['branch-medications'] });
+      queryClient.invalidateQueries({ queryKey: ['medications'] });
       toast({
         title: status === 'completed' ? 'Transfer Completed' : 'Transfer Updated',
         description: `Transfer status changed to ${status}.`,

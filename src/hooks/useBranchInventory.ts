@@ -1,5 +1,5 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { usePharmacy } from '@/hooks/usePharmacy';
@@ -40,13 +40,13 @@ export const useBranchInventory = () => {
   const { pharmacyId } = usePharmacy();
   const { currentBranchId, isMainBranch } = useBranchContext();
 
-  // Fetch medications with branch-specific stock
-  const { data: medications = [], isLoading } = useQuery({
+  // Fetch ALL medications with branch-specific stock (full catalog)
+  const { data: allMedications = [], isLoading } = useQuery({
     queryKey: ['branch-medications', pharmacyId, currentBranchId],
     queryFn: async () => {
       if (!pharmacyId) return [];
       
-      // Get all medications for the pharmacy
+      // Get all medications for the pharmacy (shared catalog)
       const { data: meds, error: medsError } = await supabase
         .from('medications')
         .select('*')
@@ -65,7 +65,7 @@ export const useBranchInventory = () => {
         })) as BranchMedication[];
       }
       
-      // Get branch-specific inventory
+      // Get branch-specific inventory for non-main branches
       const { data: branchInv, error: invError } = await supabase
         .from('branch_inventory')
         .select('*')
@@ -90,6 +90,17 @@ export const useBranchInventory = () => {
     },
     enabled: !!pharmacyId,
   });
+
+  // For non-main branches, only return medications that have been stocked (branch_stock > 0)
+  // This ensures new branches start with a clean slate until stock is transferred
+  const medications = useMemo(() => {
+    if (isMainBranch || !currentBranchId) {
+      // Main branch sees everything in the catalog
+      return allMedications;
+    }
+    // Non-main branches only see items they have stock for
+    return allMedications.filter(m => m.branch_stock > 0);
+  }, [allMedications, isMainBranch, currentBranchId]);
 
   // Real-time subscription
   useEffect(() => {
@@ -295,7 +306,8 @@ export const useBranchInventory = () => {
   };
 
   return {
-    medications,
+    medications, // Only stocked items for non-main branches
+    allCatalogMedications: allMedications, // Full catalog for inventory management
     isLoading,
     updateBranchStock,
     receiveStockToBranch,
