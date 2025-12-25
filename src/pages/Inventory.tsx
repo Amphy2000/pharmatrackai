@@ -3,7 +3,7 @@ import { Header } from '@/components/Header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Package, AlertTriangle, PackagePlus, ClipboardList, FileImage, Zap, Clock, FileSpreadsheet, TrendingDown, Calendar, Download, FileText, ChevronDown, Plus, DollarSign, LayoutGrid, List, Search, Trash2, CheckSquare } from 'lucide-react';
+import { Package, AlertTriangle, PackagePlus, ClipboardList, FileImage, Zap, Clock, FileSpreadsheet, TrendingDown, Calendar, Download, FileText, ChevronDown, Plus, DollarSign, LayoutGrid, List, Search, Trash2, CheckSquare, Building2 } from 'lucide-react';
 import { useMedications } from '@/hooks/useMedications';
 import { ReceiveStockModal } from '@/components/inventory/ReceiveStockModal';
 import { StockCountModal } from '@/components/inventory/StockCountModal';
@@ -21,6 +21,8 @@ import { differenceInDays, parseISO, format } from 'date-fns';
 import { exportInventoryToPDF, exportInventoryToExcel, downloadFile } from '@/utils/reportExporter';
 import { usePharmacy } from '@/hooks/usePharmacy';
 import { useCurrency } from '@/contexts/CurrencyContext';
+import { useBranchContext } from '@/contexts/BranchContext';
+import { usePlanLimits } from '@/hooks/usePlanLimits';
 import { toast } from 'sonner';
 import { Medication } from '@/types/medication';
 import {
@@ -61,6 +63,8 @@ const Inventory = () => {
   const [bulkUnshelveOpen, setBulkUnshelveOpen] = useState(false);
   const { pharmacy } = usePharmacy();
   const { currency } = useCurrency();
+  const { currentBranchName, isMainBranch } = useBranchContext();
+  const { plan } = usePlanLimits();
 
   const filteredMedications = useMemo(() => {
     if (!searchQuery) return medications;
@@ -201,11 +205,23 @@ const Inventory = () => {
       <main className="container mx-auto px-4 py-8">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
           <div>
-            <h1 className="font-display text-3xl font-bold text-gradient">
-              Inventory Operations
-            </h1>
+            <div className="flex items-center gap-3 mb-1">
+              <h1 className="font-display text-3xl font-bold text-gradient">
+                Inventory Operations
+              </h1>
+              {plan !== 'starter' && (
+                <Badge variant="outline" className="gap-1.5 font-normal">
+                  <Building2 className="h-3.5 w-3.5" />
+                  {currentBranchName}
+                  {isMainBranch && <span className="text-primary">(HQ)</span>}
+                </Badge>
+              )}
+            </div>
             <p className="text-muted-foreground mt-1">
-              Manage stock receiving, counting, and inventory tasks
+              {isMainBranch 
+                ? 'Central inventory management - stock levels apply to all branches'
+                : `Managing stock for ${currentBranchName}`
+              }
             </p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">

@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/dialog';
 import { useBranches } from '@/hooks/useBranches';
 import { usePlanLimits } from '@/hooks/usePlanLimits';
+import { useBranchContext } from '@/contexts/BranchContext';
 import { useNavigate } from 'react-router-dom';
 
 interface BranchSwitcherProps {
@@ -30,6 +31,7 @@ export const BranchSwitcher = ({ currentBranchId, onBranchChange }: BranchSwitch
   const navigate = useNavigate();
   const { branches, isLoading } = useBranches();
   const { canAddBranches, plan } = usePlanLimits();
+  const { canSwitchBranch, userAssignedBranchId } = useBranchContext();
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   // Only show for Pro/Enterprise plans
@@ -41,6 +43,19 @@ export const BranchSwitcher = ({ currentBranchId, onBranchChange }: BranchSwitch
 
   if (isLoading || branches.length === 0) {
     return null;
+  }
+
+  // If user cannot switch branches (cashiers), just show current branch name without dropdown
+  if (!canSwitchBranch) {
+    return (
+      <div className="flex items-center gap-2 px-3 h-9 rounded-lg bg-muted/50">
+        <Building2 className="h-4 w-4 text-muted-foreground" />
+        <span className="text-sm font-medium max-w-[120px] truncate">
+          {currentBranch?.name || 'Main Branch'}
+        </span>
+        <Lock className="h-3 w-3 text-muted-foreground" />
+      </div>
+    );
   }
 
   const handleAddBranch = () => {
