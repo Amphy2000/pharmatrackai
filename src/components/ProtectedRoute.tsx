@@ -93,11 +93,14 @@ export const ProtectedRoute = ({ children, requireSubscription = true }: Protect
 
     try {
       // Check for ANY pharmacy_staff record for this user (active or not)
+      // NOTE: users can have multiple pharmacy_staff rows (e.g. multiple pharmacies),
+      // so we must NOT use maybeSingle() without limiting.
       const { data, error } = await supabase
         .from('pharmacy_staff')
         .select('id, pharmacy_id, role, is_active')
         .eq('user_id', user.id)
-        .maybeSingle();
+        .order('created_at', { ascending: false })
+        .limit(1);
 
       if (error) {
         // If network error, try to use cached data
@@ -120,12 +123,14 @@ export const ProtectedRoute = ({ children, requireSubscription = true }: Protect
         throw error;
       }
 
-      if (data) {
+      const staffRow = data?.[0];
+
+      if (staffRow) {
         // User has a pharmacy association - cache it and allow access
         cachePharmacyData({
-          id: data.id,
-          pharmacyId: data.pharmacy_id,
-          role: data.role,
+          id: staffRow.id,
+          pharmacyId: staffRow.pharmacy_id,
+          role: staffRow.role,
           cachedAt: Date.now(),
         });
         setHasPharmacy(true);

@@ -423,7 +423,7 @@ export const PlatformMetricsGrid = ({ pharmacies, subscriptionPayments = [], isL
                 </div>
                 <div>
                   <p className="font-medium">Enterprise</p>
-                  <p className="text-xs text-muted-foreground">Subscription price: ₦150,000/mo</p>
+                  <p className="text-xs text-muted-foreground">Subscription price: ₦1,000,000+/mo</p>
                 </div>
               </div>
               <div className="text-right">
