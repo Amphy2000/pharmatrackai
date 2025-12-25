@@ -8,6 +8,7 @@ import { UpgradePrompt } from '@/components/subscription';
 import { Header } from '@/components/Header';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
+import { PharmacySelector } from '@/components/pharmacy/PharmacySelector';
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -15,6 +16,7 @@ interface ProtectedRouteProps {
 }
 
 const CACHE_KEY = 'pharmatrack_pharmacy_staff';
+const SELECTED_PHARMACY_KEY = 'pharmatrack_selected_pharmacy';
 
 interface CachedPharmacyStaff {
   id: string;
@@ -31,6 +33,8 @@ export const ProtectedRoute = ({ children, requireSubscription = true }: Protect
   const [checkingPharmacy, setCheckingPharmacy] = useState(true);
   const [isOffline, setIsOffline] = useState(!navigator.onLine);
   const [offlineError, setOfflineError] = useState(false);
+  const [showPharmacySelector, setShowPharmacySelector] = useState(false);
+  const [pharmacyCount, setPharmacyCount] = useState(0);
   const { canAccessFeatures, isLoading: isLoadingSubscription } = useSubscription();
 
   // Listen for online/offline events
@@ -92,15 +96,12 @@ export const ProtectedRoute = ({ children, requireSubscription = true }: Protect
     }
 
     try {
-      // Check for ANY pharmacy_staff record for this user (active or not)
-      // NOTE: users can have multiple pharmacy_staff rows (e.g. multiple pharmacies),
-      // so we must NOT use maybeSingle() without limiting.
+      // Get ALL pharmacy_staff records for this user to check if they have multiple
       const { data, error } = await supabase
         .from('pharmacy_staff')
         .select('id, pharmacy_id, role, is_active')
         .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(1);
+        .order('created_at', { ascending: false });
 
       if (error) {
         // If network error, try to use cached data
@@ -123,20 +124,38 @@ export const ProtectedRoute = ({ children, requireSubscription = true }: Protect
         throw error;
       }
 
-      const staffRow = data?.[0];
+      if (data && data.length > 0) {
+        setPharmacyCount(data.length);
 
-      if (staffRow) {
-        // User has a pharmacy association - cache it and allow access
+        // Check if user has a previously selected pharmacy
+        const selectedPharmacyId = localStorage.getItem(SELECTED_PHARMACY_KEY);
+        const matchingStaff = selectedPharmacyId 
+          ? data.find(s => s.pharmacy_id === selectedPharmacyId)
+          : null;
+
+        // If multiple pharmacies and no valid selection, show selector
+        if (data.length > 1 && !matchingStaff) {
+          setShowPharmacySelector(true);
+          setCheckingPharmacy(false);
+          return;
+        }
+
+        // Use the matching staff or the first one
+        const staffRow = matchingStaff || data[0];
+        
+        // Cache the selected pharmacy
         cachePharmacyData({
           id: staffRow.id,
           pharmacyId: staffRow.pharmacy_id,
           role: staffRow.role,
           cachedAt: Date.now(),
         });
+        localStorage.setItem(SELECTED_PHARMACY_KEY, staffRow.pharmacy_id);
         setHasPharmacy(true);
       } else {
         // Clear any stale cache if user truly has no pharmacy
         localStorage.removeItem(CACHE_KEY);
+        localStorage.removeItem(SELECTED_PHARMACY_KEY);
         setHasPharmacy(false);
       }
       setOfflineError(false);
@@ -215,6 +234,18 @@ export const ProtectedRoute = ({ children, requireSubscription = true }: Protect
 
   if (!user) {
     return <Navigate to="/" state={{ from: location }} replace />;
+  }
+
+  // Show pharmacy selector if user has multiple pharmacies and hasn't selected one
+  if (showPharmacySelector && pharmacyCount > 1) {
+    const handlePharmacySelect = (pharmacyId: string) => {
+      localStorage.setItem(SELECTED_PHARMACY_KEY, pharmacyId);
+      setShowPharmacySelector(false);
+      setCheckingPharmacy(true);
+      checkPharmacyData();
+    };
+
+    return <PharmacySelector onSelect={handlePharmacySelect} />;
   }
 
   // If user has no pharmacy and not on onboarding page, redirect to onboarding
