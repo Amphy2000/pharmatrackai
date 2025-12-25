@@ -45,23 +45,24 @@ export const BranchProvider = ({ children }: { children: ReactNode }) => {
 
   const userAssignedBranchId = staffRecord?.branch_id || null;
   const isCashier = userRole === 'staff'; // Cashiers are 'staff' role
-  const isOwnerOrManager = userRole === 'owner' || userRole === 'manager';
+  const isManager = userRole === 'manager';
+  const isOwner = userRole === 'owner';
   
-  // Cashiers cannot switch branches - they're locked to their assigned branch
-  const canSwitchBranch = isOwnerOrManager;
+  // Only owners can switch branches. Managers and staff are locked to their assigned branch.
+  const canSwitchBranch = isOwner;
 
-  // Auto-route staff to their assigned branch on mount
+  // Auto-route non-owners to their assigned branch on mount
   useEffect(() => {
     if (branches.length === 0) return;
     
-    // If staff has an assigned branch and they're not owner/manager, lock them to it
-    if (userAssignedBranchId && !isOwnerOrManager) {
+    // If user has an assigned branch and they're not the owner, lock them to it
+    if (userAssignedBranchId && !isOwner) {
       setCurrentBranchIdState(userAssignedBranchId);
       localStorage.setItem('currentBranchId', userAssignedBranchId);
       return;
     }
     
-    // For owners/managers or staff without assigned branch, use stored or default to main
+    // Owners (or users without an assigned branch) use stored or default to main
     if (!currentBranchId || !branches.find(b => b.id === currentBranchId)) {
       const mainBranch = branches.find(b => b.is_main_branch) || branches[0];
       if (mainBranch) {
@@ -69,7 +70,7 @@ export const BranchProvider = ({ children }: { children: ReactNode }) => {
         localStorage.setItem('currentBranchId', mainBranch.id);
       }
     }
-  }, [branches, userAssignedBranchId, isOwnerOrManager, currentBranchId]);
+  }, [branches, userAssignedBranchId, isOwner, currentBranchId]);
 
   // Custom setter that respects role restrictions
   const setCurrentBranchId = (id: string) => {
