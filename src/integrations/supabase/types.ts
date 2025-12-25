@@ -1611,6 +1611,7 @@ export type Database = {
         Returns: string
       }
       get_user_pharmacy_id: { Args: { user_uuid: string }; Returns: string }
+      get_user_pharmacy_ids: { Args: { _user_id: string }; Returns: string[] }
       has_pharmacy_role: {
         Args: {
           required_role: Database["public"]["Enums"]["pharmacy_role"]
@@ -1638,6 +1639,10 @@ export type Database = {
       }
       staff_has_permission: {
         Args: { _permission_key: string; _user_id: string }
+        Returns: boolean
+      }
+      user_is_pharmacy_staff: {
+        Args: { _pharmacy_id: string; _user_id: string }
         Returns: boolean
       }
     }
