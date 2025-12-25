@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Crown, Check, Zap, Shield, Users, BarChart3 } from 'lucide-react';
+import { Crown, Check, Zap } from 'lucide-react';
 import { useSubscription } from '@/hooks/useSubscription';
 
 interface UpgradePromptProps {
@@ -11,45 +11,53 @@ interface UpgradePromptProps {
 
 const plans = [
   {
-    name: 'Starter',
-    price: '₦15,000',
+    name: 'Switch & Save',
+    tagline: 'Lifetime License Feel',
+    price: '₦10,000',
     period: '/month',
-    setup: '₦150,000 one-time setup',
+    setup: 'One-time Setup: ₦150,000',
+    target: 'Single-branch pharmacies looking for stability',
     features: [
-      'Up to 500 medications',
-      '1 user account',
-      'Basic POS',
-      'Email support',
+      'Lifetime License Feel',
+      'Cloud Backups',
+      '1 User Account',
+      'Unlimited SKUs',
+      'Basic POS System',
+      'Expiry Tracking',
     ],
     popular: false,
   },
   {
-    name: 'Pro',
+    name: 'AI Powerhouse',
+    tagline: 'Stop Drug Waste with AI',
     price: '₦35,000',
     period: '/month',
-    setup: '₦0 Setup',
+    setup: 'Zero Setup Fee: ₦0',
+    target: 'Fast-growing pharmacies using AI to stop waste',
     features: [
-      'Unlimited medications',
-      'Up to 5 users',
-      'Advanced analytics',
-      'Multi-branch support',
-      'Priority support',
-      'AI insights',
+      'NO Setup Fee',
+      'Automated Expiry Discounting',
+      'Demand Forecasting AI',
+      'Unlimited Users',
+      'Multi-Branch Ready',
+      'Staff Clock-in Tracking',
     ],
     popular: true,
   },
   {
     name: 'Enterprise',
-    price: 'Custom',
-    period: '',
+    tagline: 'Global Standard',
+    price: '₦1,000,000+',
+    period: '/month',
     setup: 'Custom Quote',
+    target: 'Hospital chains & international clients',
     features: [
       'Everything in Pro',
-      'Unlimited users',
-      'Custom integrations',
-      'Dedicated support',
-      'SLA guarantee',
-      'On-premise option',
+      'White-label Options',
+      'Custom API Access',
+      'Dedicated Account Manager',
+      '24/7 Priority Support',
+      'Custom Integrations',
     ],
     popular: false,
   },
@@ -120,13 +128,13 @@ export const UpgradePrompt = ({ inline = false, onUpgrade }: UpgradePromptProps)
             )}
             <CardHeader className="text-center pb-2">
               <CardTitle className="text-lg">{planOption.name}</CardTitle>
+              <CardDescription>{planOption.tagline}</CardDescription>
+              <p className="text-xs text-muted-foreground mt-2">{planOption.target}</p>
+              <p className="text-sm text-muted-foreground mt-2">{planOption.setup}</p>
               <div className="mt-2">
                 <span className="text-3xl font-bold">{planOption.price}</span>
                 <span className="text-muted-foreground">{planOption.period}</span>
               </div>
-              {planOption.setup && (
-                <p className="text-xs text-muted-foreground mt-1">{planOption.setup}</p>
-              )}
             </CardHeader>
             <CardContent className="space-y-3">
               {planOption.features.map((feature) => (
@@ -142,7 +150,7 @@ export const UpgradePrompt = ({ inline = false, onUpgrade }: UpgradePromptProps)
                 variant={planOption.popular ? 'default' : 'outline'}
                 onClick={handleUpgrade}
               >
-                {planOption.name === 'Enterprise' ? 'Contact Sales' : 'Get Started'}
+                {planOption.name === 'Enterprise' ? 'Contact Sales' : 'Start Free Trial'}
               </Button>
             </CardFooter>
           </Card>

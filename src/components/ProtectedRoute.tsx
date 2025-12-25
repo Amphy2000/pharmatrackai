@@ -92,11 +92,11 @@ export const ProtectedRoute = ({ children, requireSubscription = true }: Protect
     }
 
     try {
+      // Check for ANY pharmacy_staff record for this user (active or not)
       const { data, error } = await supabase
         .from('pharmacy_staff')
-        .select('id, pharmacy_id, role')
+        .select('id, pharmacy_id, role, is_active')
         .eq('user_id', user.id)
-        .eq('is_active', true)
         .maybeSingle();
 
       if (error) {
@@ -121,7 +121,7 @@ export const ProtectedRoute = ({ children, requireSubscription = true }: Protect
       }
 
       if (data) {
-        // Cache the pharmacy staff data
+        // User has a pharmacy association - cache it and allow access
         cachePharmacyData({
           id: data.id,
           pharmacyId: data.pharmacy_id,
@@ -130,6 +130,8 @@ export const ProtectedRoute = ({ children, requireSubscription = true }: Protect
         });
         setHasPharmacy(true);
       } else {
+        // Clear any stale cache if user truly has no pharmacy
+        localStorage.removeItem(CACHE_KEY);
         setHasPharmacy(false);
       }
       setOfflineError(false);
