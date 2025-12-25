@@ -6,11 +6,13 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { UserPlus, Loader2, Mail, Lock, User, Shield, Building2 } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { UserPlus, Loader2, Mail, Lock, User, Shield, Building2, Info } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { usePharmacy } from '@/hooks/usePharmacy';
 import { useBranches } from '@/hooks/useBranches';
 import { useToast } from '@/hooks/use-toast';
+import { useManagerScope } from '@/hooks/useManagerScope';
 import { PERMISSION_LABELS, ROLE_TEMPLATES, PermissionKey } from '@/hooks/usePermissions';
 
 interface AddStaffModalProps {
@@ -23,6 +25,7 @@ export const AddStaffModal = ({ isOpen, onClose, onSuccess }: AddStaffModalProps
   const { pharmacy } = usePharmacy();
   const { branches } = useBranches();
   const { toast } = useToast();
+  const { isOwner, isBranchManager, assignedBranchId, assignedBranchName, canPromoteToRole } = useManagerScope();
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
@@ -34,9 +37,27 @@ export const AddStaffModal = ({ isOpen, onClose, onSuccess }: AddStaffModalProps
   });
   const [selectedPermissions, setSelectedPermissions] = useState<PermissionKey[]>([]);
 
+  // If branch manager, force branch assignment to their branch
+  const effectiveBranchId = isBranchManager ? assignedBranchId : formData.branchId;
+  
+  // Available roles depend on who's creating
+  const availableRoles = isOwner 
+    ? [{ value: 'manager', label: 'Manager - Full access to branch features' }, { value: 'staff', label: 'Staff - Limited access based on permissions' }]
+    : [{ value: 'staff', label: 'Staff - Limited access based on permissions' }];
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!pharmacy?.id) return;
+
+    // Validate role permission
+    if (!canPromoteToRole(formData.role)) {
+      toast({
+        title: 'Permission Denied',
+        description: 'You cannot create accounts with this role',
+        variant: 'destructive',
+      });
+      return;
+    }
 
     setIsLoading(true);
 
@@ -50,7 +71,7 @@ export const AddStaffModal = ({ isOpen, onClose, onSuccess }: AddStaffModalProps
           phone: formData.phone,
           role: formData.role,
           pharmacyId: pharmacy.id,
-          branchId: formData.branchId || null, // null means all branches
+          branchId: effectiveBranchId || null, // null means all branches
           permissions: formData.role === 'staff' ? selectedPermissions : [],
         },
       });
@@ -65,7 +86,7 @@ export const AddStaffModal = ({ isOpen, onClose, onSuccess }: AddStaffModalProps
 
       toast({
         title: 'Staff Member Added',
-        description: `${formData.fullName} has been added to your team. They can now log in with their credentials.`,
+        description: `${formData.fullName} has been added to ${isBranchManager ? assignedBranchName : 'your team'}. They can now log in with their credentials.`,
       });
 
       // Reset form
@@ -116,13 +137,26 @@ export const AddStaffModal = ({ isOpen, onClose, onSuccess }: AddStaffModalProps
             Add Staff Member
           </DialogTitle>
           <DialogDescription>
-            Create a new account for a team member. They will receive an email to verify their account.
+            {isBranchManager 
+              ? `Create a new account for ${assignedBranchName}. They will receive an email to verify their account.`
+              : 'Create a new account for a team member. They will receive an email to verify their account.'
+            }
           </DialogDescription>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="flex-1 overflow-hidden flex flex-col">
           <ScrollArea className="flex-1 pr-4">
             <div className="space-y-4 pb-4">
+              {/* Manager Scope Notice */}
+              {isBranchManager && (
+                <Alert>
+                  <Info className="h-4 w-4" />
+                  <AlertDescription>
+                    New staff will be assigned to <strong>{assignedBranchName}</strong> and can only access that branch's data.
+                  </AlertDescription>
+                </Alert>
+              )}
+
               {/* Basic Info */}
               <div className="space-y-4">
                 <div>
@@ -189,7 +223,7 @@ export const AddStaffModal = ({ isOpen, onClose, onSuccess }: AddStaffModalProps
                 </div>
               </div>
 
-              {/* Role Selection */}
+              {/* Role Selection - Only show available roles */}
               <div>
                 <Label className="flex items-center gap-2">
                   <Shield className="h-4 w-4" />
@@ -203,14 +237,22 @@ export const AddStaffModal = ({ isOpen, onClose, onSuccess }: AddStaffModalProps
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="manager">Manager - Full access to all features</SelectItem>
-                    <SelectItem value="staff">Staff - Limited access based on permissions</SelectItem>
+                    {availableRoles.map(role => (
+                      <SelectItem key={role.value} value={role.value}>
+                        {role.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
+                {!isOwner && (
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Only the Owner can create Manager accounts.
+                  </p>
+                )}
               </div>
 
-              {/* Branch Assignment */}
-              {branches.length > 0 && (
+              {/* Branch Assignment - Only show to owners */}
+              {isOwner && branches.length > 0 && (
                 <div>
                   <Label className="flex items-center gap-2">
                     <Building2 className="h-4 w-4" />
