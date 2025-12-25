@@ -5,10 +5,12 @@ import { usePharmacy } from '@/hooks/usePharmacy';
 import { useToast } from '@/hooks/use-toast';
 import { CartItem } from '@/types/medication';
 import { generateShortCode, generateBarcode } from '@/utils/htmlReceiptPrinter';
+import { useBranchContext } from '@/contexts/BranchContext';
 
 interface PendingTransaction {
   id: string;
   pharmacy_id: string;
+  branch_id: string | null;
   short_code: string;
   barcode: string;
   items: CartItem[];
@@ -26,19 +28,27 @@ export const usePendingTransactions = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { pharmacyId } = usePharmacy();
+  const { currentBranchId } = useBranchContext();
 
-  // Fetch pending transactions
+  // Fetch pending transactions - filtered by branch for isolation
   const { data: pendingTransactions = [], isLoading } = useQuery({
-    queryKey: ['pending-transactions', pharmacyId],
+    queryKey: ['pending-transactions', pharmacyId, currentBranchId],
     queryFn: async () => {
       if (!pharmacyId) return [];
 
-      const { data, error } = await supabase
+      let query = supabase
         .from('pending_transactions')
         .select('*')
         .eq('pharmacy_id', pharmacyId)
         .eq('status', 'pending')
         .order('created_at', { ascending: false });
+
+      // Filter by branch for isolation
+      if (currentBranchId) {
+        query = query.eq('branch_id', currentBranchId);
+      }
+
+      const { data, error } = await query;
 
       if (error) throw error;
       
@@ -106,6 +116,7 @@ export const usePendingTransactions = () => {
         .from('pending_transactions')
         .insert({
           pharmacy_id: pharmacyId,
+          branch_id: currentBranchId || null, // Add branch isolation
           short_code: shortCode,
           barcode: barcode,
           items: serializedItems,

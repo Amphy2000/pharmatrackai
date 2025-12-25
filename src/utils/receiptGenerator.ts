@@ -22,6 +22,10 @@ interface ReceiptData {
   paymentMethod?: PaymentMethod;
   enableLogoOnPrint?: boolean;
   isDigitalReceipt?: boolean;
+  // Branch-specific branding
+  branchName?: string;
+  branchAddress?: string;
+  branchPhone?: string;
 }
 
 const CURRENCY_SYMBOLS: Record<CurrencyCode, string> = {
@@ -100,15 +104,25 @@ export const generateReceipt = async ({
   paymentMethod,
   enableLogoOnPrint = true,
   isDigitalReceipt = false,
+  // Branch-specific fields
+  branchName,
+  branchAddress,
+  branchPhone,
 }: ReceiptData): Promise<jsPDF> => {
+  // Use branch details if provided, otherwise fall back to pharmacy defaults
+  const displayName = branchName || pharmacyName;
+  const displayAddress = branchAddress || pharmacyAddress;
+  const displayPhone = branchPhone || pharmacyPhone;
+
   // Calculate dynamic height based on items
   const baseHeight = 110;
   const itemHeight = items.length * 7;
-  const addressHeight = pharmacyAddress ? 8 : 0;
-  const phoneHeight = pharmacyPhone ? 5 : 0;
+  const addressHeight = displayAddress ? 8 : 0;
+  const phoneHeight = displayPhone ? 5 : 0;
   const pharmacistHeight = pharmacistInCharge ? 5 : 0;
   const staffHeight = staffName ? 5 : 0;
   const paymentMethodHeight = paymentMethod ? 5 : 0;
+  const branchIndicatorHeight = branchName ? 5 : 0;
 
   const shouldShowLogo = isDigitalReceipt || (enableLogoOnPrint && pharmacyLogoUrl);
   const logoHeight = shouldShowLogo ? 16 : 0;
@@ -121,7 +135,8 @@ export const generateReceipt = async ({
     logoHeight +
     pharmacistHeight +
     staffHeight +
-    paymentMethodHeight;
+    paymentMethodHeight +
+    branchIndicatorHeight;
 
   // Create PDF optimized for thermal printers (80mm width)
   const doc = new jsPDF({
@@ -163,26 +178,26 @@ export const generateReceipt = async ({
     }
   }
 
-  // Pharmacy Name
+  // Display Name (Branch name or Pharmacy name)
   doc.setFont('NotoSans', 'bold');
-  centerText(pharmacyName.toUpperCase(), y, 11);
+  centerText(displayName.toUpperCase(), y, 11);
   y += 5;
 
-  // Address
-  if (pharmacyAddress) {
+  // Address (Branch or Pharmacy)
+  if (displayAddress) {
     doc.setFont('NotoSans', 'normal');
     doc.setFontSize(7);
-    const addressLines = doc.splitTextToSize(pharmacyAddress, pageWidth - margin * 2);
+    const addressLines = doc.splitTextToSize(displayAddress, pageWidth - margin * 2);
     addressLines.forEach((line: string) => {
       centerText(line, y, 7);
       y += 3;
     });
   }
 
-  // Phone
-  if (pharmacyPhone) {
+  // Phone (Branch or Pharmacy)
+  if (displayPhone) {
     doc.setFont('NotoSans', 'normal');
-    centerText(`Tel: ${pharmacyPhone}`, y, 7);
+    centerText(`Tel: ${displayPhone}`, y, 7);
     y += 4;
   }
 
@@ -315,6 +330,15 @@ export const generateReceipt = async ({
     doc.setFontSize(6);
     doc.setTextColor(80);
     centerText(`Served by: ${staffName}`, y);
+    doc.setTextColor(0);
+    y += 3;
+  }
+
+  // Branch indicator at footer if we have branch name
+  if (branchName && branchName !== pharmacyName) {
+    doc.setFontSize(6);
+    doc.setTextColor(100);
+    centerText(`Branch: ${branchName}`, y);
     doc.setTextColor(0);
     y += 3;
   }

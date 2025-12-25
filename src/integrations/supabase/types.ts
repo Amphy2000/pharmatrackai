@@ -484,6 +484,7 @@ export type Database = {
       }
       notifications: {
         Row: {
+          branch_id: string | null
           created_at: string
           entity_id: string | null
           entity_type: string | null
@@ -498,6 +499,7 @@ export type Database = {
           type: string
         }
         Insert: {
+          branch_id?: string | null
           created_at?: string
           entity_id?: string | null
           entity_type?: string | null
@@ -512,6 +514,7 @@ export type Database = {
           type?: string
         }
         Update: {
+          branch_id?: string | null
           created_at?: string
           entity_id?: string | null
           entity_type?: string | null
@@ -527,6 +530,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "notifications_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "notifications_pharmacy_id_fkey"
             columns: ["pharmacy_id"]
             isOneToOne: false
@@ -538,6 +548,7 @@ export type Database = {
       pending_transactions: {
         Row: {
           barcode: string
+          branch_id: string | null
           completed_at: string | null
           completed_by: string | null
           created_at: string
@@ -553,6 +564,7 @@ export type Database = {
         }
         Insert: {
           barcode: string
+          branch_id?: string | null
           completed_at?: string | null
           completed_by?: string | null
           created_at?: string
@@ -568,6 +580,7 @@ export type Database = {
         }
         Update: {
           barcode?: string
+          branch_id?: string | null
           completed_at?: string | null
           completed_by?: string | null
           created_at?: string
@@ -582,6 +595,13 @@ export type Database = {
           total_amount?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "pending_transactions_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "pending_transactions_pharmacy_id_fkey"
             columns: ["pharmacy_id"]
@@ -1053,6 +1073,7 @@ export type Database = {
       }
       sales: {
         Row: {
+          branch_id: string | null
           created_at: string
           customer_id: string | null
           customer_name: string | null
@@ -1071,6 +1092,7 @@ export type Database = {
           unit_price: number
         }
         Insert: {
+          branch_id?: string | null
           created_at?: string
           customer_id?: string | null
           customer_name?: string | null
@@ -1089,6 +1111,7 @@ export type Database = {
           unit_price: number
         }
         Update: {
+          branch_id?: string | null
           created_at?: string
           customer_id?: string | null
           customer_name?: string | null
@@ -1107,6 +1130,13 @@ export type Database = {
           unit_price?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "sales_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "sales_customer_id_fkey"
             columns: ["customer_id"]
