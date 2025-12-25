@@ -736,6 +736,7 @@ export type Database = {
       }
       pharmacy_staff: {
         Row: {
+          branch_id: string | null
           created_at: string
           id: string
           is_active: boolean
@@ -745,6 +746,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          branch_id?: string | null
           created_at?: string
           id?: string
           is_active?: boolean
@@ -754,6 +756,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          branch_id?: string | null
           created_at?: string
           id?: string
           is_active?: boolean
@@ -763,6 +766,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "pharmacy_staff_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "pharmacy_staff_pharmacy_id_fkey"
             columns: ["pharmacy_id"]
@@ -1584,6 +1594,10 @@ export type Database = {
       }
       is_platform_admin: { Args: { _user_id: string }; Returns: boolean }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
+      staff_assigned_to_branch: {
+        Args: { _branch_id: string; _user_id: string }
+        Returns: boolean
+      }
       staff_has_permission: {
         Args: { _permission_key: string; _user_id: string }
         Returns: boolean

@@ -40,6 +40,7 @@ interface CreateStaffRequest {
   phone?: string;
   role: 'manager' | 'staff';
   pharmacyId: string;
+  branchId?: string | null;
   permissions: string[];
 }
 
@@ -182,6 +183,26 @@ function validatePermissions(permissions: unknown): string[] {
   return validated;
 }
 
+function validateBranchId(branchId: unknown): string | null {
+  if (branchId === undefined || branchId === null || branchId === '') {
+    return null;
+  }
+  
+  if (typeof branchId !== 'string') {
+    throw new Error('branchId must be a string');
+  }
+  
+  const trimmed = branchId.trim();
+  
+  // UUID format validation
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (!uuidRegex.test(trimmed)) {
+    throw new Error('branchId must be a valid UUID');
+  }
+  
+  return trimmed;
+}
+
 function validateInput(body: unknown): CreateStaffRequest {
   if (!body || typeof body !== 'object') {
     throw new Error('Request body must be an object');
@@ -196,6 +217,7 @@ function validateInput(body: unknown): CreateStaffRequest {
     phone: validatePhone(data.phone),
     role: validateRole(data.role),
     pharmacyId: validatePharmacyId(data.pharmacyId),
+    branchId: validateBranchId(data.branchId),
     permissions: validatePermissions(data.permissions ?? []),
   };
 }
@@ -239,7 +261,7 @@ serve(async (req: Request) => {
 
     // Validate and parse input
     const body = await req.json();
-    const { email, password, fullName, phone, role, pharmacyId, permissions } = validateInput(body);
+    const { email, password, fullName, phone, role, pharmacyId, branchId, permissions } = validateInput(body);
 
     // Verify requesting user is owner of the pharmacy
     const { data: pharmacy, error: pharmacyError } = await supabaseAdmin
@@ -307,7 +329,7 @@ serve(async (req: Request) => {
         phone: phone || null,
       }, { onConflict: 'user_id' });
 
-    // Add as pharmacy staff
+    // Add as pharmacy staff with optional branch assignment
     const { data: staffData, error: staffError } = await supabaseAdmin
       .from('pharmacy_staff')
       .insert({
@@ -315,6 +337,7 @@ serve(async (req: Request) => {
         user_id: authData.user.id,
         role: role,
         is_active: true,
+        branch_id: branchId, // null means all branches access
       })
       .select()
       .single();
