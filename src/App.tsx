@@ -16,6 +16,7 @@ import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import CashierDashboard from "./pages/CashierDashboard";
 import StaffDashboard from "./pages/StaffDashboard";
+import ManagerDashboard from "./pages/ManagerDashboard";
 import MySales from "./pages/MySales";
 import Checkout from "./pages/Checkout";
 import SalesHistory from "./pages/SalesHistory";
@@ -83,6 +84,7 @@ const App = () => (
                   <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
                   <Route path="/cashier-dashboard" element={<ProtectedRoute><CashierDashboard /></ProtectedRoute>} />
                   <Route path="/staff-dashboard" element={<ProtectedRoute><StaffDashboard /></ProtectedRoute>} />
+                  <Route path="/manager-dashboard" element={<ProtectedRoute><ManagerDashboard /></ProtectedRoute>} />
                   <Route path="/my-sales" element={<ProtectedRoute><MySales /></ProtectedRoute>} />
                   <Route path="/checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
                   <Route path="/payment-terminal" element={<ProtectedRoute><PaymentTerminal /></ProtectedRoute>} />
