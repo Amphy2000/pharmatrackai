@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { useSelectedPharmacyId } from '@/hooks/useSelectedPharmacy';
 
 interface PharmacySettings {
   enable_logo_on_print?: boolean;
@@ -11,12 +12,17 @@ interface PharmacySettings {
 export const usePharmacy = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const { selectedPharmacyId } = useSelectedPharmacyId();
 
   const { data: pharmacyId, isLoading: isLoadingPharmacy } = useQuery({
-    queryKey: ['user-pharmacy', user?.id],
+    queryKey: ['user-pharmacy', user?.id, selectedPharmacyId],
     queryFn: async () => {
       if (!user?.id) return null;
-      
+
+      // If user explicitly selected a pharmacy (multi-pharmacy), always respect it.
+      if (selectedPharmacyId) return selectedPharmacyId;
+
+      // Otherwise fall back to most recent active pharmacy.
       const { data, error } = await supabase
         .from('pharmacy_staff')
         .select('pharmacy_id')
