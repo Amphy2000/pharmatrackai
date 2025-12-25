@@ -26,13 +26,18 @@ export const StaffManagement = () => {
   const [showAddStaffModal, setShowAddStaffModal] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
-  // Filter staff for managers - they can only see/manage staff in their branch
-  const visibleStaff = userRole === 'owner' 
-    ? staff 
-    : staff.filter(s => s.branch_id === userAssignedBranchId && s.role === 'staff');
-  const activeUserCount = visibleStaff.filter(s => s.is_active).length;
-  const isAtLimit = activeUserCount >= maxUsers;
-  const usagePercent = Math.min((activeUserCount / maxUsers) * 100, 100);
+  const isOwner = userRole === 'owner';
+  const isManager = userRole === 'manager';
+
+  // Managers can only see staff in their branch (and only "staff" role).
+  const visibleStaff = isOwner
+    ? staff
+    : staff.filter((s) => s.branch_id === userAssignedBranchId && s.role === 'staff');
+
+  // Plan limits apply to the whole pharmacy (not just a branch).
+  const totalActiveUserCount = staff.filter((s) => s.is_active).length;
+  const isAtLimit = maxUsers !== 999 && totalActiveUserCount >= maxUsers;
+  const usagePercent = maxUsers === 999 ? 0 : Math.min((totalActiveUserCount / maxUsers) * 100, 100);
 
   if (!isOwnerOrManager) {
     return (
@@ -98,7 +103,7 @@ export const StaffManagement = () => {
                   Manage your team members, branch assignments, and access permissions
                 </CardDescription>
               </div>
-              {userRole === 'owner' && (
+              {(userRole === 'owner' || userRole === 'manager') && (
                 <Tooltip>
                   <TooltipTrigger asChild>
                     <div>
@@ -127,12 +132,12 @@ export const StaffManagement = () => {
               <div className="flex items-center justify-between mb-2">
                 <span className="text-sm font-medium">Staff Accounts</span>
                 <span className="text-sm text-muted-foreground">
-                  {activeUserCount}/{maxUsers === 999 ? '∞' : maxUsers} Users
+                  {totalActiveUserCount}/{maxUsers === 999 ? '∞' : maxUsers} Users
                 </span>
               </div>
               <Progress value={usagePercent} className="h-2" />
               <p className="text-xs text-muted-foreground mt-2">
-                {planName} Plan {maxUsers !== 999 && `• ${maxUsers - activeUserCount} slots remaining`}
+                {planName} Plan {maxUsers !== 999 && `• ${maxUsers - totalActiveUserCount} slots remaining`}
               </p>
             </div>
 
@@ -183,8 +188,8 @@ export const StaffManagement = () => {
                       </div>
 
                       <div className="flex flex-wrap items-center gap-2">
-                        {/* Role can't be changed for owner */}
-                        {member.role !== 'owner' && (
+                        {/* Owner controls only */}
+                        {member.role !== 'owner' && userRole === 'owner' && (
                           <>
                             {/* Branch Assignment */}
                             <Select
@@ -252,11 +257,15 @@ export const StaffManagement = () => {
                       </div>
                     </div>
 
-                    {/* Show current permissions for staff - clickable to edit */}
+                    {/* Show current permissions for staff */}
                     {member.role === 'staff' && (
                       <div 
-                        className="mt-3 flex flex-wrap gap-1 cursor-pointer group"
-                        onClick={() => navigateToPermissions(member.id)}
+                        className={
+                          userRole === 'owner'
+                            ? 'mt-3 flex flex-wrap gap-1 cursor-pointer group'
+                            : 'mt-3 flex flex-wrap gap-1'
+                        }
+                        onClick={userRole === 'owner' ? () => navigateToPermissions(member.id) : undefined}
                       >
                         {member.permissions.length > 0 ? (
                           <>
@@ -276,9 +285,11 @@ export const StaffManagement = () => {
                             POS access only - basic cashier permissions
                           </span>
                         )}
-                        <span className="text-xs text-primary opacity-0 group-hover:opacity-100 transition-opacity ml-2">
-                          Click to manage →
-                        </span>
+                        {userRole === 'owner' && (
+                          <span className="text-xs text-primary opacity-0 group-hover:opacity-100 transition-opacity ml-2">
+                            Click to manage →
+                          </span>
+                        )}
                       </div>
                     )}
                   </div>
@@ -327,6 +338,8 @@ export const StaffManagement = () => {
           isOpen={showAddStaffModal}
           onClose={() => setShowAddStaffModal(false)}
           onSuccess={refetch}
+          mode={userRole === 'manager' ? 'manager' : 'owner'}
+          forcedBranchId={userAssignedBranchId}
         />
       </>
     </TooltipProvider>

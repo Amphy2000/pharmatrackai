@@ -277,7 +277,7 @@ serve(async (req: Request) => {
     // Check if requesting user is owner or manager
     const { data: staffRecord } = await supabaseAdmin
       .from('pharmacy_staff')
-      .select('role')
+      .select('role, branch_id')
       .eq('pharmacy_id', pharmacyId)
       .eq('user_id', requestingUser.id)
       .eq('is_active', true)
@@ -291,6 +291,32 @@ serve(async (req: Request) => {
         JSON.stringify({ error: "You don't have permission to add staff" }),
         { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+
+    // Managers are branch-scoped: they can only create "staff" users for their own branch.
+    if (!isOwner) {
+      const managerBranchId = staffRecord?.branch_id ?? null;
+
+      if (!managerBranchId) {
+        return new Response(
+          JSON.stringify({ error: "Manager must be assigned to a branch to add staff" }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      if (role !== 'staff') {
+        return new Response(
+          JSON.stringify({ error: "Managers can only create staff accounts" }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      if (branchId !== managerBranchId) {
+        return new Response(
+          JSON.stringify({ error: "Managers can only add staff to their own branch" }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
     }
 
     // Create the user using admin API (doesn't affect current session)

@@ -27,9 +27,18 @@ const Settings = () => {
     setSearchParams({ tab: value }, { replace: true });
   };
 
-  // Only owners can access settings page
-  if (!isLoading && userRole !== 'owner') {
-    return <Navigate to="/dashboard" replace />;
+  const isManager = userRole === 'manager';
+
+  // Access rules:
+  // - Owner: full settings
+  // - Manager: staff-only settings
+  if (!isLoading) {
+    if (isManager) {
+      if (!canManageStaff) return <Navigate to="/manager-dashboard" replace />;
+      if (currentTab !== 'staff') return <Navigate to="/manager-dashboard" replace />;
+    } else if (userRole !== 'owner') {
+      return <Navigate to="/dashboard" replace />;
+    }
   }
 
   return (
@@ -50,47 +59,57 @@ const Settings = () => {
 
         <Tabs value={currentTab} onValueChange={handleTabChange} className="space-y-6">
           <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 lg:flex lg:flex-wrap h-auto gap-1 p-1">
-            <TabsTrigger value="general" className="gap-2 text-xs sm:text-sm">
-              <Globe className="h-3 w-3 sm:h-4 sm:w-4" />
-              <span className="hidden xs:inline">General</span>
-              <span className="xs:hidden">Gen</span>
-            </TabsTrigger>
-            <TabsTrigger value="branding" className="gap-2 text-xs sm:text-sm">
-              <ImageIcon className="h-3 w-3 sm:h-4 sm:w-4" />
-              <span className="hidden xs:inline">Branding</span>
-              <span className="xs:hidden">Brand</span>
-            </TabsTrigger>
-            <TabsTrigger value="subscription" className="gap-2 text-xs sm:text-sm">
-              <CreditCard className="h-3 w-3 sm:h-4 sm:w-4" />
-              <span className="hidden xs:inline">Subscription</span>
-              <span className="xs:hidden">Sub</span>
-            </TabsTrigger>
-            <TabsTrigger value="security" className="gap-2 text-xs sm:text-sm">
-              <ShieldCheck className="h-3 w-3 sm:h-4 sm:w-4" />
-              <span className="hidden sm:inline">Price Shield</span>
-              <span className="sm:hidden">Shield</span>
-            </TabsTrigger>
+            {!isManager && (
+              <>
+                <TabsTrigger value="general" className="gap-2 text-xs sm:text-sm">
+                  <Globe className="h-3 w-3 sm:h-4 sm:w-4" />
+                  <span className="hidden xs:inline">General</span>
+                  <span className="xs:hidden">Gen</span>
+                </TabsTrigger>
+                <TabsTrigger value="branding" className="gap-2 text-xs sm:text-sm">
+                  <ImageIcon className="h-3 w-3 sm:h-4 sm:w-4" />
+                  <span className="hidden xs:inline">Branding</span>
+                  <span className="xs:hidden">Brand</span>
+                </TabsTrigger>
+                <TabsTrigger value="subscription" className="gap-2 text-xs sm:text-sm">
+                  <CreditCard className="h-3 w-3 sm:h-4 sm:w-4" />
+                  <span className="hidden xs:inline">Subscription</span>
+                  <span className="xs:hidden">Sub</span>
+                </TabsTrigger>
+                <TabsTrigger value="security" className="gap-2 text-xs sm:text-sm">
+                  <ShieldCheck className="h-3 w-3 sm:h-4 sm:w-4" />
+                  <span className="hidden sm:inline">Price Shield</span>
+                  <span className="sm:hidden">Shield</span>
+                </TabsTrigger>
+              </>
+            )}
+
             {canManageStaff && (
               <TabsTrigger value="staff" className="gap-2 text-xs sm:text-sm">
                 <Users className="h-3 w-3 sm:h-4 sm:w-4" />
                 Staff
               </TabsTrigger>
             )}
-            <TabsTrigger value="alerts" className="gap-2 text-xs sm:text-sm">
-              <Bell className="h-3 w-3 sm:h-4 sm:w-4" />
-              Alerts
-            </TabsTrigger>
-            <TabsTrigger value="clockin" className="gap-2 text-xs sm:text-sm">
-              <Clock className="h-3 w-3 sm:h-4 sm:w-4" />
-              <span className="hidden xs:inline">Clock-In</span>
-              <span className="xs:hidden">Clock</span>
-            </TabsTrigger>
-            {canManageStaff && (
-              <TabsTrigger value="permissions" className="gap-2 text-xs sm:text-sm">
-                <Shield className="h-3 w-3 sm:h-4 sm:w-4" />
-                <span className="hidden xs:inline">Permissions</span>
-                <span className="xs:hidden">Perms</span>
-              </TabsTrigger>
+
+            {!isManager && (
+              <>
+                <TabsTrigger value="alerts" className="gap-2 text-xs sm:text-sm">
+                  <Bell className="h-3 w-3 sm:h-4 sm:w-4" />
+                  Alerts
+                </TabsTrigger>
+                <TabsTrigger value="clockin" className="gap-2 text-xs sm:text-sm">
+                  <Clock className="h-3 w-3 sm:h-4 sm:w-4" />
+                  <span className="hidden xs:inline">Clock-In</span>
+                  <span className="xs:hidden">Clock</span>
+                </TabsTrigger>
+                {canManageStaff && (
+                  <TabsTrigger value="permissions" className="gap-2 text-xs sm:text-sm">
+                    <Shield className="h-3 w-3 sm:h-4 sm:w-4" />
+                    <span className="hidden xs:inline">Permissions</span>
+                    <span className="xs:hidden">Perms</span>
+                  </TabsTrigger>
+                )}
+              </>
             )}
           </TabsList>
 

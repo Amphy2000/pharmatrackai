@@ -327,7 +327,7 @@ const ManagerDashboard = () => {
                 <Button
                   variant="outline"
                   className="h-20 flex flex-col items-center justify-center gap-2 hover:bg-primary/5 hover:border-primary/30 transition-all group"
-                  onClick={() => navigate('/settings')}
+                  onClick={() => navigate('/settings?tab=staff')}
                 >
                   <Building2 className="h-5 w-5 group-hover:text-primary transition-colors" />
                   <span className="text-sm">Staff</span>

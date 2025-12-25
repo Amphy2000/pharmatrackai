@@ -17,9 +17,11 @@ interface AddStaffModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
+  mode?: 'owner' | 'manager';
+  forcedBranchId?: string | null;
 }
 
-export const AddStaffModal = ({ isOpen, onClose, onSuccess }: AddStaffModalProps) => {
+export const AddStaffModal = ({ isOpen, onClose, onSuccess, mode = 'owner', forcedBranchId = null }: AddStaffModalProps) => {
   const { pharmacy } = usePharmacy();
   const { branches } = useBranches();
   const { toast } = useToast();
@@ -54,10 +56,10 @@ export const AddStaffModal = ({ isOpen, onClose, onSuccess }: AddStaffModalProps
       return;
     }
 
-    if (formData.password.length < 6) {
+    if (formData.password.length < 8) {
       toast({
         title: 'Password Too Short',
-        description: 'Password must be at least 6 characters.',
+        description: 'Password must be at least 8 characters.',
         variant: 'destructive',
       });
       return;
@@ -66,6 +68,13 @@ export const AddStaffModal = ({ isOpen, onClose, onSuccess }: AddStaffModalProps
     setIsLoading(true);
 
     try {
+      const effectiveRole: 'manager' | 'staff' = mode === 'manager' ? 'staff' : formData.role;
+      const effectiveBranchId = mode === 'manager' ? forcedBranchId : (formData.branchId || null);
+
+      if (mode === 'manager' && !effectiveBranchId) {
+        throw new Error('You must be assigned to a branch to create staff accounts.');
+      }
+
       // Call edge function to create staff (avoids session switching)
       const response = await supabase.functions.invoke('create-staff', {
         body: {
@@ -73,10 +82,10 @@ export const AddStaffModal = ({ isOpen, onClose, onSuccess }: AddStaffModalProps
           password: formData.password,
           fullName: formData.fullName.trim(),
           phone: formData.phone?.trim() || null,
-          role: formData.role,
+          role: effectiveRole,
           pharmacyId: pharmacy.id,
-          branchId: formData.branchId || null, // null means all branches
-          permissions: formData.role === 'staff' ? selectedPermissions : [],
+          branchId: effectiveBranchId, // null means all branches
+          permissions: effectiveRole === 'staff' ? selectedPermissions : [],
         },
       });
 
@@ -193,9 +202,9 @@ export const AddStaffModal = ({ isOpen, onClose, onSuccess }: AddStaffModalProps
                     type="password"
                     value={formData.password}
                     onChange={(e) => setFormData(prev => ({ ...prev, password: e.target.value }))}
-                    placeholder="Minimum 6 characters"
+                    placeholder="Minimum 8 characters"
                     required
-                    minLength={6}
+                    minLength={8}
                     className="mt-1.5"
                   />
                   <p className="text-xs text-muted-foreground mt-1">
@@ -217,27 +226,29 @@ export const AddStaffModal = ({ isOpen, onClose, onSuccess }: AddStaffModalProps
               </div>
 
               {/* Role Selection */}
-              <div>
-                <Label className="flex items-center gap-2">
-                  <Shield className="h-4 w-4" />
-                  Role
-                </Label>
-                <Select
-                  value={formData.role}
-                  onValueChange={(value) => setFormData(prev => ({ ...prev, role: value as 'manager' | 'staff' }))}
-                >
-                  <SelectTrigger className="mt-1.5">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="manager">Manager - Full access to all features</SelectItem>
-                    <SelectItem value="staff">Staff - Limited access based on permissions</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              {mode !== 'manager' && (
+                <div>
+                  <Label className="flex items-center gap-2">
+                    <Shield className="h-4 w-4" />
+                    Role
+                  </Label>
+                  <Select
+                    value={formData.role}
+                    onValueChange={(value) => setFormData(prev => ({ ...prev, role: value as 'manager' | 'staff' }))}
+                  >
+                    <SelectTrigger className="mt-1.5">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="manager">Manager - Full access to all features</SelectItem>
+                      <SelectItem value="staff">Staff - Limited access based on permissions</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
 
               {/* Branch Assignment */}
-              {branches.length > 0 && (
+              {mode !== 'manager' && branches.length > 0 && (
                 <div>
                   <Label className="flex items-center gap-2">
                     <Building2 className="h-4 w-4" />
@@ -264,7 +275,6 @@ export const AddStaffModal = ({ isOpen, onClose, onSuccess }: AddStaffModalProps
                   </p>
                 </div>
               )}
-
               {/* Permissions (only for staff role) */}
               {formData.role === 'staff' && (
                 <div className="space-y-3">

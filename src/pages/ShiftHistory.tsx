@@ -86,13 +86,7 @@ export default function ShiftHistory() {
     
     // Managers: filter to only their assigned branch's staff shifts
     if (userRole === 'manager' && filterBranchId) {
-      // Need to filter by staff that are assigned to the same branch
-      // Since shifts don't have branch_id directly, we filter by staff branch assignment
-      shifts = shifts.filter(shift => {
-        // Include shifts from staff assigned to the manager's branch
-        // This requires staff branch_id info which we need to fetch
-        return true; // For now, managers see all - will be enhanced with branch staff data
-      });
+      shifts = shifts.filter((shift) => shift.staff?.branch_id === filterBranchId);
     }
     
     // Staff: only show own shifts
