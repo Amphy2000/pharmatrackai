@@ -37,27 +37,32 @@ export const BranchComparisonPanel = () => {
       const totalStock = branchInv.reduce((sum, inv) => sum + inv.current_stock, 0);
       const lowStockItems = branchInv.filter(inv => inv.current_stock <= inv.reorder_level).length;
 
-      // For now, we don't have branch_id on sales, so we'll show total as placeholder
-      // In production, you'd filter sales by branch_id
-      const todaySales = sales
-        ?.filter(sale => {
+      // Filter sales by branch_id - use real data
+      const branchSales = sales?.filter(sale => {
+        // Match branch_id or for main branch, include sales with no branch_id
+        return sale.branch_id === branch.id || 
+          (branch.is_main_branch && !sale.branch_id);
+      }) || [];
+
+      const todaySales = branchSales
+        .filter(sale => {
           const saleDate = parseISO(sale.sale_date);
           return saleDate >= dayStart && saleDate <= dayEnd;
         })
-        .reduce((sum, sale) => sum + sale.total_price, 0) || 0;
+        .reduce((sum, sale) => sum + sale.total_price, 0);
 
-      const monthSales = sales
-        ?.filter(sale => {
+      const monthSales = branchSales
+        .filter(sale => {
           const saleDate = parseISO(sale.sale_date);
           return saleDate >= monthStart && saleDate <= monthEnd;
         })
-        .reduce((sum, sale) => sum + sale.total_price, 0) || 0;
+        .reduce((sum, sale) => sum + sale.total_price, 0);
 
-      const totalTransactions = sales
-        ?.filter(sale => {
+      const totalTransactions = branchSales
+        .filter(sale => {
           const saleDate = parseISO(sale.sale_date);
           return saleDate >= dayStart && saleDate <= dayEnd;
-        }).length || 0;
+        }).length;
 
       return {
         id: branch.id,
@@ -66,9 +71,9 @@ export const BranchComparisonPanel = () => {
         isActive: branch.is_active,
         totalStock,
         lowStockItems,
-        todaySales: branch.is_main_branch ? todaySales : todaySales * 0.7, // Simulated for demo
-        monthSales: branch.is_main_branch ? monthSales : monthSales * 0.65,
-        totalTransactions: branch.is_main_branch ? totalTransactions : Math.floor(totalTransactions * 0.6),
+        todaySales,
+        monthSales,
+        totalTransactions,
       };
     });
   }, [branches, branchInventory, sales]);
