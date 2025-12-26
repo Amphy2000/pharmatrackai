@@ -35,7 +35,7 @@ export const SavingsROIPanel = ({ invoicesScanned = 0, auditLogCount = 0 }: Savi
   const { medications } = useMedications();
   const { sales: salesData } = useSales();
   const { pharmacy } = usePharmacy();
-  const { isMainBranch, currentBranchName } = useBranchContext();
+  const { isMainBranch, currentBranchName, currentBranchId } = useBranchContext();
   const { userRole } = usePermissions();
   const { branches } = useBranches();
   const { toast } = useToast();
@@ -43,28 +43,48 @@ export const SavingsROIPanel = ({ invoicesScanned = 0, auditLogCount = 0 }: Savi
   const isOwner = userRole === 'owner';
   const branchCount = branches.length;
 
+  // Get subscription cost based on plan
+  const monthlyCost = useMemo(() => {
+    const plan = pharmacy?.subscription_plan || 'starter';
+    switch (plan) {
+      case 'starter': return 35000;
+      case 'pro': return 55000;
+      case 'enterprise': return 85000;
+      default: return 35000;
+    }
+  }, [pharmacy?.subscription_plan]);
+
   const metrics = useMemo(() => {
     const today = new Date();
     const monthStart = startOfMonth(today);
     const monthEnd = endOfMonth(today);
     const monthName = format(today, 'MMMM yyyy');
 
-    // Time Saved: Each invoice scan saves ~30 minutes
-    const timeSavedMinutes = invoicesScanned * 30;
-    const timeSavedHours = Math.max(Math.round(timeSavedMinutes / 60), 8); // Minimum 8 hours for time tracking
+    // Filter data based on user role - owners see all, managers see their branch only
+    const relevantMedications = isOwner 
+      ? medications 
+      : medications.filter(med => {
+          // If the medication has metadata with branch_id, use that
+          const medBranchId = (med.metadata as any)?.branch_id;
+          return !medBranchId || medBranchId === currentBranchId;
+        });
 
-    // Loss Prevented: Value of drugs sold within 60 days of expiry
-    const nearExpiryMeds = medications.filter(med => {
-      const expiryDate = parseISO(med.expiry_date);
-      const daysToExpiry = differenceInDays(expiryDate, today);
-      return daysToExpiry > 0 && daysToExpiry <= 60;
-    });
+    const relevantSales = isOwner
+      ? salesData
+      : salesData?.filter(sale => sale.branch_id === currentBranchId || !sale.branch_id);
 
-    // Sales of near-expiry items this month
-    const nearExpirySales = salesData?.filter(sale => {
+    // Time Saved: Calculate from invoices scanned and audit log activities
+    // Each invoice scan saves ~30 minutes, each audit action saves ~5 minutes
+    const invoiceTimeSaved = invoicesScanned * 30;
+    const auditTimeSaved = auditLogCount * 5;
+    const timeSavedMinutes = invoiceTimeSaved + auditTimeSaved;
+    const timeSavedHours = Math.round(timeSavedMinutes / 60);
+
+    // Loss Prevented: Value of drugs sold within 60 days of expiry this month
+    const nearExpirySales = relevantSales?.filter(sale => {
       const saleDate = parseISO(sale.sale_date);
       if (saleDate < monthStart || saleDate > monthEnd) return false;
-      const med = medications.find(m => m.id === sale.medication_id);
+      const med = relevantMedications.find(m => m.id === sale.medication_id);
       if (!med) return false;
       const expiryDate = parseISO(med.expiry_date);
       const daysToExpiryAtSale = differenceInDays(expiryDate, saleDate);
@@ -72,16 +92,18 @@ export const SavingsROIPanel = ({ invoicesScanned = 0, auditLogCount = 0 }: Savi
     }) || [];
 
     const lossPrevented = nearExpirySales.reduce((sum, sale) => sum + sale.total_price, 0);
+    const itemsSaved = nearExpirySales.length;
 
-    // Theft Blocked: Number of unauthorized price-change attempts
+    // Theft Blocked: Number of unauthorized price-change attempts blocked
+    // Each blocked attempt protects an estimated 10% of average transaction
     const theftBlocked = auditLogCount;
-    const avgTransactionValue = salesData && salesData.length > 0
-      ? salesData.reduce((sum, s) => sum + s.total_price, 0) / salesData.length
+    const avgTransactionValue = relevantSales && relevantSales.length > 0
+      ? relevantSales.reduce((sum, s) => sum + s.total_price, 0) / relevantSales.length
       : 5000;
     const theftValueProtected = theftBlocked * avgTransactionValue * 0.1;
 
     // At-risk inventory (items expiring within 30 days)
-    const atRiskItems = medications.filter(med => {
+    const atRiskItems = relevantMedications.filter(med => {
       const expiryDate = parseISO(med.expiry_date);
       const daysToExpiry = differenceInDays(expiryDate, today);
       return daysToExpiry > 0 && daysToExpiry <= 30;
@@ -90,22 +112,23 @@ export const SavingsROIPanel = ({ invoicesScanned = 0, auditLogCount = 0 }: Savi
       sum + (med.current_stock * med.unit_price), 0
     );
 
-    // Calculate savings
-    const hourlyRate = 1500;
+    // Calculate total savings
+    const hourlyRate = 1500; // NGN per hour for pharmacy staff
     const timeSavedValue = timeSavedHours * hourlyRate;
     const totalSavings = timeSavedValue + lossPrevented + theftValueProtected;
 
-    // Monthly subscription cost
-    const monthlyCost = 35000;
-    const savingsMultiple = totalSavings > 0 ? (totalSavings / monthlyCost).toFixed(1) : '0';
+    // Calculate ROI multiple
+    const savingsMultiple = monthlyCost > 0 && totalSavings > 0 
+      ? (totalSavings / monthlyCost).toFixed(1) 
+      : '0';
 
     return {
       monthName,
       timeSavedHours,
       timeSavedValue,
       lossPrevented,
-      nearExpiryCount: nearExpiryMeds.length,
-      itemsSaved: nearExpirySales.length,
+      nearExpiryCount: atRiskItems.length,
+      itemsSaved,
       theftBlocked,
       theftValueProtected,
       atRiskValue,
@@ -114,7 +137,7 @@ export const SavingsROIPanel = ({ invoicesScanned = 0, auditLogCount = 0 }: Savi
       savingsMultiple,
       generatedAt: format(today, 'MMM dd, yyyy h:mm a'),
     };
-  }, [medications, salesData, invoicesScanned, auditLogCount]);
+  }, [medications, salesData, invoicesScanned, auditLogCount, isOwner, currentBranchId, monthlyCost]);
 
   const handleShare = async () => {
     const scopeLabel = isOwner && branchCount > 1 ? 'All Branches' : currentBranchName;
@@ -164,6 +187,7 @@ ${isOwner && branchCount > 1 ? `📍 ${branchCount} Branches Combined\n` : ''}
       atRiskItems: metrics.atRiskItems,
       savingsMultiple: metrics.savingsMultiple,
       generatedAt: metrics.generatedAt,
+      monthlyCost,
     }, formatPrice);
 
     toast({ 
@@ -312,7 +336,7 @@ ${isOwner && branchCount > 1 ? `📍 ${branchCount} Branches Combined\n` : ''}
                 <p className="text-lg font-medium">
                   <span className="text-success">{formatPrice(metrics.totalSavings)}</span>
                   <span className="text-muted-foreground mx-2">÷</span>
-                  <span className="text-destructive">₦35,000</span>
+                  <span className="text-destructive">{formatPrice(monthlyCost)}</span>
                 </p>
                 <Badge className="mt-1 bg-success/20 text-success border-success/30 text-xs">
                   App pays for itself {metrics.savingsMultiple}x over
