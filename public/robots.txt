@@ -1,8 +1,23 @@
 # https://www.robotstxt.org/robotstxt.html
+# PharmaTrack AI - Nigeria's #1 Pharmacy Management Software
+
+# Allow all major search engines full access to public pages
 User-agent: Googlebot
 Allow: /
+Crawl-delay: 1
 
 User-agent: Bingbot
+Allow: /
+Crawl-delay: 2
+
+User-agent: Yandex
+Allow: /
+Crawl-delay: 5
+
+User-agent: DuckDuckBot
+Allow: /
+
+User-agent: Slurp
 Allow: /
 
 User-agent: Twitterbot
@@ -11,13 +26,20 @@ Allow: /
 User-agent: facebookexternalhit
 Allow: /
 
+User-agent: LinkedInBot
+Allow: /
+
+User-agent: WhatsApp
+Allow: /
+
 User-agent: *
 Allow: /
 
-# Sitemap
-Sitemap: https://pharmatrack.com.ng/sitemap.xml
+# Sitemap location
+Sitemap: https://pharmat.lovable.app/sitemap.xml
 
 # Disallow authenticated/private pages from indexing
+User-agent: *
 Disallow: /dashboard
 Disallow: /inventory
 Disallow: /settings
@@ -34,3 +56,17 @@ Disallow: /manager
 Disallow: /cashier
 Disallow: /staff
 Disallow: /onboarding
+Disallow: /my-sales
+Disallow: /shift-history
+Disallow: /reset-password
+Disallow: /payment-terminal
+
+# Disallow query parameters that create duplicate content
+Disallow: /*?*
+
+# Allow important public pages explicitly
+Allow: /
+Allow: /auth
+Allow: /demo
+Allow: /user-guide
+Allow: /forgot-password
