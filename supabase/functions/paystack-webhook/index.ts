@@ -81,6 +81,39 @@ serve(async (req) => {
         const metadata = data.metadata || {};
         
         console.log(`Charge success: email=${customerEmail}, amount=${amount}, reference=${reference}`);
+        console.log("Metadata:", JSON.stringify(metadata));
+        
+        // Check if this is a branch upgrade transaction
+        if (metadata.transaction_type === "branch_upgrade") {
+          const pharmacyId = metadata.pharmacy_id;
+          const newLimit = metadata.new_limit;
+          
+          console.log(`Branch upgrade for pharmacy ${pharmacyId}, new limit: ${newLimit}`);
+          
+          if (pharmacyId && newLimit) {
+            // Update pharmacy branch limit
+            await supabase
+              .from("pharmacies")
+              .update({
+                active_branches_limit: newLimit,
+              })
+              .eq("id", pharmacyId);
+
+            // Update payment status
+            if (reference) {
+              await supabase
+                .from("subscription_payments")
+                .update({
+                  status: "completed",
+                  paystack_transaction_id: data.id?.toString(),
+                })
+                .eq("paystack_reference", reference);
+            }
+
+            console.log(`Branch limit updated for pharmacy ${pharmacyId} to ${newLimit}`);
+          }
+          break;
+        }
         
         if (customerEmail) {
           // Find pharmacy by email
@@ -98,16 +131,20 @@ serve(async (req) => {
             
             let plan = "starter";
             let maxUsers = 1;
+            let activeBranchesLimit = 1;
             
             if (isStarterSetup || isStarterMonthly) {
               plan = "starter";
               maxUsers = 1;
+              activeBranchesLimit = 1; // Starter gets 1 branch only
             } else if (isProMonthly) {
               plan = "pro";
               maxUsers = 5;
+              activeBranchesLimit = 1; // Pro starts with 1, can upgrade
             } else if (amount >= 10000000) { // 100k+ for enterprise
               plan = "enterprise";
               maxUsers = 999;
+              activeBranchesLimit = 999; // Unlimited for enterprise
             }
 
             // Update pharmacy subscription
@@ -119,6 +156,7 @@ serve(async (req) => {
                 subscription_ends_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
                 paystack_customer_code: data.customer?.customer_code,
                 max_users: maxUsers,
+                active_branches_limit: activeBranchesLimit,
               })
               .eq("id", pharmacy.id);
 

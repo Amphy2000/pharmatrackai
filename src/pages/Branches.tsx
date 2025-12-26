@@ -40,14 +40,17 @@ import {
   Edit,
   Trash2,
   UserCog,
+  Lock,
 } from 'lucide-react';
 import { Branch } from '@/types/branch';
+import { useBranchLimit } from '@/hooks/useBranchLimit';
 
 const Branches = () => {
   const { branches, branchInventory, transfers, deleteBranch, isLoading } = useBranches();
   const { formatPrice } = useCurrency();
   const { isOwnerOrManager, hasPermission, userRole } = usePermissions();
   const { pharmacyId } = usePharmacy();
+  const { activeBranchesLimit, isBranchWithinLimit } = useBranchLimit();
   const [showAddBranch, setShowAddBranch] = useState(false);
   const [showTransfer, setShowTransfer] = useState(false);
   const [editingBranch, setEditingBranch] = useState<Branch | null>(null);
@@ -206,14 +209,23 @@ const Branches = () => {
             </Card>
           ) : (
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {branchStats.map(({ branch, totalStock, totalValue, lowStockCount, itemCount }) => (
-                <Card key={branch.id} className="glass-card overflow-hidden">
+              {branchStats.map(({ branch, totalStock, totalValue, lowStockCount, itemCount }) => {
+                const isLocked = !isBranchWithinLimit(branch.id);
+                
+                return (
+                <Card key={branch.id} className={`glass-card overflow-hidden ${isLocked ? 'opacity-60 border-destructive/50' : ''}`}>
                   <CardHeader className="pb-3">
                     <div className="flex items-start justify-between">
                       <div className="flex items-center gap-2">
                         <CardTitle className="text-lg">{branch.name}</CardTitle>
                         {branch.is_main_branch && (
                           <Badge variant="secondary" className="text-xs">Main</Badge>
+                        )}
+                        {isLocked && (
+                          <Badge variant="destructive" className="text-xs gap-1">
+                            <Lock className="h-3 w-3" />
+                            Locked
+                          </Badge>
                         )}
                       </div>
                       {isOwnerOrManager && (
@@ -291,7 +303,7 @@ const Branches = () => {
                     </div>
                   </CardContent>
                 </Card>
-              ))}
+              )})}
             </div>
           )}
         </div>

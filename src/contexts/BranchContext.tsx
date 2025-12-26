@@ -1,7 +1,8 @@
-import React, { createContext, useContext, useState, useEffect, useRef, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useRef, ReactNode, useMemo } from 'react';
 import { useBranches } from '@/hooks/useBranches';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePharmacy } from '@/hooks/usePharmacy';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 
@@ -13,6 +14,10 @@ interface BranchContextType {
   canSwitchBranch: boolean;
   userAssignedBranchId: string | null;
   isLoadingBranchAccess: boolean;
+  // Branch limit fields
+  isBranchLocked: boolean;
+  activeBranchesLimit: number;
+  currentBranchPosition: number;
 }
 
 const BranchContext = createContext<BranchContextType | undefined>(undefined);
@@ -21,6 +26,7 @@ export const BranchProvider = ({ children }: { children: ReactNode }) => {
   const { branches } = useBranches();
   const { userRole } = usePermissions();
   const { user } = useAuth();
+  const { pharmacy, isLoading: pharmacyLoading } = usePharmacy();
   
   const [currentBranchId, setCurrentBranchIdState] = useState<string | null>(() => {
     return localStorage.getItem('currentBranchId');
@@ -100,6 +106,25 @@ export const BranchProvider = ({ children }: { children: ReactNode }) => {
   // This ensures backward compatibility with pharmacies that haven't set up branches yet
   const isMainBranch = !currentBranchId || currentBranch?.is_main_branch || branches.length === 0;
 
+  // Branch limit calculations
+  const activeBranchesLimit = pharmacy?.active_branches_limit ?? 1;
+  
+  const branchLimitInfo = useMemo(() => {
+    if (!currentBranchId || branches.length === 0) {
+      return { position: 1, isLocked: false };
+    }
+    
+    // Sort branches by creation date to determine position
+    const sortedBranches = [...branches]
+      .filter(b => b.is_active)
+      .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+    
+    const position = sortedBranches.findIndex(b => b.id === currentBranchId) + 1;
+    const isLocked = position > activeBranchesLimit;
+    
+    return { position: position || 1, isLocked };
+  }, [currentBranchId, branches, activeBranchesLimit]);
+
   return (
     <BranchContext.Provider value={{ 
       currentBranchId, 
@@ -108,7 +133,11 @@ export const BranchProvider = ({ children }: { children: ReactNode }) => {
       isMainBranch,
       canSwitchBranch,
       userAssignedBranchId,
-      isLoadingBranchAccess: isLoadingStaff,
+      isLoadingBranchAccess: isLoadingStaff || pharmacyLoading,
+      // Branch limit fields
+      isBranchLocked: branchLimitInfo.isLocked,
+      activeBranchesLimit,
+      currentBranchPosition: branchLimitInfo.position,
     }}>
       {children}
     </BranchContext.Provider>

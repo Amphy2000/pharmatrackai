@@ -613,9 +613,11 @@ export type Database = {
       }
       pharmacies: {
         Row: {
+          active_branches_limit: number
           address: string | null
           admin_pin_hash: string | null
           auto_renew: boolean | null
+          branch_fee_per_month: number
           cancellation_reason: string | null
           cancelled_at: string | null
           created_at: string
@@ -645,9 +647,11 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          active_branches_limit?: number
           address?: string | null
           admin_pin_hash?: string | null
           auto_renew?: boolean | null
+          branch_fee_per_month?: number
           cancellation_reason?: string | null
           cancelled_at?: string | null
           created_at?: string
@@ -677,9 +681,11 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          active_branches_limit?: number
           address?: string | null
           admin_pin_hash?: string | null
           auto_renew?: boolean | null
+          branch_fee_per_month?: number
           cancellation_reason?: string | null
           cancelled_at?: string | null
           created_at?: string
@@ -1617,6 +1623,10 @@ export type Database = {
           required_role: Database["public"]["Enums"]["pharmacy_role"]
           user_uuid: string
         }
+        Returns: boolean
+      }
+      is_branch_within_limit: {
+        Args: { _branch_id: string; _pharmacy_id: string }
         Returns: boolean
       }
       is_manager_for_pharmacy: {
