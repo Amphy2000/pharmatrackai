@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRegionalSettings, CountryCode } from '@/contexts/RegionalSettingsContext';
@@ -25,10 +25,45 @@ type Step = 'country' | 'pharmacy' | 'import';
 const OnboardingWizard = () => {
   const [currentStep, setCurrentStep] = useState<Step>('country');
   const [isLoading, setIsLoading] = useState(false);
-  const { user } = useAuth();
+  const [checkingExisting, setCheckingExisting] = useState(true);
+  const { user, isLoading: authLoading } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   const { country, setCountry, flagEmoji, countryName } = useRegionalSettings();
+
+  // Check if user already has a pharmacy - redirect to dashboard if so
+  useEffect(() => {
+    const checkExistingPharmacy = async () => {
+      if (!user) {
+        setCheckingExisting(false);
+        return;
+      }
+
+      try {
+        const { data, error } = await supabase
+          .from('pharmacy_staff')
+          .select('pharmacy_id')
+          .eq('user_id', user.id)
+          .limit(1);
+
+        if (error) throw error;
+
+        if (data && data.length > 0) {
+          // User already has a pharmacy, redirect to dashboard
+          navigate('/dashboard', { replace: true });
+          return;
+        }
+      } catch (error) {
+        console.error('Error checking existing pharmacy:', error);
+      } finally {
+        setCheckingExisting(false);
+      }
+    };
+
+    if (!authLoading) {
+      checkExistingPharmacy();
+    }
+  }, [user, authLoading, navigate]);
 
   // Pharmacy details
   const [pharmacyName, setPharmacyName] = useState('');
@@ -132,6 +167,21 @@ const OnboardingWizard = () => {
       default: return 'License Number';
     }
   };
+
+  // Show loading while checking if user already has pharmacy
+  if (authLoading || checkingExisting) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // Redirect to auth if not logged in
+  if (!user) {
+    navigate('/auth', { replace: true });
+    return null;
+  }
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
