@@ -188,7 +188,7 @@ ${isOwner && branchCount > 1 ? `📍 ${branchCount} Branches Combined\n` : ''}
       savingsMultiple: metrics.savingsMultiple,
       generatedAt: metrics.generatedAt,
       monthlyCost,
-    }, formatPrice);
+    });
 
     toast({ 
       title: 'PDF Downloaded!', 
