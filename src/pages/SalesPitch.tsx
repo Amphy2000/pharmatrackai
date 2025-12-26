@@ -4,6 +4,7 @@ import { Link } from 'react-router-dom';
 import { TrendingUp, Clock, ShieldCheck, Users, BarChart3, Zap, Check, X, ArrowRight, Star, DollarSign, AlertTriangle, Target, BadgeCheck, Globe, Smartphone, WifiOff, Database, Headphones, ChevronLeft, ChevronRight, ChevronUp, ChevronDown, Play, Calculator, Building2, Award, LineChart, Package, Receipt, UserCog, Lock, Lightbulb, Rocket, Crown, Sparkles, FileDown } from 'lucide-react';
 import { SalesPdfGenerator } from '@/components/sales/SalesPdfGenerator';
 import { FeatureComparisonPdfGenerator } from '@/components/sales/FeatureComparisonPdfGenerator';
+import { ClientChecklistPdfGenerator } from '@/components/sales/ClientChecklistPdfGenerator';
 import { Logo } from '@/components/Logo';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -1113,7 +1114,8 @@ const SalesPitch = () => {
             </div>
 
             {/* Sales PDF Generators */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-8">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
+              <ClientChecklistPdfGenerator />
               <FeatureComparisonPdfGenerator />
               <SalesPdfGenerator />
             </div>
