@@ -137,7 +137,16 @@ export const generateClientChecklistPdf = (pharmacyName?: string): jsPDF => {
     yPos += 8;
   });
 
-  yPos += 8;
+  yPos += 4;
+  
+  // Alternative for clients without digital inventory
+  doc.setFontSize(9);
+  doc.setTextColor(...COLORS.gray);
+  doc.setFont('helvetica', 'italic');
+  const altText = "Don't have a digital file? No problem! Take clear photos of your supplier invoices - we can import stock directly from invoice images using our AI scanner.";
+  const altLines = doc.splitTextToSize(altText, pageWidth - margin * 2 - 10);
+  doc.text(altLines, margin + 10, yPos);
+  yPos += altLines.length * 5 + 8;
 
   // Section 4: Account Setup
   doc.setFillColor(...COLORS.lightGray);
@@ -212,15 +221,15 @@ export const generateClientChecklistPdf = (pharmacyName?: string): jsPDF => {
   doc.text('Additional Branch Fee: ₦15,000/month per branch', margin, yPos + 3);
   yPos += 6;
   doc.setFont('helvetica', 'bold');
-  doc.text('14-Day Free Trial • No Credit Card Required', margin, yPos + 3);
+  doc.text('7-Day Free Trial • No Credit Card Required', margin, yPos + 3);
 
   // Footer
   const footerY = doc.internal.pageSize.getHeight() - 20;
   doc.setTextColor(...COLORS.gray);
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
-  doc.text('Questions? Contact us at support@pharmatrack.app', margin, footerY);
-  doc.text('www.pharmatrack.app', pageWidth - margin - 35, footerY);
+  doc.text('Questions? Contact us at support@pharmatrack.com.ng', margin, footerY);
+  doc.text('www.pharmatrack.com.ng', pageWidth - margin - 40, footerY);
 
   return doc;
 };
