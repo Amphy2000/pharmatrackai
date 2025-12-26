@@ -38,6 +38,7 @@ import { BranchAlertSummaryWidget } from '@/components/dashboard/BranchAlertSumm
 import { BranchComparisonPanel } from '@/components/dashboard/BranchComparisonPanel';
 import { ConsolidatedReportsPanel } from '@/components/dashboard/ConsolidatedReportsPanel';
 import { OwnerBranchReportsPanel } from '@/components/dashboard/OwnerBranchReportsPanel';
+import { BranchLockedOverlay } from '@/components/branches/BranchLockedOverlay';
 import { startOfDay, endOfDay, parseISO } from 'date-fns';
 import { 
   Package, 
@@ -85,7 +86,7 @@ const Dashboard = () => {
   const { activeShift } = useShifts();
   const { isOwnerOrManager, userRole, hasPermission, isLoading: permissionsLoading } = usePermissions();
   const { formatPrice } = useCurrency();
-  const { currentBranchName, currentBranchId } = useBranchContext();
+  const { currentBranchName, currentBranchId, isBranchLocked, activeBranchesLimit, currentBranchPosition } = useBranchContext();
 
   // Fetch audit log count for ROI dashboard (price change attempts)
   const { data: auditLogCount = 0 } = useQuery({
@@ -209,6 +210,15 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">
+      {/* Branch Locked Overlay */}
+      {isBranchLocked && (
+        <BranchLockedOverlay
+          branchName={currentBranchName}
+          currentLimit={activeBranchesLimit}
+          branchPosition={currentBranchPosition}
+        />
+      )}
+
       <ProductTour />
       <PWAInstallPrompt />
       <Header />

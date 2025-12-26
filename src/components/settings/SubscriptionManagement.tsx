@@ -11,12 +11,14 @@ import { Textarea } from '@/components/ui/textarea';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useSubscription } from '@/hooks/useSubscription';
 import { usePharmacy } from '@/hooks/usePharmacy';
+import { useBranchLimit } from '@/hooks/useBranchLimit';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { Crown, Check, Zap, Calendar, CreditCard, Loader2, RefreshCw, Key, XCircle, AlertTriangle } from 'lucide-react';
 import { format } from 'date-fns';
 import { Separator } from '@/components/ui/separator';
+import { BranchPricingCalculator } from '@/components/subscription/BranchPricingCalculator';
 
 const plans = [
   {
@@ -82,9 +84,11 @@ export const SubscriptionManagement = () => {
   const navigate = useNavigate();
   const { state, plan: currentPlan, daysRemaining, isTrial, isExpired } = useSubscription();
   const { pharmacy } = usePharmacy();
+  const { currentBranchCount, activeBranchesLimit } = useBranchLimit();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isProcessing, setIsProcessing] = useState<string | null>(null);
+  const [isUpgradingBranches, setIsUpgradingBranches] = useState(false);
   const [isAnnual, setIsAnnual] = useState(false);
   const [autoRenew, setAutoRenew] = useState(pharmacy?.auto_renew ?? true);
   const [isTogglingAutoRenew, setIsTogglingAutoRenew] = useState(false);
@@ -265,6 +269,51 @@ export const SubscriptionManagement = () => {
       toast({ title: 'Error', description: message, variant: 'destructive' });
     } finally {
       setIsCancelling(false);
+    }
+  };
+
+  const handleBranchUpgrade = async (newLimit: number, upgradeAmount: number) => {
+    setIsUpgradingBranches(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) {
+        toast({
+          title: 'Login required',
+          description: 'Please sign in to upgrade branches.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      const response = await supabase.functions.invoke('upgrade-branches', {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: {
+          new_branch_limit: newLimit,
+          callback_url: `${window.location.origin}/settings?tab=subscription`,
+        },
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message);
+      }
+
+      const { authorization_url } = response.data || {};
+      if (authorization_url) {
+        window.location.href = authorization_url;
+      } else {
+        throw new Error('No payment URL received');
+      }
+    } catch (error: any) {
+      console.error('Branch upgrade error:', error);
+      toast({
+        title: 'Upgrade Error',
+        description: error.message || 'Failed to process branch upgrade.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsUpgradingBranches(false);
     }
   };
 
@@ -458,6 +507,16 @@ export const SubscriptionManagement = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Branch Pricing Calculator - Only for Pro plan */}
+      {(currentPlan === 'pro' || currentPlan === 'enterprise') && !isExpired && (
+        <BranchPricingCalculator
+          currentBranches={currentBranchCount}
+          currentLimit={activeBranchesLimit}
+          onUpgrade={handleBranchUpgrade}
+          isProcessing={isUpgradingBranches}
+        />
+      )}
 
       {/* Available Plans */}
       <Card>
