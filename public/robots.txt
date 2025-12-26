@@ -1,3 +1,4 @@
+# https://www.robotstxt.org/robotstxt.html
 User-agent: Googlebot
 Allow: /
 
@@ -12,3 +13,24 @@ Allow: /
 
 User-agent: *
 Allow: /
+
+# Sitemap
+Sitemap: https://pharmatrack.com.ng/sitemap.xml
+
+# Disallow authenticated/private pages from indexing
+Disallow: /dashboard
+Disallow: /inventory
+Disallow: /settings
+Disallow: /checkout
+Disallow: /branches
+Disallow: /customers
+Disallow: /suppliers
+Disallow: /sales-history
+Disallow: /audit-log
+Disallow: /notifications
+Disallow: /profile
+Disallow: /admin
+Disallow: /manager
+Disallow: /cashier
+Disallow: /staff
+Disallow: /onboarding
