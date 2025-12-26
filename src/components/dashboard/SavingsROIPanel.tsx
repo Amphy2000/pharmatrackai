@@ -145,9 +145,9 @@ export const SavingsROIPanel = ({ invoicesScanned = 0, auditLogCount = 0 }: Savi
 ${isOwner && branchCount > 1 ? `📍 ${branchCount} Branches Combined\n` : ''}
 📅 ${metrics.monthName}
 
-💰 Total Saved: ${formatPrice(metrics.totalSavings)}
+💰 Total Saved: ${formatPrice(metrics.totalSavings, 'NGN')}
 ✅ Near-Expiry Items Sold: ${metrics.itemsSaved} items
-💊 Expiry Loss Prevented: ${formatPrice(metrics.lossPrevented)}
+💊 Expiry Loss Prevented: ${formatPrice(metrics.lossPrevented, 'NGN')}
 ⏰ Time Saved: ${metrics.timeSavedHours} hours
 🔒 Theft Attempts Blocked: ${metrics.theftBlocked}
 
@@ -243,7 +243,7 @@ ${isOwner && branchCount > 1 ? `📍 ${branchCount} Branches Combined\n` : ''}
           <div className="text-center py-4 mb-6 rounded-xl bg-gradient-to-br from-success/10 to-success/5 border border-success/20">
             <p className="text-sm text-muted-foreground mb-1">Total Money Saved This Month</p>
             <p className="text-4xl md:text-5xl font-display font-bold text-success">
-              {formatPrice(metrics.totalSavings)}
+              {formatPrice(metrics.totalSavings, 'NGN')}
             </p>
             <Badge className="mt-2 bg-success/20 text-success border-success/30">
               {metrics.savingsMultiple}x your subscription cost
@@ -265,7 +265,7 @@ ${isOwner && branchCount > 1 ? `📍 ${branchCount} Branches Combined\n` : ''}
                 </div>
                 <div className="min-w-0">
                   <p className="text-xs text-muted-foreground">Loss Prevented</p>
-                  <p className="text-xl font-bold text-success truncate">{formatPrice(metrics.lossPrevented)}</p>
+                  <p className="text-xl font-bold text-success truncate">{formatPrice(metrics.lossPrevented, 'NGN')}</p>
                   <p className="text-xs text-muted-foreground">{metrics.itemsSaved} near-expiry sold</p>
                 </div>
               </div>
@@ -280,7 +280,7 @@ ${isOwner && branchCount > 1 ? `📍 ${branchCount} Branches Combined\n` : ''}
                 <div className="min-w-0">
                   <p className="text-xs text-muted-foreground">Time Saved</p>
                   <p className="text-xl font-bold text-info">{metrics.timeSavedHours} hrs</p>
-                  <p className="text-xs text-muted-foreground">≈ {formatPrice(metrics.timeSavedValue)}</p>
+                  <p className="text-xs text-muted-foreground">≈ {formatPrice(metrics.timeSavedValue, 'NGN')}</p>
                 </div>
               </div>
             </motion.div>
@@ -294,7 +294,7 @@ ${isOwner && branchCount > 1 ? `📍 ${branchCount} Branches Combined\n` : ''}
                 <div className="min-w-0">
                   <p className="text-xs text-muted-foreground">Theft Blocked</p>
                   <p className="text-xl font-bold text-warning">{metrics.theftBlocked}</p>
-                  <p className="text-xs text-muted-foreground">≈ {formatPrice(metrics.theftValueProtected)}</p>
+                  <p className="text-xs text-muted-foreground">≈ {formatPrice(metrics.theftValueProtected, 'NGN')}</p>
                 </div>
               </div>
             </motion.div>
@@ -307,7 +307,7 @@ ${isOwner && branchCount > 1 ? `📍 ${branchCount} Branches Combined\n` : ''}
                 </div>
                 <div className="min-w-0">
                   <p className="text-xs text-muted-foreground">Stock Protected</p>
-                  <p className="text-xl font-bold text-primary truncate">{formatPrice(metrics.atRiskValue)}</p>
+                  <p className="text-xl font-bold text-primary truncate">{formatPrice(metrics.atRiskValue, 'NGN')}</p>
                   <p className="text-xs text-muted-foreground">{metrics.atRiskItems} expiring soon</p>
                 </div>
               </div>
@@ -327,16 +327,16 @@ ${isOwner && branchCount > 1 ? `📍 ${branchCount} Branches Combined\n` : ''}
                 <div>
                   <p className="text-sm text-muted-foreground">PharmaTrack ROI Value</p>
                   <p className="text-2xl font-display font-bold text-gradient">
-                    {formatPrice(metrics.totalSavings)}
+                    {formatPrice(metrics.totalSavings, 'NGN')}
                   </p>
                 </div>
               </div>
               <div className="text-center md:text-right">
                 <p className="text-xs text-muted-foreground mb-1">vs. Monthly Cost</p>
                 <p className="text-lg font-medium">
-                  <span className="text-success">{formatPrice(metrics.totalSavings)}</span>
+                  <span className="text-success">{formatPrice(metrics.totalSavings, 'NGN')}</span>
                   <span className="text-muted-foreground mx-2">÷</span>
-                  <span className="text-destructive">{formatPrice(monthlyCost)}</span>
+                  <span className="text-destructive">{formatPrice(monthlyCost, 'NGN')}</span>
                 </p>
                 <Badge className="mt-1 bg-success/20 text-success border-success/30 text-xs">
                   App pays for itself {metrics.savingsMultiple}x over
