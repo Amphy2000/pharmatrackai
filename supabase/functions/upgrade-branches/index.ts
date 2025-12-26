@@ -44,10 +44,10 @@ serve(async (req) => {
       throw new Error("Invalid branch limit");
     }
 
-    // Get pharmacy for this user
+    // Get pharmacy for this user - only owners can upgrade branches (billing impact)
     const { data: staff } = await supabase
       .from("pharmacy_staff")
-      .select("pharmacy_id, pharmacies(email, name, active_branches_limit, subscription_plan)")
+      .select("pharmacy_id, role, pharmacies(email, name, active_branches_limit, subscription_plan, owner_id)")
       .eq("user_id", user.id)
       .eq("is_active", true)
       .maybeSingle();
@@ -56,7 +56,16 @@ serve(async (req) => {
       throw new Error("Pharmacy not found");
     }
 
+    // Verify user is the pharmacy owner (only owners can incur billing costs)
     const pharmacy = staff.pharmacies as any;
+    if (pharmacy?.owner_id !== user.id && staff.role !== 'owner') {
+      console.warn(`Unauthorized branch upgrade attempt by user ${user.id} for pharmacy ${staff.pharmacy_id}`);
+      return new Response(JSON.stringify({ error: "Only pharmacy owners can upgrade branches" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const currentLimit = pharmacy?.active_branches_limit || 1;
     const pharmacyEmail = pharmacy?.email || user.email;
     const pharmacyName = pharmacy?.name || "Pharmacy";
