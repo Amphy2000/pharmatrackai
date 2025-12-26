@@ -1,19 +1,17 @@
-import { useMemo, useRef } from 'react';
+import { useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { 
   TrendingUp, 
   Clock, 
   ShieldCheck, 
   DollarSign, 
-  FileImage, 
-  AlertTriangle, 
   Lock,
   Share2,
-  Download,
+  FileDown,
   CheckCircle,
   Building2
 } from 'lucide-react';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { useCurrency } from '@/contexts/CurrencyContext';
@@ -25,6 +23,7 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { useBranches } from '@/hooks/useBranches';
 import { useToast } from '@/hooks/use-toast';
 import { differenceInDays, parseISO, startOfMonth, endOfMonth, format } from 'date-fns';
+import { generateSavingsSummaryPdf } from '@/utils/savingsSummaryPdfGenerator';
 
 interface SavingsROIPanelProps {
   invoicesScanned?: number;
@@ -40,7 +39,6 @@ export const SavingsROIPanel = ({ invoicesScanned = 0, auditLogCount = 0 }: Savi
   const { userRole } = usePermissions();
   const { branches } = useBranches();
   const { toast } = useToast();
-  const summaryRef = useRef<HTMLDivElement>(null);
 
   const isOwner = userRole === 'owner';
   const branchCount = branches.length;
@@ -146,6 +144,34 @@ ${isOwner && branchCount > 1 ? `📍 ${branchCount} Branches Combined\n` : ''}
     }
   };
 
+  const handleDownloadPdf = () => {
+    const branchInfo = isOwner && branchCount > 1 
+      ? `Total Savings Across ${branchCount} Branches`
+      : `${currentBranchName} Monthly Savings`;
+    
+    generateSavingsSummaryPdf({
+      pharmacyName: pharmacy?.name || 'Your Pharmacy',
+      monthName: metrics.monthName,
+      branchInfo,
+      totalSavings: metrics.totalSavings,
+      lossPrevented: metrics.lossPrevented,
+      itemsSaved: metrics.itemsSaved,
+      timeSavedHours: metrics.timeSavedHours,
+      timeSavedValue: metrics.timeSavedValue,
+      theftBlocked: metrics.theftBlocked,
+      theftValueProtected: metrics.theftValueProtected,
+      atRiskValue: metrics.atRiskValue,
+      atRiskItems: metrics.atRiskItems,
+      savingsMultiple: metrics.savingsMultiple,
+      generatedAt: metrics.generatedAt,
+    }, formatPrice);
+
+    toast({ 
+      title: 'PDF Downloaded!', 
+      description: 'Share this savings report with colleagues and friends' 
+    });
+  };
+
   const containerVariants = {
     hidden: { opacity: 0 },
     visible: { opacity: 1, transition: { staggerChildren: 0.1 } }
@@ -157,7 +183,7 @@ ${isOwner && branchCount > 1 ? `📍 ${branchCount} Branches Combined\n` : ''}
   };
 
   return (
-    <div ref={summaryRef} className="space-y-6">
+    <div className="space-y-6">
       {/* Header Card with Monthly Summary */}
       <Card className="overflow-hidden border-2 border-primary/30 shadow-xl bg-gradient-to-br from-background via-background to-primary/5">
         <div className="bg-gradient-to-r from-primary to-primary/80 px-6 py-4 text-primary-foreground">
@@ -307,10 +333,10 @@ ${isOwner && branchCount > 1 ? `📍 ${branchCount} Branches Combined\n` : ''}
               <Button 
                 variant="outline" 
                 size="sm"
-                onClick={() => toast({ title: 'Take a Screenshot', description: 'Use your device screenshot feature to capture this summary' })}
+                onClick={handleDownloadPdf}
               >
-                <Download className="h-4 w-4 mr-2" />
-                Screenshot
+                <FileDown className="h-4 w-4 mr-2" />
+                Download PDF
               </Button>
               <Button 
                 size="sm"
