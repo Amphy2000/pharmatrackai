@@ -206,7 +206,7 @@ export const generateSalesPdf = async (data: SalesPdfData): Promise<jsPDF> => {
   doc.setFontSize(10);
   doc.setTextColor(...COLORS.muted);
   doc.setFont('helvetica', 'normal');
-  doc.text('(14-day FREE trial included)', margin + 95, y);
+  doc.text('(7-day FREE trial included)', margin + 95, y);
 
   y += 15;
 

@@ -224,7 +224,7 @@ export const generateFeatureComparisonPdf = (): jsPDF => {
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(11);
   doc.setFont('helvetica', 'bold');
-  doc.text('Start FREE for 14 days', margin + 10, y + 8);
+  doc.text('Start FREE for 7 days', margin + 10, y + 8);
   doc.text('Then from ₦10,000/month', margin + 10, y + 14);
 
   doc.setFont('helvetica', 'normal');
@@ -242,7 +242,7 @@ export const generateFeatureComparisonPdf = (): jsPDF => {
   doc.setTextColor(...COLORS.dark);
   doc.setFontSize(11);
   doc.setFont('helvetica', 'normal');
-  doc.text('pharmatrack.app/auth', pageWidth / 2, y + 12, { align: 'center' });
+  doc.text('pharmatrack.com.ng/auth', pageWidth / 2, y + 12, { align: 'center' });
 
   // ========== FOOTER ==========
   doc.setFillColor(...COLORS.dark);
