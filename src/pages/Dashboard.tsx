@@ -30,8 +30,7 @@ import { ProfitMarginAnalyzer } from '@/components/dashboard/ProfitMarginAnalyze
 import { DemandForecasting } from '@/components/dashboard/DemandForecasting';
 import { ExpiryDiscountEngine } from '@/components/dashboard/ExpiryDiscountEngine';
 import { QuickGlancePanel } from '@/components/dashboard/QuickGlancePanel';
-import { ROIDashboard } from '@/components/dashboard/ROIDashboard';
-import { MonthlySavingsSummary } from '@/components/dashboard/MonthlySavingsSummary';
+import { SavingsROIPanel } from '@/components/dashboard/SavingsROIPanel';
 import { LiveActivityFeed } from '@/components/dashboard/LiveActivityFeed';
 import { ProductTour } from '@/components/ProductTour';
 import { PWAInstallPrompt } from '@/components/pwa/PWAInstallPrompt';
@@ -347,10 +346,7 @@ const Dashboard = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3 }}
               >
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                  <ROIDashboard invoicesScanned={invoicesScanned} auditLogCount={auditLogCount} />
-                  <MonthlySavingsSummary />
-                </div>
+                <SavingsROIPanel invoicesScanned={invoicesScanned} auditLogCount={auditLogCount} />
               </motion.section>
             )}
 
