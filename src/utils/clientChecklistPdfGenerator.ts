@@ -14,6 +14,15 @@ const drawCheckbox = (doc: jsPDF, x: number, y: number) => {
   doc.rect(x, y, 5, 5);
 };
 
+const checkPageBreak = (doc: jsPDF, yPos: number, requiredSpace: number, margin: number): number => {
+  const pageHeight = doc.internal.pageSize.getHeight();
+  if (yPos + requiredSpace > pageHeight - 25) {
+    doc.addPage();
+    return margin + 10;
+  }
+  return yPos;
+};
+
 export const generateClientChecklistPdf = (pharmacyName?: string): jsPDF => {
   const doc = new jsPDF('p', 'mm', 'a4');
   const pageWidth = doc.internal.pageSize.getWidth();
@@ -22,77 +31,81 @@ export const generateClientChecklistPdf = (pharmacyName?: string): jsPDF => {
 
   // Header background
   doc.setFillColor(...COLORS.primary);
-  doc.rect(0, 0, pageWidth, 50, 'F');
+  doc.rect(0, 0, pageWidth, 45, 'F');
 
   // Logo/Brand
   doc.setTextColor(...COLORS.white);
-  doc.setFontSize(28);
+  doc.setFontSize(24);
   doc.setFont('helvetica', 'bold');
-  doc.text('PharmaTrack AI', margin, 28);
+  doc.text('PharmaTrack AI', margin, 25);
 
-  doc.setFontSize(14);
+  doc.setFontSize(12);
   doc.setFont('helvetica', 'normal');
-  doc.text('Installation Checklist', margin, 40);
+  doc.text('New Client Installation Checklist', margin, 36);
 
-  yPos = 65;
+  yPos = 55;
 
   // Personalized greeting if pharmacy name provided
   doc.setTextColor(...COLORS.dark);
-  doc.setFontSize(12);
+  doc.setFontSize(11);
   doc.setFont('helvetica', 'normal');
   
   if (pharmacyName) {
+    doc.setFont('helvetica', 'bold');
     doc.text(`Prepared for: ${pharmacyName}`, margin, yPos);
-    yPos += 10;
+    doc.setFont('helvetica', 'normal');
+    yPos += 8;
   }
 
   // Introduction
-  doc.setFontSize(11);
+  doc.setFontSize(10);
   doc.setTextColor(...COLORS.gray);
-  const intro = 'To get your branches live in under 20 minutes, please have the following information ready before our onboarding session:';
+  const intro = 'To get your pharmacy live in under 20 minutes, please have the following information ready before our onboarding session:';
   const introLines = doc.splitTextToSize(intro, pageWidth - margin * 2);
   doc.text(introLines, margin, yPos);
-  yPos += introLines.length * 6 + 10;
+  yPos += introLines.length * 5 + 8;
 
   // Section 1: Branch Details
+  yPos = checkPageBreak(doc, yPos, 50, margin);
   doc.setFillColor(...COLORS.lightGray);
-  doc.rect(margin - 5, yPos - 5, pageWidth - margin * 2 + 10, 8, 'F');
+  doc.rect(margin - 5, yPos - 4, pageWidth - margin * 2 + 10, 7, 'F');
   doc.setTextColor(...COLORS.primary);
-  doc.setFontSize(13);
+  doc.setFontSize(11);
   doc.setFont('helvetica', 'bold');
   doc.text('1. Branch Details', margin, yPos);
-  yPos += 12;
+  yPos += 10;
 
   doc.setTextColor(...COLORS.dark);
-  doc.setFontSize(10);
+  doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
 
   const branchItems = [
     'List of all branch names',
-    'Physical address for each branch (for receipt branding)',
+    'Physical address for each branch',
     'Contact phone number for each branch',
     'Email address for each branch (optional)',
   ];
 
   branchItems.forEach((item) => {
-    drawCheckbox(doc, margin, yPos - 4);
-    doc.text(item, margin + 10, yPos);
-    yPos += 8;
+    drawCheckbox(doc, margin, yPos - 3);
+    doc.text(item, margin + 8, yPos);
+    yPos += 6;
   });
 
-  yPos += 8;
+  yPos += 6;
 
   // Section 2: Staff Information
+  yPos = checkPageBreak(doc, yPos, 55, margin);
   doc.setFillColor(...COLORS.lightGray);
-  doc.rect(margin - 5, yPos - 5, pageWidth - margin * 2 + 10, 8, 'F');
+  doc.rect(margin - 5, yPos - 4, pageWidth - margin * 2 + 10, 7, 'F');
   doc.setTextColor(...COLORS.primary);
-  doc.setFontSize(13);
+  doc.setFontSize(11);
   doc.setFont('helvetica', 'bold');
   doc.text('2. Staff Information', margin, yPos);
-  yPos += 12;
+  yPos += 10;
 
   doc.setTextColor(...COLORS.dark);
-  doc.setFontSize(10);
+  doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
 
   const staffItems = [
@@ -104,24 +117,25 @@ export const generateClientChecklistPdf = (pharmacyName?: string): jsPDF => {
   ];
 
   staffItems.forEach((item) => {
-    drawCheckbox(doc, margin, yPos - 4);
-    doc.text(item, margin + 10, yPos);
-    yPos += 8;
+    drawCheckbox(doc, margin, yPos - 3);
+    doc.text(item, margin + 8, yPos);
+    yPos += 6;
   });
 
-  yPos += 8;
+  yPos += 6;
 
   // Section 3: Inventory Data
+  yPos = checkPageBreak(doc, yPos, 65, margin);
   doc.setFillColor(...COLORS.lightGray);
-  doc.rect(margin - 5, yPos - 5, pageWidth - margin * 2 + 10, 8, 'F');
+  doc.rect(margin - 5, yPos - 4, pageWidth - margin * 2 + 10, 7, 'F');
   doc.setTextColor(...COLORS.primary);
-  doc.setFontSize(13);
+  doc.setFontSize(11);
   doc.setFont('helvetica', 'bold');
   doc.text('3. Inventory Data', margin, yPos);
-  yPos += 12;
+  yPos += 10;
 
   doc.setTextColor(...COLORS.dark);
-  doc.setFontSize(10);
+  doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
 
   const inventoryItems = [
@@ -132,62 +146,68 @@ export const generateClientChecklistPdf = (pharmacyName?: string): jsPDF => {
   ];
 
   inventoryItems.forEach((item) => {
-    drawCheckbox(doc, margin, yPos - 4);
-    doc.text(item, margin + 10, yPos);
-    yPos += 8;
+    drawCheckbox(doc, margin, yPos - 3);
+    doc.text(item, margin + 8, yPos);
+    yPos += 6;
   });
 
   yPos += 4;
   
   // Alternative for clients without digital inventory
-  doc.setFontSize(9);
-  doc.setTextColor(...COLORS.gray);
-  doc.setFont('helvetica', 'italic');
-  const altText = "Don't have a digital file? No problem! Take clear photos of your supplier invoices - we can import stock directly from invoice images using our AI scanner.";
-  const altLines = doc.splitTextToSize(altText, pageWidth - margin * 2 - 10);
-  doc.text(altLines, margin + 10, yPos);
-  yPos += altLines.length * 5 + 8;
+  doc.setFillColor(254, 249, 195); // Light yellow
+  doc.roundedRect(margin - 2, yPos - 3, pageWidth - margin * 2 + 4, 18, 2, 2, 'F');
+  doc.setFontSize(8);
+  doc.setTextColor(...COLORS.dark);
+  doc.setFont('helvetica', 'bold');
+  doc.text("📷 No digital file? No problem!", margin + 2, yPos + 2);
+  doc.setFont('helvetica', 'normal');
+  const altText = "Take clear photos of your supplier invoices - we can import stock directly from invoice images using our AI scanner.";
+  const altLines = doc.splitTextToSize(altText, pageWidth - margin * 2 - 8);
+  doc.text(altLines, margin + 2, yPos + 7);
+  yPos += 22;
 
   // Section 4: Account Setup
+  yPos = checkPageBreak(doc, yPos, 50, margin);
   doc.setFillColor(...COLORS.lightGray);
-  doc.rect(margin - 5, yPos - 5, pageWidth - margin * 2 + 10, 8, 'F');
+  doc.rect(margin - 5, yPos - 4, pageWidth - margin * 2 + 10, 7, 'F');
   doc.setTextColor(...COLORS.primary);
-  doc.setFontSize(13);
+  doc.setFontSize(11);
   doc.setFont('helvetica', 'bold');
   doc.text('4. Account Setup', margin, yPos);
-  yPos += 12;
+  yPos += 10;
 
   doc.setTextColor(...COLORS.dark);
-  doc.setFontSize(10);
+  doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
 
   const accountItems = [
-    'Owner\'s email address (for Super Admin account)',
+    "Owner's email address (for Super Admin account)",
     'Pharmacy license/registration number',
     'Preferred admin PIN (4-6 digits) for sensitive operations',
     'Logo image file (PNG or JPG) for receipts - optional',
   ];
 
   accountItems.forEach((item) => {
-    drawCheckbox(doc, margin, yPos - 4);
-    doc.text(item, margin + 10, yPos);
-    yPos += 8;
+    drawCheckbox(doc, margin, yPos - 3);
+    doc.text(item, margin + 8, yPos);
+    yPos += 6;
   });
 
-  yPos += 12;
+  yPos += 8;
 
   // Helpful Tips Box
+  yPos = checkPageBreak(doc, yPos, 40, margin);
   doc.setFillColor(240, 253, 244); // Light green
-  doc.roundedRect(margin - 5, yPos - 5, pageWidth - margin * 2 + 10, 45, 3, 3, 'F');
+  doc.roundedRect(margin - 5, yPos - 4, pageWidth - margin * 2 + 10, 38, 2, 2, 'F');
   
   doc.setTextColor(...COLORS.primary);
-  doc.setFontSize(11);
+  doc.setFontSize(10);
   doc.setFont('helvetica', 'bold');
-  doc.text('💡 Pro Tips for a Smooth Onboarding', margin, yPos + 3);
-  yPos += 10;
+  doc.text('Pro Tips for a Smooth Onboarding', margin, yPos + 2);
+  yPos += 8;
 
   doc.setTextColor(...COLORS.dark);
-  doc.setFontSize(9);
+  doc.setFontSize(8);
   doc.setFont('helvetica', 'normal');
 
   const tips = [
@@ -198,38 +218,41 @@ export const generateClientChecklistPdf = (pharmacyName?: string): jsPDF => {
   ];
 
   tips.forEach((tip) => {
-    doc.text(tip, margin, yPos + 3);
-    yPos += 6;
+    doc.text(tip, margin, yPos + 2);
+    yPos += 5;
   });
 
-  yPos += 20;
+  yPos += 12;
 
   // Pricing Summary
+  yPos = checkPageBreak(doc, yPos, 35, margin);
   doc.setFillColor(...COLORS.dark);
-  doc.roundedRect(margin - 5, yPos - 5, pageWidth - margin * 2 + 10, 35, 3, 3, 'F');
+  doc.roundedRect(margin - 5, yPos - 4, pageWidth - margin * 2 + 10, 28, 2, 2, 'F');
   
   doc.setTextColor(...COLORS.white);
-  doc.setFontSize(11);
-  doc.setFont('helvetica', 'bold');
-  doc.text('Pricing Overview', margin, yPos + 3);
-  yPos += 10;
-
   doc.setFontSize(10);
-  doc.setFont('helvetica', 'normal');
-  doc.text('Base Subscription (includes Main Branch): ₦35,000/month', margin, yPos + 3);
-  yPos += 6;
-  doc.text('Additional Branch Fee: ₦15,000/month per branch', margin, yPos + 3);
-  yPos += 6;
   doc.setFont('helvetica', 'bold');
-  doc.text('7-Day Free Trial • No Credit Card Required', margin, yPos + 3);
+  doc.text('Pricing Overview', margin, yPos + 2);
+  yPos += 8;
 
-  // Footer
-  const footerY = doc.internal.pageSize.getHeight() - 20;
-  doc.setTextColor(...COLORS.gray);
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
+  doc.text('Base Subscription (includes Main Branch): N35,000/month', margin, yPos);
+  yPos += 5;
+  doc.text('Additional Branch Fee: N15,000/month per branch', margin, yPos);
+  yPos += 5;
+  doc.setFont('helvetica', 'bold');
+  doc.text('7-Day Free Trial  •  No Credit Card Required', margin, yPos);
+
+  // Footer
+  const footerY = doc.internal.pageSize.getHeight() - 15;
+  doc.setFillColor(...COLORS.lightGray);
+  doc.rect(0, footerY - 5, pageWidth, 20, 'F');
+  doc.setTextColor(...COLORS.gray);
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
   doc.text('Questions? Contact us at support@pharmatrack.com.ng', margin, footerY);
-  doc.text('www.pharmatrack.com.ng', pageWidth - margin - 40, footerY);
+  doc.text('www.pharmatrack.com.ng', pageWidth - margin - 38, footerY);
 
   return doc;
 };
