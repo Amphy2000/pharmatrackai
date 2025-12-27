@@ -98,11 +98,17 @@ export const generatePurchaseOrder = async ({
     doc.text(text, (receiptWidth - textWidth) / 2, yPos);
   };
 
-  // Helper for dashed line
+  // Helper for right-aligned text
+  const rightAlignText = (text: string, yPos: number) => {
+    const textWidth = doc.getTextWidth(text);
+    doc.text(text, receiptWidth - margin - textWidth, yPos);
+  };
+
+  // Helper for dashed line (fits within 72mm printable width)
   const drawDashedLine = (yPos: number) => {
     doc.setFontSize(8);
     doc.setTextColor(100);
-    doc.text('-'.repeat(45), margin, yPos);
+    doc.text('-'.repeat(38), margin, yPos);
     doc.setTextColor(0);
   };
 
@@ -151,7 +157,8 @@ export const generatePurchaseOrder = async ({
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(8);
     doc.text(`Order: ${orderNumber}-${orderIndex + 1}`, margin, y);
-    doc.text(format(date, 'dd/MM/yy HH:mm'), receiptWidth - margin - 25, y);
+    const dateText = format(date, 'dd/MM/yy HH:mm');
+    rightAlignText(dateText, y);
     y += 6;
 
     drawDashedLine(y);
@@ -187,8 +194,8 @@ export const generatePurchaseOrder = async ({
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8);
     doc.text('ITEM', margin, y);
-    doc.text('QTY', margin + 45, y);
-    doc.text('PRICE', margin + 55, y);
+    doc.text('QTY', margin + 38, y);
+    rightAlignText('PRICE', y);
     y += 5;
 
     // Items
@@ -196,17 +203,17 @@ export const generatePurchaseOrder = async ({
     doc.setFontSize(9);
     
     order.items.forEach((item) => {
-      // Item name (truncate if needed)
+      // Item name (truncate if needed to fit within 35mm)
       let itemName = item.medicationName;
-      const maxWidth = 42;
-      while (doc.getTextWidth(itemName) > maxWidth && itemName.length > 0) {
+      const maxItemWidth = 35;
+      while (doc.getTextWidth(itemName) > maxItemWidth && itemName.length > 0) {
         itemName = itemName.slice(0, -1);
       }
       if (itemName !== item.medicationName) itemName += '..';
       
       doc.text(itemName, margin, y);
-      doc.text(`x${item.quantity}`, margin + 45, y);
-      doc.text(formatCurrency(item.totalPrice, currency), margin + 55, y);
+      doc.text(`x${item.quantity}`, margin + 38, y);
+      rightAlignText(formatCurrency(item.totalPrice, currency), y);
       y += 5;
     });
 
@@ -218,7 +225,7 @@ export const generatePurchaseOrder = async ({
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(11);
     doc.text('TOTAL:', margin, y);
-    doc.text(formatCurrency(order.totalAmount, currency), receiptWidth - margin - doc.getTextWidth(formatCurrency(order.totalAmount, currency)), y);
+    rightAlignText(formatCurrency(order.totalAmount, currency), y);
     y += 8;
 
     drawDashedLine(y);
