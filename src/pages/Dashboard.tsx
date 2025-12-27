@@ -378,7 +378,7 @@ const Dashboard = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.6 }}
             >
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
                 <Button
                   variant="outline"
                   className="h-20 flex flex-col items-center justify-center gap-2 hover:bg-primary/5 hover:border-primary/30 transition-all group"
@@ -386,6 +386,14 @@ const Dashboard = () => {
                 >
                   <TrendingUp className="h-5 w-5 group-hover:text-primary transition-colors" />
                   <span className="text-sm">Sales History</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  className="h-20 flex flex-col items-center justify-center gap-2 hover:bg-emerald-500/10 hover:border-emerald-500/30 transition-all group"
+                  onClick={() => navigate('/upsell-analytics')}
+                >
+                  <TrendingUp className="h-5 w-5 group-hover:text-emerald-500 transition-colors" />
+                  <span className="text-sm">Upsell Analytics</span>
                 </Button>
                 <Button
                   variant="outline"

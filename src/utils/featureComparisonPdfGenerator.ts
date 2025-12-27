@@ -109,6 +109,11 @@ export const generateFeatureComparisonPdf = (): jsPDF => {
       newWay: 'Price Shield locks prices, alerts on changes',
     },
     {
+      challenge: 'Prescription Fraud',
+      oldWay: 'No detection - controlled drug abuse risk',
+      newWay: 'AI detects suspicious patterns instantly',
+    },
+    {
       challenge: 'Expired Products',
       oldWay: 'Manual checking, often missed',
       newWay: 'Automatic 90/60/30 day alerts',
@@ -117,6 +122,11 @@ export const generateFeatureComparisonPdf = (): jsPDF => {
       challenge: 'Stock Entry',
       oldWay: '2-3 hours manual typing per invoice',
       newWay: 'AI scans invoice photo in 30 seconds',
+    },
+    {
+      challenge: 'Upselling',
+      oldWay: 'Missed opportunities, no suggestions',
+      newWay: 'Smart AI suggests add-ons at checkout',
     },
     {
       challenge: 'Sales Insights',
@@ -139,6 +149,11 @@ export const generateFeatureComparisonPdf = (): jsPDF => {
       newWay: 'SMS/App alerts before stockout',
     },
     {
+      challenge: 'Drug Interactions',
+      oldWay: 'Rely on memory, risk patient safety',
+      newWay: 'AI warns at point of sale',
+    },
+    {
       challenge: 'Multiple Branches',
       oldWay: 'Call each branch, inconsistent data',
       newWay: 'One dashboard for all locations',
@@ -147,11 +162,6 @@ export const generateFeatureComparisonPdf = (): jsPDF => {
       challenge: 'Customer History',
       oldWay: 'No records, missed repeat sales',
       newWay: 'Full purchase history, refill reminders',
-    },
-    {
-      challenge: 'Drug Interactions',
-      oldWay: 'Rely on memory, risk patient safety',
-      newWay: 'AI warns at point of sale',
     },
   ];
 

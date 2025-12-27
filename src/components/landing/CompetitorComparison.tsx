@@ -33,6 +33,13 @@ export const CompetitorComparison = ({ isInternational = false }: CompetitorComp
       invertColors: true, // Invert because "No" is good here
     },
     {
+      question: "Does it detect prescription fraud patterns?",
+      genericPOS: false,
+      pharmatrack: true,
+      moneyImpact: "Prevent controlled drug abuse & legal liability",
+      critical: true,
+    },
+    {
       question: "Does it warn about drug interactions?",
       genericPOS: false,
       pharmatrack: true,
@@ -51,6 +58,13 @@ export const CompetitorComparison = ({ isInternational = false }: CompetitorComp
       genericPOS: false,
       pharmatrack: true,
       moneyImpact: "40+ hours/month saved = 2 extra staff days",
+      critical: false,
+    },
+    {
+      question: "Does it suggest upsells at checkout?",
+      genericPOS: false,
+      pharmatrack: true,
+      moneyImpact: `+${formatCurrency(120000)}/month from smart suggestions`,
       critical: false,
     },
     {
