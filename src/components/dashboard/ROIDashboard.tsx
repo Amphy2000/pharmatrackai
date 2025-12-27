@@ -1,11 +1,12 @@
 import { useMemo } from 'react';
 import { motion } from 'framer-motion';
-import { TrendingUp, Clock, ShieldCheck, DollarSign, FileImage, AlertTriangle, Lock } from 'lucide-react';
+import { TrendingUp, Clock, ShieldCheck, DollarSign, FileImage, AlertTriangle, Lock, Sparkles } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { useMedications } from '@/hooks/useMedications';
 import { useSales } from '@/hooks/useSales';
+import { useUpsellAnalytics } from '@/hooks/useUpsellAnalytics';
 import { differenceInDays, subDays, parseISO } from 'date-fns';
 
 interface ROIDashboardProps {
@@ -17,6 +18,7 @@ export const ROIDashboard = ({ invoicesScanned = 0, auditLogCount = 0 }: ROIDash
   const { formatPrice } = useCurrency();
   const { medications } = useMedications();
   const { sales: salesData } = useSales();
+  const { data: upsellData } = useUpsellAnalytics(30);
 
   const metrics = useMemo(() => {
     const today = new Date();
@@ -52,10 +54,15 @@ export const ROIDashboard = ({ invoicesScanned = 0, auditLogCount = 0 }: ROIDash
       : 5000;
     const theftValueProtected = theftBlocked * avgTransactionValue * 0.1; // Assume 10% would be lost per attempt
 
+    // AI Upsell Revenue from smart suggestions
+    const upsellRevenue = upsellData?.revenueGenerated || 0;
+    const upsellAccepted = upsellData?.totalAccepted || 0;
+    const upsellRate = upsellData?.acceptanceRate || 0;
+
     // Total ROI Value
     const hourlyRate = 1500; // ₦1,500/hour staff cost
     const timeSavedValue = timeSavedHours * hourlyRate;
-    const totalROIValue = timeSavedValue + lossPrevented + theftValueProtected;
+    const totalROIValue = timeSavedValue + lossPrevented + theftValueProtected + upsellRevenue;
 
     // Monthly subscription cost (Pro plan)
     const monthlyCost = 35000;
@@ -67,11 +74,14 @@ export const ROIDashboard = ({ invoicesScanned = 0, auditLogCount = 0 }: ROIDash
       lossPrevented,
       theftBlocked,
       theftValueProtected,
+      upsellRevenue,
+      upsellAccepted,
+      upsellRate,
       totalROIValue,
       roiMultiple,
       nearExpiryCount: nearExpiryMeds.length,
     };
-  }, [medications, salesData, invoicesScanned, auditLogCount]);
+  }, [medications, salesData, invoicesScanned, auditLogCount, upsellData]);
 
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -179,6 +189,32 @@ export const ROIDashboard = ({ invoicesScanned = 0, auditLogCount = 0 }: ROIDash
               </CardContent>
             </Card>
           </motion.div>
+
+          {/* AI Upsell Revenue */}
+          {metrics.upsellRevenue > 0 && (
+            <motion.div variants={itemVariants}>
+              <Card className="bg-gradient-to-br from-purple-500/5 to-pink-500/5 border-purple-500/20">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="h-10 w-10 rounded-lg bg-purple-500/20 flex items-center justify-center">
+                      <Sparkles className="h-5 w-5 text-purple-500" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">AI Upsell Revenue</p>
+                      <p className="text-2xl font-bold text-purple-500">{formatPrice(metrics.upsellRevenue)}</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span className="flex items-center gap-1">
+                      <TrendingUp className="h-3 w-3" />
+                      {metrics.upsellAccepted} items added
+                    </span>
+                    <span className="text-purple-500">{metrics.upsellRate.toFixed(0)}% accept rate</span>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
         </motion.div>
 
         {/* Total ROI */}
