@@ -1767,6 +1767,8 @@ export type Database = {
     Functions: {
       check_and_create_expiry_notifications: { Args: never; Returns: undefined }
       check_and_create_stock_notifications: { Args: never; Returns: undefined }
+      check_is_platform_admin: { Args: { _user_id: string }; Returns: boolean }
+      check_is_super_admin: { Args: { _user_id: string }; Returns: boolean }
       generate_internal_barcode: { Args: never; Returns: string }
       generate_receipt_id: { Args: never; Returns: string }
       get_manager_branch_id: {
