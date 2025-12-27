@@ -22,8 +22,10 @@ import {
   RefreshCw,
   Trash2,
   DollarSign,
-  Check
+  Check,
+  FileText
 } from 'lucide-react';
+import NotificationAuditLog from '@/components/notifications/NotificationAuditLog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -390,7 +392,7 @@ const Notifications = () => {
 
         {/* Main Tabs */}
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="expiry" className="gap-1 text-xs sm:text-sm">
               <Calendar className="h-4 w-4" />
               <span className="hidden xs:inline">Expiry</span>
@@ -402,6 +404,10 @@ const Notifications = () => {
             <TabsTrigger value="history" className="gap-1 text-xs sm:text-sm">
               <History className="h-4 w-4" />
               <span className="hidden xs:inline">Sent</span>
+            </TabsTrigger>
+            <TabsTrigger value="audit" className="gap-1 text-xs sm:text-sm">
+              <FileText className="h-4 w-4" />
+              <span className="hidden xs:inline">Audit Log</span>
             </TabsTrigger>
           </TabsList>
 
@@ -700,6 +706,11 @@ const Notifications = () => {
                 )}
               </div>
             </ScrollArea>
+          </TabsContent>
+
+          {/* Audit Log Tab */}
+          <TabsContent value="audit" className="mt-4">
+            <NotificationAuditLog />
           </TabsContent>
         </Tabs>
       </main>
