@@ -33,6 +33,7 @@ import ProfileSettings from "./pages/ProfileSettings";
 import UserGuide from "./pages/UserGuide";
 import AdminDashboard from "./pages/AdminDashboard";
 import SalesPitch from "./pages/SalesPitch";
+import SalesResources from "./pages/SalesResources";
 import ForgotPassword from "./pages/ForgotPassword";
 import ResetPassword from "./pages/ResetPassword";
 import PaymentTerminal from "./pages/PaymentTerminal";
@@ -79,6 +80,7 @@ const App = () => (
                       {/* Public Routes */}
                       <Route path="/" element={<Landing />} />
                       <Route path="/pitch" element={<SalesPitch />} />
+                      <Route path="/sales-resources" element={<SalesResources />} />
                       <Route path="/auth" element={<Auth />} />
                       <Route path="/forgot-password" element={<ForgotPassword />} />
                       <Route path="/reset-password" element={<ResetPassword />} />

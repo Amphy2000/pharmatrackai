@@ -20,6 +20,7 @@ import { useDemo } from '@/contexts/DemoContext';
 import { ProfitProtectorCalculator } from '@/components/landing/ProfitProtectorCalculator';
 import { FeatureDemo } from '@/components/landing/FeatureDemo';
 import { VideoShowcase } from '@/components/landing/VideoShowcase';
+import { CompetitorComparison } from '@/components/landing/CompetitorComparison';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -476,9 +477,9 @@ const Landing = () => {
                     <p className="text-sm text-white/80 mb-4">
                       "Sir, those apps are 'General POS.' They tell you what you sold. <span className="text-success font-medium">PharmaTrack AI tells you what you are losing.</span> Can those apps take a photo of your wholesale invoice and stock 50 drugs in 10 seconds? No. Can they generate a NAFDAC Batch Traceability report? No. Those apps are for supermarkets. <span className="text-primary font-medium">You are a Healthcare Professional—you deserve a tool built for your license.</span>"
                     </p>
-                    <Link to="/pitch">
+                    <Link to="/sales-resources">
                       <Button variant="outline" size="sm" className="border-warning/50 text-warning hover:bg-warning/10">
-                        See Full Battle Card
+                        Get Sales Toolkit
                         <ChevronRight className="h-4 w-4 ml-1" />
                       </Button>
                     </Link>
@@ -489,6 +490,9 @@ const Landing = () => {
           </motion.div>
         </div>
       </section>
+
+      {/* Competitor Comparison Section */}
+      <CompetitorComparison isInternational={isInternational} />
 
       {/* Features Bento Grid */}
       <section id="features" className="py-20 sm:py-32 relative">
