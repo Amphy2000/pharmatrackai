@@ -354,6 +354,19 @@ export const Header = forwardRef<HTMLDivElement>((_, ref) => {
                     ))
                   )}
                 </div>
+                <div className="p-3 border-t border-border/50">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full text-sm"
+                    onClick={() => {
+                      navigate('/notifications');
+                      setNotificationsOpen(false);
+                    }}
+                  >
+                    View All Notifications & Audit Log
+                  </Button>
+                </div>
               </PopoverContent>
             </Popover>
 
