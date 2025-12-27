@@ -42,6 +42,8 @@ import { PatientSelector } from '@/components/pos/PatientSelector';
 import { PrescriptionImageUpload } from '@/components/pos/PrescriptionImageUpload';
 import { KeyboardShortcutsOverlay } from '@/components/pos/KeyboardShortcutsOverlay';
 import { ExpiredBatchWarningDialog } from '@/components/pos/ExpiredBatchWarningDialog';
+import { SmartUpsellPanel } from '@/components/pos/SmartUpsellPanel';
+import { useSmartUpsell } from '@/hooks/useSmartUpsell';
 import { Customer } from '@/types/customer';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -78,6 +80,18 @@ const Checkout = () => {
   const { completeSale } = useSales();
   const { activeShift } = useShifts();
   const cart = useCart();
+  
+  // Smart Upsell - AI-powered product suggestions
+  const { 
+    suggestions: upsellSuggestions, 
+    isLoading: isLoadingUpsells, 
+    dismissSuggestion 
+  } = useSmartUpsell({
+    cartItems: cart.items,
+    availableMedications: medications,
+    enabled: cart.items.length > 0,
+    debounceMs: 2000, // Wait 2 seconds after last cart change
+  });
   const { formatPrice, currency } = useCurrency();
   const { isSimpleMode, regulatory } = useRegionalSettings();
   const { pharmacy } = usePharmacy();
@@ -647,6 +661,16 @@ const Checkout = () => {
                 onRemove={cart.removeItem}
                 total={cart.getTotal()}
               />
+
+              {/* Smart Upsell Suggestions - AI-powered */}
+              {cart.items.length > 0 && (
+                <SmartUpsellPanel
+                  suggestions={upsellSuggestions}
+                  isLoading={isLoadingUpsells}
+                  onAddToCart={cart.addItem}
+                  onDismiss={dismissSuggestion}
+                />
+              )}
 
               {/* Collapsible extras */}
               {cart.items.length > 0 && (
