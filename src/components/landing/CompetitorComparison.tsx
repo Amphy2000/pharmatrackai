@@ -1,8 +1,7 @@
 import { motion } from 'framer-motion';
-import { Link } from 'react-router-dom';
-import { Check, X, ArrowRight, MessageCircle, Calculator, FileDown } from 'lucide-react';
+import { Check, X, MessageCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 
 interface CompetitorComparisonProps {
@@ -183,16 +182,9 @@ export const CompetitorComparison = ({ isInternational = false }: CompetitorComp
           className="mt-10 text-center"
         >
           <p className="text-muted-foreground mb-6">
-            Still not sure? Get our free sales toolkit with ROI calculator, objection handlers, and more.
+            Still not sure? Let's talk about how PharmaTrack can help your pharmacy.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link to="/sales-resources">
-              <Button variant="outline" size="lg" className="group">
-                <FileDown className="h-4 w-4 mr-2" />
-                Download Sales Toolkit
-                <ArrowRight className="h-4 w-4 ml-2 group-hover:translate-x-1 transition-transform" />
-              </Button>
-            </Link>
+          <div className="flex justify-center">
             <a href="https://wa.me/2349169153129?text=Hi%2C%20I%20want%20to%20learn%20more%20about%20PharmaTrack" target="_blank" rel="noopener noreferrer">
               <Button size="lg" className="bg-green-600 hover:bg-green-700">
                 <MessageCircle className="h-4 w-4 mr-2" />
