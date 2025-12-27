@@ -13,7 +13,8 @@ import {
   Info,
   Search,
   Download,
-  ChevronDown
+  ChevronDown,
+  RefreshCw
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -26,39 +27,49 @@ import { Calendar as CalendarComponent } from '@/components/ui/calendar';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { useDbNotifications, DbNotification, SentAlert } from '@/hooks/useDbNotifications';
+import { useNotifications, Notification } from '@/hooks/useNotifications';
 
 type LogEntry = {
   id: string;
   timestamp: string;
-  type: 'in_app' | 'sms' | 'whatsapp';
+  type: 'in_app' | 'in_app_local' | 'sms' | 'whatsapp';
   title: string;
   message: string;
   status: 'read' | 'unread' | 'sent' | 'delivered' | 'failed' | 'pending';
   priority?: string;
   recipient?: string;
   metadata?: any;
+  source: 'database' | 'local';
 };
 
 const NotificationAuditLog = () => {
-  const { notifications, sentAlerts, loading } = useDbNotifications();
+  const { notifications: dbNotifications, sentAlerts, loading, generateInventoryNotifications } = useDbNotifications();
+  const { notifications: localNotifications } = useNotifications();
   
   // Filters
-  const [typeFilter, setTypeFilter] = useState<'all' | 'in_app' | 'sms' | 'whatsapp'>('all');
+  const [typeFilter, setTypeFilter] = useState<'all' | 'in_app' | 'in_app_local' | 'sms' | 'whatsapp'>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'read' | 'unread' | 'sent' | 'delivered' | 'failed'>('all');
-  const [dateRange, setDateRange] = useState<'all' | '7days' | '30days' | 'custom'>('7days');
+  const [dateRange, setDateRange] = useState<'all' | '7days' | '30days' | 'custom'>('all');
   const [customDateFrom, setCustomDateFrom] = useState<Date | undefined>();
   const [customDateTo, setCustomDateTo] = useState<Date | undefined>();
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Combine notifications and sent alerts into unified log entries
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await generateInventoryNotifications();
+    setIsRefreshing(false);
+  };
+
+  // Combine all notification sources into unified log entries
   const logEntries = useMemo<LogEntry[]>(() => {
     const entries: LogEntry[] = [];
 
-    // Add in-app notifications
-    notifications.forEach((n: DbNotification) => {
+    // Add database notifications
+    dbNotifications.forEach((n: DbNotification) => {
       entries.push({
-        id: `notif_${n.id}`,
+        id: `db_notif_${n.id}`,
         timestamp: n.created_at,
         type: 'in_app',
         title: n.title,
@@ -66,6 +77,22 @@ const NotificationAuditLog = () => {
         status: n.is_read ? 'read' : 'unread',
         priority: n.priority,
         metadata: n.metadata,
+        source: 'database',
+      });
+    });
+
+    // Add local/in-memory notifications (from useNotifications hook)
+    localNotifications.forEach((n: Notification) => {
+      entries.push({
+        id: `local_notif_${n.id}`,
+        timestamp: new Date().toISOString(), // Local notifications don't have precise timestamps
+        type: 'in_app_local',
+        title: n.title,
+        message: n.message,
+        status: n.isRead ? 'read' : 'unread',
+        priority: n.type === 'danger' ? 'critical' : n.type === 'warning' ? 'high' : 'medium',
+        metadata: { timeLabel: n.time, link: n.link },
+        source: 'local',
       });
     });
 
@@ -83,6 +110,7 @@ const NotificationAuditLog = () => {
           termii_message_id: a.termii_message_id,
           items_included: a.items_included,
         },
+        source: 'database',
       });
     });
 
@@ -90,7 +118,7 @@ const NotificationAuditLog = () => {
     return entries.sort((a, b) => 
       new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
     );
-  }, [notifications, sentAlerts]);
+  }, [dbNotifications, localNotifications, sentAlerts]);
 
   // Apply filters
   const filteredEntries = useMemo(() => {
@@ -138,7 +166,7 @@ const NotificationAuditLog = () => {
   const stats = useMemo(() => {
     return {
       total: filteredEntries.length,
-      inApp: filteredEntries.filter(e => e.type === 'in_app').length,
+      inApp: filteredEntries.filter(e => e.type === 'in_app' || e.type === 'in_app_local').length,
       sms: filteredEntries.filter(e => e.type === 'sms').length,
       whatsapp: filteredEntries.filter(e => e.type === 'whatsapp').length,
       delivered: filteredEntries.filter(e => e.status === 'sent' || e.status === 'delivered').length,
@@ -149,6 +177,7 @@ const NotificationAuditLog = () => {
   const getTypeIcon = (type: LogEntry['type']) => {
     switch (type) {
       case 'in_app': return <Bell className="h-4 w-4 text-primary" />;
+      case 'in_app_local': return <Bell className="h-4 w-4 text-orange-500" />;
       case 'sms': return <Smartphone className="h-4 w-4 text-blue-500" />;
       case 'whatsapp': return <MessageCircle className="h-4 w-4 text-green-500" />;
     }
@@ -156,7 +185,8 @@ const NotificationAuditLog = () => {
 
   const getTypeBadge = (type: LogEntry['type']) => {
     switch (type) {
-      case 'in_app': return <Badge variant="outline" className="text-xs">In-App</Badge>;
+      case 'in_app': return <Badge variant="outline" className="text-xs">In-App (DB)</Badge>;
+      case 'in_app_local': return <Badge className="bg-orange-500/10 text-orange-500 border-orange-500/30 text-xs">In-App (Live)</Badge>;
       case 'sms': return <Badge className="bg-blue-500/10 text-blue-500 border-blue-500/30 text-xs">SMS</Badge>;
       case 'whatsapp': return <Badge className="bg-green-500/10 text-green-500 border-green-500/30 text-xs">WhatsApp</Badge>;
     }
@@ -226,6 +256,26 @@ const NotificationAuditLog = () => {
 
   return (
     <div className="space-y-4">
+      {/* Header with refresh */}
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-semibold">Notification & Alert Audit Log</h3>
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={handleRefresh}
+          disabled={isRefreshing}
+          className="gap-2"
+        >
+          <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+          Sync DB Notifications
+        </Button>
+      </div>
+
+      {/* Info about in-app live notifications */}
+      <div className="p-3 rounded-lg bg-orange-500/10 border border-orange-500/30 text-sm text-orange-700 dark:text-orange-300">
+        <strong>In-App (Live)</strong> notifications are generated dynamically from your inventory status (expired drugs, low stock, etc.) and appear in the bell icon. They are not stored in the database until you click "Sync DB Notifications".
+      </div>
+
       {/* Stats Summary */}
       <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
         <Card className="p-3 text-center">
@@ -282,7 +332,8 @@ const NotificationAuditLog = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">All Types</SelectItem>
-                <SelectItem value="in_app">In-App</SelectItem>
+                <SelectItem value="in_app">In-App (DB)</SelectItem>
+                <SelectItem value="in_app_local">In-App (Live)</SelectItem>
                 <SelectItem value="sms">SMS</SelectItem>
                 <SelectItem value="whatsapp">WhatsApp</SelectItem>
               </SelectContent>

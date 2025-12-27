@@ -61,7 +61,7 @@ const loadImage = (url: string): Promise<string> => {
   });
 };
 
-// POS Receipt format (80mm thermal paper = ~72mm printable width)
+// POS Receipt format (58mm thermal paper = ~48mm printable width for better compatibility)
 export const generatePurchaseOrder = async ({
   orders,
   pharmacyName,
@@ -71,17 +71,17 @@ export const generatePurchaseOrder = async ({
   date,
   currency = 'NGN',
 }: PurchaseOrderData): Promise<jsPDF> => {
-  // 80mm thermal receipt paper (standard POS width)
-  const receiptWidth = 80;
-  const margin = 4;
+  // 58mm thermal receipt paper (most common POS width, safer for all printers)
+  const receiptWidth = 58;
+  const margin = 2;
   const contentWidth = receiptWidth - (margin * 2);
   
   // Calculate total height needed (dynamic based on content)
   let totalHeight = 0;
   orders.forEach(order => {
-    totalHeight += 60 + (order.items.length * 12) + 30; // Header + items + footer
+    totalHeight += 70 + (order.items.length * 10) + 35; // Header + items + footer
   });
-  totalHeight = Math.max(totalHeight, 100);
+  totalHeight = Math.max(totalHeight, 120);
 
   const doc = new jsPDF({
     unit: 'mm',
@@ -89,26 +89,26 @@ export const generatePurchaseOrder = async ({
     orientation: 'portrait',
   });
 
-  let y = 8;
+  let y = 6;
 
   // Helper for centering text
-  const centerText = (text: string, yPos: number, fontSize: number = 10) => {
+  const centerText = (text: string, yPos: number, fontSize: number = 9) => {
     doc.setFontSize(fontSize);
     const textWidth = doc.getTextWidth(text);
     doc.text(text, (receiptWidth - textWidth) / 2, yPos);
   };
 
-  // Helper for right-aligned text
+  // Helper for right-aligned text within content area
   const rightAlignText = (text: string, yPos: number) => {
     const textWidth = doc.getTextWidth(text);
     doc.text(text, receiptWidth - margin - textWidth, yPos);
   };
 
-  // Helper for dashed line (fits within 72mm printable width)
+  // Helper for dashed line (fits within 54mm printable width)
   const drawDashedLine = (yPos: number) => {
-    doc.setFontSize(8);
+    doc.setFontSize(6);
     doc.setTextColor(100);
-    doc.text('-'.repeat(38), margin, yPos);
+    doc.text('-'.repeat(32), margin, yPos);
     doc.setTextColor(0);
   };
 
@@ -116,16 +116,16 @@ export const generatePurchaseOrder = async ({
   for (let orderIndex = 0; orderIndex < orders.length; orderIndex++) {
     const order = orders[orderIndex];
     if (orderIndex > 0) {
-      y += 10;
-      drawDashedLine(y);
       y += 8;
+      drawDashedLine(y);
+      y += 6;
     }
 
-    // Header - Add logo if available
+    // Header - Add logo if available (smaller for thermal)
     if (pharmacyLogoUrl && orderIndex === 0) {
       try {
         const logoImg = await loadImage(pharmacyLogoUrl);
-        const logoSize = 12; // 12mm square
+        const logoSize = 10; // Smaller logo for 58mm paper
         doc.addImage(logoImg, 'PNG', (receiptWidth - logoSize) / 2, y, logoSize, logoSize);
         y += logoSize + 2;
       } catch (error) {
@@ -133,118 +133,134 @@ export const generatePurchaseOrder = async ({
       }
     }
 
-    // Header - Pharmacy name
+    // Header - Pharmacy name (truncate if needed)
     doc.setFont('helvetica', 'bold');
-    centerText(pharmacyName.toUpperCase(), y, 12);
-    y += 5;
+    doc.setFontSize(10);
+    let displayName = pharmacyName.toUpperCase();
+    while (doc.getTextWidth(displayName) > contentWidth && displayName.length > 0) {
+      displayName = displayName.slice(0, -1);
+    }
+    if (displayName !== pharmacyName.toUpperCase()) displayName += '..';
+    centerText(displayName, y, 10);
+    y += 4;
     
     if (pharmacyPhone) {
       doc.setFont('helvetica', 'normal');
-      centerText(pharmacyPhone, y, 8);
-      y += 4;
+      centerText(pharmacyPhone, y, 7);
+      y += 3;
     }
     
     y += 2;
     drawDashedLine(y);
-    y += 6;
+    y += 5;
 
     // Title
     doc.setFont('helvetica', 'bold');
-    centerText('PURCHASE ORDER', y, 11);
-    y += 5;
+    centerText('PURCHASE ORDER', y, 9);
+    y += 4;
     
-    // Order number and date
+    // Order number and date on separate lines for clarity
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8);
+    doc.setFontSize(7);
     doc.text(`Order: ${orderNumber}-${orderIndex + 1}`, margin, y);
-    const dateText = format(date, 'dd/MM/yy HH:mm');
-    rightAlignText(dateText, y);
-    y += 6;
+    y += 3;
+    doc.text(`Date: ${format(date, 'dd/MM/yy HH:mm')}`, margin, y);
+    y += 5;
 
     drawDashedLine(y);
-    y += 6;
+    y += 5;
 
     // Supplier info
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9);
+    doc.setFontSize(7);
     doc.text('SUPPLIER:', margin, y);
-    y += 4;
+    y += 3;
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
-    doc.text(order.supplierName, margin, y);
-    y += 4;
+    doc.setFontSize(8);
+    
+    // Truncate supplier name if needed
+    let supplierDisplay = order.supplierName;
+    while (doc.getTextWidth(supplierDisplay) > contentWidth && supplierDisplay.length > 0) {
+      supplierDisplay = supplierDisplay.slice(0, -1);
+    }
+    if (supplierDisplay !== order.supplierName) supplierDisplay += '..';
+    doc.text(supplierDisplay, margin, y);
+    y += 3;
     
     if (order.supplierPhone) {
-      doc.setFontSize(8);
+      doc.setFontSize(7);
       doc.text(`Tel: ${order.supplierPhone}`, margin, y);
-      y += 4;
+      y += 3;
     }
     if (order.supplierAddress) {
-      doc.setFontSize(8);
+      doc.setFontSize(6);
       const addressLines = doc.splitTextToSize(order.supplierAddress, contentWidth);
-      doc.text(addressLines, margin, y);
-      y += addressLines.length * 3.5;
+      doc.text(addressLines.slice(0, 2), margin, y); // Max 2 lines
+      y += Math.min(addressLines.length, 2) * 2.5;
     }
     
     y += 2;
     drawDashedLine(y);
-    y += 6;
+    y += 4;
 
-    // Items header
+    // Items header - simplified layout
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8);
+    doc.setFontSize(7);
     doc.text('ITEM', margin, y);
-    doc.text('QTY', margin + 38, y);
+    doc.text('QTY', margin + 30, y);
     rightAlignText('PRICE', y);
-    y += 5;
+    y += 4;
 
     // Items
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9);
+    doc.setFontSize(7);
     
     order.items.forEach((item) => {
-      // Item name (truncate if needed to fit within 35mm)
+      // Item name (truncate to fit 28mm max)
       let itemName = item.medicationName;
-      const maxItemWidth = 35;
+      const maxItemWidth = 28;
       while (doc.getTextWidth(itemName) > maxItemWidth && itemName.length > 0) {
         itemName = itemName.slice(0, -1);
       }
       if (itemName !== item.medicationName) itemName += '..';
       
       doc.text(itemName, margin, y);
-      doc.text(`x${item.quantity}`, margin + 38, y);
-      rightAlignText(formatCurrency(item.totalPrice, currency), y);
-      y += 5;
+      doc.text(`x${item.quantity}`, margin + 30, y);
+      
+      // Format price to be compact
+      const priceText = formatCurrency(item.totalPrice, currency);
+      rightAlignText(priceText, y);
+      y += 4;
     });
 
     y += 2;
     drawDashedLine(y);
-    y += 6;
+    y += 4;
 
     // Total
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(11);
+    doc.setFontSize(9);
     doc.text('TOTAL:', margin, y);
     rightAlignText(formatCurrency(order.totalAmount, currency), y);
-    y += 8;
+    y += 6;
 
     drawDashedLine(y);
-    y += 6;
+    y += 4;
 
     // Footer notes
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7);
+    doc.setFontSize(6);
     doc.setTextColor(80);
     centerText('Please supply items listed above', y);
-    y += 3;
+    y += 2.5;
     centerText('Thank you for your service', y);
     doc.setTextColor(0);
-    y += 6;
+    y += 5;
   }
 
   // Final footer
   y += 2;
-  doc.setFontSize(7);
+  doc.setFontSize(6);
   doc.setTextColor(100);
   centerText(`Generated: ${format(date, 'dd/MM/yyyy HH:mm')}`, y);
   

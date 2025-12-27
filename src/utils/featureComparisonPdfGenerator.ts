@@ -246,6 +246,11 @@ export const generateFeatureComparisonPdf = (): jsPDF => {
   doc.setFont('helvetica', 'normal');
   doc.text('pharmatrack.com.ng/auth', pageWidth / 2, y + 12, { align: 'center' });
 
+  // Contact phone
+  doc.setTextColor(...COLORS.slate);
+  doc.setFontSize(10);
+  doc.text('Call/WhatsApp: +2349169153129', pageWidth / 2, y + 20, { align: 'center' });
+
   // === FOOTER ===
   const footerY = pageHeight - 14;
   doc.setFillColor(...COLORS.navy);
@@ -257,7 +262,7 @@ export const generateFeatureComparisonPdf = (): jsPDF => {
   doc.text('PharmaTrack - Built for Nigerian Pharmacies', pageWidth / 2, footerY + 4, { align: 'center' });
 
   doc.setTextColor(...COLORS.emerald);
-  doc.text('pharmatrack.com.ng', pageWidth / 2, footerY + 10, { align: 'center' });
+  doc.text('pharmatrack.com.ng | +2349169153129', pageWidth / 2, footerY + 10, { align: 'center' });
 
   return doc;
 };

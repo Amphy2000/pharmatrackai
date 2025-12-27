@@ -247,33 +247,93 @@
     }
     </script>
 
-    <!-- Structured Data - Product for rich snippets -->
+    <!-- Structured Data - Product for rich snippets with full merchant listing requirements -->
     <script type="application/ld+json">
     {
       "@context": "https://schema.org",
       "@type": "Product",
       "name": "PharmaTrack AI Pro",
       "description": "AI-powered pharmacy management software with inventory tracking, POS, staff management, and NAFDAC compliance",
+      "image": [
+        "https://pharmat.lovable.app/pwa-512x512.png",
+        "https://pharmat.lovable.app/pwa-192x192.png"
+      ],
       "brand": {
         "@type": "Brand",
         "name": "PharmaTrack"
       },
+      "sku": "PHARMATRACK-AI-PRO",
+      "mpn": "PT-AI-PRO-2024",
       "offers": {
         "@type": "Offer",
+        "url": "https://pharmat.lovable.app/auth?tab=signup",
         "price": "35000",
         "priceCurrency": "NGN",
         "priceValidUntil": "2026-12-31",
         "availability": "https://schema.org/InStock",
+        "itemCondition": "https://schema.org/NewCondition",
         "seller": {
           "@type": "Organization",
           "name": "PharmaTrack Nigeria"
+        },
+        "shippingDetails": {
+          "@type": "OfferShippingDetails",
+          "shippingRate": {
+            "@type": "MonetaryAmount",
+            "value": "0",
+            "currency": "NGN"
+          },
+          "shippingDestination": {
+            "@type": "DefinedRegion",
+            "addressCountry": "NG"
+          },
+          "deliveryTime": {
+            "@type": "ShippingDeliveryTime",
+            "handlingTime": {
+              "@type": "QuantitativeValue",
+              "minValue": "0",
+              "maxValue": "0",
+              "unitCode": "DAY"
+            },
+            "transitTime": {
+              "@type": "QuantitativeValue",
+              "minValue": "0",
+              "maxValue": "0",
+              "unitCode": "DAY"
+            }
+          }
+        },
+        "hasMerchantReturnPolicy": {
+          "@type": "MerchantReturnPolicy",
+          "applicableCountry": "NG",
+          "returnPolicyCategory": "https://schema.org/MerchantReturnFiniteReturnWindow",
+          "merchantReturnDays": "7",
+          "returnMethod": "https://schema.org/ReturnByMail",
+          "returnFees": "https://schema.org/FreeReturn"
         }
       },
       "aggregateRating": {
         "@type": "AggregateRating",
         "ratingValue": "4.9",
-        "reviewCount": "89"
-      }
+        "reviewCount": "89",
+        "bestRating": "5",
+        "worstRating": "1"
+      },
+      "review": [
+        {
+          "@type": "Review",
+          "reviewRating": {
+            "@type": "Rating",
+            "ratingValue": "5",
+            "bestRating": "5"
+          },
+          "author": {
+            "@type": "Person",
+            "name": "Pharm. Adebayo"
+          },
+          "reviewBody": "PharmaTrack saved us over N500k in the first month alone by catching near-expiry stock."
+        }
+      ]
     }
     </script>
 
