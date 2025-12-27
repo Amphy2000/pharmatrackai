@@ -9,7 +9,8 @@ import {
   Share2,
   FileDown,
   CheckCircle,
-  Building2
+  Building2,
+  Sparkles
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -24,6 +25,7 @@ import { useBranches } from '@/hooks/useBranches';
 import { useToast } from '@/hooks/use-toast';
 import { differenceInDays, parseISO, startOfMonth, endOfMonth, format } from 'date-fns';
 import { generateSavingsSummaryPdf } from '@/utils/savingsSummaryPdfGenerator';
+import { useUpsellAnalytics } from '@/hooks/useUpsellAnalytics';
 
 interface SavingsROIPanelProps {
   invoicesScanned?: number;
@@ -39,6 +41,7 @@ export const SavingsROIPanel = ({ invoicesScanned = 0, auditLogCount = 0 }: Savi
   const { userRole } = usePermissions();
   const { branches } = useBranches();
   const { toast } = useToast();
+  const { data: upsellData } = useUpsellAnalytics(30);
 
   const isOwner = userRole === 'owner';
   const branchCount = branches.length;
@@ -112,10 +115,14 @@ export const SavingsROIPanel = ({ invoicesScanned = 0, auditLogCount = 0 }: Savi
       sum + (med.current_stock * med.unit_price), 0
     );
 
+    // AI Upsell Revenue from the new feature
+    const upsellRevenue = upsellData?.revenueGenerated || 0;
+    const upsellAccepted = upsellData?.totalAccepted || 0;
+
     // Calculate total savings
     const hourlyRate = 1500; // NGN per hour for pharmacy staff
     const timeSavedValue = timeSavedHours * hourlyRate;
-    const totalSavings = timeSavedValue + lossPrevented + theftValueProtected;
+    const totalSavings = timeSavedValue + lossPrevented + theftValueProtected + upsellRevenue;
 
     // Calculate ROI multiple
     const savingsMultiple = monthlyCost > 0 && totalSavings > 0 
@@ -133,11 +140,13 @@ export const SavingsROIPanel = ({ invoicesScanned = 0, auditLogCount = 0 }: Savi
       theftValueProtected,
       atRiskValue,
       atRiskItems: atRiskItems.length,
+      upsellRevenue,
+      upsellAccepted,
       totalSavings,
       savingsMultiple,
       generatedAt: format(today, 'MMM dd, yyyy h:mm a'),
     };
-  }, [medications, salesData, invoicesScanned, auditLogCount, isOwner, currentBranchId, monthlyCost]);
+  }, [medications, salesData, invoicesScanned, auditLogCount, isOwner, currentBranchId, monthlyCost, upsellData]);
 
   const handleShare = async () => {
     const scopeLabel = isOwner && branchCount > 1 ? 'All Branches' : currentBranchName;
@@ -312,6 +321,22 @@ ${isOwner && branchCount > 1 ? `📍 ${branchCount} Branches Combined\n` : ''}
                 </div>
               </div>
             </motion.div>
+
+            {/* AI Upsell Revenue */}
+            {metrics.upsellRevenue > 0 && (
+              <motion.div variants={itemVariants}>
+                <div className="flex items-center gap-3 p-4 rounded-xl bg-gradient-to-br from-purple-500/10 to-pink-500/10 border border-purple-500/20">
+                  <div className="h-12 w-12 rounded-full bg-purple-500/20 flex items-center justify-center flex-shrink-0">
+                    <Sparkles className="h-6 w-6 text-purple-500" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-xs text-muted-foreground">AI Upsell Revenue</p>
+                    <p className="text-xl font-bold text-purple-500 truncate">{formatPrice(metrics.upsellRevenue, 'NGN')}</p>
+                    <p className="text-xs text-muted-foreground">{metrics.upsellAccepted} items added to cart</p>
+                  </div>
+                </div>
+              </motion.div>
+            )}
           </motion.div>
 
           {/* ROI Summary Section */}

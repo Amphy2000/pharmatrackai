@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Camera, Package, Lock, Shield, Bell, Check, X, Scan, MessageCircle, Smartphone, Clock, AlertTriangle, Timer, Zap } from 'lucide-react';
+import { Camera, Package, Lock, Shield, Bell, Check, X, Scan, MessageCircle, Smartphone, Clock, AlertTriangle, Timer, Zap, Sparkles, TrendingUp, ShoppingCart, FileSearch, Users } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 
 const fadeInUp = {
@@ -78,6 +78,188 @@ const InvoiceScannerDemo = () => {
       {/* Label */}
       <div className="absolute bottom-2 left-2 text-[10px] text-muted-foreground font-medium">
         50+ items in 10 seconds
+      </div>
+    </div>
+  );
+};
+
+// AI Smart Upsell Animation
+const AIUpsellDemo = () => {
+  return (
+    <div className="relative h-48 overflow-hidden rounded-xl bg-gradient-to-br from-purple-500/5 to-pink-500/10 border border-purple-500/20">
+      {/* Cart items */}
+      <div className="absolute left-[15%] top-1/4 space-y-2">
+        <motion.div
+          className="flex items-center gap-1 bg-background/80 rounded-lg px-2 py-1 border border-border shadow-sm"
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.4 }}
+        >
+          <Package className="w-3 h-3 text-primary" />
+          <span className="text-[8px] font-medium">Paracetamol</span>
+        </motion.div>
+        <motion.div
+          className="flex items-center gap-1 bg-background/80 rounded-lg px-2 py-1 border border-border shadow-sm"
+          initial={{ opacity: 0, x: -20 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.4, delay: 0.2 }}
+        >
+          <Package className="w-3 h-3 text-primary" />
+          <span className="text-[8px] font-medium">Vitamin C</span>
+        </motion.div>
+      </div>
+
+      {/* AI Brain thinking */}
+      <motion.div 
+        className="absolute left-1/2 top-1/3 -translate-x-1/2 -translate-y-1/2"
+        animate={{ scale: [1, 1.1, 1] }}
+        transition={{ duration: 2, repeat: Infinity }}
+      >
+        <div className="relative">
+          <motion.div
+            className="absolute inset-0 bg-purple-500/20 rounded-full blur-md"
+            animate={{ scale: [1, 1.3, 1], opacity: [0.5, 0.8, 0.5] }}
+            transition={{ duration: 1.5, repeat: Infinity }}
+          />
+          <div className="relative w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+            <Sparkles className="w-5 h-5 text-white" />
+          </div>
+        </div>
+      </motion.div>
+
+      {/* Suggestion appearing */}
+      <motion.div
+        className="absolute right-[10%] top-1/2 -translate-y-1/2 bg-gradient-to-r from-purple-500/10 to-pink-500/10 border border-purple-500/30 rounded-lg p-2"
+        initial={{ opacity: 0, scale: 0.8, x: 20 }}
+        animate={{ opacity: [0, 1, 1, 1, 0], scale: [0.8, 1, 1, 1, 0.9], x: [20, 0, 0, 0, 0] }}
+        transition={{ duration: 3, delay: 1, repeat: Infinity, repeatDelay: 1.5 }}
+      >
+        <div className="flex items-center gap-2 mb-1">
+          <motion.div
+            animate={{ rotate: [0, 15, -15, 0] }}
+            transition={{ duration: 0.5, delay: 1.5, repeat: Infinity, repeatDelay: 4 }}
+          >
+            <TrendingUp className="w-3 h-3 text-purple-500" />
+          </motion.div>
+          <span className="text-[9px] font-semibold text-purple-700 dark:text-purple-300">Suggested</span>
+        </div>
+        <div className="flex items-center gap-1 bg-white/50 dark:bg-background/50 rounded px-1.5 py-0.5">
+          <Package className="w-3 h-3 text-success" />
+          <span className="text-[8px] font-medium">Zinc Tablets</span>
+        </div>
+        <div className="text-[7px] text-muted-foreground mt-1">Often bought together</div>
+      </motion.div>
+
+      {/* Money indicator */}
+      <motion.div
+        className="absolute right-4 bottom-4 bg-success/20 rounded-full px-2 py-1 flex items-center gap-1"
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: [0, 1], y: [10, 0] }}
+        transition={{ duration: 0.4, delay: 2.5, repeat: Infinity, repeatDelay: 4 }}
+      >
+        <span className="text-[9px] font-bold text-success">+₦850</span>
+      </motion.div>
+
+      {/* Label */}
+      <div className="absolute bottom-2 left-2 text-[10px] text-muted-foreground font-medium">
+        AI boosts every sale
+      </div>
+    </div>
+  );
+};
+
+// Prescription Fraud Detection Animation
+const FraudDetectionDemo = () => {
+  return (
+    <div className="relative h-48 overflow-hidden rounded-xl bg-gradient-to-br from-destructive/5 to-orange-500/10 border border-destructive/20">
+      {/* Prescription document */}
+      <motion.div
+        className="absolute left-[20%] top-1/4 w-14 h-18 bg-white rounded shadow-lg border border-border"
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+      >
+        <div className="p-1.5 space-y-1">
+          <div className="w-8 h-0.5 bg-muted-foreground/30 rounded" />
+          <div className="w-10 h-0.5 bg-muted-foreground/30 rounded" />
+          <div className="flex items-center gap-1">
+            <FileSearch className="w-2 h-2 text-primary" />
+            <div className="w-6 h-0.5 bg-primary/30 rounded" />
+          </div>
+          <div className="w-8 h-0.5 bg-muted-foreground/30 rounded" />
+        </div>
+      </motion.div>
+
+      {/* AI Scanning effect */}
+      <motion.div
+        className="absolute left-[25%] top-1/4 w-10 h-16"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: [0, 1, 0] }}
+        transition={{ duration: 1.5, delay: 0.8, repeat: Infinity, repeatDelay: 3 }}
+      >
+        <motion.div
+          className="w-full h-0.5 bg-destructive/50"
+          animate={{ y: [0, 50, 0] }}
+          transition={{ duration: 1.5, repeat: Infinity, repeatDelay: 3 }}
+        />
+      </motion.div>
+
+      {/* AI analyzing center */}
+      <motion.div 
+        className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
+      >
+        <motion.div
+          className="w-12 h-12 rounded-full border-2 border-destructive/30 flex items-center justify-center"
+          animate={{ borderColor: ['hsl(var(--destructive) / 0.3)', 'hsl(var(--destructive) / 0.8)', 'hsl(var(--destructive) / 0.3)'] }}
+          transition={{ duration: 2, repeat: Infinity }}
+        >
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
+          >
+            <Shield className="w-5 h-5 text-destructive" />
+          </motion.div>
+        </motion.div>
+      </motion.div>
+
+      {/* Alert popup */}
+      <motion.div
+        className="absolute right-[12%] top-[25%] bg-destructive/10 border border-destructive/30 rounded-lg p-2"
+        initial={{ opacity: 0, scale: 0.5 }}
+        animate={{ opacity: [0, 1, 1, 0], scale: [0.5, 1, 1, 0.9] }}
+        transition={{ duration: 2, delay: 2, repeat: Infinity, repeatDelay: 2.5 }}
+      >
+        <div className="flex items-center gap-1 mb-1">
+          <AlertTriangle className="w-3 h-3 text-destructive animate-pulse" />
+          <span className="text-[8px] font-bold text-destructive">FRAUD ALERT</span>
+        </div>
+        <div className="text-[7px] text-muted-foreground">
+          Duplicate Rx detected
+        </div>
+      </motion.div>
+
+      {/* Pattern indicators */}
+      <div className="absolute right-[15%] bottom-[35%] space-y-1">
+        {[
+          { label: 'Same patient', color: 'destructive' },
+          { label: '3 times today', color: 'warning' },
+        ].map((item, i) => (
+          <motion.div
+            key={i}
+            className={`flex items-center gap-1 text-[7px] text-${item.color}`}
+            initial={{ opacity: 0, x: 10 }}
+            animate={{ opacity: [0, 1], x: [10, 0] }}
+            transition={{ duration: 0.3, delay: 2.3 + i * 0.2, repeat: Infinity, repeatDelay: 4 }}
+          >
+            <X className="w-2 h-2" />
+            <span>{item.label}</span>
+          </motion.div>
+        ))}
+      </div>
+
+      {/* Label */}
+      <div className="absolute bottom-2 left-2 text-[10px] text-muted-foreground font-medium">
+        Catches suspicious patterns
       </div>
     </div>
   );
@@ -346,26 +528,53 @@ export const FeatureDemo = ({ isInternational = false }: FeatureDemoProps) => {
       description: 'Snap a photo of your wholesale invoice. Our AI extracts all items, batch numbers, and expiry dates instantly.',
       icon: Camera,
       demo: <InvoiceScannerDemo />,
-      color: 'primary'
+      color: 'primary',
+      badge: 'Time Saver'
+    },
+    {
+      title: 'Smart Upsell AI',
+      description: 'AI suggests complementary products at checkout. Staff click once to add—boosting every sale automatically.',
+      icon: Sparkles,
+      demo: <AIUpsellDemo />,
+      color: 'purple-500',
+      badge: 'Revenue Booster'
+    },
+    {
+      title: 'Fraud Detection',
+      description: 'AI scans prescriptions for duplicate fills, suspicious patterns, and flags potential abuse before dispensing.',
+      icon: Shield,
+      demo: <FraudDetectionDemo />,
+      color: 'destructive',
+      badge: 'License Protector'
     },
     {
       title: 'Price Lock Shield',
       description: 'Staff cannot modify prices at checkout. Only admin PIN can unlock—stopping profit leakage at the source.',
       icon: Lock,
       demo: <PriceLockDemo />,
-      color: 'destructive'
+      color: 'destructive',
+      badge: 'Anti-Theft'
     },
     {
       title: 'Automated Alerts',
       description: 'Get SMS & WhatsApp alerts when stock runs low or items expire. Stay informed even when you are away from the shop.',
       icon: Bell,
       demo: <AutomatedAlertsDemo />,
-      color: 'success'
+      color: 'success',
+      badge: 'Peace of Mind'
+    },
+    {
+      title: 'Lightning Fast',
+      description: 'Works instantly on slow 2G networks. No waiting, no freezing—even during peak hours with multiple users.',
+      icon: Zap,
+      demo: <SpeedComparisonDemo />,
+      color: 'success',
+      badge: 'Performance'
     }
   ];
 
   return (
-    <section className="py-16 sm:py-24 relative">
+    <section className="py-16 sm:py-24 relative" id="features">
       <div className="container mx-auto px-4 sm:px-6">
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
@@ -381,24 +590,31 @@ export const FeatureDemo = ({ isInternational = false }: FeatureDemoProps) => {
             <span className="text-sm font-medium text-primary">See It In Action</span>
           </motion.div>
           <h2 className="text-2xl sm:text-3xl md:text-4xl font-display font-bold mb-4">
-            Watch How <span className="text-gradient-premium">PharmaTrack</span> Works
+            Features That <span className="text-gradient-premium">Close Deals</span>
           </h2>
           <p className="text-muted-foreground max-w-2xl mx-auto">
-            No complex training needed. See exactly how our features save you time and money.
+            "I already have an app" — Not like this. See the AI-powered features that set PharmaTrack apart.
           </p>
         </motion.div>
 
-        <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto">
           {demos.map((demo, i) => (
             <motion.div
               key={i}
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
               viewport={{ once: true }}
-              transition={{ delay: i * 0.15 }}
+              transition={{ delay: i * 0.1 }}
             >
-              <Card className="h-full bg-card/50 backdrop-blur-sm border-border/50 overflow-hidden group hover:border-primary/30 transition-all">
+              <Card className="h-full bg-card/50 backdrop-blur-sm border-border/50 overflow-hidden group hover:border-primary/30 transition-all hover:shadow-lg">
                 <CardContent className="p-0">
+                  {/* Badge */}
+                  <div className="px-4 pt-4">
+                    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-${demo.color}/10 text-${demo.color} border border-${demo.color}/20`}>
+                      {demo.badge}
+                    </span>
+                  </div>
+                  
                   {/* Demo Animation Area */}
                   <div className="p-4">
                     {demo.demo}
@@ -419,6 +635,38 @@ export const FeatureDemo = ({ isInternational = false }: FeatureDemoProps) => {
             </motion.div>
           ))}
         </div>
+
+        {/* Objection Handler */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="mt-16 max-w-3xl mx-auto"
+        >
+          <Card className="bg-gradient-to-r from-primary/5 via-secondary/5 to-primary/5 border-primary/20">
+            <CardContent className="p-6 text-center">
+              <h3 className="text-xl font-display font-bold mb-2">
+                "I already have a POS app..."
+              </h3>
+              <p className="text-muted-foreground mb-4">
+                Generic POS apps sell bread and soap. PharmaTrack is built specifically for pharmacies—with AI that prevents expiry loss, blocks theft, and protects your license.
+              </p>
+              <div className="flex flex-wrap justify-center gap-3">
+                {[
+                  'NAFDAC Compliance Built-in',
+                  'Drug Interaction Alerts',
+                  'AI Expiry Predictions',
+                  'Staff Theft Prevention'
+                ].map((feature, i) => (
+                  <span key={i} className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-success/10 text-success text-sm">
+                    <Check className="h-3 w-3" />
+                    {feature}
+                  </span>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        </motion.div>
       </div>
     </section>
   );
