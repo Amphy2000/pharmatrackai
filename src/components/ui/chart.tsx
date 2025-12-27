@@ -58,6 +58,40 @@ const ChartContainer = React.forwardRef<
 });
 ChartContainer.displayName = "Chart";
 
+const CSS_VAR_SEGMENT_RE = /^[a-zA-Z0-9_-]+$/;
+const CSS_VAR_FUNC_RE = /^var\(--[a-zA-Z0-9_-]+\)$/;
+const HSL_VAR_RE = /^hsl\(var\(--[a-zA-Z0-9_-]+\)(\s*\/\s*[\d.]+%?)?\)$/;
+const HEX_COLOR_RE = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})$/;
+const RGB_COLOR_RE = /^rgba?\(\s*[\d.\s,%]+\)$/;
+const HSL_COLOR_RE = /^hsla?\(\s*[\d.\s,%]+\)$/;
+
+function sanitizeCssVarSegment(value: string) {
+  const v = value.trim();
+  return CSS_VAR_SEGMENT_RE.test(v) ? v : null;
+}
+
+function isSafeCssColor(value: unknown): value is string {
+  if (typeof value !== "string") return false;
+  const v = value.trim();
+  if (!v || v.length > 100) return false;
+
+  // Block obvious CSS-breaking / injection characters.
+  if (/[;{}<>@]/.test(v)) return false;
+
+  return (
+    CSS_VAR_FUNC_RE.test(v) ||
+    HSL_VAR_RE.test(v) ||
+    HEX_COLOR_RE.test(v) ||
+    RGB_COLOR_RE.test(v) ||
+    HSL_COLOR_RE.test(v)
+  );
+}
+
+function escapeCssAttrValue(value: string) {
+  // Keeps selector stable without changing the actual attribute value.
+  return value.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+}
+
 const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
   const colorConfig = Object.entries(config).filter(([_, config]) => config.theme || config.color);
 
@@ -65,26 +99,34 @@ const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
     return null;
   }
 
-  return (
-    <style
-      dangerouslySetInnerHTML={{
-        __html: Object.entries(THEMES)
-          .map(
-            ([theme, prefix]) => `
-${prefix} [data-chart=${id}] {
-${colorConfig
-  .map(([key, itemConfig]) => {
-    const color = itemConfig.theme?.[theme as keyof typeof itemConfig.theme] || itemConfig.color;
-    return color ? `  --color-${key}: ${color};` : null;
-  })
-  .join("\n")}
-}
-`,
-          )
-          .join("\n"),
-      }}
-    />
-  );
+  const escapedId = escapeCssAttrValue(id);
+
+  const cssText = Object.entries(THEMES)
+    .map(([theme, prefix]) => {
+      const vars = colorConfig
+        .map(([key, itemConfig]) => {
+          const safeKey = sanitizeCssVarSegment(key);
+          if (!safeKey) return null;
+
+          const color = itemConfig.theme?.[theme as keyof typeof itemConfig.theme] || itemConfig.color;
+          if (!isSafeCssColor(color)) return null;
+
+          return `  --color-${safeKey}: ${color};`;
+        })
+        .filter(Boolean)
+        .join("\n");
+
+      if (!vars) return null;
+
+      return `${prefix} [data-chart="${escapedId}"] {\n${vars}\n}`;
+    })
+    .filter(Boolean)
+    .join("\n");
+
+  if (!cssText) return null;
+
+  // Using a text child avoids `dangerouslySetInnerHTML` and prevents injection.
+  return <style>{cssText}</style>;
 };
 
 const ChartTooltip = RechartsPrimitive.Tooltip;
