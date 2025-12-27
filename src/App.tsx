@@ -41,6 +41,7 @@ import AuditLog from "./pages/AuditLog";
 import ShiftHistory from "./pages/ShiftHistory";
 import Notifications from "./pages/Notifications";
 import DemoDashboard from "./pages/DemoDashboard";
+import UpsellAnalytics from "./pages/UpsellAnalytics";
 import NotFound from "./pages/NotFound";
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -108,6 +109,7 @@ const App = () => (
                       <Route path="/shift-history" element={<ProtectedRoute><ShiftHistory /></ProtectedRoute>} />
                       <Route path="/shifts" element={<ProtectedRoute><ShiftHistory /></ProtectedRoute>} />
                       <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
+                      <Route path="/upsell-analytics" element={<ProtectedRoute><UpsellAnalytics /></ProtectedRoute>} />
                       {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
                       <Route path="*" element={<NotFound />} />
                     </Routes>

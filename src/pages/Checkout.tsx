@@ -669,6 +669,7 @@ const Checkout = () => {
                   isLoading={isLoadingUpsells}
                   onAddToCart={cart.addItem}
                   onDismiss={dismissSuggestion}
+                  cartItems={cart.items}
                 />
               )}
 

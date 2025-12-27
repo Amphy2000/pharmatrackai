@@ -1603,6 +1603,90 @@ export type Database = {
           },
         ]
       }
+      upsell_analytics: {
+        Row: {
+          accepted_at: string | null
+          branch_id: string | null
+          cart_medication_ids: string[]
+          confidence_score: number | null
+          created_at: string
+          id: string
+          pharmacy_id: string
+          sale_id: string | null
+          staff_id: string | null
+          suggested_at: string
+          suggested_medication_id: string
+          suggestion_reason: string | null
+          was_accepted: boolean
+        }
+        Insert: {
+          accepted_at?: string | null
+          branch_id?: string | null
+          cart_medication_ids?: string[]
+          confidence_score?: number | null
+          created_at?: string
+          id?: string
+          pharmacy_id: string
+          sale_id?: string | null
+          staff_id?: string | null
+          suggested_at?: string
+          suggested_medication_id: string
+          suggestion_reason?: string | null
+          was_accepted?: boolean
+        }
+        Update: {
+          accepted_at?: string | null
+          branch_id?: string | null
+          cart_medication_ids?: string[]
+          confidence_score?: number | null
+          created_at?: string
+          id?: string
+          pharmacy_id?: string
+          sale_id?: string | null
+          staff_id?: string | null
+          suggested_at?: string
+          suggested_medication_id?: string
+          suggestion_reason?: string | null
+          was_accepted?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "upsell_analytics_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "upsell_analytics_pharmacy_id_fkey"
+            columns: ["pharmacy_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "upsell_analytics_sale_id_fkey"
+            columns: ["sale_id"]
+            isOneToOne: false
+            referencedRelation: "sales"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "upsell_analytics_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacy_staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "upsell_analytics_suggested_medication_id_fkey"
+            columns: ["suggested_medication_id"]
+            isOneToOne: false
+            referencedRelation: "medications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
