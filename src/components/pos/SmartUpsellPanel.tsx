@@ -5,6 +5,10 @@ import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { Medication } from '@/types/medication';
+import { useEffect, useRef } from 'react';
+import { trackUpsellSuggestion, markUpsellAccepted } from '@/hooks/useUpsellAnalytics';
+import { usePharmacy } from '@/hooks/usePharmacy';
+import { useBranchContext } from '@/contexts/BranchContext';
 
 interface UpsellSuggestion {
   product_id: string;
@@ -12,6 +16,7 @@ interface UpsellSuggestion {
   reason: string;
   confidence: number;
   medication?: Medication;
+  analyticsId?: string;
 }
 
 interface SmartUpsellPanelProps {
@@ -19,6 +24,7 @@ interface SmartUpsellPanelProps {
   isLoading: boolean;
   onAddToCart: (medication: Medication) => void;
   onDismiss: (productId: string) => void;
+  cartItems?: Array<{ medication: Medication }>;
 }
 
 export const SmartUpsellPanel = ({
@@ -26,8 +32,53 @@ export const SmartUpsellPanel = ({
   isLoading,
   onAddToCart,
   onDismiss,
+  cartItems = [],
 }: SmartUpsellPanelProps) => {
   const { formatPrice } = useCurrency();
+  const { pharmacy } = usePharmacy();
+  const { currentBranchId } = useBranchContext();
+  
+  // Track which suggestions have been logged to analytics
+  const trackedSuggestions = useRef<Map<string, string>>(new Map());
+
+  // Track suggestions when they appear
+  useEffect(() => {
+    if (!pharmacy?.id || isLoading || suggestions.length === 0) return;
+
+    const trackSuggestions = async () => {
+      const cartMedicationIds = cartItems.map(item => item.medication.id);
+      
+      for (const suggestion of suggestions) {
+        // Skip if already tracked
+        if (trackedSuggestions.current.has(suggestion.product_id)) continue;
+        
+        const analyticsId = await trackUpsellSuggestion(
+          pharmacy.id,
+          currentBranchId || null,
+          null, // staff_id would require additional lookup
+          suggestion.product_id,
+          cartMedicationIds,
+          suggestion.reason,
+          suggestion.confidence
+        );
+        
+        if (analyticsId) {
+          trackedSuggestions.current.set(suggestion.product_id, analyticsId);
+        }
+      }
+    };
+
+    trackSuggestions();
+  }, [suggestions, pharmacy?.id, isLoading, currentBranchId, cartItems]);
+
+  // Handle adding to cart with analytics tracking
+  const handleAddToCart = async (medication: Medication, productId: string) => {
+    const analyticsId = trackedSuggestions.current.get(productId);
+    if (analyticsId) {
+      await markUpsellAccepted(analyticsId);
+    }
+    onAddToCart(medication);
+  };
 
   if (!isLoading && suggestions.length === 0) {
     return null;
@@ -106,7 +157,7 @@ export const SmartUpsellPanel = ({
                 <Button
                   size="sm"
                   variant="ghost"
-                  onClick={() => onAddToCart(suggestion.medication!)}
+                  onClick={() => handleAddToCart(suggestion.medication!, suggestion.product_id)}
                   className="h-7 px-2 text-[10px] bg-primary/10 hover:bg-primary/20 text-primary"
                 >
                   <Plus className="h-3 w-3 mr-0.5" />
