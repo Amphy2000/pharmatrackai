@@ -86,11 +86,19 @@ export const ExploreFlyer = ({ exploreUrl = 'https://pharmatrack.com.ng/explore'
       qrImg.onload = () => {
         ctx.drawImage(qrImg, 340, 1000, 400, 400);
         
+        // Website URL below QR
+        ctx.font = '32px system-ui';
+        ctx.fillStyle = '#374151';
+        ctx.fillText('Or visit:', 540, 1450);
+        ctx.font = 'bold 36px system-ui';
+        ctx.fillStyle = '#059669';
+        ctx.fillText('www.pharmatrack.com.ng', 540, 1500);
+        
         // Footer
         ctx.fillStyle = '#6b7280';
         ctx.font = '28px system-ui';
-        ctx.fillText('Powered by PharmaTrack', 540, 1550);
-        ctx.fillText('Connecting Patients to Pharmacies', 540, 1600);
+        ctx.fillText('Powered by PharmaTrack', 540, 1600);
+        ctx.fillText('Connecting Patients to Pharmacies', 540, 1650);
 
         // Download
         const link = document.createElement('a');
@@ -192,6 +200,9 @@ export const ExploreFlyer = ({ exploreUrl = 'https://pharmatrack.com.ng/explore'
                       className="mx-auto w-32 h-32"
                     />
                   )}
+                  <p className="text-[10px] text-gray-500 mt-2">
+                    Or visit: <span className="font-semibold text-emerald-600">www.pharmatrack.com.ng</span>
+                  </p>
                 </div>
 
                 {/* Footer */}

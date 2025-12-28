@@ -435,12 +435,16 @@ const Explore = () => {
 
       {/* Main Content - Mobile First */}
       <main className="container mx-auto max-w-4xl px-3 md:px-4 py-4 md:py-8">
-        {/* Filter Bar - Always visible */}
-        <div className="flex items-center justify-between mb-4">
+        {/* Category Chips */}
+        <div className="mb-3">
           <CategoryChips 
             onCategorySelect={handleCategorySelect} 
             selectedCategory={selectedCategory} 
           />
+        </div>
+        
+        {/* Distance & Sort Filters - Separate row */}
+        <div className="flex items-center gap-2 mb-4">
           <DistanceFilter
             selectedRadius={distanceRadius}
             selectedSort={sortOption}
