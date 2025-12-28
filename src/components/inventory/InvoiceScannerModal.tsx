@@ -4,13 +4,98 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Camera, FileImage, Upload, Check, X, Loader2, AlertCircle, Plus, Minus, ZoomIn, ZoomOut, DollarSign } from 'lucide-react';
+import { Camera, FileImage, Upload, Check, X, Loader2, AlertCircle, Plus, Minus, ZoomIn, ZoomOut, DollarSign, Play } from 'lucide-react';
 import { useMedications } from '@/hooks/useMedications';
 import { usePharmacy } from '@/hooks/usePharmacy';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import type { Medication } from '@/types/medication';
+import sampleInvoiceImage from '@/assets/sample-invoice.png';
+
+// Mock invoice data for demo mode - realistic Nigerian pharmacy items
+const DEMO_INVOICE_ITEMS = [
+  {
+    productName: 'Amoxicillin 500mg Capsules',
+    quantity: 50,
+    unitPrice: 850,
+    batchNumber: 'BN24087',
+    expiryDate: '2026-06-15',
+    manufacturingDate: '2024-06-15',
+  },
+  {
+    productName: 'Paracetamol 500mg Tablets',
+    quantity: 100,
+    unitPrice: 350,
+    batchNumber: 'BN24092',
+    expiryDate: '2026-08-20',
+    manufacturingDate: '2024-08-20',
+  },
+  {
+    productName: 'Metformin 500mg Tablets',
+    quantity: 60,
+    unitPrice: 1200,
+    batchNumber: 'BN24103',
+    expiryDate: '2026-05-10',
+    manufacturingDate: '2024-05-10',
+  },
+  {
+    productName: 'Vitamin C 1000mg Tablets',
+    quantity: 80,
+    unitPrice: 450,
+    batchNumber: 'BN24115',
+    expiryDate: '2027-01-15',
+    manufacturingDate: '2024-07-15',
+  },
+  {
+    productName: 'Ibuprofen 400mg Tablets',
+    quantity: 40,
+    unitPrice: 520,
+    batchNumber: 'BN24078',
+    expiryDate: '2026-09-30',
+    manufacturingDate: '2024-03-30',
+  },
+  {
+    productName: 'Omeprazole 20mg Capsules',
+    quantity: 30,
+    unitPrice: 1450,
+    batchNumber: 'BN24129',
+    expiryDate: '2026-04-25',
+    manufacturingDate: '2024-04-25',
+  },
+  {
+    productName: 'Ciprofloxacin 500mg Tablets',
+    quantity: 25,
+    unitPrice: 1650,
+    batchNumber: 'BN24134',
+    expiryDate: '2026-07-18',
+    manufacturingDate: '2024-07-18',
+  },
+  {
+    productName: 'Artemether-Lumefantrine 20/120mg',
+    quantity: 45,
+    unitPrice: 2200,
+    batchNumber: 'BN24141',
+    expiryDate: '2026-03-12',
+    manufacturingDate: '2024-03-12',
+  },
+  {
+    productName: 'Loratadine 10mg Tablets',
+    quantity: 35,
+    unitPrice: 780,
+    batchNumber: 'BN24156',
+    expiryDate: '2026-11-08',
+    manufacturingDate: '2024-05-08',
+  },
+  {
+    productName: 'Diclofenac 50mg Tablets',
+    quantity: 55,
+    unitPrice: 620,
+    batchNumber: 'BN24162',
+    expiryDate: '2026-10-22',
+    manufacturingDate: '2024-04-22',
+  },
+];
 
 interface InvoiceScannerModalProps {
   open: boolean;
@@ -43,6 +128,7 @@ export const InvoiceScannerModal = ({ open, onOpenChange }: InvoiceScannerModalP
   const [error, setError] = useState<string | null>(null);
   const [zoomLevel, setZoomLevel] = useState(1);
   const [highlightedIndex, setHighlightedIndex] = useState<number | null>(null);
+  const [isDemoMode, setIsDemoMode] = useState(false);
 
   // Get default margin from pharmacy settings
   const defaultMargin = (pharmacy as any)?.default_margin_percent || 20;
@@ -66,6 +152,47 @@ export const InvoiceScannerModal = ({ open, onOpenChange }: InvoiceScannerModalP
       setZoomLevel(1);
     };
     reader.readAsDataURL(file);
+    setIsDemoMode(false);
+  };
+
+  // Run demo mode with sample invoice and mock data
+  const handleDemoMode = async () => {
+    setImageUrl(sampleInvoiceImage);
+    setError(null);
+    setZoomLevel(1);
+    setIsDemoMode(true);
+    setIsProcessing(true);
+    setExtractedItems([]);
+
+    // Simulate processing delay for realistic experience
+    await new Promise(resolve => setTimeout(resolve, 1500));
+
+    // Match demo items to existing medications and calculate suggested prices
+    const items: ExtractedItem[] = DEMO_INVOICE_ITEMS.map((item) => {
+      const matched = medications.find(
+        (med) =>
+          med.name.toLowerCase().includes(item.productName.toLowerCase()) ||
+          item.productName.toLowerCase().includes(med.name.toLowerCase())
+      );
+
+      const suggestedSellingPrice = calculateSellingPrice(item.unitPrice);
+
+      return {
+        ...item,
+        suggestedSellingPrice,
+        matched,
+        isNew: !matched,
+      };
+    });
+
+    setExtractedItems(items);
+    setIsProcessing(false);
+
+    const matchedCount = items.filter(i => i.matched).length;
+    toast({
+      title: '🎬 Demo Mode Active',
+      description: `Found ${items.length} items, ${matchedCount} matched. Auto-margin: ${defaultMargin}%`,
+    });
   };
 
   // Process image with AI
@@ -247,17 +374,39 @@ export const InvoiceScannerModal = ({ open, onOpenChange }: InvoiceScannerModalP
           {/* Left: Image upload with zoom */}
           <div className="w-2/5 flex flex-col">
             {!imageUrl ? (
-              <label className="flex-1 border-2 border-dashed rounded-lg flex flex-col items-center justify-center cursor-pointer hover:bg-muted/50 transition-colors">
-                <Camera className="h-10 w-10 text-muted-foreground mb-2" />
-                <span className="text-sm text-muted-foreground">Upload Invoice</span>
-                <span className="text-xs text-muted-foreground mt-1">JPG, PNG, or PDF</span>
-                <input
-                  type="file"
-                  accept="image/*,.pdf"
-                  onChange={handleFileUpload}
-                  className="hidden"
-                />
-              </label>
+              <div className="flex-1 flex flex-col">
+                <label className="flex-1 border-2 border-dashed rounded-lg flex flex-col items-center justify-center cursor-pointer hover:bg-muted/50 transition-colors">
+                  <Camera className="h-10 w-10 text-muted-foreground mb-2" />
+                  <span className="text-sm text-muted-foreground">Upload Invoice</span>
+                  <span className="text-xs text-muted-foreground mt-1">JPG, PNG, or PDF</span>
+                  <input
+                    type="file"
+                    accept="image/*,.pdf"
+                    onChange={handleFileUpload}
+                    className="hidden"
+                  />
+                </label>
+                
+                <div className="mt-3 flex flex-col gap-2">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <div className="flex-1 h-px bg-border" />
+                    <span>or</span>
+                    <div className="flex-1 h-px bg-border" />
+                  </div>
+                  <Button
+                    variant="outline"
+                    className="w-full gap-2"
+                    onClick={handleDemoMode}
+                    disabled={isProcessing}
+                  >
+                    <Play className="h-4 w-4" />
+                    Try Demo
+                  </Button>
+                  <p className="text-[10px] text-center text-muted-foreground">
+                    See how it works with sample data
+                  </p>
+                </div>
+              </div>
             ) : (
               <div className="flex-1 flex flex-col">
                 {/* Zoom controls */}
@@ -298,6 +447,11 @@ export const InvoiceScannerModal = ({ open, onOpenChange }: InvoiceScannerModalP
                       <div className="absolute inset-0 bg-primary/10 border-2 border-primary rounded-lg pointer-events-none animate-pulse" />
                     )}
                   </div>
+                  {isDemoMode && (
+                    <Badge className="absolute top-2 left-2 bg-primary/90">
+                      🎬 Demo Mode
+                    </Badge>
+                  )}
                   <Button
                     variant="destructive"
                     size="icon"
@@ -306,29 +460,52 @@ export const InvoiceScannerModal = ({ open, onOpenChange }: InvoiceScannerModalP
                       setImageUrl(null);
                       setExtractedItems([]);
                       setZoomLevel(1);
+                      setIsDemoMode(false);
                     }}
                   >
                     <X className="h-4 w-4" />
                   </Button>
                 </div>
                 
-                <Button
-                  className="mt-3 w-full"
-                  onClick={handleProcessImage}
-                  disabled={isProcessing}
-                >
-                  {isProcessing ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Processing...
-                    </>
-                  ) : (
-                    <>
-                      <Upload className="h-4 w-4 mr-2" />
-                      Extract Items
-                    </>
+                <div className="flex gap-2 mt-3">
+                  {!isDemoMode && (
+                    <Button
+                      className="flex-1"
+                      onClick={handleProcessImage}
+                      disabled={isProcessing}
+                    >
+                      {isProcessing ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Processing...
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="h-4 w-4 mr-2" />
+                          Extract Items
+                        </>
+                      )}
+                    </Button>
                   )}
-                </Button>
+                  <Button
+                    variant={isDemoMode ? "default" : "outline"}
+                    className={isDemoMode ? "flex-1 gap-2" : "gap-2"}
+                    onClick={handleDemoMode}
+                    disabled={isProcessing}
+                  >
+                    {isProcessing ? (
+                      <>
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        {isDemoMode ? 'Processing...' : ''}
+                      </>
+                    ) : (
+                      <>
+                        <Play className="h-4 w-4" />
+                        {isDemoMode ? 'Re-run Demo' : 'Try Demo'}
+                      </>
+                    )}
+                  </Button>
+                </div>
               </div>
             )}
           </div>
