@@ -120,10 +120,10 @@ But here's the difference:
 Quick question: Does your current app...
 • Generate NAFDAC Batch Traceability reports?
 • Lock prices so staff can't manipulate?
-• Predict expiry 60 days in advance?
-• Warn about drug interactions at checkout?
+• List your products on a public marketplace?
+• Let patients find you by distance (1km, 5km, 10km)?
 
-If not, you're leaving money on the table.
+If not, you're leaving customers AND money on the table.
 
 Want me to show you the difference in 10 minutes?
 

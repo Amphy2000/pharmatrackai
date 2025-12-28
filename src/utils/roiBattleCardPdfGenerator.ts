@@ -116,9 +116,9 @@ export const generateROIBattleCardPdf = (data: ROIData): jsPDF => {
     { q: 'Does your current app generate NAFDAC audit reports?', trap: 'Their app can\'t. Ours can in 1 click.' },
     { q: 'Can staff change prices during a sale?', trap: 'That\'s where your profit disappears.' },
     { q: 'Does it warn about dangerous drug interactions?', trap: 'Patient safety = legal protection.' },
-    { q: 'Can it predict which items will expire in 60 days?', trap: 'We use AI, not just dates.' },
+    { q: 'Can customers find your pharmacy in a public marketplace?', trap: 'PharmaTrack lists you online.' },
+    { q: 'Can patients search by distance (1km, 5km, 10km)?', trap: 'Our marketplace shows nearby stock.' },
     { q: 'Can it scan your invoice and stock 50 drugs in 30 seconds?', trap: 'This is our "wow" moment.' },
-    { q: 'Does it track manufacturing dates?', trap: 'Required for 2025 NAFDAC compliance.' },
   ];
 
   doc.setFontSize(9);
@@ -171,8 +171,8 @@ export const generateROIBattleCardPdf = (data: ROIData): jsPDF => {
   const recoveries = [
     { feature: 'AI predicts expiry 60 days early', value: `Recover 70% of expiring stock` },
     { feature: 'Locked pricing (admin only)', value: `Stop ${formatNaira(staffLeakage)}/yr theft` },
-    { feature: 'One-click NAFDAC reports', value: 'Always audit-ready' },
-    { feature: 'Drug interaction alerts', value: 'Protect your license' },
+    { feature: 'Public marketplace listing', value: 'Patients find you first' },
+    { feature: 'Distance-based search', value: 'Nearby customers come to you' },
     { feature: 'Invoice scanner', value: 'Stock 50 items in 30 seconds' },
   ];
 

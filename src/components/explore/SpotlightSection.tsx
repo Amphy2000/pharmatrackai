@@ -114,7 +114,7 @@ export const SpotlightSection = ({ onOrder }: SpotlightSectionProps) => {
           pharmacy_id,
           is_featured,
           featured_until,
-          pharmacies!inner (
+          pharmacies (
             name,
             phone,
             address,
@@ -125,26 +125,31 @@ export const SpotlightSection = ({ onOrder }: SpotlightSectionProps) => {
         .eq('is_featured', true)
         .eq('is_shelved', true)
         .gt('current_stock', 0)
-        .in('pharmacies.subscription_status', ['active', 'trial'])
         .or('featured_until.is.null,featured_until.gt.now()')
         .limit(20);
 
       if (error) throw error;
 
-      const formatted = (data || []).map((m: any) => ({
-        id: m.id,
-        name: m.name,
-        category: m.category,
-        current_stock: m.current_stock,
-        selling_price: m.selling_price,
-        dispensing_unit: m.dispensing_unit,
-        pharmacy_id: m.pharmacy_id,
-        pharmacy_name: m.pharmacies?.name || 'Unknown',
-        pharmacy_phone: m.pharmacies?.phone,
-        pharmacy_address: m.pharmacies?.address,
-        is_featured: m.is_featured,
-        featured_until: m.featured_until,
-      }));
+      // Filter for active/trial pharmacies on client side (safer than nested filter)
+      const formatted = (data || [])
+        .filter((m: any) => {
+          const status = m.pharmacies?.subscription_status;
+          return status === 'active' || status === 'trial';
+        })
+        .map((m: any) => ({
+          id: m.id,
+          name: m.name,
+          category: m.category,
+          current_stock: m.current_stock,
+          selling_price: m.selling_price,
+          dispensing_unit: m.dispensing_unit,
+          pharmacy_id: m.pharmacy_id,
+          pharmacy_name: m.pharmacies?.name || 'Unknown',
+          pharmacy_phone: m.pharmacies?.phone,
+          pharmacy_address: m.pharmacies?.address,
+          is_featured: m.is_featured,
+          featured_until: m.featured_until,
+        }));
 
       setFeatured(formatted);
     } catch (error) {
