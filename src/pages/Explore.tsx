@@ -11,6 +11,9 @@ import { Link } from "react-router-dom";
 import { CustomerBarcodeScanner } from "@/components/explore/CustomerBarcodeScanner";
 import { VoiceSearchButton } from "@/components/explore/VoiceSearchButton";
 import { SpotlightSection } from "@/components/explore/SpotlightSection";
+import { CategoryChips } from "@/components/explore/CategoryChips";
+import { NearbyEssentials } from "@/components/explore/NearbyEssentials";
+import { RequestDrugButton } from "@/components/explore/RequestDrugButton";
 
 interface PublicMedication {
   id: string;
@@ -33,6 +36,7 @@ const Explore = () => {
   const [medications, setMedications] = useState<PublicMedication[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const { formatPrice } = useCurrency();
   const { toast } = useToast();
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -81,6 +85,19 @@ const Explore = () => {
   const handleVoiceResult = (transcript: string) => {
     setSearchQuery(transcript);
     handleSearch(transcript);
+  };
+
+  // Handle category selection
+  const handleCategorySelect = (category: string) => {
+    if (category) {
+      setSelectedCategory(category);
+      setSearchQuery(category);
+      handleSearch(category);
+    } else {
+      setSelectedCategory(null);
+      setSearchQuery("");
+      setHasSearched(false);
+    }
   };
 
   // Track page visit on mount
@@ -153,7 +170,7 @@ const Explore = () => {
     }
   };
 
-  const handleWhatsAppOrder = async (medication: PublicMedication, quantity: number = 1) => {
+  const handleWhatsAppOrder = async (medication: PublicMedication | any, quantity: number = 1) => {
     // Track the WhatsApp lead
     try {
       await supabase.from("whatsapp_leads").insert({
@@ -357,9 +374,18 @@ const Explore = () => {
 
       {/* Results */}
       <main className="container mx-auto max-w-4xl px-4 py-8">
+        {/* Category Chips - Always visible */}
+        <CategoryChips 
+          onCategorySelect={handleCategorySelect} 
+          selectedCategory={selectedCategory} 
+        />
+
         {/* Spotlight Section - Featured Products */}
         {!hasSearched && (
-          <SpotlightSection onOrder={handleWhatsAppOrder} />
+          <>
+            <SpotlightSection onOrder={handleWhatsAppOrder} />
+            <NearbyEssentials onOrder={handleWhatsAppOrder} />
+          </>
         )}
 
         {!hasSearched ? (
@@ -386,15 +412,18 @@ const Explore = () => {
             ))}
           </div>
         ) : medications.length === 0 ? (
-          <div className="text-center py-16">
-            <div className="h-24 w-24 mx-auto mb-6 rounded-full bg-muted flex items-center justify-center">
-              <Package className="h-12 w-12 text-muted-foreground" />
+          <div className="space-y-6">
+            <div className="text-center py-12">
+              <div className="h-24 w-24 mx-auto mb-6 rounded-full bg-muted flex items-center justify-center">
+                <Package className="h-12 w-12 text-muted-foreground" />
+              </div>
+              <h2 className="text-2xl font-bold text-foreground mb-2">No Results Found</h2>
+              <p className="text-muted-foreground max-w-md mx-auto mb-6">
+                We couldn't find "{searchQuery}" in any nearby pharmacies. 
+                Try a different search term or request this drug below.
+              </p>
             </div>
-            <h2 className="text-2xl font-bold text-foreground mb-2">No Results Found</h2>
-            <p className="text-muted-foreground max-w-md mx-auto">
-              We couldn't find "{searchQuery}" in any nearby pharmacies. 
-              Try a different search term or check back later.
-            </p>
+            <RequestDrugButton searchQuery={searchQuery} />
           </div>
         ) : (
           <div className="space-y-4">
