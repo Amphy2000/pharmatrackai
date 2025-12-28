@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Star, ChevronLeft, ChevronRight, MapPin, Store, MessageCircle, Clock, Navigation, Loader2, Sparkles } from 'lucide-react';
+import { Star, ChevronLeft, ChevronRight, MapPin, Store, MessageCircle, Clock, Navigation, Loader2, Sparkles, Zap } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -319,12 +319,17 @@ export const SpotlightSection = ({ onOrder }: SpotlightSectionProps) => {
                       <span className="text-[10px] md:text-xs text-muted-foreground line-clamp-1 flex-1">
                         {medication.pharmacy_address || 'Location not specified'}
                       </span>
-                      {medication.distance !== undefined && (
+                      {/* Nearby badge for products within 5km */}
+                      {medication.distance !== undefined && medication.distance <= 5 && (
+                        <Badge className="bg-gradient-to-r from-green-500 to-emerald-500 text-white text-[9px] md:text-[10px] px-1.5 py-0 shrink-0 gap-0.5">
+                          <Zap className="h-2.5 w-2.5" />
+                          Nearby
+                        </Badge>
+                      )}
+                      {/* Distance badge for products beyond 5km */}
+                      {medication.distance !== undefined && medication.distance > 5 && (
                         <Badge variant="secondary" className="text-[9px] md:text-[10px] px-1.5 py-0 shrink-0">
-                          {medication.distance < 1 
-                            ? `${Math.round(medication.distance * 1000)}m`
-                            : `${medication.distance.toFixed(1)}km`
-                          }
+                          {medication.distance.toFixed(1)}km
                         </Badge>
                       )}
                     </div>
