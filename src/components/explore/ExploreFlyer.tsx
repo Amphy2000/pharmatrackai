@@ -6,27 +6,26 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { motion } from 'framer-motion';
 import QRCode from 'qrcode';
 import { useEffect } from 'react';
-
 interface ExploreFlyerProps {
   exploreUrl?: string;
 }
-
-export const ExploreFlyer = ({ exploreUrl = 'https://pharmatrack.com.ng/explore' }: ExploreFlyerProps) => {
+export const ExploreFlyer = ({
+  exploreUrl = 'https://pharmatrack.com.ng/explore'
+}: ExploreFlyerProps) => {
   const [qrCodeDataUrl, setQrCodeDataUrl] = useState<string>('');
   const [isOpen, setIsOpen] = useState(false);
-
   useEffect(() => {
     // Generate QR code
     QRCode.toDataURL(exploreUrl, {
       width: 200,
       margin: 2,
       color: {
-        dark: '#059669', // emerald-600
-        light: '#ffffff',
-      },
+        dark: '#059669',
+        // emerald-600
+        light: '#ffffff'
+      }
     }).then(setQrCodeDataUrl);
   }, [exploreUrl]);
-
   const handleDownloadFlyer = () => {
     // Create a canvas to draw the flyer
     const canvas = document.createElement('canvas');
@@ -51,7 +50,7 @@ export const ExploreFlyer = ({ exploreUrl = 'https://pharmatrack.com.ng/explore'
     // Draw text
     ctx.fillStyle = '#1f2937';
     ctx.textAlign = 'center';
-    
+
     // Headline
     ctx.font = 'bold 72px system-ui';
     ctx.fillText('🤒 Sick?', 540, 320);
@@ -63,13 +62,7 @@ export const ExploreFlyer = ({ exploreUrl = 'https://pharmatrack.com.ng/explore'
     ctx.font = '36px system-ui';
     ctx.textAlign = 'left';
     ctx.fillStyle = '#374151';
-    
-    const features = [
-      '📱 Scan & Search: Find medication in stock now',
-      '💰 Compare Prices: See real-time prices nearby',
-      '💬 Order via WhatsApp: Message directly',
-    ];
-    
+    const features = ['📱 Scan & Search: Find medication in stock now', '💰 Compare Prices: See real-time prices nearby', '💬 Order via WhatsApp: Message directly'];
     features.forEach((feature, i) => {
       ctx.fillText(feature, 100, 600 + i * 80);
     });
@@ -85,7 +78,7 @@ export const ExploreFlyer = ({ exploreUrl = 'https://pharmatrack.com.ng/explore'
       const qrImg = new Image();
       qrImg.onload = () => {
         ctx.drawImage(qrImg, 340, 1000, 400, 400);
-        
+
         // Website URL below QR
         ctx.font = '32px system-ui';
         ctx.fillStyle = '#374151';
@@ -93,7 +86,7 @@ export const ExploreFlyer = ({ exploreUrl = 'https://pharmatrack.com.ng/explore'
         ctx.font = 'bold 36px system-ui';
         ctx.fillStyle = '#059669';
         ctx.fillText('www.pharmatrack.com.ng', 540, 1500);
-        
+
         // Footer
         ctx.fillStyle = '#6b7280';
         ctx.font = '28px system-ui';
@@ -109,14 +102,13 @@ export const ExploreFlyer = ({ exploreUrl = 'https://pharmatrack.com.ng/explore'
       qrImg.src = qrCodeDataUrl;
     }
   };
-
   const handleShare = async () => {
     if (navigator.share) {
       try {
         await navigator.share({
           title: 'Find Medicine Near You',
           text: 'Check drug availability and prices in your neighborhood with PharmaTrack',
-          url: exploreUrl,
+          url: exploreUrl
         });
       } catch (err) {
         console.log('Share cancelled');
@@ -126,15 +118,9 @@ export const ExploreFlyer = ({ exploreUrl = 'https://pharmatrack.com.ng/explore'
       navigator.clipboard.writeText(exploreUrl);
     }
   };
-
-  return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+  return <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
-        <Button
-          variant="outline"
-          size="sm"
-          className="gap-2 text-xs h-8 rounded-full border-emerald-500/30 text-emerald-600 hover:bg-emerald-50 hover:border-emerald-500"
-        >
+        <Button variant="outline" size="sm" className="gap-2 text-xs h-8 rounded-full border-emerald-500/30 text-emerald-600 hover:bg-emerald-50 hover:border-emerald-500">
           <QrCode className="h-3.5 w-3.5" />
           <span className="hidden sm:inline">Get Flyer</span>
         </Button>
@@ -148,10 +134,13 @@ export const ExploreFlyer = ({ exploreUrl = 'https://pharmatrack.com.ng/explore'
         </DialogHeader>
 
         {/* Flyer Preview */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-        >
+        <motion.div initial={{
+        opacity: 0,
+        y: 10
+      }} animate={{
+        opacity: 1,
+        y: 0
+      }}>
           <Card className="overflow-hidden bg-gradient-to-br from-emerald-600 to-emerald-700 border-0">
             <CardContent className="p-4">
               <div className="bg-white rounded-2xl p-4 space-y-4">
@@ -193,13 +182,7 @@ export const ExploreFlyer = ({ exploreUrl = 'https://pharmatrack.com.ng/explore'
                   <p className="text-xs font-semibold text-emerald-600 mb-2">
                     Scan to Find Medicine Near You
                   </p>
-                  {qrCodeDataUrl && (
-                    <img 
-                      src={qrCodeDataUrl} 
-                      alt="Scan to find medicine" 
-                      className="mx-auto w-32 h-32"
-                    />
-                  )}
+                  {qrCodeDataUrl && <img src={qrCodeDataUrl} alt="Scan to find medicine" className="mx-auto w-32 h-32" />}
                   <p className="text-[10px] text-gray-500 mt-2">
                     Or visit: <span className="font-semibold text-emerald-600">www.pharmatrack.com.ng</span>
                   </p>
@@ -221,32 +204,18 @@ export const ExploreFlyer = ({ exploreUrl = 'https://pharmatrack.com.ng/explore'
 
         {/* Action Buttons */}
         <div className="flex gap-2 pt-2">
-          <Button
-            onClick={handleDownloadFlyer}
-            className="flex-1 bg-emerald-600 hover:bg-emerald-700"
-          >
+          <Button onClick={handleDownloadFlyer} className="flex-1 bg-emerald-600 hover:bg-emerald-700">
             <Download className="h-4 w-4 mr-2" />
             Download Flyer
           </Button>
-          <Button
-            variant="outline"
-            onClick={handleShare}
-            className="flex-1"
-          >
+          <Button variant="outline" onClick={handleShare} className="flex-1">
             <Share2 className="h-4 w-4 mr-2" />
             Share Link
           </Button>
         </div>
 
         {/* Sales Script Tip */}
-        <div className="bg-muted/50 rounded-lg p-3 text-xs text-muted-foreground">
-          <p className="font-semibold text-foreground mb-1">💡 Sales Tip</p>
-          <p>
-            "Patients scan this QR, see your Spotlight products, and WhatsApp you directly. 
-            You close the sale before they even reach your door."
-          </p>
-        </div>
+        
       </DialogContent>
-    </Dialog>
-  );
+    </Dialog>;
 };
