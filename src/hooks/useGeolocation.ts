@@ -177,7 +177,7 @@ export const getApproximateCoordinates = (address: string | null): { lat: number
     'umuahia': { lat: 5.5333, lon: 7.4833 },
     'eket': { lat: 4.6500, lon: 7.9333 },
     
-    // Niger State - Adding Patigi area
+    // Niger State
     'patigi': { lat: 8.7167, lon: 5.7500 },
     'bida': { lat: 9.0833, lon: 6.0167 },
     'kontagora': { lat: 10.4000, lon: 5.4667 },
@@ -185,7 +185,6 @@ export const getApproximateCoordinates = (address: string | null): { lat: number
     'new bussa': { lat: 9.8833, lon: 4.5167 },
   };
   
-  // Check for exact matches first (more specific areas)
   for (const [location, coords] of Object.entries(locations)) {
     if (addressLower.includes(location)) {
       return coords;
@@ -193,4 +192,94 @@ export const getApproximateCoordinates = (address: string | null): { lat: number
   }
   
   return null;
+};
+
+/**
+ * Get a fallback location description when coordinates can't be determined
+ * Returns the most relevant LGA or region name based on address parsing
+ */
+export const getFallbackLocationName = (address: string | null): string | null => {
+  if (!address) return null;
+  
+  const addressLower = address.toLowerCase();
+  
+  // Map of keywords to LGA/region names
+  const lgaMap: Record<string, string> = {
+    // Lagos LGAs
+    'ikeja': 'Ikeja LGA',
+    'lagos island': 'Lagos Island LGA',
+    'victoria island': 'Eti-Osa LGA',
+    'lekki': 'Eti-Osa LGA',
+    'ikoyi': 'Eti-Osa LGA',
+    'yaba': 'Yaba LGA',
+    'surulere': 'Surulere LGA',
+    'festac': 'Amuwo-Odofin LGA',
+    'apapa': 'Apapa LGA',
+    'oshodi': 'Oshodi-Isolo LGA',
+    'isolo': 'Oshodi-Isolo LGA',
+    'mushin': 'Mushin LGA',
+    'agege': 'Agege LGA',
+    'alimosho': 'Alimosho LGA',
+    'ikorodu': 'Ikorodu LGA',
+    'epe': 'Epe LGA',
+    'badagry': 'Badagry LGA',
+    'kosofe': 'Kosofe LGA',
+    'gbagada': 'Kosofe LGA',
+    'somolu': 'Somolu LGA',
+    'bariga': 'Somolu LGA',
+    
+    // Abuja Areas
+    'garki': 'AMAC, Abuja',
+    'wuse': 'AMAC, Abuja',
+    'maitama': 'AMAC, Abuja',
+    'asokoro': 'AMAC, Abuja',
+    'gwarinpa': 'Bwari, Abuja',
+    'kubwa': 'Bwari, Abuja',
+    'nyanya': 'Karu, Abuja',
+    'lugbe': 'AMAC, Abuja',
+    'abuja': 'FCT, Abuja',
+    
+    // Niger State
+    'patigi': 'Patigi LGA, Niger',
+    'bida': 'Bida LGA, Niger',
+    'minna': 'Chanchaga LGA, Niger',
+    'kontagora': 'Kontagora LGA, Niger',
+    'suleja': 'Suleja LGA, Niger',
+    
+    // Other states - capitals
+    'port harcourt': 'Port Harcourt, Rivers',
+    'kano': 'Kano Municipal',
+    'ibadan': 'Ibadan, Oyo',
+    'benin city': 'Benin City, Edo',
+    'benin': 'Benin City, Edo',
+    'enugu': 'Enugu, Enugu State',
+    'kaduna': 'Kaduna, Kaduna State',
+    'jos': 'Jos, Plateau State',
+    'calabar': 'Calabar, Cross River',
+    'uyo': 'Uyo, Akwa Ibom',
+    'owerri': 'Owerri, Imo State',
+    'abeokuta': 'Abeokuta, Ogun State',
+  };
+  
+  for (const [keyword, lgaName] of Object.entries(lgaMap)) {
+    if (addressLower.includes(keyword)) {
+      return lgaName;
+    }
+  }
+  
+  // If no match, try to extract from common address patterns
+  const parts = address.split(',').map(p => p.trim());
+  if (parts.length > 1) {
+    return `Within ${parts[parts.length - 1]}`;
+  }
+  
+  return null;
+};
+
+/**
+ * Generate a Google Maps link for an address
+ */
+export const getGoogleMapsLink = (address: string | null): string | null => {
+  if (!address) return null;
+  return `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`;
 };

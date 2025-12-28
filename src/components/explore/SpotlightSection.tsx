@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
-import { Star, ChevronLeft, ChevronRight, MapPin, Store, MessageCircle, Clock, Navigation, Loader2, Sparkles, Zap } from 'lucide-react';
+import { Star, ChevronLeft, ChevronRight, MapPin, Store, MessageCircle, Clock, Navigation, Loader2, Sparkles, Zap, ExternalLink } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { differenceInDays } from 'date-fns';
-import { useGeolocation, calculateDistance, getApproximateCoordinates } from '@/hooks/useGeolocation';
+import { useGeolocation, calculateDistance, getApproximateCoordinates, getFallbackLocationName, getGoogleMapsLink } from '@/hooks/useGeolocation';
 import { motion } from 'framer-motion';
 
 interface FeaturedMedication {
@@ -308,31 +308,51 @@ export const SpotlightSection = ({ onOrder }: SpotlightSectionProps) => {
                     </span>
                   </p>
 
-                  {/* Pharmacy Info - Compact */}
-                  <div className="space-y-1 mb-3">
-                    <div className="flex items-center gap-1.5 text-xs md:text-sm text-muted-foreground">
-                      <Store className="h-3 w-3 shrink-0" />
+                  {/* Pharmacy Info with Distance */}
+                  <div className="space-y-1.5 mb-3">
+                    <div className="flex items-center gap-1.5 text-xs md:text-sm">
+                      <Store className="h-3 w-3 shrink-0 text-muted-foreground" />
                       <span className="font-medium text-foreground line-clamp-1">{medication.pharmacy_name}</span>
                     </div>
-                    <div className="flex items-center gap-1.5">
-                      <MapPin className="h-3 w-3 shrink-0 text-muted-foreground" />
-                      <span className="text-[10px] md:text-xs text-muted-foreground line-clamp-1 flex-1">
-                        {medication.pharmacy_address || 'Location not specified'}
-                      </span>
-                      {/* Nearby badge for products within 5km */}
-                      {medication.distance !== undefined && medication.distance <= 5 && (
-                        <Badge className="bg-gradient-to-r from-green-500 to-emerald-500 text-white text-[9px] md:text-[10px] px-1.5 py-0 shrink-0 gap-0.5">
-                          <Zap className="h-2.5 w-2.5" />
-                          Nearby
+                    
+                    {/* Distance Display - Always show */}
+                    {medication.distance !== undefined ? (
+                      <div className="flex items-center gap-1.5">
+                        {medication.distance <= 5 ? (
+                          <Badge className="bg-gradient-to-r from-green-500 to-emerald-500 text-white text-[9px] md:text-[10px] px-2 py-0.5 gap-1">
+                            <Zap className="h-2.5 w-2.5" />
+                            Fast Pickup • {medication.distance < 1 ? `${Math.round(medication.distance * 1000)}m` : `${medication.distance.toFixed(1)}km`}
+                          </Badge>
+                        ) : (
+                          <Badge variant="secondary" className="text-[9px] md:text-[10px] px-2 py-0.5">
+                            📍 {medication.distance.toFixed(1)}km away
+                          </Badge>
+                        )}
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1.5">
+                        <Badge variant="outline" className="text-[9px] md:text-[10px] px-2 py-0.5 text-muted-foreground">
+                          📍 {getFallbackLocationName(medication.pharmacy_address) || 'Location available'}
                         </Badge>
-                      )}
-                      {/* Distance badge for products beyond 5km */}
-                      {medication.distance !== undefined && medication.distance > 5 && (
-                        <Badge variant="secondary" className="text-[9px] md:text-[10px] px-1.5 py-0 shrink-0">
-                          {medication.distance.toFixed(1)}km
-                        </Badge>
-                      )}
-                    </div>
+                      </div>
+                    )}
+                    
+                    {/* Clickable Address */}
+                    {medication.pharmacy_address && (
+                      <a 
+                        href={getGoogleMapsLink(medication.pharmacy_address) || '#'}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-1.5 text-[10px] md:text-xs text-primary hover:text-primary/80 transition-colors group"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <MapPin className="h-3 w-3 shrink-0" />
+                        <span className="line-clamp-1 flex-1 underline-offset-2 group-hover:underline">
+                          {medication.pharmacy_address}
+                        </span>
+                        <ExternalLink className="h-2.5 w-2.5 shrink-0 opacity-50 group-hover:opacity-100" />
+                      </a>
+                    )}
                   </div>
 
                   {/* CTA */}
