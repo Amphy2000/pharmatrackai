@@ -9,8 +9,8 @@ type AlertChannel = 'sms' | 'whatsapp';
 interface SendAlertParams {
   alertType: AlertType;
   message: string;
-  recipientPhone: string;
-  channel: AlertChannel;
+  recipientPhone?: string; // Optional - will use pharmacy alert_recipient_phone if not provided
+  channel?: AlertChannel;  // Optional - will use pharmacy alert_channel if not provided
   itemName?: string;
   itemValue?: number;
   daysLeft?: number;
@@ -53,12 +53,23 @@ export const useAlerts = () => {
       return { success: false, error: 'Pharmacy not found' };
     }
 
+    // Use provided phone/channel or fall back to pharmacy settings
+    const recipientPhone = params.recipientPhone || (pharmacy as any)?.alert_recipient_phone;
+    const channel = params.channel || (pharmacy as any)?.alert_channel || 'sms';
+
+    if (!recipientPhone) {
+      toast.error('No alert phone number configured. Please set one in Settings > Alerts.');
+      return { success: false, error: 'No alert phone number configured' };
+    }
+
     setIsSending(true);
     try {
       const { data, error } = await supabase.functions.invoke('termii-alert', {
         body: {
           pharmacyId: pharmacy.id,
           ...params,
+          recipientPhone,
+          channel,
         },
       });
 
@@ -199,12 +210,20 @@ export const useAlerts = () => {
     });
   };
 
+  // Helper to get current alert settings from pharmacy
+  const getAlertSettings = () => ({
+    phone: (pharmacy as any)?.alert_recipient_phone || null,
+    channel: ((pharmacy as any)?.alert_channel || 'sms') as AlertChannel,
+    hasSettings: !!(pharmacy as any)?.alert_recipient_phone,
+  });
+
   return {
     sendAlert,
     sendLowStockAlert,
     sendExpiryAlert,
     sendExpiredAlert,
     sendDailySummary,
+    getAlertSettings,
     isSending,
   };
 };

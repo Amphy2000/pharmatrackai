@@ -697,6 +697,8 @@ export type Database = {
           active_branches_limit: number
           address: string | null
           admin_pin_hash: string | null
+          alert_channel: string | null
+          alert_recipient_phone: string | null
           auto_renew: boolean | null
           branch_fee_per_month: number
           cancellation_reason: string | null
@@ -731,6 +733,8 @@ export type Database = {
           active_branches_limit?: number
           address?: string | null
           admin_pin_hash?: string | null
+          alert_channel?: string | null
+          alert_recipient_phone?: string | null
           auto_renew?: boolean | null
           branch_fee_per_month?: number
           cancellation_reason?: string | null
@@ -765,6 +769,8 @@ export type Database = {
           active_branches_limit?: number
           address?: string | null
           admin_pin_hash?: string | null
+          alert_channel?: string | null
+          alert_recipient_phone?: string | null
           auto_renew?: boolean | null
           branch_fee_per_month?: number
           cancellation_reason?: string | null
