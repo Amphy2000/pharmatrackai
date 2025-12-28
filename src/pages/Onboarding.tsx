@@ -7,7 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Building2, Loader2 } from 'lucide-react';
+import { AddressAutocomplete } from '@/components/common/AddressAutocomplete';
+import { Building2, Loader2, Check } from 'lucide-react';
 
 const Onboarding = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -19,6 +20,13 @@ const Onboarding = () => {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
+  const [geocodeData, setGeocodeData] = useState<{
+    latitude: number;
+    longitude: number;
+    formatted_address: string;
+    city?: string;
+    state?: string;
+  } | null>(null);
   const [licenseNumber, setLicenseNumber] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -136,13 +144,22 @@ const Onboarding = () => {
 
             <div className="space-y-2">
               <Label htmlFor="pharmacy-address">Address</Label>
-              <Input
-                id="pharmacy-address"
-                type="text"
-                placeholder="123 Main Street, City, Country"
+              <AddressAutocomplete
                 value={address}
-                onChange={(e) => setAddress(e.target.value)}
+                onChange={(newAddress, geoData) => {
+                  setAddress(newAddress);
+                  if (geoData) {
+                    setGeocodeData(geoData);
+                  }
+                }}
+                placeholder="Start typing your pharmacy address..."
               />
+              {geocodeData && (
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Check className="h-3 w-3 text-green-500" />
+                  Location verified: {geocodeData.city}, {geocodeData.state}
+                </p>
+              )}
             </div>
           </CardContent>
 

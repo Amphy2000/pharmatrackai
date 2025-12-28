@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Progress } from '@/components/ui/progress';
+import { AddressAutocomplete } from '@/components/common/AddressAutocomplete';
 import { 
   Building2, 
   Loader2, 
@@ -70,6 +71,14 @@ const OnboardingWizard = () => {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
+  const [geocodeData, setGeocodeData] = useState<{
+    latitude: number;
+    longitude: number;
+    formatted_address: string;
+    city?: string;
+    state?: string;
+    country?: string;
+  } | null>(null);
   const [licenseNumber, setLicenseNumber] = useState('');
 
   // Import state
@@ -342,13 +351,23 @@ const OnboardingWizard = () => {
 
                 <div className="space-y-2">
                   <Label htmlFor="pharmacy-address">Address</Label>
-                  <Input
-                    id="pharmacy-address"
-                    type="text"
-                    placeholder="123 Main Street, City"
+                  <AddressAutocomplete
                     value={address}
-                    onChange={(e) => setAddress(e.target.value)}
+                    onChange={(newAddress, geoData) => {
+                      setAddress(newAddress);
+                      if (geoData) {
+                        setGeocodeData(geoData);
+                      }
+                    }}
+                    placeholder="Start typing your pharmacy address..."
+                    countryCode={country}
                   />
+                  {geocodeData && (
+                    <p className="text-xs text-muted-foreground flex items-center gap-1">
+                      <Check className="h-3 w-3 text-green-500" />
+                      Location verified: {geocodeData.city}, {geocodeData.state}
+                    </p>
+                  )}
                 </div>
 
                 <div className="flex gap-3 pt-4">
