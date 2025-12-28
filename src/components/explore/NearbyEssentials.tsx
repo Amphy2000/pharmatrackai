@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
-import { MapPin, Store, MessageCircle, Package, Navigation, Loader2, ShoppingBag } from 'lucide-react';
+import { MapPin, Store, MessageCircle, Navigation, Loader2, ShoppingBag, Zap, ExternalLink } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useCurrency } from '@/contexts/CurrencyContext';
-import { useGeolocation, calculateDistance, getApproximateCoordinates } from '@/hooks/useGeolocation';
+import { useGeolocation, calculateDistance, getApproximateCoordinates, getFallbackLocationName, getGoogleMapsLink } from '@/hooks/useGeolocation';
 import { motion } from 'framer-motion';
 
 interface NearbyMedication {
@@ -187,15 +187,28 @@ export const NearbyEssentials = ({ onOrder }: NearbyEssentialsProps) => {
                 <p className="text-base md:text-lg font-bold text-marketplace mb-1.5 md:mb-2">
                   {formatPrice(medication.selling_price || 0)}
                 </p>
-                <div className="flex items-center gap-1 text-[10px] md:text-xs text-muted-foreground mb-1.5 md:mb-2">
+                
+                {/* Pharmacy Name */}
+                <div className="flex items-center gap-1 text-[10px] md:text-xs text-muted-foreground mb-1">
                   <Store className="h-2.5 w-2.5 md:h-3 md:w-3 shrink-0" />
                   <span className="line-clamp-1">{medication.pharmacy_name}</span>
                 </div>
-                {medication.distance !== undefined && (
-                  <Badge variant="outline" className="text-[9px] md:text-[10px] px-1.5 py-0 mb-2 md:mb-3">
-                    {medication.distance < 1
-                      ? `${Math.round(medication.distance * 1000)}m away`
-                      : `${medication.distance.toFixed(1)}km away`}
+                
+                {/* Distance Badge - Enhanced */}
+                {medication.distance !== undefined ? (
+                  medication.distance <= 5 ? (
+                    <Badge className="bg-gradient-to-r from-green-500 to-emerald-500 text-white text-[9px] md:text-[10px] px-1.5 py-0 mb-2 md:mb-3 gap-0.5">
+                      <Zap className="h-2 w-2" />
+                      {medication.distance < 1 ? `${Math.round(medication.distance * 1000)}m` : `${medication.distance.toFixed(1)}km`}
+                    </Badge>
+                  ) : (
+                    <Badge variant="outline" className="text-[9px] md:text-[10px] px-1.5 py-0 mb-2 md:mb-3">
+                      📍 {medication.distance.toFixed(1)}km
+                    </Badge>
+                  )
+                ) : (
+                  <Badge variant="outline" className="text-[9px] md:text-[10px] px-1.5 py-0 mb-2 md:mb-3 text-muted-foreground">
+                    {getFallbackLocationName(medication.pharmacy_address) || '📍 Available'}
                   </Badge>
                 )}
                 <Button
