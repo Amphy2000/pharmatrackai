@@ -1,11 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
-import { Star, ChevronLeft, ChevronRight, MapPin, Store, MessageCircle, Clock } from 'lucide-react';
+import { Star, ChevronLeft, ChevronRight, MapPin, Store, MessageCircle, Clock, Navigation, Loader2 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { differenceInDays } from 'date-fns';
+import { useGeolocation, calculateDistance, getApproximateCoordinates } from '@/hooks/useGeolocation';
 
 interface FeaturedMedication {
   id: string;
@@ -20,6 +21,7 @@ interface FeaturedMedication {
   pharmacy_address: string | null;
   is_featured: boolean;
   featured_until: string | null;
+  distance?: number;
 }
 
 interface SpotlightSectionProps {
@@ -28,13 +30,44 @@ interface SpotlightSectionProps {
 
 export const SpotlightSection = ({ onOrder }: SpotlightSectionProps) => {
   const [featured, setFeatured] = useState<FeaturedMedication[]>([]);
+  const [filteredFeatured, setFilteredFeatured] = useState<FeaturedMedication[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [locationEnabled, setLocationEnabled] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { formatPrice } = useCurrency();
+  const { latitude, longitude, loading: geoLoading, error: geoError, requestLocation } = useGeolocation();
 
   useEffect(() => {
     loadFeaturedMedications();
   }, []);
+
+  // Filter by location when user location is available
+  useEffect(() => {
+    if (latitude && longitude && featured.length > 0) {
+      const filtered = featured
+        .map(med => {
+          const pharmacyCoords = getApproximateCoordinates(med.pharmacy_address);
+          if (pharmacyCoords) {
+            const distance = calculateDistance(latitude, longitude, pharmacyCoords.lat, pharmacyCoords.lon);
+            return { ...med, distance };
+          }
+          return { ...med, distance: undefined };
+        })
+        .filter(med => med.distance === undefined || med.distance <= 10) // 10km radius
+        .sort((a, b) => {
+          // Sort by distance, unknown distances go last
+          if (a.distance === undefined) return 1;
+          if (b.distance === undefined) return -1;
+          return a.distance - b.distance;
+        });
+      
+      setFilteredFeatured(filtered);
+      setLocationEnabled(true);
+    } else {
+      setFilteredFeatured(featured);
+      setLocationEnabled(false);
+    }
+  }, [latitude, longitude, featured]);
 
   const loadFeaturedMedications = async () => {
     try {
@@ -69,7 +102,7 @@ export const SpotlightSection = ({ onOrder }: SpotlightSectionProps) => {
         .gt('current_stock', 0)
         .in('pharmacies.subscription_status', ['active', 'trial'])
         .or('featured_until.is.null,featured_until.gt.now()')
-        .limit(12);
+        .limit(20);
 
       if (error) throw error;
 
@@ -127,7 +160,7 @@ export const SpotlightSection = ({ onOrder }: SpotlightSectionProps) => {
     );
   }
 
-  if (featured.length === 0) return null;
+  if (filteredFeatured.length === 0 && !isLoading) return null;
 
   return (
     <div className="mb-8">
@@ -136,8 +169,28 @@ export const SpotlightSection = ({ onOrder }: SpotlightSectionProps) => {
           <Star className="h-5 w-5 text-marketplace fill-marketplace" />
           <h2 className="text-xl font-bold text-foreground">Spotlight</h2>
           <Badge variant="secondary" className="ml-2">Featured Products</Badge>
+          {locationEnabled && (
+            <Badge variant="outline" className="ml-2 gap-1 text-xs">
+              <Navigation className="h-3 w-3" />
+              Within 10km
+            </Badge>
+          )}
         </div>
         <div className="flex items-center gap-2">
+          {!latitude && !geoLoading && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={requestLocation}
+              className="gap-1.5 text-xs"
+            >
+              <Navigation className="h-3 w-3" />
+              Enable Location
+            </Button>
+          )}
+          {geoLoading && (
+            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+          )}
           <Button
             variant="ghost"
             size="icon"
@@ -162,7 +215,7 @@ export const SpotlightSection = ({ onOrder }: SpotlightSectionProps) => {
         className="flex gap-4 overflow-x-auto scrollbar-hide pb-2 snap-x snap-mandatory"
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
-        {featured.map((medication) => {
+        {filteredFeatured.map((medication) => {
           const daysLeft = getDaysRemaining(medication.featured_until);
           
           return (
@@ -203,12 +256,20 @@ export const SpotlightSection = ({ onOrder }: SpotlightSectionProps) => {
                     <Store className="h-3 w-3" />
                     <span className="font-medium text-foreground line-clamp-1">{medication.pharmacy_name}</span>
                   </div>
-                  {medication.pharmacy_address && (
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <MapPin className="h-3 w-3" />
-                      <span className="line-clamp-1">{medication.pharmacy_address}</span>
-                    </div>
-                  )}
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                    <MapPin className="h-3 w-3" />
+                    <span className="line-clamp-1">
+                      {medication.pharmacy_address || 'Location not specified'}
+                    </span>
+                    {medication.distance !== undefined && (
+                      <Badge variant="outline" className="text-[10px] px-1.5">
+                        {medication.distance < 1 
+                          ? `${Math.round(medication.distance * 1000)}m`
+                          : `${medication.distance.toFixed(1)}km`
+                        }
+                      </Badge>
+                    )}
+                  </div>
                 </div>
 
                 {/* CTA */}

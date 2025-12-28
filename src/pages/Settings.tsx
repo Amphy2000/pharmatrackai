@@ -1,7 +1,7 @@
 import { Header } from '@/components/Header';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Settings as SettingsIcon, Users, Globe, CreditCard, Shield, ImageIcon, ShieldCheck, FileText, RotateCcw, Bell, Clock, Star } from 'lucide-react';
+import { Settings as SettingsIcon, Users, Globe, CreditCard, Shield, ImageIcon, ShieldCheck, FileText, RotateCcw, Bell, Clock, Star, Store } from 'lucide-react';
 import { StaffManagement } from '@/components/settings/StaffManagement';
 import { PermissionsManagement } from '@/components/settings/PermissionsManagement';
 import { RegionCurrencySettings } from '@/components/settings/RegionCurrencySettings';
@@ -11,6 +11,7 @@ import { PriceShieldSettings } from '@/components/settings/PriceShieldSettings';
 import { AlertSettings } from '@/components/settings/AlertSettings';
 import { ClockInSecuritySettings } from '@/components/settings/ClockInSecuritySettings';
 import { PromotionsManagement } from '@/components/settings/PromotionsManagement';
+import { MarketplaceSettings } from '@/components/settings/MarketplaceSettings';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useSearchParams, Navigate, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -98,6 +99,11 @@ const Settings = () => {
                   <Star className="h-3 w-3 sm:h-4 sm:w-4" />
                   <span className="hidden xs:inline">Promotions</span>
                   <span className="xs:hidden">Promo</span>
+                </TabsTrigger>
+                <TabsTrigger value="marketplace" className="gap-2 text-xs sm:text-sm">
+                  <Store className="h-3 w-3 sm:h-4 sm:w-4" />
+                  <span className="hidden xs:inline">Marketplace</span>
+                  <span className="xs:hidden">Market</span>
                 </TabsTrigger>
                 <TabsTrigger value="alerts" className="gap-2 text-xs sm:text-sm">
                   <Bell className="h-3 w-3 sm:h-4 sm:w-4" />
@@ -210,6 +216,10 @@ const Settings = () => {
 
           <TabsContent value="promotions">
             <PromotionsManagement />
+          </TabsContent>
+
+          <TabsContent value="marketplace">
+            <MarketplaceSettings />
           </TabsContent>
 
           <TabsContent value="alerts">
