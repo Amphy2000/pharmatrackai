@@ -101,33 +101,8 @@ export const SpotlightSection = ({ onOrder }: SpotlightSectionProps) => {
       // First expire old featured items
       await supabase.rpc('expire_featured_items');
       
-      // Get featured medications - limit to 3 per pharmacy is enforced at DB level
-      const { data, error } = await supabase
-        .from('medications')
-        .select(`
-          id,
-          name,
-          category,
-          current_stock,
-          selling_price,
-          dispensing_unit,
-          pharmacy_id,
-          is_featured,
-          featured_until,
-          pharmacies!inner (
-            name,
-            phone,
-            address,
-            subscription_status
-          )
-        `)
-        .eq('is_public', true)
-        .eq('is_featured', true)
-        .eq('is_shelved', true)
-        .gt('current_stock', 0)
-        .in('pharmacies.subscription_status', ['active', 'trial'])
-        .or('featured_until.is.null,featured_until.gt.now()')
-        .limit(20);
+      // Get featured medications via secure RPC function (bypasses RLS for public marketplace)
+      const { data, error } = await supabase.rpc('get_featured_medications');
 
       if (error) throw error;
 
@@ -139,9 +114,9 @@ export const SpotlightSection = ({ onOrder }: SpotlightSectionProps) => {
         selling_price: m.selling_price,
         dispensing_unit: m.dispensing_unit,
         pharmacy_id: m.pharmacy_id,
-        pharmacy_name: m.pharmacies?.name || 'Unknown',
-        pharmacy_phone: m.pharmacies?.phone,
-        pharmacy_address: m.pharmacies?.address,
+        pharmacy_name: m.pharmacy_name || 'Unknown',
+        pharmacy_phone: m.pharmacy_phone,
+        pharmacy_address: m.pharmacy_address,
         is_featured: m.is_featured,
         featured_until: m.featured_until,
       }));

@@ -1922,6 +1922,23 @@ export type Database = {
       expire_featured_items: { Args: never; Returns: undefined }
       generate_internal_barcode: { Args: never; Returns: string }
       generate_receipt_id: { Args: never; Returns: string }
+      get_featured_medications: {
+        Args: never
+        Returns: {
+          category: string
+          current_stock: number
+          dispensing_unit: string
+          featured_until: string
+          id: string
+          is_featured: boolean
+          name: string
+          pharmacy_address: string
+          pharmacy_id: string
+          pharmacy_name: string
+          pharmacy_phone: string
+          selling_price: number
+        }[]
+      }
       get_manager_branch_id: {
         Args: { _pharmacy_id: string; _user_id: string }
         Returns: string
