@@ -44,30 +44,37 @@ export const SpotlightSection = ({ onOrder }: SpotlightSectionProps) => {
   }, []);
 
   // Filter by location when user location is available
+  // Note: We no longer filter OUT items - we just sort by distance and add distance info
   useEffect(() => {
-    if (latitude && longitude && featured.length > 0) {
-      const filtered = featured
-        .map(med => {
+    if (featured.length > 0) {
+      if (latitude && longitude) {
+        // Add distance info but don't filter out any products
+        const withDistance = featured.map(med => {
           const pharmacyCoords = getApproximateCoordinates(med.pharmacy_address);
           if (pharmacyCoords) {
             const distance = calculateDistance(latitude, longitude, pharmacyCoords.lat, pharmacyCoords.lon);
             return { ...med, distance };
           }
           return { ...med, distance: undefined };
-        })
-        .filter(med => med.distance === undefined || med.distance <= 10) // 10km radius
-        .sort((a, b) => {
-          // Sort by distance, unknown distances go last
+        });
+        
+        // Sort by distance (closest first, unknown distances last)
+        const sorted = withDistance.sort((a, b) => {
+          if (a.distance === undefined && b.distance === undefined) return 0;
           if (a.distance === undefined) return 1;
           if (b.distance === undefined) return -1;
           return a.distance - b.distance;
         });
-      
-      setFilteredFeatured(filtered);
-      setLocationEnabled(true);
+        
+        setFilteredFeatured(sorted);
+        setLocationEnabled(true);
+      } else {
+        // No location - show all featured items as-is
+        setFilteredFeatured(featured);
+        setLocationEnabled(false);
+      }
     } else {
-      setFilteredFeatured(featured);
-      setLocationEnabled(false);
+      setFilteredFeatured([]);
     }
   }, [latitude, longitude, featured]);
 
