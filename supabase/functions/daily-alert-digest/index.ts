@@ -58,10 +58,10 @@ serve(async (req) => {
     const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
     const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
-    // Get all pharmacies with their owner phones and Termii sender ID
+    // Get all pharmacies with their alert settings
     const { data: pharmacies, error: pharmacyError } = await supabaseAdmin
       .from('pharmacies')
-      .select('id, name, phone, owner_id, termii_sender_id');
+      .select('id, name, phone, owner_id, termii_sender_id, alert_recipient_phone, alert_channel');
 
     if (pharmacyError) {
       console.error('Error fetching pharmacies:', pharmacyError);
@@ -74,9 +74,13 @@ serve(async (req) => {
 
     for (const pharmacy of pharmacies || []) {
       try {
+        // Use alert_recipient_phone if set, otherwise fall back to pharmacy phone
+        const alertPhone = pharmacy.alert_recipient_phone || pharmacy.phone;
+        const alertChannel = pharmacy.alert_channel || 'sms';
+        
         // Skip if no phone number configured
-        if (!pharmacy.phone) {
-          console.log(`Skipping pharmacy ${pharmacy.name} - no phone configured`);
+        if (!alertPhone) {
+          console.log(`Skipping pharmacy ${pharmacy.name} - no alert phone configured`);
           results.push({ pharmacy: pharmacy.name, alerts: 0, sent: false, error: 'No phone' });
           continue;
         }
@@ -169,8 +173,8 @@ serve(async (req) => {
         message += `💡 *AI Tip:* Apply discounts to expiring items and reorder low stock to protect your profits.\n\n`;
         message += `📱 Open PharmaTrack to take action.`;
 
-        // Format phone number
-        let formattedPhone = pharmacy.phone.replace(/\s+/g, '').replace(/^[+]/, '');
+        // Format phone number - use the alert phone
+        let formattedPhone = alertPhone.replace(/\s+/g, '').replace(/^[+]/, '');
         if (formattedPhone.startsWith('0')) {
           formattedPhone = '234' + formattedPhone.substring(1);
         }
@@ -178,13 +182,14 @@ serve(async (req) => {
         // Use configured sender ID or fallback to pharmacy name
         const senderId = pharmacy.termii_sender_id || pharmacy.name.substring(0, 11).replace(/\s+/g, '');
 
-        console.log(`Sending digest to ${pharmacy.name} (${formattedPhone}) with sender ID "${senderId}": ${totalAlerts} alerts`);
+        console.log(`Sending digest to ${pharmacy.name} (${formattedPhone}) via ${alertChannel} with sender ID "${senderId}": ${totalAlerts} alerts`);
 
-        // Send via Termii WhatsApp (requires Device ID)
+        // Prefer the configured channel
+        const preferWhatsApp = alertChannel === 'whatsapp';
         const whatsappDeviceId = Deno.env.get('TERMII_WHATSAPP_DEVICE_ID');
         let messageSent = false;
         
-        if (whatsappDeviceId) {
+        if (preferWhatsApp && whatsappDeviceId) {
           const termiiResponse = await fetch(`${TERMII_BASE_URL}/send`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },

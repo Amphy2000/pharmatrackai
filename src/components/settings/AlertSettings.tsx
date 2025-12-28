@@ -35,30 +35,35 @@ export const AlertSettings = () => {
   const { medications } = useMedications();
   const { sales } = useSales();
 
-  // Load saved settings
+  // Load saved settings from database
   useEffect(() => {
     if (pharmacy?.id) {
-      // Load Sender ID from DB
+      // Load from database
       setSenderId((pharmacy as any)?.termii_sender_id || '');
+      setPhone((pharmacy as any)?.alert_recipient_phone || '');
+      setUseWhatsApp((pharmacy as any)?.alert_channel === 'whatsapp');
       
+      // Load UI preferences from localStorage (non-critical settings)
       const savedSettings = localStorage.getItem(`${ALERT_SETTINGS_KEY}_${pharmacy.id}`);
       if (savedSettings) {
         try {
           const settings = JSON.parse(savedSettings);
-          setPhone(settings.phone || '');
-          setUseWhatsApp(settings.useWhatsApp || false);
           setLowStockEnabled(settings.lowStockEnabled ?? true);
           setExpiryEnabled(settings.expiryEnabled ?? true);
           setDailySummaryEnabled(settings.dailySummaryEnabled ?? true);
           setAutoAlertsEnabled(settings.autoAlertsEnabled ?? false);
           setLastAlertSent(settings.lastAlertSent || null);
-          setIsSaved(true);
         } catch (e) {
           console.error('Failed to parse saved alert settings');
         }
       }
+      
+      // Mark as saved if we have phone from DB
+      if ((pharmacy as any)?.alert_recipient_phone) {
+        setIsSaved(true);
+      }
     }
-  }, [pharmacy?.id, (pharmacy as any)?.termii_sender_id]);
+  }, [pharmacy?.id, (pharmacy as any)?.termii_sender_id, (pharmacy as any)?.alert_recipient_phone, (pharmacy as any)?.alert_channel]);
 
   const lowStockItems = medications?.filter(m => m.current_stock <= m.reorder_level) || [];
   const expiringItems = medications?.filter(m => {
@@ -71,7 +76,9 @@ export const AlertSettings = () => {
     sum + (m.selling_price || m.unit_price) * m.current_stock, 0
   );
 
-  const handleSaveSettings = () => {
+  const [isSavingPhone, setIsSavingPhone] = useState(false);
+
+  const handleSaveSettings = async () => {
     if (!pharmacy?.id) {
       toast.error('Pharmacy not found');
       return;
@@ -89,21 +96,33 @@ export const AlertSettings = () => {
       return;
     }
 
-    const settings = {
-      phone,
-      useWhatsApp,
-      lowStockEnabled,
-      expiryEnabled,
-      dailySummaryEnabled,
-      autoAlertsEnabled,
-      lastAlertSent,
-    };
+    setIsSavingPhone(true);
+    try {
+      // Save phone and channel to database
+      await updatePharmacySettings.mutateAsync({
+        alert_recipient_phone: cleanPhone.startsWith('234') ? cleanPhone : cleanPhone.replace(/^0/, '234'),
+        alert_channel: useWhatsApp ? 'whatsapp' : 'sms',
+      });
 
-    localStorage.setItem(`${ALERT_SETTINGS_KEY}_${pharmacy.id}`, JSON.stringify(settings));
-    setIsSaved(true);
-    toast.success('Alert settings saved! 🎉', {
-      description: autoAlertsEnabled ? 'Automated alerts are now active' : undefined,
-    });
+      // Save UI preferences to localStorage
+      const settings = {
+        lowStockEnabled,
+        expiryEnabled,
+        dailySummaryEnabled,
+        autoAlertsEnabled,
+        lastAlertSent,
+      };
+      localStorage.setItem(`${ALERT_SETTINGS_KEY}_${pharmacy.id}`, JSON.stringify(settings));
+      
+      setIsSaved(true);
+      toast.success('Alert settings saved! 🎉', {
+        description: `All alerts will be sent to ${phone}`,
+      });
+    } catch (error) {
+      toast.error('Failed to save alert settings');
+    } finally {
+      setIsSavingPhone(false);
+    }
   };
 
   const handleSaveSenderId = async () => {
@@ -472,9 +491,11 @@ Your SMS integration is working correctly!`,
                 onClick={handleSaveSettings}
                 variant={isSaved ? "outline" : "default"}
                 className="gap-2"
-                disabled={!phone}
+                disabled={!phone || isSavingPhone}
               >
-                {isSaved ? (
+                {isSavingPhone ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : isSaved ? (
                   <>
                     <CheckCircle className="h-4 w-4 text-success" />
                     Saved
