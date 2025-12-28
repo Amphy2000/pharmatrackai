@@ -174,17 +174,13 @@ ${message}`;
     let termiiData;
 
     if (channel === 'whatsapp') {
-      // Termii WhatsApp API - requires Device ID
-      const whatsappDeviceId = Deno.env.get('TERMII_WHATSAPP_DEVICE_ID');
-      if (!whatsappDeviceId) {
-        console.error('Missing TERMII_WHATSAPP_DEVICE_ID');
-        return new Response(
-          JSON.stringify({ error: 'WhatsApp Device ID not configured. Please add your TERMII_WHATSAPP_DEVICE_ID in settings.' }),
-          { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
+      // Note: Termii WhatsApp requires approved templates and sender ID
+      // Since your Sender ID is pending approval, WhatsApp won't work yet
+      // For now, fall back to SMS with a warning
+      console.log('WhatsApp channel requested but Sender ID may be pending. Attempting SMS instead...');
       
-      termiiResponse = await fetch(`${TERMII_BASE_URL}/send`, {
+      // Use SMS endpoint as fallback until WhatsApp Sender ID is approved
+      termiiResponse = await fetch(`${TERMII_BASE_URL}/sms/send`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -195,8 +191,7 @@ ${message}`;
           from: senderId,
           sms: formattedMessage,
           type: 'plain',
-          channel: 'whatsapp',
-          device_id: whatsappDeviceId,
+          channel: 'generic', // Use SMS until WhatsApp sender ID is approved
         }),
       });
     } else {
