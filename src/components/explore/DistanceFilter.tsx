@@ -1,5 +1,4 @@
-import { useState } from 'react';
-import { Filter, MapPin, ArrowUpDown, Package, DollarSign, Navigation } from 'lucide-react';
+import { MapPin, ArrowUpDown, Package, DollarSign, Navigation } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -39,10 +38,10 @@ export const DistanceFilter = ({
   ];
 
   const sortOptions: { value: SortOption; label: string; icon: React.ReactNode }[] = [
-    { value: 'distance', label: 'Nearest first', icon: <Navigation className="h-3.5 w-3.5" /> },
-    { value: 'price-low', label: 'Price: Low to High', icon: <DollarSign className="h-3.5 w-3.5" /> },
-    { value: 'price-high', label: 'Price: High to Low', icon: <DollarSign className="h-3.5 w-3.5" /> },
-    { value: 'availability', label: 'Most in stock', icon: <Package className="h-3.5 w-3.5" /> },
+    { value: 'distance', label: 'Nearest first', icon: <Navigation className="h-4 w-4" /> },
+    { value: 'price-low', label: 'Price: Low to High', icon: <DollarSign className="h-4 w-4" /> },
+    { value: 'price-high', label: 'Price: High to Low', icon: <DollarSign className="h-4 w-4" /> },
+    { value: 'availability', label: 'Most in stock', icon: <Package className="h-4 w-4" /> },
   ];
 
   const getRadiusLabel = () => {
@@ -63,14 +62,14 @@ export const DistanceFilter = ({
           <Button
             variant="outline"
             size="sm"
-            className="h-8 gap-1.5 text-xs rounded-full border-muted-foreground/20 hover:border-marketplace hover:bg-marketplace/5"
+            className="h-9 gap-2 text-xs sm:text-sm rounded-full border-border bg-background hover:bg-accent"
           >
-            <MapPin className="h-3.5 w-3.5 text-marketplace" />
+            <MapPin className="h-4 w-4 text-marketplace" />
             <span>{getRadiusLabel()}</span>
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-40">
-          <DropdownMenuLabel className="text-xs text-muted-foreground">
+        <DropdownMenuContent align="start" className="w-48 bg-popover border shadow-lg z-50">
+          <DropdownMenuLabel className="text-xs text-muted-foreground font-medium">
             Filter by Distance
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
@@ -78,9 +77,9 @@ export const DistanceFilter = ({
             <>
               <DropdownMenuItem 
                 onClick={onEnableLocation}
-                className="text-xs gap-2 text-marketplace"
+                className="text-sm gap-2 text-marketplace cursor-pointer"
               >
-                <Navigation className="h-3.5 w-3.5" />
+                <Navigation className="h-4 w-4" />
                 Enable Location
               </DropdownMenuItem>
               <DropdownMenuSeparator />
@@ -90,12 +89,12 @@ export const DistanceFilter = ({
             <DropdownMenuItem
               key={option.value}
               onClick={() => onRadiusChange(option.value)}
-              className="text-xs gap-2"
+              className="text-sm gap-2 cursor-pointer"
             >
-              <div className={`h-2 w-2 rounded-full ${selectedRadius === option.value ? 'bg-marketplace' : 'bg-muted'}`} />
+              <div className={`h-2.5 w-2.5 rounded-full ${selectedRadius === option.value ? 'bg-marketplace' : 'bg-muted'}`} />
               {option.label}
               {selectedRadius === option.value && (
-                <Badge variant="secondary" className="ml-auto text-[9px] px-1 py-0">
+                <Badge variant="secondary" className="ml-auto text-[10px] px-1.5 py-0.5">
                   Active
                 </Badge>
               )}
@@ -110,15 +109,15 @@ export const DistanceFilter = ({
           <Button
             variant="outline"
             size="sm"
-            className="h-8 gap-1.5 text-xs rounded-full border-muted-foreground/20 hover:border-primary hover:bg-primary/5"
+            className="h-9 gap-2 text-xs sm:text-sm rounded-full border-border bg-background hover:bg-accent"
           >
-            <ArrowUpDown className="h-3.5 w-3.5 text-primary" />
+            <ArrowUpDown className="h-4 w-4 text-primary" />
             <span className="hidden sm:inline">{getSortLabel()}</span>
             <span className="sm:hidden">Sort</span>
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-48">
-          <DropdownMenuLabel className="text-xs text-muted-foreground">
+        <DropdownMenuContent align="start" className="w-52 bg-popover border shadow-lg z-50">
+          <DropdownMenuLabel className="text-xs text-muted-foreground font-medium">
             Sort Results By
           </DropdownMenuLabel>
           <DropdownMenuSeparator />
@@ -126,13 +125,13 @@ export const DistanceFilter = ({
             <DropdownMenuItem
               key={option.value}
               onClick={() => onSortChange(option.value)}
-              className="text-xs gap-2"
+              className="text-sm gap-2 cursor-pointer"
               disabled={option.value === 'distance' && !locationEnabled}
             >
               {option.icon}
               {option.label}
               {selectedSort === option.value && (
-                <Badge variant="secondary" className="ml-auto text-[9px] px-1 py-0">
+                <Badge variant="secondary" className="ml-auto text-[10px] px-1.5 py-0.5">
                   Active
                 </Badge>
               )}
