@@ -15,6 +15,8 @@ import { StockCSVImportModal } from '@/components/inventory/StockCSVImportModal'
 import { BulkPriceUpdateModal } from '@/components/inventory/BulkPriceUpdateModal';
 import { MedicationsTable } from '@/components/inventory/MedicationsTable';
 import { InventoryGrid } from '@/components/inventory/InventoryGrid';
+import { BulkMarketplaceActions } from '@/components/inventory/BulkMarketplaceActions';
+import { CategoryMarketplaceToggle } from '@/components/inventory/CategoryMarketplaceToggle';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -546,6 +548,12 @@ const Inventory = () => {
                 <Button variant="outline" size="sm" onClick={() => setSelectedIds(new Set())}>
                   Clear
                 </Button>
+                <BulkMarketplaceActions 
+                  selectedIds={selectedIds} 
+                  onComplete={() => {
+                    setSelectedIds(new Set());
+                  }}
+                />
                 <Button variant="secondary" size="sm" onClick={() => setBulkShelveOpen(true)}>
                   <CheckSquare className="h-3 w-3 mr-1" />
                   Shelve
@@ -607,6 +615,12 @@ const Inventory = () => {
                   <Clock className="h-3 w-3 mr-1" />
                   Expiring Soon ({expiringItems.length})
                 </Button>
+                <div className="ml-auto">
+                  <CategoryMarketplaceToggle 
+                    medications={medications} 
+                    onUpdate={() => {}} 
+                  />
+                </div>
               </div>
             )}
           </CardHeader>
