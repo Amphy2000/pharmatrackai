@@ -98,9 +98,6 @@ export const SpotlightSection = ({ onOrder }: SpotlightSectionProps) => {
     try {
       setIsLoading(true);
       
-      // First expire old featured items
-      await supabase.rpc('expire_featured_items');
-      
       // Get featured medications via secure RPC function (bypasses RLS for public marketplace)
       const { data, error } = await supabase.rpc('get_featured_medications');
 
