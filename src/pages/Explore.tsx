@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Search, MapPin, MessageCircle, Package, Store, Phone, Star, AlertCircle, Download, Smartphone, Mic } from "lucide-react";
+import { Search, MapPin, MessageCircle, Package, Store, Phone, Star, AlertCircle, Download, Smartphone, X, Menu, ChevronRight } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -14,6 +14,7 @@ import { SpotlightSection } from "@/components/explore/SpotlightSection";
 import { CategoryChips } from "@/components/explore/CategoryChips";
 import { NearbyEssentials } from "@/components/explore/NearbyEssentials";
 import { RequestDrugButton } from "@/components/explore/RequestDrugButton";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface PublicMedication {
   id: string;
@@ -202,203 +203,233 @@ const Explore = () => {
     window.open(whatsappUrl, "_blank");
   };
 
+  // Mobile-optimized Medication Card
   const MedicationCard = ({ medication, isFeatured = false }: { medication: PublicMedication; isFeatured?: boolean }) => (
-    <Card className={`overflow-hidden hover:shadow-lg transition-shadow ${isFeatured ? 'border-marketplace/50 bg-marketplace/5' : ''}`}>
-      <CardContent className="p-0">
-        <div className="flex flex-col md:flex-row">
-          {/* Medication Info */}
-          <div className="flex-1 p-6">
-            <div className="flex items-start justify-between mb-3">
-              <div>
-                <div className="flex items-center gap-2">
-                  <h3 className="text-xl font-bold text-foreground">{medication.name}</h3>
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+    >
+      <Card className={`overflow-hidden hover:shadow-lg transition-all ${isFeatured ? 'border-marketplace/50 bg-marketplace/5' : ''}`}>
+        <CardContent className="p-0">
+          {/* Mobile-first layout */}
+          <div className="p-4 md:p-6">
+            <div className="flex items-start justify-between gap-3 mb-3">
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap mb-1">
+                  <h3 className="text-lg md:text-xl font-bold text-foreground truncate">{medication.name}</h3>
                   {medication.is_featured && (
-                    <Badge className="bg-marketplace text-marketplace-foreground gap-1">
+                    <Badge className="bg-marketplace text-marketplace-foreground gap-1 shrink-0">
                       <Star className="h-3 w-3" />
                       Featured
                     </Badge>
                   )}
                 </div>
-                <Badge variant="secondary" className="mt-1">{medication.category}</Badge>
+                <Badge variant="secondary" className="text-xs">{medication.category}</Badge>
               </div>
-              <div className="text-right">
-                <p className="text-2xl font-bold text-marketplace">
+              <div className="text-right shrink-0">
+                <p className="text-xl md:text-2xl font-bold text-marketplace">
                   {formatPrice(medication.selling_price || 0)}
                 </p>
-                <p className="text-sm text-muted-foreground">per {medication.dispensing_unit}</p>
+                <p className="text-xs text-muted-foreground">/{medication.dispensing_unit}</p>
               </div>
             </div>
             
-            {/* Price Disclaimer */}
-            <div className="flex items-start gap-2 p-2 bg-warning/10 rounded-lg border border-warning/20 mb-3">
-              <AlertCircle className="h-4 w-4 text-warning shrink-0 mt-0.5" />
-              <p className="text-xs text-muted-foreground">
-                Confirm price with pharmacist via WhatsApp
-              </p>
+            {/* Compact Price Disclaimer */}
+            <div className="flex items-center gap-2 p-2 bg-warning/10 rounded-lg border border-warning/20 mb-3">
+              <AlertCircle className="h-3.5 w-3.5 text-warning shrink-0" />
+              <p className="text-[11px] text-muted-foreground">Confirm price with pharmacist</p>
             </div>
             
-            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-              <Store className="h-4 w-4" />
-              <span className="font-medium text-foreground">{medication.pharmacy_name}</span>
-            </div>
-            
-            {medication.pharmacy_address && (
-              <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-                <MapPin className="h-4 w-4" />
-                <span>{medication.pharmacy_address}</span>
+            {/* Pharmacy Info - Compact */}
+            <div className="space-y-1.5 mb-3">
+              <div className="flex items-center gap-2 text-sm">
+                <Store className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                <span className="font-medium text-foreground truncate">{medication.pharmacy_name}</span>
               </div>
-            )}
+              
+              {medication.pharmacy_address && (
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <MapPin className="h-3.5 w-3.5 shrink-0" />
+                  <span className="truncate">{medication.pharmacy_address}</span>
+                </div>
+              )}
+            </div>
             
-            <Badge 
-              variant="outline" 
-              className="bg-success/10 text-success border-success/30"
-            >
-              In Stock ({medication.current_stock} available)
-            </Badge>
-          </div>
-
-          {/* Action Section */}
-          <div className="bg-marketplace/5 p-6 flex flex-col justify-center items-center gap-3 md:w-48">
-            <Button
-              onClick={() => handleWhatsAppOrder(medication)}
-              className="w-full bg-[#25D366] hover:bg-[#20BD5A] text-white font-semibold"
-            >
-              <MessageCircle className="mr-2 h-5 w-5" />
-              Buy Now
-            </Button>
-            {medication.pharmacy_phone && (
-              <a 
-                href={`tel:${medication.pharmacy_phone}`}
-                className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+            <div className="flex items-center justify-between gap-3">
+              <Badge 
+                variant="outline" 
+                className="bg-success/10 text-success border-success/30 text-xs"
               >
-                <Phone className="h-4 w-4" />
-                {medication.pharmacy_phone}
-              </a>
-            )}
+                {medication.current_stock} in stock
+              </Badge>
+              
+              {/* Mobile-friendly Action Button */}
+              <div className="flex items-center gap-2">
+                {medication.pharmacy_phone && (
+                  <a 
+                    href={`tel:${medication.pharmacy_phone}`}
+                    className="h-9 w-9 rounded-full bg-muted flex items-center justify-center hover:bg-muted/80 transition-colors"
+                  >
+                    <Phone className="h-4 w-4 text-muted-foreground" />
+                  </a>
+                )}
+                <Button
+                  onClick={() => handleWhatsAppOrder(medication)}
+                  className="bg-[#25D366] hover:bg-[#20BD5A] text-white font-semibold h-9 px-4"
+                  size="sm"
+                >
+                  <MessageCircle className="mr-1.5 h-4 w-4" />
+                  <span className="hidden sm:inline">Buy Now</span>
+                  <span className="sm:hidden">Order</span>
+                </Button>
+              </div>
+            </div>
           </div>
-        </div>
-      </CardContent>
-    </Card>
+        </CardContent>
+      </Card>
+    </motion.div>
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-marketplace/5 to-background">
-      {/* Header */}
-      <header className="bg-marketplace text-marketplace-foreground py-6 px-4">
-        <div className="container mx-auto max-w-4xl">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-xl bg-white/20 flex items-center justify-center">
-                <Package className="h-6 w-6" />
+    <div className="min-h-screen bg-gradient-to-b from-marketplace/5 via-background to-background">
+      {/* Mobile-First Header */}
+      <header className="bg-gradient-to-br from-marketplace via-marketplace to-primary text-marketplace-foreground sticky top-0 z-50">
+        {/* Top Bar - Always visible */}
+        <div className="px-4 py-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <div className="h-9 w-9 md:h-10 md:w-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center shadow-lg">
+                <Package className="h-5 w-5 md:h-6 md:w-6" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold">PharmaTrack</h1>
-                <p className="text-sm opacity-90">Find medications near you</p>
+                <h1 className="text-lg md:text-2xl font-bold tracking-tight">PharmaTrack</h1>
+                <p className="text-[10px] md:text-sm opacity-80 -mt-0.5">Find medications near you</p>
               </div>
             </div>
             <Link to="/auth">
-              <Button variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20">
-                Pharmacy Login
+              <Button 
+                variant="outline" 
+                size="sm"
+                className="bg-white/10 border-white/20 text-white hover:bg-white/20 text-xs md:text-sm h-8 md:h-9 px-3 md:px-4"
+              >
+                <span className="hidden sm:inline">Pharmacy </span>Login
               </Button>
             </Link>
           </div>
+        </div>
 
-          {/* Search Box */}
-          <div className="space-y-3">
-            <div className="relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-marketplace/60" />
+        {/* Search Box - Mobile Optimized */}
+        <div className="px-4 pb-4 space-y-2">
+          <div className="relative">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 md:h-5 md:w-5 text-marketplace/60" />
+            <Input
+              placeholder="Search medications..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+              className="pl-10 pr-10 h-11 md:h-14 text-sm md:text-lg bg-white text-foreground border-0 rounded-xl shadow-lg placeholder:text-muted-foreground/60"
+            />
+            <div className="absolute right-2.5 top-1/2 -translate-y-1/2">
+              <VoiceSearchButton onResult={handleVoiceResult} />
+            </div>
+          </div>
+          
+          {/* Location & Actions Row - Responsive */}
+          <div className="flex gap-2">
+            <div className="relative flex-1">
+              <MapPin className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-marketplace/60" />
               <Input
-                placeholder="Search for medications or say 'drug for cough'"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                className="pl-12 pr-12 h-14 text-lg bg-white text-foreground border-0 rounded-xl shadow-lg"
+                placeholder="Location (e.g., Ikeja)"
+                value={locationFilter}
+                onChange={(e) => setLocationFilter(e.target.value)}
+                className="pl-8 h-9 text-xs md:text-sm bg-white/95 text-foreground border-0 rounded-lg placeholder:text-muted-foreground/60"
               />
-              <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                <VoiceSearchButton onResult={handleVoiceResult} />
-              </div>
             </div>
-            <div className="flex flex-wrap gap-3">
-              <div className="relative flex-1 min-w-[200px]">
-                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-marketplace/60" />
-                <Input
-                  placeholder="Filter by location (e.g., Ikeja, Lagos)"
-                  value={locationFilter}
-                  onChange={(e) => setLocationFilter(e.target.value)}
-                  className="pl-10 bg-white/90 text-foreground border-0 rounded-lg"
-                />
-              </div>
-              <CustomerBarcodeScanner onScan={handleBarcodeScanned} />
-              <Button 
-                onClick={() => handleSearch()} 
-                disabled={isLoading}
-                className="bg-white text-marketplace hover:bg-white/90 font-semibold px-8"
-              >
-                {isLoading ? "Searching..." : "Search"}
-              </Button>
-            </div>
+            <CustomerBarcodeScanner onScan={handleBarcodeScanned} />
+            <Button 
+              onClick={() => handleSearch()} 
+              disabled={isLoading}
+              className="bg-white text-marketplace hover:bg-white/90 font-semibold h-9 px-4 md:px-6 text-sm shadow-md"
+            >
+              {isLoading ? "..." : "Go"}
+            </Button>
           </div>
         </div>
       </header>
 
-      {/* Install App Banner */}
-      {showInstallBanner && (
-        <div className="bg-gradient-to-r from-marketplace to-primary text-white py-3 px-4">
-          <div className="container mx-auto max-w-4xl flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <Smartphone className="h-5 w-5" />
-              <span className="text-sm font-medium">Install PharmaTrack for faster access</span>
+      {/* Install App Banner - Mobile Optimized */}
+      <AnimatePresence>
+        {showInstallBanner && (
+          <motion.div 
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: 'auto', opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            className="bg-gradient-to-r from-primary to-marketplace text-white overflow-hidden"
+          >
+            <div className="px-4 py-2.5 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Smartphone className="h-4 w-4" />
+                <span className="text-xs md:text-sm font-medium">Install for faster access</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <Button
+                  size="sm"
+                  onClick={handleInstallApp}
+                  className="bg-white text-marketplace hover:bg-white/90 h-7 px-3 text-xs"
+                >
+                  <Download className="h-3 w-3 mr-1" />
+                  Install
+                </Button>
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  onClick={() => setShowInstallBanner(false)}
+                  className="text-white hover:bg-white/10 h-7 w-7"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </Button>
+              </div>
             </div>
-            <div className="flex items-center gap-2">
-              <Button
-                size="sm"
-                variant="secondary"
-                onClick={handleInstallApp}
-                className="bg-white text-marketplace hover:bg-white/90"
-              >
-                <Download className="h-4 w-4 mr-1" />
-                Install
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => setShowInstallBanner(false)}
-                className="text-white hover:bg-white/10"
-              >
-                Later
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-      {/* Results */}
-      <main className="container mx-auto max-w-4xl px-4 py-8">
+      {/* Main Content - Mobile First */}
+      <main className="container mx-auto max-w-4xl px-3 md:px-4 py-4 md:py-8">
         {/* Category Chips - Always visible */}
         <CategoryChips 
           onCategorySelect={handleCategorySelect} 
           selectedCategory={selectedCategory} 
         />
 
-        {/* Spotlight Section - Featured Products */}
+        {/* Spotlight & Essentials - Always visible when not searching */}
         {!hasSearched && (
-          <>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.3 }}
+          >
             <SpotlightSection onOrder={handleWhatsAppOrder} />
             <NearbyEssentials onOrder={handleWhatsAppOrder} />
-          </>
+          </motion.div>
         )}
 
+        {/* Empty State - Hidden when there's content above */}
         {!hasSearched ? (
-          <div className="text-center py-16">
-            <div className="h-24 w-24 mx-auto mb-6 rounded-full bg-marketplace/10 flex items-center justify-center">
-              <Search className="h-12 w-12 text-marketplace" />
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="text-center py-8 md:py-16"
+          >
+            <div className="h-16 w-16 md:h-24 md:w-24 mx-auto mb-4 md:mb-6 rounded-full bg-gradient-to-br from-marketplace/20 to-primary/20 flex items-center justify-center">
+              <Search className="h-8 w-8 md:h-12 md:w-12 text-marketplace" />
             </div>
-            <h2 className="text-2xl font-bold text-foreground mb-2">Find Your Medication</h2>
-            <p className="text-muted-foreground max-w-md mx-auto">
-              Search for any medication and see which pharmacies near you have it in stock. 
-              Order directly via WhatsApp!
+            <h2 className="text-xl md:text-2xl font-bold text-foreground mb-2">Find Your Medication</h2>
+            <p className="text-sm md:text-base text-muted-foreground max-w-md mx-auto px-4">
+              Search for any medication and order directly via WhatsApp!
             </p>
-          </div>
+          </motion.div>
         ) : isLoading ? (
           <div className="grid gap-4">
             {[1, 2, 3].map((i) => (
