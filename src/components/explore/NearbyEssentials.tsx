@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react';
-import { MapPin, Store, MessageCircle, Package, Navigation, Loader2 } from 'lucide-react';
+import { MapPin, Store, MessageCircle, Package, Navigation, Loader2, ShoppingBag } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { useGeolocation, calculateDistance, getApproximateCoordinates } from '@/hooks/useGeolocation';
+import { motion } from 'framer-motion';
 
 interface NearbyMedication {
   id: string;
@@ -113,14 +114,14 @@ export const NearbyEssentials = ({ onOrder }: NearbyEssentialsProps) => {
 
   if (isLoading) {
     return (
-      <div className="mb-8">
-        <div className="flex items-center gap-2 mb-4">
-          <MapPin className="h-5 w-5 text-primary animate-pulse" />
-          <div className="h-6 bg-muted rounded w-48 animate-pulse" />
+      <div className="mb-6 md:mb-8">
+        <div className="flex items-center gap-2 mb-3 md:mb-4">
+          <ShoppingBag className="h-4 w-4 md:h-5 md:w-5 text-primary animate-pulse" />
+          <div className="h-5 md:h-6 bg-muted rounded w-36 md:w-48 animate-pulse" />
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-          {[1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-            <div key={i} className="h-48 bg-muted rounded-xl animate-pulse" />
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 md:gap-4">
+          {[1, 2, 3, 4].map((i) => (
+            <div key={i} className="h-40 md:h-48 bg-muted rounded-2xl animate-pulse" />
           ))}
         </div>
       </div>
@@ -130,27 +131,32 @@ export const NearbyEssentials = ({ onOrder }: NearbyEssentialsProps) => {
   if (medications.length === 0) return null;
 
   return (
-    <div className="mb-8">
-      <div className="flex items-center justify-between mb-4">
-        <div className="flex items-center gap-2">
-          <MapPin className="h-5 w-5 text-primary" />
-          <h2 className="text-xl font-bold text-foreground">Available Near You</h2>
-          {latitude && (
-            <Badge variant="outline" className="ml-2 gap-1 text-xs">
-              <Navigation className="h-3 w-3" />
-              Within 5km
-            </Badge>
-          )}
+    <motion.div 
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.1 }}
+      className="mb-6 md:mb-8"
+    >
+      {/* Header - Mobile Optimized */}
+      <div className="flex items-center justify-between mb-3 md:mb-4">
+        <div className="flex items-center gap-1.5 md:gap-2">
+          <div className="h-7 w-7 md:h-8 md:w-8 rounded-lg bg-gradient-to-br from-primary to-blue-600 flex items-center justify-center">
+            <ShoppingBag className="h-3.5 w-3.5 md:h-4 md:w-4 text-white" />
+          </div>
+          <div>
+            <h2 className="text-base md:text-xl font-bold text-foreground">Available Near You</h2>
+            <p className="text-[10px] md:text-xs text-muted-foreground">Essential medications</p>
+          </div>
         </div>
         {!latitude && !geoLoading && (
           <Button
             variant="ghost"
             size="sm"
             onClick={requestLocation}
-            className="gap-1.5 text-xs"
+            className="gap-1 text-[10px] md:text-xs h-7 px-2"
           >
             <Navigation className="h-3 w-3" />
-            Enable Location
+            <span className="hidden sm:inline">Enable</span> Location
           </Button>
         )}
         {geoLoading && (
@@ -158,49 +164,56 @@ export const NearbyEssentials = ({ onOrder }: NearbyEssentialsProps) => {
         )}
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-        {medications.map((medication) => (
-          <Card
+      {/* Grid - Mobile Optimized */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 md:gap-4">
+        {medications.map((medication, index) => (
+          <motion.div
             key={`nearby-${medication.id}`}
-            className="overflow-hidden hover:shadow-lg transition-all cursor-pointer group"
-            onClick={() => onOrder(medication)}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.03 }}
           >
-            <CardContent className="p-4">
-              <Badge variant="secondary" className="mb-2 text-xs">
-                {medication.category}
-              </Badge>
-              <h3 className="font-semibold text-sm line-clamp-2 mb-2 group-hover:text-marketplace transition-colors">
-                {medication.name}
-              </h3>
-              <p className="text-lg font-bold text-marketplace mb-2">
-                {formatPrice(medication.selling_price || 0)}
-              </p>
-              <div className="flex items-center gap-1 text-xs text-muted-foreground mb-2">
-                <Store className="h-3 w-3" />
-                <span className="line-clamp-1">{medication.pharmacy_name}</span>
-              </div>
-              {medication.distance !== undefined && (
-                <Badge variant="outline" className="text-[10px]">
-                  {medication.distance < 1
-                    ? `${Math.round(medication.distance * 1000)}m away`
-                    : `${medication.distance.toFixed(1)}km away`}
+            <Card
+              className="overflow-hidden hover:shadow-lg active:scale-[0.98] transition-all cursor-pointer group rounded-2xl border-0 bg-gradient-to-br from-white to-muted/30 dark:from-card dark:to-muted/10 shadow-sm"
+              onClick={() => onOrder(medication)}
+            >
+              <CardContent className="p-3 md:p-4">
+                <Badge variant="secondary" className="mb-1.5 md:mb-2 text-[10px] md:text-xs px-2 py-0.5 rounded-full">
+                  {medication.category}
                 </Badge>
-              )}
-              <Button
-                size="sm"
-                className="w-full mt-3 bg-[#25D366] hover:bg-[#20BD5A] text-white"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onOrder(medication);
-                }}
-              >
-                <MessageCircle className="h-3 w-3 mr-1" />
-                Order
-              </Button>
-            </CardContent>
-          </Card>
+                <h3 className="font-semibold text-xs md:text-sm line-clamp-2 mb-1.5 md:mb-2 group-hover:text-marketplace transition-colors min-h-[2.5rem] md:min-h-0">
+                  {medication.name}
+                </h3>
+                <p className="text-base md:text-lg font-bold text-marketplace mb-1.5 md:mb-2">
+                  {formatPrice(medication.selling_price || 0)}
+                </p>
+                <div className="flex items-center gap-1 text-[10px] md:text-xs text-muted-foreground mb-1.5 md:mb-2">
+                  <Store className="h-2.5 w-2.5 md:h-3 md:w-3 shrink-0" />
+                  <span className="line-clamp-1">{medication.pharmacy_name}</span>
+                </div>
+                {medication.distance !== undefined && (
+                  <Badge variant="outline" className="text-[9px] md:text-[10px] px-1.5 py-0 mb-2 md:mb-3">
+                    {medication.distance < 1
+                      ? `${Math.round(medication.distance * 1000)}m away`
+                      : `${medication.distance.toFixed(1)}km away`}
+                  </Badge>
+                )}
+                <Button
+                  size="sm"
+                  className="w-full bg-[#25D366] hover:bg-[#20BD5A] text-white h-8 md:h-9 text-[10px] md:text-xs font-semibold rounded-xl"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onOrder(medication);
+                  }}
+                >
+                  <MessageCircle className="h-3 w-3 md:h-3.5 md:w-3.5 mr-1" />
+                  Order
+                </Button>
+              </CardContent>
+            </Card>
+          </motion.div>
         ))}
       </div>
-    </div>
+    </motion.div>
   );
 };
