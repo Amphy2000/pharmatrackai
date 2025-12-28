@@ -100,13 +100,13 @@ export const CurrencyProvider = ({ children }: CurrencyProviderProps) => {
     return amount;
   };
 
-  const convertPrice = (amount: number, fromCurrency: CurrencyCode = 'USD'): number => {
+  const convertPrice = (amount: number, fromCurrency: CurrencyCode = 'NGN'): number => {
     if (fromCurrency === currency) return amount;
     const usdAmount = convertToUSD(amount, fromCurrency);
     return convertFromUSD(usdAmount, currency);
   };
 
-  const formatPrice = (amount: number, originalCurrency: CurrencyCode = 'USD'): string => {
+  const formatPrice = (amount: number, originalCurrency: CurrencyCode = 'NGN'): string => {
     const convertedAmount = convertPrice(amount, originalCurrency);
     const symbol = CURRENCY_SYMBOLS[currency];
     const locale = CURRENCY_LOCALES[currency];
