@@ -57,9 +57,9 @@ export const generateKillerQuestionsPdf = (): jsPDF => {
       icon: '⚠️',
     },
     {
-      question: 'Can it predict which items will expire in 60 days?',
-      why: 'AI prediction vs basic date alerts. 70% of expiring stock can be saved.',
-      icon: '🤖',
+      question: 'Can customers find your pharmacy in a public marketplace?',
+      why: 'PharmaTrack lists your products publicly so patients find YOU first.',
+      icon: '🌍',
     },
     {
       question: 'Can it scan an invoice and stock 50 items in 30 seconds?',
@@ -67,9 +67,9 @@ export const generateKillerQuestionsPdf = (): jsPDF => {
       icon: '📸',
     },
     {
-      question: 'Does it track controlled drugs with a legal audit trail?',
-      why: 'Narcotics require strict documentation. PCN inspectors check this.',
-      icon: '💊',
+      question: 'Does it show patients nearby pharmacies with stock?',
+      why: 'Distance-based search lets patients filter pharmacies within 1km-10km.',
+      icon: '📍',
     },
   ];
 

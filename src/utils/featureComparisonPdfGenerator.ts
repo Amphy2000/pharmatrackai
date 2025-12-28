@@ -106,9 +106,14 @@ export const generateFeatureComparisonPdf = (): jsPDF => {
       newWay: 'Price Shield locks prices',
     },
     {
-      challenge: 'Prescription Fraud',
-      oldWay: 'No detection',
-      newWay: 'AI detects patterns instantly',
+      challenge: 'Public Visibility',
+      oldWay: 'No online presence',
+      newWay: 'Marketplace lists your products',
+    },
+    {
+      challenge: 'Patient Discovery',
+      oldWay: 'Walk-in only',
+      newWay: 'Patients find you by distance',
     },
     {
       challenge: 'Expired Products',
@@ -154,11 +159,6 @@ export const generateFeatureComparisonPdf = (): jsPDF => {
       challenge: 'Multiple Branches',
       oldWay: 'Call each, inconsistent',
       newWay: 'One dashboard for all',
-    },
-    {
-      challenge: 'Customer History',
-      oldWay: 'No records',
-      newWay: 'Full history + reminders',
     },
   ];
 

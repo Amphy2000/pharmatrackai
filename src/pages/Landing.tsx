@@ -125,12 +125,12 @@ const Landing = () => {
   // Generic POS vs PharmaTrack AI - Comprehensive Comparison Table
   const comparisonData = [
     { feature: 'Inventory Entry', oldApp: 'Manual search of 100k items', pharmatrack: 'AI Invoice Scanner: Snap & Stock 50+ items in 10 secs', critical: true },
+    { feature: 'Patient Discovery', oldApp: 'Walk-in only, no online presence', pharmatrack: 'Public Marketplace: Patients find you by distance (1-10km)', critical: true },
     { feature: 'Compliance', oldApp: 'Generic Expiry alerts only', pharmatrack: '2025 NAFDAC Ready: Auto-generates Batch/BN Traceability logs', critical: true },
     { feature: 'Anti-Theft', oldApp: 'Staff can edit prices easily', pharmatrack: 'Locked Pricing: Zero-Price-Manipulation (Admin Only)', critical: true },
     { feature: 'Clinical Care', oldApp: 'Basic grocery-style receipt', pharmatrack: 'Digital Dispensing: Integrated Dosage & Ingredient Search', critical: true },
     { feature: 'Owner Alerts', oldApp: 'No automated notifications', pharmatrack: 'SMS & WhatsApp: Instant low-stock & expiry alerts to your phone', critical: true },
     { feature: 'Performance', oldApp: 'Bloated app; lags on older phones', pharmatrack: 'High-Speed Lite: Instant login on all Nigerian networks', critical: false },
-    { feature: 'Hardware', oldApp: '₦300k dedicated device needed', pharmatrack: 'Zero Hardware: Runs on the phone/laptop you already own', critical: false },
   ];
 
   // Compliance badges for pharmacy-specific positioning

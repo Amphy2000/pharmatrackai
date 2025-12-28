@@ -18,7 +18,8 @@ import {
   Settings,
   FileText,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Globe
 } from 'lucide-react';
 import { useState } from 'react';
 
@@ -189,6 +190,28 @@ const guideSections: GuideSection[] = [
       'Download PDF compliance reports for NAFDAC inspections',
       'Mark controlled substances when adding medications for easy filtering',
       'Add NAFDAC registration numbers for official audit documents',
+    ],
+  },
+  {
+    id: 'marketplace',
+    title: 'Public Marketplace',
+    icon: Globe,
+    description: 'Get discovered by patients searching for medication nearby',
+    steps: [
+      'Go to Settings → Marketplace to enable public listing',
+      'Mark products as "Public" in Inventory to list them',
+      'Feature up to 3 products in the Spotlight section for prominence',
+      'Patients can search by drug name or category',
+      'Distance filters (1km, 5km, 10km, All) help nearby customers find you',
+      'Sorting options include distance, price, and availability',
+      'Your pharmacy address links directly to Google Maps',
+      'Patients order via WhatsApp directly from the marketplace',
+    ],
+    tips: [
+      'Keep your pharmacy address accurate for distance calculations',
+      'Featured products appear in the Spotlight carousel',
+      'Products within 5km show a "Fast Pickup" badge',
+      'Download and share the "Find It Near You" flyer at hospitals',
     ],
   },
   {
