@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Search, MapPin, MessageCircle, Package, Store, Phone, Star, AlertCircle, Download, Smartphone, X, Menu, ChevronRight } from "lucide-react";
+import { Search, MapPin, MessageCircle, Package, Store, Phone, Star, AlertCircle, Download, Smartphone, X, Menu, ChevronRight, ArrowLeft } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -14,7 +14,10 @@ import { SpotlightSection } from "@/components/explore/SpotlightSection";
 import { CategoryChips } from "@/components/explore/CategoryChips";
 import { NearbyEssentials } from "@/components/explore/NearbyEssentials";
 import { RequestDrugButton } from "@/components/explore/RequestDrugButton";
+import { DistanceFilter, DistanceRadius, SortOption } from "@/components/explore/DistanceFilter";
+import { ExploreFlyer } from "@/components/explore/ExploreFlyer";
 import { motion, AnimatePresence } from "framer-motion";
+import { useGeolocation, calculateDistance, getApproximateCoordinates } from "@/hooks/useGeolocation";
 
 interface PublicMedication {
   id: string;
@@ -38,10 +41,13 @@ const Explore = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [distanceRadius, setDistanceRadius] = useState<DistanceRadius>('all');
+  const [sortOption, setSortOption] = useState<SortOption>('distance');
   const { formatPrice } = useCurrency();
   const { toast } = useToast();
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showInstallBanner, setShowInstallBanner] = useState(false);
+  const { latitude, longitude, requestLocation } = useGeolocation();
 
   // Listen for PWA install prompt
   useEffect(() => {
@@ -146,7 +152,45 @@ const Explore = () => {
 
       if (error) throw error;
 
-      setMedications(data || []);
+      // Add distance info and apply filters/sorting
+      let processedMeds = (data || []).map((med: PublicMedication) => {
+        if (latitude && longitude) {
+          const pharmacyCoords = getApproximateCoordinates(med.pharmacy_address);
+          if (pharmacyCoords) {
+            const distance = calculateDistance(latitude, longitude, pharmacyCoords.lat, pharmacyCoords.lon);
+            return { ...med, distance };
+          }
+        }
+        return { ...med, distance: undefined as number | undefined };
+      });
+
+      // Apply distance filter
+      if (distanceRadius !== 'all' && latitude && longitude) {
+        processedMeds = processedMeds.filter((med: any) => 
+          med.distance === undefined || med.distance <= distanceRadius
+        );
+      }
+
+      // Apply sorting
+      processedMeds = processedMeds.sort((a: any, b: any) => {
+        switch (sortOption) {
+          case 'distance':
+            if (a.distance === undefined && b.distance === undefined) return 0;
+            if (a.distance === undefined) return 1;
+            if (b.distance === undefined) return -1;
+            return a.distance - b.distance;
+          case 'price-low':
+            return (a.selling_price || 0) - (b.selling_price || 0);
+          case 'price-high':
+            return (b.selling_price || 0) - (a.selling_price || 0);
+          case 'availability':
+            return b.current_stock - a.current_stock;
+          default:
+            return 0;
+        }
+      });
+
+      setMedications(processedMeds);
 
       // Track pharmacy views for each result
       if (data && data.length > 0) {
@@ -299,23 +343,17 @@ const Explore = () => {
         <div className="px-4 py-3">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2.5">
-              <div className="h-9 w-9 md:h-10 md:w-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center shadow-lg">
-                <Package className="h-5 w-5 md:h-6 md:w-6" />
-              </div>
+              <Link to="/" className="h-9 w-9 md:h-10 md:w-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center shadow-lg hover:bg-white/30 transition-colors">
+                <ArrowLeft className="h-5 w-5 md:h-6 md:w-6" />
+              </Link>
               <div>
                 <h1 className="text-lg md:text-2xl font-bold tracking-tight">PharmaTrack</h1>
-                <p className="text-[10px] md:text-sm opacity-80 -mt-0.5">Find medications near you</p>
+                <p className="text-[10px] md:text-sm opacity-80 -mt-0.5">Find Medicine Near You</p>
               </div>
             </div>
-            <Link to="/auth">
-              <Button 
-                variant="outline" 
-                size="sm"
-                className="bg-white/10 border-white/20 text-white hover:bg-white/20 text-xs md:text-sm h-8 md:h-9 px-3 md:px-4"
-              >
-                <span className="hidden sm:inline">Pharmacy </span>Login
-              </Button>
-            </Link>
+            <div className="flex items-center gap-2">
+              <ExploreFlyer />
+            </div>
           </div>
         </div>
 
@@ -397,11 +435,21 @@ const Explore = () => {
 
       {/* Main Content - Mobile First */}
       <main className="container mx-auto max-w-4xl px-3 md:px-4 py-4 md:py-8">
-        {/* Category Chips - Always visible */}
-        <CategoryChips 
-          onCategorySelect={handleCategorySelect} 
-          selectedCategory={selectedCategory} 
-        />
+        {/* Filter Bar - Always visible */}
+        <div className="flex items-center justify-between mb-4">
+          <CategoryChips 
+            onCategorySelect={handleCategorySelect} 
+            selectedCategory={selectedCategory} 
+          />
+          <DistanceFilter
+            selectedRadius={distanceRadius}
+            selectedSort={sortOption}
+            onRadiusChange={setDistanceRadius}
+            onSortChange={setSortOption}
+            locationEnabled={!!latitude}
+            onEnableLocation={requestLocation}
+          />
+        </div>
 
         {/* Spotlight & Essentials - Always visible when not searching */}
         {!hasSearched && (
