@@ -7,7 +7,6 @@ const corsHeaders = {
 };
 
 const TERMII_API_KEY = Deno.env.get("TERMII_API_KEY");
-const ADMIN_WHATSAPP = "2349169153129";
 
 interface ExpiringPromotion {
   medication_id: string;
