@@ -47,3 +47,9 @@ verify_jwt = true
 
 [functions.smart-upsell]
 verify_jwt = true
+
+[functions.notify-whatsapp-lead]
+verify_jwt = false
+
+[functions.upgrade-branches]
+verify_jwt = true

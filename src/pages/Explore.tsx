@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Search, MapPin, MessageCircle, Package, Store, Phone } from "lucide-react";
+import { Search, MapPin, MessageCircle, Package, Store, Phone, Star, AlertCircle } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -20,16 +20,45 @@ interface PublicMedication {
   pharmacy_name: string;
   pharmacy_phone: string | null;
   pharmacy_address: string | null;
+  is_featured: boolean | null;
 }
 
 const Explore = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [locationFilter, setLocationFilter] = useState("");
   const [medications, setMedications] = useState<PublicMedication[]>([]);
+  const [featuredMedications, setFeaturedMedications] = useState<PublicMedication[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const { formatPrice } = useCurrency();
   const { toast } = useToast();
+
+  // Load featured medications on mount
+  useEffect(() => {
+    const loadFeatured = async () => {
+      try {
+        const { data, error } = await supabase.rpc("get_public_medications", {
+          search_term: null,
+          location_filter: null,
+        });
+
+        if (error) throw error;
+
+        const featured = (data || []).filter((m: PublicMedication) => m.is_featured);
+        setFeaturedMedications(featured.slice(0, 6));
+
+        // Track page visit
+        await supabase.from("marketplace_views").insert({
+          pharmacy_id: featured[0]?.pharmacy_id || "00000000-0000-0000-0000-000000000000",
+          visit_type: "page_visit",
+        });
+      } catch (error) {
+        console.error("Error loading featured:", error);
+      }
+    };
+
+    loadFeatured();
+  }, []);
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) {
@@ -49,7 +78,7 @@ const Explore = () => {
       await supabase.from("marketplace_searches").insert({
         search_query: searchQuery,
         location_filter: locationFilter || null,
-        results_count: 0, // Will update after getting results
+        results_count: 0,
       });
 
       // Get public medications using the function
@@ -69,6 +98,7 @@ const Explore = () => {
           await supabase.from("marketplace_views").insert({
             pharmacy_id: pharmacyId,
             search_query: searchQuery,
+            visit_type: "search",
           });
         }
       }
@@ -93,6 +123,15 @@ const Explore = () => {
         medication_name: medication.name,
         quantity,
       });
+
+      // Send SMS notification via edge function
+      await supabase.functions.invoke("notify-whatsapp-lead", {
+        body: {
+          pharmacy_id: medication.pharmacy_id,
+          medication_name: medication.name,
+          quantity,
+        },
+      });
     } catch (error) {
       console.error("Error tracking WhatsApp lead:", error);
     }
@@ -106,6 +145,85 @@ const Explore = () => {
     const whatsappUrl = `https://wa.me/${phone}?text=${message}`;
     window.open(whatsappUrl, "_blank");
   };
+
+  const MedicationCard = ({ medication, isFeatured = false }: { medication: PublicMedication; isFeatured?: boolean }) => (
+    <Card className={`overflow-hidden hover:shadow-lg transition-shadow ${isFeatured ? 'border-marketplace/50 bg-marketplace/5' : ''}`}>
+      <CardContent className="p-0">
+        <div className="flex flex-col md:flex-row">
+          {/* Medication Info */}
+          <div className="flex-1 p-6">
+            <div className="flex items-start justify-between mb-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-xl font-bold text-foreground">{medication.name}</h3>
+                  {medication.is_featured && (
+                    <Badge className="bg-marketplace text-marketplace-foreground gap-1">
+                      <Star className="h-3 w-3" />
+                      Featured
+                    </Badge>
+                  )}
+                </div>
+                <Badge variant="secondary" className="mt-1">{medication.category}</Badge>
+              </div>
+              <div className="text-right">
+                <p className="text-2xl font-bold text-marketplace">
+                  {formatPrice(medication.selling_price || 0)}
+                </p>
+                <p className="text-sm text-muted-foreground">per {medication.dispensing_unit}</p>
+              </div>
+            </div>
+            
+            {/* Price Disclaimer */}
+            <div className="flex items-start gap-2 p-2 bg-warning/10 rounded-lg border border-warning/20 mb-3">
+              <AlertCircle className="h-4 w-4 text-warning shrink-0 mt-0.5" />
+              <p className="text-xs text-muted-foreground">
+                Confirm price with pharmacist via WhatsApp
+              </p>
+            </div>
+            
+            <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+              <Store className="h-4 w-4" />
+              <span className="font-medium text-foreground">{medication.pharmacy_name}</span>
+            </div>
+            
+            {medication.pharmacy_address && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+                <MapPin className="h-4 w-4" />
+                <span>{medication.pharmacy_address}</span>
+              </div>
+            )}
+            
+            <Badge 
+              variant="outline" 
+              className="bg-success/10 text-success border-success/30"
+            >
+              In Stock ({medication.current_stock} available)
+            </Badge>
+          </div>
+
+          {/* Action Section */}
+          <div className="bg-marketplace/5 p-6 flex flex-col justify-center items-center gap-3 md:w-48">
+            <Button
+              onClick={() => handleWhatsAppOrder(medication)}
+              className="w-full bg-[#25D366] hover:bg-[#20BD5A] text-white font-semibold"
+            >
+              <MessageCircle className="mr-2 h-5 w-5" />
+              Buy Now
+            </Button>
+            {medication.pharmacy_phone && (
+              <a 
+                href={`tel:${medication.pharmacy_phone}`}
+                className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+              >
+                <Phone className="h-4 w-4" />
+                {medication.pharmacy_phone}
+              </a>
+            )}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-marketplace/5 to-background">
@@ -165,6 +283,25 @@ const Explore = () => {
 
       {/* Results */}
       <main className="container mx-auto max-w-4xl px-4 py-8">
+        {/* Featured Section */}
+        {!hasSearched && featuredMedications.length > 0 && (
+          <div className="mb-8">
+            <div className="flex items-center gap-2 mb-4">
+              <Star className="h-5 w-5 text-marketplace" />
+              <h2 className="text-xl font-bold text-foreground">Promoted Products</h2>
+            </div>
+            <div className="grid gap-4">
+              {featuredMedications.map((medication) => (
+                <MedicationCard 
+                  key={`featured-${medication.id}-${medication.pharmacy_id}`} 
+                  medication={medication} 
+                  isFeatured 
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
         {!hasSearched ? (
           <div className="text-center py-16">
             <div className="h-24 w-24 mx-auto mb-6 rounded-full bg-marketplace/10 flex items-center justify-center">
@@ -206,66 +343,10 @@ const Explore = () => {
             </p>
             
             {medications.map((medication) => (
-              <Card key={`${medication.id}-${medication.pharmacy_id}`} className="overflow-hidden hover:shadow-lg transition-shadow">
-                <CardContent className="p-0">
-                  <div className="flex flex-col md:flex-row">
-                    {/* Medication Info */}
-                    <div className="flex-1 p-6">
-                      <div className="flex items-start justify-between mb-3">
-                        <div>
-                          <h3 className="text-xl font-bold text-foreground">{medication.name}</h3>
-                          <Badge variant="secondary" className="mt-1">{medication.category}</Badge>
-                        </div>
-                        <div className="text-right">
-                          <p className="text-2xl font-bold text-marketplace">
-                            {formatPrice(medication.selling_price || 0)}
-                          </p>
-                          <p className="text-sm text-muted-foreground">per {medication.dispensing_unit}</p>
-                        </div>
-                      </div>
-                      
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-                        <Store className="h-4 w-4" />
-                        <span className="font-medium text-foreground">{medication.pharmacy_name}</span>
-                      </div>
-                      
-                      {medication.pharmacy_address && (
-                        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
-                          <MapPin className="h-4 w-4" />
-                          <span>{medication.pharmacy_address}</span>
-                        </div>
-                      )}
-                      
-                      <Badge 
-                        variant="outline" 
-                        className="bg-success/10 text-success border-success/30"
-                      >
-                        In Stock ({medication.current_stock} available)
-                      </Badge>
-                    </div>
-
-                    {/* Action Section */}
-                    <div className="bg-marketplace/5 p-6 flex flex-col justify-center items-center gap-3 md:w-48">
-                      <Button
-                        onClick={() => handleWhatsAppOrder(medication)}
-                        className="w-full bg-[#25D366] hover:bg-[#20BD5A] text-white font-semibold"
-                      >
-                        <MessageCircle className="mr-2 h-5 w-5" />
-                        Buy Now
-                      </Button>
-                      {medication.pharmacy_phone && (
-                        <a 
-                          href={`tel:${medication.pharmacy_phone}`}
-                          className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
-                        >
-                          <Phone className="h-4 w-4" />
-                          {medication.pharmacy_phone}
-                        </a>
-                      )}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+              <MedicationCard 
+                key={`${medication.id}-${medication.pharmacy_id}`} 
+                medication={medication} 
+              />
             ))}
           </div>
         )}

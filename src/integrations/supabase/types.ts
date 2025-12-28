@@ -398,6 +398,7 @@ export type Database = {
           search_query: string | null
           viewed_at: string | null
           viewer_ip: string | null
+          visit_type: string | null
         }
         Insert: {
           id?: string
@@ -406,6 +407,7 @@ export type Database = {
           search_query?: string | null
           viewed_at?: string | null
           viewer_ip?: string | null
+          visit_type?: string | null
         }
         Update: {
           id?: string
@@ -414,6 +416,7 @@ export type Database = {
           search_query?: string | null
           viewed_at?: string | null
           viewer_ip?: string | null
+          visit_type?: string | null
         }
         Relationships: [
           {
@@ -474,6 +477,7 @@ export type Database = {
           expiry_date: string
           id: string
           is_controlled: boolean
+          is_featured: boolean | null
           is_public: boolean | null
           is_shelved: boolean
           last_notified_at: string | null
@@ -501,6 +505,7 @@ export type Database = {
           expiry_date: string
           id?: string
           is_controlled?: boolean
+          is_featured?: boolean | null
           is_public?: boolean | null
           is_shelved?: boolean
           last_notified_at?: string | null
@@ -528,6 +533,7 @@ export type Database = {
           expiry_date?: string
           id?: string
           is_controlled?: boolean
+          is_featured?: boolean | null
           is_public?: boolean | null
           is_shelved?: boolean
           last_notified_at?: string | null
@@ -1899,6 +1905,7 @@ export type Database = {
           current_stock: number
           dispensing_unit: string
           id: string
+          is_featured: boolean
           name: string
           pharmacy_address: string
           pharmacy_id: string
