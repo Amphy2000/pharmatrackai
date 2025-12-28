@@ -40,31 +40,29 @@ import { useToast } from '@/hooks/use-toast';
 import { usePermissions } from '@/hooks/usePermissions';
 import { differenceInDays, formatDistanceToNow, format } from 'date-fns';
 
-const ALERT_SETTINGS_KEY = 'pharmatrack_alert_settings';
-
 const Notifications = () => {
   const { alerts, alertCounts, generateWhatsAppMessage, generateDigestWhatsAppUrl } = useAlertEngine();
   const { sendExpiryAlert, sendLowStockAlert, isSending } = useAlerts();
-  const { 
-    notifications: dbNotifications, 
-    sentAlerts, 
+  const {
+    notifications: dbNotifications,
+    sentAlerts,
     unreadCount,
     markAsRead,
     markAllAsRead,
     clearAll,
     generateInventoryNotifications,
-    loading: notificationsLoading
+    loading: notificationsLoading,
   } = useDbNotifications();
   const { pharmacy } = usePharmacy();
   const { formatPrice } = useCurrency();
   const { toast } = useToast();
   const { isOwnerOrManager, userRole } = usePermissions();
-  
+
   // WhatsApp buttons visible to owner, manager, and all staff roles (pharmacist, inventory clerk, senior staff)
   const canSendAlerts = userRole !== null; // Any authenticated staff can send alerts
   const [searchParams] = useSearchParams();
   const urlFilter = searchParams.get('filter');
-  
+
   const [filter, setFilter] = useState<'all' | 'high' | 'medium' | 'low'>('all');
   const [activeTab, setActiveTab] = useState<string>(() => {
     // Set initial tab based on URL filter
@@ -80,28 +78,18 @@ const Notifications = () => {
 
   // Calculate total value at risk
   const totalValueAtRisk = alerts
-    .filter(a => a.type === 'expiry')
+    .filter((a) => a.type === 'expiry')
     .reduce((sum, a) => sum + (a.valueAtRisk || 0), 0);
 
-  // Get owner phone from pharmacy settings (dynamic routing)
-  const ownerPhone = pharmacy?.phone || savedPhone;
+  // Alerts should route to the saved alert recipient number (fallback to pharmacy phone if none set)
+  const ownerPhone = pharmacy?.alert_recipient_phone || pharmacy?.phone || savedPhone;
   const ownerName = pharmacy?.name || 'Owner';
 
-  // Load saved settings
+  // Keep local state synced to backend settings
   useEffect(() => {
-    if (pharmacy?.id) {
-      const savedSettings = localStorage.getItem(`${ALERT_SETTINGS_KEY}_${pharmacy.id}`);
-      if (savedSettings) {
-        try {
-          const settings = JSON.parse(savedSettings);
-          setSavedPhone(settings.phone || '');
-          setUseWhatsApp(settings.useWhatsApp !== false);
-        } catch (e) {
-          console.error('Failed to parse saved alert settings');
-        }
-      }
-    }
-  }, [pharmacy?.id]);
+    setSavedPhone(pharmacy?.alert_recipient_phone || '');
+    setUseWhatsApp((pharmacy?.alert_channel || 'whatsapp') === 'whatsapp');
+  }, [pharmacy?.alert_recipient_phone, pharmacy?.alert_channel]);
 
   const filteredAlerts = filter === 'all' 
     ? alerts 
@@ -160,7 +148,7 @@ const Notifications = () => {
     if (!ownerPhone) {
       toast({
         title: 'Phone not configured',
-        description: 'Please set your phone number in Settings → Pharmacy settings',
+        description: 'Please set your phone number in Settings → Alerts',
         variant: 'destructive',
       });
       return;
@@ -219,7 +207,7 @@ const Notifications = () => {
     if (!phoneToUse) {
       toast({
         title: 'Phone not configured',
-        description: 'Please set your phone number in Settings → Pharmacy settings',
+        description: 'Please set your phone number in Settings → Alerts',
         variant: 'destructive',
       });
       return;
