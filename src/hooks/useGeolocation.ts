@@ -81,24 +81,30 @@ export const calculateDistance = (
 const toRad = (deg: number): number => deg * (Math.PI / 180);
 
 /**
- * Parse coordinates from address string (simplified geocoding)
- * For Nigerian addresses, this uses approximate city/area coordinates
+ * Enhanced Nigerian address parsing with landmarks and specific locations
+ * Uses intelligent address detection for accurate geocoding
  */
 export const getApproximateCoordinates = (address: string | null): { lat: number; lon: number } | null => {
   if (!address) return null;
   
   const addressLower = address.toLowerCase();
   
-  // Nigerian cities and areas with approximate coordinates
+  // Nigerian cities and areas with precise coordinates
   const locations: Record<string, { lat: number; lon: number }> = {
-    // Lagos State - Major Areas
+    // Lagos State - Major Areas & Landmarks
     'lagos': { lat: 6.5244, lon: 3.3792 },
     'ikeja': { lat: 6.6018, lon: 3.3515 },
+    'allen avenue': { lat: 6.6045, lon: 3.3470 },
+    'alausa': { lat: 6.6167, lon: 3.3500 },
     'victoria island': { lat: 6.4281, lon: 3.4219 },
     'vi': { lat: 6.4281, lon: 3.4219 },
     'lekki': { lat: 6.4698, lon: 3.5852 },
+    'lekki phase 1': { lat: 6.4450, lon: 3.4700 },
+    'lekki phase 2': { lat: 6.4580, lon: 3.5400 },
+    'chevron': { lat: 6.4600, lon: 3.5750 },
     'ikoyi': { lat: 6.4549, lon: 3.4308 },
     'yaba': { lat: 6.5158, lon: 3.3782 },
+    'unilag': { lat: 6.5158, lon: 3.3980 },
     'surulere': { lat: 6.5054, lon: 3.3542 },
     'maryland': { lat: 6.5722, lon: 3.3636 },
     'ojodu': { lat: 6.6333, lon: 3.3667 },
@@ -109,6 +115,7 @@ export const getApproximateCoordinates = (address: string | null): { lat: number
     'festac': { lat: 6.4667, lon: 3.2833 },
     'apapa': { lat: 6.4500, lon: 3.3667 },
     'ajah': { lat: 6.4667, lon: 3.5667 },
+    'sangotedo': { lat: 6.4667, lon: 3.6167 },
     'ikorodu': { lat: 6.6194, lon: 3.5105 },
     'badagry': { lat: 6.4167, lon: 2.8833 },
     'epe': { lat: 6.5833, lon: 3.9833 },
@@ -121,11 +128,19 @@ export const getApproximateCoordinates = (address: string | null): { lat: number
     'ogudu': { lat: 6.5833, lon: 3.4000 },
     'kosofe': { lat: 6.6000, lon: 3.4333 },
     'anthony': { lat: 6.5667, lon: 3.3667 },
+    'mile 12': { lat: 6.5833, lon: 3.4333 },
+    'ketu': { lat: 6.5833, lon: 3.4000 },
+    'ojota': { lat: 6.5833, lon: 3.3833 },
+    'palm groove': { lat: 6.5333, lon: 3.3667 },
+    'computer village': { lat: 6.6000, lon: 3.3500 },
     
-    // Abuja FCT
+    // Abuja FCT - Areas & Landmarks
     'abuja': { lat: 9.0765, lon: 7.3986 },
     'garki': { lat: 9.0333, lon: 7.4833 },
+    'garki 2': { lat: 9.0300, lon: 7.4900 },
     'wuse': { lat: 9.0833, lon: 7.4667 },
+    'wuse 2': { lat: 9.0850, lon: 7.4700 },
+    'wuse zone': { lat: 9.0833, lon: 7.4650 },
     'maitama': { lat: 9.1000, lon: 7.5000 },
     'asokoro': { lat: 9.0333, lon: 7.5333 },
     'gwarinpa': { lat: 9.1167, lon: 7.4000 },
@@ -135,20 +150,47 @@ export const getApproximateCoordinates = (address: string | null): { lat: number
     'lugbe': { lat: 8.9667, lon: 7.3833 },
     'jabi': { lat: 9.0667, lon: 7.4333 },
     'utako': { lat: 9.0833, lon: 7.4333 },
+    'central area': { lat: 9.0650, lon: 7.4850 },
+    'airport road': { lat: 9.0000, lon: 7.3833 },
+    'amac': { lat: 9.0333, lon: 7.4667 },
+    
+    // Niger State - Specific Locations
+    'etsu patigi': { lat: 8.7200, lon: 5.7550 }, // Near Patigi
+    'patigi': { lat: 8.7167, lon: 5.7500 },
+    'patigi lga': { lat: 8.7167, lon: 5.7500 },
+    'bida': { lat: 9.0833, lon: 6.0167 },
+    'minna': { lat: 9.6139, lon: 6.5569 },
+    'minna central': { lat: 9.6200, lon: 6.5500 },
+    'kontagora': { lat: 10.4000, lon: 5.4667 },
+    'suleja': { lat: 9.1833, lon: 7.1833 },
+    'new bussa': { lat: 9.8833, lon: 4.5167 },
+    'lapai': { lat: 9.0500, lon: 6.5833 },
+    'mokwa': { lat: 9.2833, lon: 5.0500 },
     
     // Other Major Cities
     'port harcourt': { lat: 4.8156, lon: 7.0498 },
     'ph': { lat: 4.8156, lon: 7.0498 },
+    'gra port harcourt': { lat: 4.8200, lon: 7.0300 },
+    'trans amadi': { lat: 4.8000, lon: 7.0333 },
     'kano': { lat: 12.0022, lon: 8.5920 },
+    'sabon gari kano': { lat: 12.0100, lon: 8.5800 },
     'ibadan': { lat: 7.3775, lon: 3.9470 },
+    'bodija': { lat: 7.4167, lon: 3.9000 },
+    'challenge': { lat: 7.3667, lon: 3.9333 },
     'benin': { lat: 6.3350, lon: 5.6037 },
     'benin city': { lat: 6.3350, lon: 5.6037 },
+    'ring road benin': { lat: 6.3333, lon: 5.6200 },
     'enugu': { lat: 6.4584, lon: 7.5464 },
+    'independence layout': { lat: 6.4600, lon: 7.5300 },
+    'new haven': { lat: 6.4500, lon: 7.5400 },
     'onitsha': { lat: 6.1459, lon: 6.7852 },
     'aba': { lat: 5.1067, lon: 7.3667 },
+    'aba road': { lat: 5.1100, lon: 7.3600 },
     'jos': { lat: 9.8965, lon: 8.8583 },
     'warri': { lat: 5.5176, lon: 5.7500 },
+    'effurun': { lat: 5.5500, lon: 5.7833 },
     'kaduna': { lat: 10.5167, lon: 7.4333 },
+    'barnawa': { lat: 10.4833, lon: 7.4333 },
     'calabar': { lat: 4.9500, lon: 8.3250 },
     'uyo': { lat: 5.0333, lon: 7.9333 },
     'owerri': { lat: 5.4833, lon: 7.0333 },
@@ -162,7 +204,6 @@ export const getApproximateCoordinates = (address: string | null): { lat: number
     'makurdi': { lat: 7.7333, lon: 8.5333 },
     'lokoja': { lat: 7.8000, lon: 6.7333 },
     'lafia': { lat: 8.4833, lon: 8.5167 },
-    'minna': { lat: 9.6139, lon: 6.5569 },
     'bauchi': { lat: 10.3100, lon: 9.8433 },
     'gombe': { lat: 10.2833, lon: 11.1667 },
     'yola': { lat: 9.2000, lon: 12.4833 },
@@ -176,18 +217,22 @@ export const getApproximateCoordinates = (address: string | null): { lat: number
     'abakaliki': { lat: 6.3333, lon: 8.1000 },
     'umuahia': { lat: 5.5333, lon: 7.4833 },
     'eket': { lat: 4.6500, lon: 7.9333 },
-    
-    // Niger State
-    'patigi': { lat: 8.7167, lon: 5.7500 },
-    'bida': { lat: 9.0833, lon: 6.0167 },
-    'kontagora': { lat: 10.4000, lon: 5.4667 },
-    'suleja': { lat: 9.1833, lon: 7.1833 },
-    'new bussa': { lat: 9.8833, lon: 4.5167 },
   };
   
+  // Check for specific landmarks and street patterns first
+  const addressParts = addressLower.split(/[,\s]+/);
+  
+  // Try matching full phrases first (more specific)
   for (const [location, coords] of Object.entries(locations)) {
     if (addressLower.includes(location)) {
       return coords;
+    }
+  }
+  
+  // Try matching individual parts
+  for (const part of addressParts) {
+    if (locations[part]) {
+      return locations[part];
     }
   }
   
