@@ -89,12 +89,13 @@ export const CustomerBarcodeScanner = ({ onScan }: CustomerBarcodeScannerProps) 
     <>
       <Button
         variant="outline"
-        size="lg"
+        size="sm"
         onClick={() => handleOpenChange(true)}
-        className="bg-white/90 text-marketplace border-0 hover:bg-white font-semibold gap-2"
+        className="bg-white/90 text-marketplace border-0 hover:bg-white hover:text-marketplace font-semibold gap-1.5 h-9 px-3 text-xs md:text-sm"
       >
-        <Camera className="h-5 w-5" />
-        Scan Barcode
+        <Camera className="h-4 w-4" />
+        <span className="hidden sm:inline">Scan Barcode</span>
+        <span className="sm:hidden">Scan</span>
       </Button>
 
       <Dialog open={isOpen} onOpenChange={handleOpenChange}>

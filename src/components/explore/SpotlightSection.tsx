@@ -178,7 +178,27 @@ export const SpotlightSection = ({ onOrder }: SpotlightSectionProps) => {
     );
   }
 
-  if (filteredFeatured.length === 0 && !isLoading) return null;
+  // Always show section with empty state message on mobile if no featured items
+  if (filteredFeatured.length === 0 && !isLoading) {
+    return (
+      <div className="mb-6 md:mb-8">
+        <div className="flex items-center gap-1.5 md:gap-2 mb-3">
+          <div className="h-7 w-7 md:h-8 md:w-8 rounded-lg bg-gradient-to-br from-marketplace to-primary flex items-center justify-center">
+            <Sparkles className="h-3.5 w-3.5 md:h-4 md:w-4 text-white" />
+          </div>
+          <div>
+            <h2 className="text-base md:text-xl font-bold text-foreground">Spotlight</h2>
+            <p className="text-[10px] md:text-xs text-muted-foreground">Featured products</p>
+          </div>
+        </div>
+        <div className="text-center py-6 bg-muted/30 rounded-2xl border border-dashed border-muted-foreground/20">
+          <Sparkles className="h-8 w-8 mx-auto text-muted-foreground/40 mb-2" />
+          <p className="text-sm text-muted-foreground">No featured products available yet</p>
+          <p className="text-xs text-muted-foreground/60">Check back soon for special offers!</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <motion.div 
