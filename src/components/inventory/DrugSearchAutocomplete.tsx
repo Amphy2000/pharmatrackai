@@ -12,20 +12,23 @@ interface DrugSuggestion {
 }
 
 interface DrugSearchAutocompleteProps {
-  value: string;
-  onSelect: (name: string, category: string) => void;
-  onChange: (value: string) => void;
+  value?: string;
+  onSelect: (drug: DrugSuggestion) => void;
+  onChange?: (value: string) => void;
   placeholder?: string;
   className?: string;
 }
 
 export const DrugSearchAutocomplete = ({
-  value,
+  value: externalValue,
   onSelect,
-  onChange,
+  onChange: externalOnChange,
   placeholder = "Search or type medication name...",
   className,
 }: DrugSearchAutocompleteProps) => {
+  const [internalValue, setInternalValue] = useState('');
+  const value = externalValue ?? internalValue;
+  const onChange = externalOnChange ?? setInternalValue;
   const [suggestions, setSuggestions] = useState<DrugSuggestion[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
@@ -63,7 +66,8 @@ export const DrugSearchAutocomplete = ({
   }, [value]);
 
   const handleSelect = (suggestion: DrugSuggestion) => {
-    onSelect(suggestion.product_name, suggestion.category);
+    onSelect(suggestion);
+    onChange(suggestion.product_name);
     setIsOpen(false);
     setHighlightedIndex(-1);
   };

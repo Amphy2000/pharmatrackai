@@ -109,6 +109,7 @@ const App = () => (
                       <Route path="/profile" element={<ProtectedRoute><ProfileSettings /></ProtectedRoute>} />
                       <Route path="/guide" element={<ProtectedRoute><UserGuide /></ProtectedRoute>} />
                       <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
+                      <Route path="/admin/marketplace-analytics" element={<ProtectedRoute><AdminMarketplaceAnalytics /></ProtectedRoute>} />
                       <Route path="/audit-log" element={<ProtectedRoute><AuditLog /></ProtectedRoute>} />
                       <Route path="/shift-history" element={<ProtectedRoute><ShiftHistory /></ProtectedRoute>} />
                       <Route path="/shifts" element={<ProtectedRoute><ShiftHistory /></ProtectedRoute>} />

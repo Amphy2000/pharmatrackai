@@ -3,10 +3,11 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format } from 'date-fns';
-import { CalendarIcon, Plus, Save, X, Truck } from 'lucide-react';
+import { CalendarIcon, Plus, Save, X, Truck, Search } from 'lucide-react';
 import { Medication, MedicationFormData } from '@/types/medication';
 import { useMedications } from '@/hooks/useMedications';
 import { useSuppliers } from '@/hooks/useSuppliers';
+import { DrugSearchAutocomplete } from './DrugSearchAutocomplete';
 import { cn } from '@/lib/utils';
 import {
   Dialog,
@@ -326,6 +327,27 @@ export const AddMedicationModal = ({
 
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            {!isEditing && (
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <Search className="h-4 w-4" />
+                  Search Nigerian Drug Database
+                </Label>
+                <DrugSearchAutocomplete
+                  onSelect={(drug) => {
+                    form.setValue('name', drug.product_name);
+                    if (drug.category) {
+                      form.setValue('category', drug.category);
+                    }
+                  }}
+                  placeholder="Search common Nigerian drugs..."
+                />
+                <p className="text-xs text-muted-foreground">
+                  Search to auto-fill name and category, or enter manually below
+                </p>
+              </div>
+            )}
+
             <FormField
               control={form.control}
               name="name"

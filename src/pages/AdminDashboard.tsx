@@ -52,6 +52,7 @@ import {
   Lightbulb,
   Trash2,
   Gift,
+  Store,
 } from 'lucide-react';
 import { DeletePharmacyDialog } from '@/components/admin/DeletePharmacyDialog';
 import { format } from 'date-fns';
@@ -374,10 +375,20 @@ const AdminDashboard = () => {
               <p className="text-muted-foreground text-sm">Platform-wide metrics & pharmacy management</p>
             </div>
           </div>
-          <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white border-0 gap-1">
-            <Crown className="h-3 w-3" />
-            Super Admin
-          </Badge>
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              onClick={() => navigate('/admin/marketplace-analytics')}
+              className="gap-2"
+            >
+              <Store className="h-4 w-4" />
+              Marketplace Analytics
+            </Button>
+            <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white border-0 gap-1">
+              <Crown className="h-3 w-3" />
+              Super Admin
+            </Badge>
+          </div>
         </div>
 
         {/* Platform Metrics */}
