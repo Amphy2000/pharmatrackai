@@ -23,7 +23,7 @@ import {
 } from '@/components/ui/alert-dialog';
 
 const MAX_FEATURED_SLOTS = 3;
-const ADMIN_WHATSAPP = '2348012345678'; // Replace with actual admin number
+const ADMIN_WHATSAPP = '2349169153129';
 
 export const PromotionsManagement = () => {
   const { pharmacy } = usePharmacy();
@@ -194,26 +194,36 @@ export const PromotionsManagement = () => {
                     </div>
 
                     <div className="flex items-center gap-4">
-                      {/* Countdown */}
+                      {/* Enhanced Countdown Timer */}
                       {daysLeft !== null && (
-                        <div className={`text-center ${isExpiringSoon || isExpired ? 'text-destructive' : 'text-muted-foreground'}`}>
+                        <div className={`flex flex-col items-center p-2 rounded-lg ${
+                          isExpired 
+                            ? 'bg-destructive/10 text-destructive' 
+                            : isExpiringSoon 
+                              ? 'bg-warning/10 text-warning' 
+                              : 'bg-primary/10 text-primary'
+                        }`}>
                           <div className="flex items-center gap-1">
                             {isExpiringSoon && <AlertTriangle className="h-4 w-4" />}
                             <Clock className="h-4 w-4" />
                           </div>
+                          <p className="text-2xl font-bold tabular-nums">
+                            {isExpired ? '0' : daysLeft}
+                          </p>
                           <p className="text-xs font-medium">
                             {isExpired 
-                              ? 'Expired' 
-                              : daysLeft === 0 
-                                ? 'Expires today'
-                                : `${daysLeft}d left`
+                              ? 'EXPIRED' 
+                              : daysLeft === 1
+                                ? 'day left'
+                                : 'days left'
                             }
                           </p>
                         </div>
                       )}
                       {daysLeft === null && (
-                        <div className="text-center text-muted-foreground">
-                          <Clock className="h-4 w-4 mx-auto" />
+                        <div className="flex flex-col items-center p-2 rounded-lg bg-muted text-muted-foreground">
+                          <Clock className="h-4 w-4" />
+                          <p className="text-xs mt-1">∞</p>
                           <p className="text-xs">No expiry</p>
                         </div>
                       )}

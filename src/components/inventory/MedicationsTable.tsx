@@ -1,8 +1,9 @@
 import { useState, useMemo } from 'react';
 import { format, parseISO } from 'date-fns';
-import { Edit2, Trash2, MoreHorizontal, Package, ChevronDown, ChevronUp, Archive, ArchiveRestore, Filter, Link2Off, Hash, Loader2, Printer, Globe, GlobeLock } from 'lucide-react';
+import { Edit2, Trash2, MoreHorizontal, Package, ChevronDown, ChevronUp, Archive, ArchiveRestore, Filter, Link2Off, Hash, Loader2, Printer, Globe, GlobeLock, Star, StarOff } from 'lucide-react';
 import { Medication } from '@/types/medication';
 import { BarcodeLabelPrinter } from './BarcodeLabelPrinter';
+import { FeatureDurationSelect } from './FeatureDurationSelect';
 import { useMedications } from '@/hooks/useMedications';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { cn } from '@/lib/utils';
@@ -70,6 +71,7 @@ export const MedicationsTable = ({ medications, searchQuery, onEdit }: Medicatio
   const [filterStatus, setFilterStatus] = useState<'all' | 'shelved' | 'unshelved' | 'expired' | 'low-stock' | 'no-barcode'>('all');
   const [generatingCodeFor, setGeneratingCodeFor] = useState<string | null>(null);
   const [printLabelMedication, setPrintLabelMedication] = useState<Medication | null>(null);
+  const [featureMedication, setFeatureMedication] = useState<Medication | null>(null);
 
   const filteredMedications = useMemo(() => {
     let filtered = medications.filter((med) => {
@@ -404,6 +406,34 @@ export const MedicationsTable = ({ medications, searchQuery, onEdit }: Medicatio
                                   </>
                                 )}
                               </DropdownMenuItem>
+                              {/* Feature Product Toggle */}
+                              {medication.is_featured ? (
+                                <DropdownMenuItem 
+                                  onClick={async () => {
+                                    await updateMedication.mutateAsync({
+                                      id: medication.id,
+                                      is_featured: false,
+                                      featured_until: null,
+                                    });
+                                    toast({
+                                      title: "Removed from Spotlight",
+                                      description: "Product is no longer featured in the marketplace",
+                                    });
+                                  }}
+                                  className="text-marketplace"
+                                >
+                                  <StarOff className="mr-2 h-4 w-4" />
+                                  Remove from Spotlight
+                                </DropdownMenuItem>
+                              ) : (
+                                <DropdownMenuItem 
+                                  onClick={() => setFeatureMedication(medication)}
+                                  className="text-marketplace"
+                                >
+                                  <Star className="mr-2 h-4 w-4" />
+                                  Feature in Spotlight
+                                </DropdownMenuItem>
+                              )}
                               <DropdownMenuSeparator />
                               {medication.is_shelved === false ? (
                                 <DropdownMenuItem onClick={() => handleShelving(medication, 'shelve')}>
@@ -526,6 +556,14 @@ export const MedicationsTable = ({ medications, searchQuery, onEdit }: Medicatio
         medication={printLabelMedication}
         open={!!printLabelMedication}
         onOpenChange={(open) => !open && setPrintLabelMedication(null)}
+      />
+
+      {/* Feature Duration Select Modal */}
+      <FeatureDurationSelect
+        medicationId={featureMedication?.id || ''}
+        medicationName={featureMedication?.name || ''}
+        open={!!featureMedication}
+        onOpenChange={(open) => !open && setFeatureMedication(null)}
       />
     </>
   );
