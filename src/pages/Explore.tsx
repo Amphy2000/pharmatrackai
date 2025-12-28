@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Search, MapPin, MessageCircle, Package, Store, Phone, Star, AlertCircle } from "lucide-react";
+import { Search, MapPin, MessageCircle, Package, Store, Phone, Star, AlertCircle, Download, Smartphone } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -8,7 +8,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useCurrency } from "@/contexts/CurrencyContext";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
-
+import { CustomerBarcodeScanner } from "@/components/explore/CustomerBarcodeScanner";
 interface PublicMedication {
   id: string;
   name: string;
@@ -32,7 +32,47 @@ const Explore = () => {
   const [hasSearched, setHasSearched] = useState(false);
   const { formatPrice } = useCurrency();
   const { toast } = useToast();
+  const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [showInstallBanner, setShowInstallBanner] = useState(false);
 
+  // Listen for PWA install prompt
+  useEffect(() => {
+    const handler = (e: any) => {
+      e.preventDefault();
+      setDeferredPrompt(e);
+      setShowInstallBanner(true);
+    };
+    window.addEventListener('beforeinstallprompt', handler);
+    return () => window.removeEventListener('beforeinstallprompt', handler);
+  }, []);
+
+  const handleInstallApp = async () => {
+    if (!deferredPrompt) return;
+    deferredPrompt.prompt();
+    const { outcome } = await deferredPrompt.userChoice;
+    if (outcome === 'accepted') {
+      setShowInstallBanner(false);
+    }
+    setDeferredPrompt(null);
+  };
+
+  const handleBarcodeScanned = async (barcode: string) => {
+    // First try to find in master barcode library
+    const { data: drugData } = await supabase
+      .from('master_barcode_library')
+      .select('product_name')
+      .eq('barcode', barcode)
+      .single();
+
+    if (drugData) {
+      setSearchQuery(drugData.product_name);
+      handleSearch(drugData.product_name);
+    } else {
+      // Fall back to searching with the barcode itself
+      setSearchQuery(barcode);
+      handleSearch(barcode);
+    }
+  };
   // Load featured medications on mount
   useEffect(() => {
     const loadFeatured = async () => {
@@ -60,8 +100,9 @@ const Explore = () => {
     loadFeatured();
   }, []);
 
-  const handleSearch = async () => {
-    if (!searchQuery.trim()) {
+  const handleSearch = async (searchTerm?: string) => {
+    const query = searchTerm || searchQuery;
+    if (!query.trim()) {
       toast({
         title: "Enter a search term",
         description: "Please type the name of a medication to search",
@@ -76,14 +117,14 @@ const Explore = () => {
     try {
       // Track the search
       await supabase.from("marketplace_searches").insert({
-        search_query: searchQuery,
+        search_query: query,
         location_filter: locationFilter || null,
         results_count: 0,
       });
 
-      // Get public medications using the function
+      // Get public medications using the function (now with fuzzy search)
       const { data, error } = await supabase.rpc("get_public_medications", {
-        search_term: searchQuery,
+        search_term: query,
         location_filter: locationFilter || null,
       });
 
@@ -97,7 +138,7 @@ const Explore = () => {
         for (const pharmacyId of uniquePharmacies) {
           await supabase.from("marketplace_views").insert({
             pharmacy_id: pharmacyId,
-            search_query: searchQuery,
+            search_query: query,
             visit_type: "search",
           });
         }
@@ -259,8 +300,8 @@ const Explore = () => {
                 className="pl-12 h-14 text-lg bg-white text-foreground border-0 rounded-xl shadow-lg"
               />
             </div>
-            <div className="flex gap-3">
-              <div className="relative flex-1">
+            <div className="flex flex-wrap gap-3">
+              <div className="relative flex-1 min-w-[200px]">
                 <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-marketplace/60" />
                 <Input
                   placeholder="Filter by location (e.g., Ikeja, Lagos)"
@@ -269,8 +310,9 @@ const Explore = () => {
                   className="pl-10 bg-white/90 text-foreground border-0 rounded-lg"
                 />
               </div>
+              <CustomerBarcodeScanner onScan={handleBarcodeScanned} />
               <Button 
-                onClick={handleSearch} 
+                onClick={() => handleSearch()} 
                 disabled={isLoading}
                 className="bg-white text-marketplace hover:bg-white/90 font-semibold px-8"
               >
@@ -280,6 +322,37 @@ const Explore = () => {
           </div>
         </div>
       </header>
+
+      {/* Install App Banner */}
+      {showInstallBanner && (
+        <div className="bg-gradient-to-r from-marketplace to-primary text-white py-3 px-4">
+          <div className="container mx-auto max-w-4xl flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Smartphone className="h-5 w-5" />
+              <span className="text-sm font-medium">Install PharmaTrack for faster access</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="secondary"
+                onClick={handleInstallApp}
+                className="bg-white text-marketplace hover:bg-white/90"
+              >
+                <Download className="h-4 w-4 mr-1" />
+                Install
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => setShowInstallBanner(false)}
+                className="text-white hover:bg-white/10"
+              >
+                Later
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Results */}
       <main className="container mx-auto max-w-4xl px-4 py-8">

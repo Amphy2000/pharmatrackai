@@ -1941,6 +1941,18 @@ export type Database = {
       }
       is_platform_admin: { Args: { _user_id: string }; Returns: boolean }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
+      search_drug_database: {
+        Args: { search_term: string }
+        Returns: {
+          category: string
+          id: string
+          manufacturer: string
+          product_name: string
+          similarity_score: number
+        }[]
+      }
+      show_limit: { Args: never; Returns: number }
+      show_trgm: { Args: { "": string }; Returns: string[] }
       staff_assigned_to_branch: {
         Args: { _branch_id: string; _user_id: string }
         Returns: boolean
