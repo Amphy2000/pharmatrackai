@@ -165,6 +165,10 @@ const Landing = () => {
           
           {/* Desktop Navigation - Ordered by page sequence */}
           <div className="hidden md:flex items-center gap-6">
+            <Link to="/explore" className="text-sm text-marketplace font-medium hover:text-marketplace/80 transition-colors flex items-center gap-1">
+              <Globe className="h-4 w-4" />
+              Marketplace
+            </Link>
             <button onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })} className="text-sm text-muted-foreground hover:text-foreground transition-colors">Features</button>
             <button onClick={() => document.getElementById('comparison')?.scrollIntoView({ behavior: 'smooth' })} className="text-sm text-muted-foreground hover:text-foreground transition-colors">Why PharmaTrack</button>
             <button onClick={() => document.getElementById('testimonials')?.scrollIntoView({ behavior: 'smooth' })} className="text-sm text-muted-foreground hover:text-foreground transition-colors">Testimonials</button>
@@ -191,6 +195,12 @@ const Landing = () => {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuItem asChild>
+                  <Link to="/explore" className="flex items-center gap-2">
+                    <Globe className="h-4 w-4" />
+                    Marketplace
+                  </Link>
+                </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })}>
                   Features
                 </DropdownMenuItem>

@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Search, MapPin, MessageCircle, Package, Store, Phone, Star, AlertCircle, Download, Smartphone } from "lucide-react";
+import { Search, MapPin, MessageCircle, Package, Store, Phone, Star, AlertCircle, Download, Smartphone, Mic } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -9,6 +9,9 @@ import { useCurrency } from "@/contexts/CurrencyContext";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
 import { CustomerBarcodeScanner } from "@/components/explore/CustomerBarcodeScanner";
+import { VoiceSearchButton } from "@/components/explore/VoiceSearchButton";
+import { SpotlightSection } from "@/components/explore/SpotlightSection";
+
 interface PublicMedication {
   id: string;
   name: string;
@@ -21,13 +24,13 @@ interface PublicMedication {
   pharmacy_phone: string | null;
   pharmacy_address: string | null;
   is_featured: boolean | null;
+  featured_until?: string | null;
 }
 
 const Explore = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [locationFilter, setLocationFilter] = useState("");
   const [medications, setMedications] = useState<PublicMedication[]>([]);
-  const [featuredMedications, setFeaturedMedications] = useState<PublicMedication[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const { formatPrice } = useCurrency();
@@ -73,31 +76,26 @@ const Explore = () => {
       handleSearch(barcode);
     }
   };
-  // Load featured medications on mount
+
+  // Handle voice search result
+  const handleVoiceResult = (transcript: string) => {
+    setSearchQuery(transcript);
+    handleSearch(transcript);
+  };
+
+  // Track page visit on mount
   useEffect(() => {
-    const loadFeatured = async () => {
+    const trackVisit = async () => {
       try {
-        const { data, error } = await supabase.rpc("get_public_medications", {
-          search_term: null,
-          location_filter: null,
-        });
-
-        if (error) throw error;
-
-        const featured = (data || []).filter((m: PublicMedication) => m.is_featured);
-        setFeaturedMedications(featured.slice(0, 6));
-
-        // Track page visit
         await supabase.from("marketplace_views").insert({
-          pharmacy_id: featured[0]?.pharmacy_id || "00000000-0000-0000-0000-000000000000",
+          pharmacy_id: "00000000-0000-0000-0000-000000000000",
           visit_type: "page_visit",
         });
       } catch (error) {
-        console.error("Error loading featured:", error);
+        console.error("Error tracking visit:", error);
       }
     };
-
-    loadFeatured();
+    trackVisit();
   }, []);
 
   const handleSearch = async (searchTerm?: string) => {
@@ -293,12 +291,15 @@ const Explore = () => {
             <div className="relative">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-marketplace/60" />
               <Input
-                placeholder="Search for medications (e.g., Paracetamol, Amoxicillin)"
+                placeholder="Search for medications or say 'drug for cough'"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-                className="pl-12 h-14 text-lg bg-white text-foreground border-0 rounded-xl shadow-lg"
+                className="pl-12 pr-12 h-14 text-lg bg-white text-foreground border-0 rounded-xl shadow-lg"
               />
+              <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                <VoiceSearchButton onResult={handleVoiceResult} />
+              </div>
             </div>
             <div className="flex flex-wrap gap-3">
               <div className="relative flex-1 min-w-[200px]">
@@ -356,23 +357,9 @@ const Explore = () => {
 
       {/* Results */}
       <main className="container mx-auto max-w-4xl px-4 py-8">
-        {/* Featured Section */}
-        {!hasSearched && featuredMedications.length > 0 && (
-          <div className="mb-8">
-            <div className="flex items-center gap-2 mb-4">
-              <Star className="h-5 w-5 text-marketplace" />
-              <h2 className="text-xl font-bold text-foreground">Promoted Products</h2>
-            </div>
-            <div className="grid gap-4">
-              {featuredMedications.map((medication) => (
-                <MedicationCard 
-                  key={`featured-${medication.id}-${medication.pharmacy_id}`} 
-                  medication={medication} 
-                  isFeatured 
-                />
-              ))}
-            </div>
-          </div>
+        {/* Spotlight Section - Featured Products */}
+        {!hasSearched && (
+          <SpotlightSection onOrder={handleWhatsAppOrder} />
         )}
 
         {!hasSearched ? (
