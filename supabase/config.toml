@@ -53,3 +53,9 @@ verify_jwt = false
 
 [functions.upgrade-branches]
 verify_jwt = true
+
+[functions.geocode-address]
+verify_jwt = false
+
+[functions.promotion-expiry-reminder]
+verify_jwt = false
