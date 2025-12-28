@@ -1,7 +1,7 @@
 import { Header } from '@/components/Header';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Settings as SettingsIcon, Users, Globe, CreditCard, Shield, ImageIcon, ShieldCheck, FileText, RotateCcw, Bell, Clock } from 'lucide-react';
+import { Settings as SettingsIcon, Users, Globe, CreditCard, Shield, ImageIcon, ShieldCheck, FileText, RotateCcw, Bell, Clock, Star } from 'lucide-react';
 import { StaffManagement } from '@/components/settings/StaffManagement';
 import { PermissionsManagement } from '@/components/settings/PermissionsManagement';
 import { RegionCurrencySettings } from '@/components/settings/RegionCurrencySettings';
@@ -10,6 +10,7 @@ import { BrandingSettings } from '@/components/settings/BrandingSettings';
 import { PriceShieldSettings } from '@/components/settings/PriceShieldSettings';
 import { AlertSettings } from '@/components/settings/AlertSettings';
 import { ClockInSecuritySettings } from '@/components/settings/ClockInSecuritySettings';
+import { PromotionsManagement } from '@/components/settings/PromotionsManagement';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useSearchParams, Navigate, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -93,6 +94,11 @@ const Settings = () => {
 
             {!isManager && (
               <>
+                <TabsTrigger value="promotions" className="gap-2 text-xs sm:text-sm">
+                  <Star className="h-3 w-3 sm:h-4 sm:w-4" />
+                  <span className="hidden xs:inline">Promotions</span>
+                  <span className="xs:hidden">Promo</span>
+                </TabsTrigger>
                 <TabsTrigger value="alerts" className="gap-2 text-xs sm:text-sm">
                   <Bell className="h-3 w-3 sm:h-4 sm:w-4" />
                   Alerts
@@ -201,6 +207,10 @@ const Settings = () => {
               <PermissionsManagement />
             </TabsContent>
           )}
+
+          <TabsContent value="promotions">
+            <PromotionsManagement />
+          </TabsContent>
 
           <TabsContent value="alerts">
             <AlertSettings />

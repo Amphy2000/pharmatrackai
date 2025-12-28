@@ -475,6 +475,7 @@ export type Database = {
           current_stock: number
           dispensing_unit: string
           expiry_date: string
+          featured_until: string | null
           id: string
           is_controlled: boolean
           is_featured: boolean | null
@@ -503,6 +504,7 @@ export type Database = {
           current_stock?: number
           dispensing_unit?: string
           expiry_date: string
+          featured_until?: string | null
           id?: string
           is_controlled?: boolean
           is_featured?: boolean | null
@@ -531,6 +533,7 @@ export type Database = {
           current_stock?: number
           dispensing_unit?: string
           expiry_date?: string
+          featured_until?: string | null
           id?: string
           is_controlled?: boolean
           is_featured?: boolean | null
@@ -1754,6 +1757,30 @@ export type Database = {
           },
         ]
       }
+      symptom_drug_mapping: {
+        Row: {
+          created_at: string | null
+          drug_categories: string[]
+          drug_names: string[] | null
+          id: string
+          symptom_keywords: string[]
+        }
+        Insert: {
+          created_at?: string | null
+          drug_categories: string[]
+          drug_names?: string[] | null
+          id?: string
+          symptom_keywords: string[]
+        }
+        Update: {
+          created_at?: string | null
+          drug_categories?: string[]
+          drug_names?: string[] | null
+          id?: string
+          symptom_keywords?: string[]
+        }
+        Relationships: []
+      }
       upsell_analytics: {
         Row: {
           accepted_at: string | null
@@ -1892,6 +1919,7 @@ export type Database = {
       check_and_create_stock_notifications: { Args: never; Returns: undefined }
       check_is_platform_admin: { Args: { _user_id: string }; Returns: boolean }
       check_is_super_admin: { Args: { _user_id: string }; Returns: boolean }
+      expire_featured_items: { Args: never; Returns: undefined }
       generate_internal_barcode: { Args: never; Returns: string }
       generate_receipt_id: { Args: never; Returns: string }
       get_manager_branch_id: {
