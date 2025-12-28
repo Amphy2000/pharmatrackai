@@ -57,6 +57,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "ai_predictions_medication_id_fkey"
+            columns: ["medication_id"]
+            isOneToOne: false
+            referencedRelation: "public_medications"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "ai_predictions_pharmacy_id_fkey"
             columns: ["pharmacy_id"]
             isOneToOne: false
@@ -150,6 +157,13 @@ export type Database = {
             columns: ["medication_id"]
             isOneToOne: false
             referencedRelation: "medications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "branch_inventory_medication_id_fkey"
+            columns: ["medication_id"]
+            isOneToOne: false
+            referencedRelation: "public_medications"
             referencedColumns: ["id"]
           },
         ]
@@ -363,6 +377,82 @@ export type Database = {
           },
         ]
       }
+      marketplace_searches: {
+        Row: {
+          id: string
+          location_filter: string | null
+          results_count: number | null
+          search_query: string
+          searched_at: string | null
+          viewer_ip: string | null
+        }
+        Insert: {
+          id?: string
+          location_filter?: string | null
+          results_count?: number | null
+          search_query: string
+          searched_at?: string | null
+          viewer_ip?: string | null
+        }
+        Update: {
+          id?: string
+          location_filter?: string | null
+          results_count?: number | null
+          search_query?: string
+          searched_at?: string | null
+          viewer_ip?: string | null
+        }
+        Relationships: []
+      }
+      marketplace_views: {
+        Row: {
+          id: string
+          medication_id: string | null
+          pharmacy_id: string
+          search_query: string | null
+          viewed_at: string | null
+          viewer_ip: string | null
+        }
+        Insert: {
+          id?: string
+          medication_id?: string | null
+          pharmacy_id: string
+          search_query?: string | null
+          viewed_at?: string | null
+          viewer_ip?: string | null
+        }
+        Update: {
+          id?: string
+          medication_id?: string | null
+          pharmacy_id?: string
+          search_query?: string | null
+          viewed_at?: string | null
+          viewer_ip?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketplace_views_medication_id_fkey"
+            columns: ["medication_id"]
+            isOneToOne: false
+            referencedRelation: "medications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketplace_views_medication_id_fkey"
+            columns: ["medication_id"]
+            isOneToOne: false
+            referencedRelation: "public_medications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "marketplace_views_pharmacy_id_fkey"
+            columns: ["pharmacy_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       master_barcode_library: {
         Row: {
           barcode: string
@@ -405,6 +495,7 @@ export type Database = {
           expiry_date: string
           id: string
           is_controlled: boolean
+          is_public: boolean | null
           is_shelved: boolean
           last_notified_at: string | null
           location: string | null
@@ -431,6 +522,7 @@ export type Database = {
           expiry_date: string
           id?: string
           is_controlled?: boolean
+          is_public?: boolean | null
           is_shelved?: boolean
           last_notified_at?: string | null
           location?: string | null
@@ -457,6 +549,7 @@ export type Database = {
           expiry_date?: string
           id?: string
           is_controlled?: boolean
+          is_public?: boolean | null
           is_shelved?: boolean
           last_notified_at?: string | null
           location?: string | null
@@ -951,6 +1044,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "prescription_items_medication_id_fkey"
+            columns: ["medication_id"]
+            isOneToOne: false
+            referencedRelation: "public_medications"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "prescription_items_prescription_id_fkey"
             columns: ["prescription_id"]
             isOneToOne: false
@@ -1128,6 +1228,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "reorder_requests_medication_id_fkey"
+            columns: ["medication_id"]
+            isOneToOne: false
+            referencedRelation: "public_medications"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "reorder_requests_pharmacy_id_fkey"
             columns: ["pharmacy_id"]
             isOneToOne: false
@@ -1231,6 +1338,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "sales_medication_id_fkey"
+            columns: ["medication_id"]
+            isOneToOne: false
+            referencedRelation: "public_medications"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "sales_pharmacy_id_fkey"
             columns: ["pharmacy_id"]
             isOneToOne: false
@@ -1327,6 +1441,13 @@ export type Database = {
             columns: ["medication_id"]
             isOneToOne: false
             referencedRelation: "medications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "shelving_history_medication_id_fkey"
+            columns: ["medication_id"]
+            isOneToOne: false
+            referencedRelation: "public_medications"
             referencedColumns: ["id"]
           },
           {
@@ -1498,6 +1619,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "stock_transfers_medication_id_fkey"
+            columns: ["medication_id"]
+            isOneToOne: false
+            referencedRelation: "public_medications"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "stock_transfers_pharmacy_id_fkey"
             columns: ["pharmacy_id"]
             isOneToOne: false
@@ -1609,6 +1737,13 @@ export type Database = {
             columns: ["medication_id"]
             isOneToOne: false
             referencedRelation: "medications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supplier_products_medication_id_fkey"
+            columns: ["medication_id"]
+            isOneToOne: false
+            referencedRelation: "public_medications"
             referencedColumns: ["id"]
           },
           {
@@ -1758,11 +1893,92 @@ export type Database = {
             referencedRelation: "medications"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "upsell_analytics_suggested_medication_id_fkey"
+            columns: ["suggested_medication_id"]
+            isOneToOne: false
+            referencedRelation: "public_medications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_leads: {
+        Row: {
+          clicked_at: string | null
+          id: string
+          medication_id: string
+          medication_name: string
+          pharmacy_id: string
+          quantity: number | null
+          viewer_ip: string | null
+        }
+        Insert: {
+          clicked_at?: string | null
+          id?: string
+          medication_id: string
+          medication_name: string
+          pharmacy_id: string
+          quantity?: number | null
+          viewer_ip?: string | null
+        }
+        Update: {
+          clicked_at?: string | null
+          id?: string
+          medication_id?: string
+          medication_name?: string
+          pharmacy_id?: string
+          quantity?: number | null
+          viewer_ip?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_leads_medication_id_fkey"
+            columns: ["medication_id"]
+            isOneToOne: false
+            referencedRelation: "medications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_leads_medication_id_fkey"
+            columns: ["medication_id"]
+            isOneToOne: false
+            referencedRelation: "public_medications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_leads_pharmacy_id_fkey"
+            columns: ["pharmacy_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
         ]
       }
     }
     Views: {
-      [_ in never]: never
+      public_medications: {
+        Row: {
+          category: string | null
+          current_stock: number | null
+          dispensing_unit: string | null
+          id: string | null
+          name: string | null
+          pharmacy_address: string | null
+          pharmacy_id: string | null
+          pharmacy_name: string | null
+          pharmacy_phone: string | null
+          selling_price: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "medications_pharmacy_id_fkey"
+            columns: ["pharmacy_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       check_and_create_expiry_notifications: { Args: never; Returns: undefined }
