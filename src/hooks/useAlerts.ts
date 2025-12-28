@@ -55,7 +55,7 @@ export const useAlerts = () => {
 
     // Use provided phone/channel or fall back to pharmacy settings
     const recipientPhone = params.recipientPhone || (pharmacy as any)?.alert_recipient_phone;
-    const channel = params.channel || (pharmacy as any)?.alert_channel || 'sms';
+    const channel: AlertChannel = params.channel || (pharmacy as any)?.alert_channel || 'sms';
 
     if (!recipientPhone) {
       toast.error('No alert phone number configured. Please set one in Settings > Alerts.');
@@ -80,7 +80,7 @@ export const useAlerts = () => {
         return { success: false, error: errorMessage };
       }
 
-      toast.success(`${params.channel.toUpperCase()} alert sent successfully!`, {
+      toast.success(`${channel.toUpperCase()} alert sent successfully!`, {
         description: data.balance !== undefined ? `Termii balance: ${data.balance}` : undefined,
       });
       return { 
