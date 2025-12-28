@@ -42,6 +42,8 @@ import ShiftHistory from "./pages/ShiftHistory";
 import Notifications from "./pages/Notifications";
 import DemoDashboard from "./pages/DemoDashboard";
 import UpsellAnalytics from "./pages/UpsellAnalytics";
+import Explore from "./pages/Explore";
+import MarketplaceInsights from "./pages/MarketplaceInsights";
 import NotFound from "./pages/NotFound";
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -87,6 +89,7 @@ const App = () => (
                       <Route path="/reset-password" element={<ResetPassword />} />
                       <Route path="/onboarding" element={<OnboardingWizard />} />
                       <Route path="/demo" element={<DemoDashboard />} />
+                      <Route path="/explore" element={<Explore />} />
 
                       {/* Protected Routes */}
                       <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
@@ -110,7 +113,9 @@ const App = () => (
                       <Route path="/shifts" element={<ProtectedRoute><ShiftHistory /></ProtectedRoute>} />
                       <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
                       <Route path="/upsell-analytics" element={<ProtectedRoute><UpsellAnalytics /></ProtectedRoute>} />
+                      <Route path="/marketplace-insights" element={<ProtectedRoute><MarketplaceInsights /></ProtectedRoute>} />
                       {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                      <Route path="*" element={<NotFound />} />
                       <Route path="*" element={<NotFound />} />
                     </Routes>
                   </ErrorBoundary>

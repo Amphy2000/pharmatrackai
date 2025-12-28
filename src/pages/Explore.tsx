@@ -1,0 +1,292 @@
+import { useState, useEffect } from "react";
+import { Search, MapPin, MessageCircle, Package, Store, Phone } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { supabase } from "@/integrations/supabase/client";
+import { useCurrency } from "@/contexts/CurrencyContext";
+import { useToast } from "@/hooks/use-toast";
+import { Link } from "react-router-dom";
+
+interface PublicMedication {
+  id: string;
+  name: string;
+  category: string;
+  current_stock: number;
+  selling_price: number | null;
+  dispensing_unit: string;
+  pharmacy_id: string;
+  pharmacy_name: string;
+  pharmacy_phone: string | null;
+  pharmacy_address: string | null;
+}
+
+const Explore = () => {
+  const [searchQuery, setSearchQuery] = useState("");
+  const [locationFilter, setLocationFilter] = useState("");
+  const [medications, setMedications] = useState<PublicMedication[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
+  const { formatPrice } = useCurrency();
+  const { toast } = useToast();
+
+  const handleSearch = async () => {
+    if (!searchQuery.trim()) {
+      toast({
+        title: "Enter a search term",
+        description: "Please type the name of a medication to search",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsLoading(true);
+    setHasSearched(true);
+
+    try {
+      // Track the search
+      await supabase.from("marketplace_searches").insert({
+        search_query: searchQuery,
+        location_filter: locationFilter || null,
+        results_count: 0, // Will update after getting results
+      });
+
+      // Get public medications using the function
+      const { data, error } = await supabase.rpc("get_public_medications", {
+        search_term: searchQuery,
+        location_filter: locationFilter || null,
+      });
+
+      if (error) throw error;
+
+      setMedications(data || []);
+
+      // Track pharmacy views for each result
+      if (data && data.length > 0) {
+        const uniquePharmacies = [...new Set(data.map((m: PublicMedication) => m.pharmacy_id))];
+        for (const pharmacyId of uniquePharmacies) {
+          await supabase.from("marketplace_views").insert({
+            pharmacy_id: pharmacyId,
+            search_query: searchQuery,
+          });
+        }
+      }
+    } catch (error) {
+      console.error("Search error:", error);
+      toast({
+        title: "Search failed",
+        description: "Unable to search medications. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleWhatsAppOrder = async (medication: PublicMedication, quantity: number = 1) => {
+    // Track the WhatsApp lead
+    try {
+      await supabase.from("whatsapp_leads").insert({
+        pharmacy_id: medication.pharmacy_id,
+        medication_id: medication.id,
+        medication_name: medication.name,
+        quantity,
+      });
+    } catch (error) {
+      console.error("Error tracking WhatsApp lead:", error);
+    }
+
+    // Format phone number for WhatsApp
+    const phone = medication.pharmacy_phone?.replace(/\D/g, "") || "";
+    const message = encodeURIComponent(
+      `Hello, I saw ${medication.name} in stock on PharmaTrack. I would like to order ${quantity}.`
+    );
+    
+    const whatsappUrl = `https://wa.me/${phone}?text=${message}`;
+    window.open(whatsappUrl, "_blank");
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-marketplace/5 to-background">
+      {/* Header */}
+      <header className="bg-marketplace text-marketplace-foreground py-6 px-4">
+        <div className="container mx-auto max-w-4xl">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-white/20 flex items-center justify-center">
+                <Package className="h-6 w-6" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold">PharmaTrack</h1>
+                <p className="text-sm opacity-90">Find medications near you</p>
+              </div>
+            </div>
+            <Link to="/auth">
+              <Button variant="outline" className="bg-white/10 border-white/20 text-white hover:bg-white/20">
+                Pharmacy Login
+              </Button>
+            </Link>
+          </div>
+
+          {/* Search Box */}
+          <div className="space-y-3">
+            <div className="relative">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-marketplace/60" />
+              <Input
+                placeholder="Search for medications (e.g., Paracetamol, Amoxicillin)"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                className="pl-12 h-14 text-lg bg-white text-foreground border-0 rounded-xl shadow-lg"
+              />
+            </div>
+            <div className="flex gap-3">
+              <div className="relative flex-1">
+                <MapPin className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-marketplace/60" />
+                <Input
+                  placeholder="Filter by location (e.g., Ikeja, Lagos)"
+                  value={locationFilter}
+                  onChange={(e) => setLocationFilter(e.target.value)}
+                  className="pl-10 bg-white/90 text-foreground border-0 rounded-lg"
+                />
+              </div>
+              <Button 
+                onClick={handleSearch} 
+                disabled={isLoading}
+                className="bg-white text-marketplace hover:bg-white/90 font-semibold px-8"
+              >
+                {isLoading ? "Searching..." : "Search"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Results */}
+      <main className="container mx-auto max-w-4xl px-4 py-8">
+        {!hasSearched ? (
+          <div className="text-center py-16">
+            <div className="h-24 w-24 mx-auto mb-6 rounded-full bg-marketplace/10 flex items-center justify-center">
+              <Search className="h-12 w-12 text-marketplace" />
+            </div>
+            <h2 className="text-2xl font-bold text-foreground mb-2">Find Your Medication</h2>
+            <p className="text-muted-foreground max-w-md mx-auto">
+              Search for any medication and see which pharmacies near you have it in stock. 
+              Order directly via WhatsApp!
+            </p>
+          </div>
+        ) : isLoading ? (
+          <div className="grid gap-4">
+            {[1, 2, 3].map((i) => (
+              <Card key={i} className="animate-pulse">
+                <CardContent className="p-6">
+                  <div className="h-6 bg-muted rounded w-1/3 mb-4" />
+                  <div className="h-4 bg-muted rounded w-1/2 mb-2" />
+                  <div className="h-4 bg-muted rounded w-1/4" />
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : medications.length === 0 ? (
+          <div className="text-center py-16">
+            <div className="h-24 w-24 mx-auto mb-6 rounded-full bg-muted flex items-center justify-center">
+              <Package className="h-12 w-12 text-muted-foreground" />
+            </div>
+            <h2 className="text-2xl font-bold text-foreground mb-2">No Results Found</h2>
+            <p className="text-muted-foreground max-w-md mx-auto">
+              We couldn't find "{searchQuery}" in any nearby pharmacies. 
+              Try a different search term or check back later.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            <p className="text-muted-foreground">
+              Found <span className="font-semibold text-foreground">{medications.length}</span> result{medications.length !== 1 ? 's' : ''} for "{searchQuery}"
+            </p>
+            
+            {medications.map((medication) => (
+              <Card key={`${medication.id}-${medication.pharmacy_id}`} className="overflow-hidden hover:shadow-lg transition-shadow">
+                <CardContent className="p-0">
+                  <div className="flex flex-col md:flex-row">
+                    {/* Medication Info */}
+                    <div className="flex-1 p-6">
+                      <div className="flex items-start justify-between mb-3">
+                        <div>
+                          <h3 className="text-xl font-bold text-foreground">{medication.name}</h3>
+                          <Badge variant="secondary" className="mt-1">{medication.category}</Badge>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-2xl font-bold text-marketplace">
+                            {formatPrice(medication.selling_price || 0)}
+                          </p>
+                          <p className="text-sm text-muted-foreground">per {medication.dispensing_unit}</p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+                        <Store className="h-4 w-4" />
+                        <span className="font-medium text-foreground">{medication.pharmacy_name}</span>
+                      </div>
+                      
+                      {medication.pharmacy_address && (
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-2">
+                          <MapPin className="h-4 w-4" />
+                          <span>{medication.pharmacy_address}</span>
+                        </div>
+                      )}
+                      
+                      <Badge 
+                        variant="outline" 
+                        className="bg-success/10 text-success border-success/30"
+                      >
+                        In Stock ({medication.current_stock} available)
+                      </Badge>
+                    </div>
+
+                    {/* Action Section */}
+                    <div className="bg-marketplace/5 p-6 flex flex-col justify-center items-center gap-3 md:w-48">
+                      <Button
+                        onClick={() => handleWhatsAppOrder(medication)}
+                        className="w-full bg-[#25D366] hover:bg-[#20BD5A] text-white font-semibold"
+                      >
+                        <MessageCircle className="mr-2 h-5 w-5" />
+                        Buy Now
+                      </Button>
+                      {medication.pharmacy_phone && (
+                        <a 
+                          href={`tel:${medication.pharmacy_phone}`}
+                          className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground transition-colors"
+                        >
+                          <Phone className="h-4 w-4" />
+                          {medication.pharmacy_phone}
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        )}
+      </main>
+
+      {/* Footer */}
+      <footer className="bg-muted/50 py-8 mt-auto">
+        <div className="container mx-auto max-w-4xl px-4 text-center">
+          <p className="text-sm text-muted-foreground">
+            © 2024 PharmaTrack. Connecting patients to pharmacies.
+          </p>
+          <p className="text-xs text-muted-foreground mt-2">
+            Are you a pharmacy owner?{" "}
+            <Link to="/auth" className="text-marketplace hover:underline font-medium">
+              List your products here
+            </Link>
+          </p>
+        </div>
+      </footer>
+    </div>
+  );
+};
+
+export default Explore;

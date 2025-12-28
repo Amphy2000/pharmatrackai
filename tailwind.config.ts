@@ -48,6 +48,10 @@ export default {
           DEFAULT: "hsl(var(--info))",
           foreground: "hsl(var(--info-foreground))",
         },
+        marketplace: {
+          DEFAULT: "hsl(var(--marketplace))",
+          foreground: "hsl(var(--marketplace-foreground))",
+        },
         muted: {
           DEFAULT: "hsl(var(--muted))",
           foreground: "hsl(var(--muted-foreground))",

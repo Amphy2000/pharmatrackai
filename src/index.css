@@ -40,6 +40,10 @@
     --success-foreground: 0 0% 100%;
 
     --info: 205 85% 50%;
+
+    /* Marketplace Trust Green (#2D6A4F) */
+    --marketplace: 153 41% 30%;
+    --marketplace-foreground: 0 0% 100%;
     --info-foreground: 0 0% 100%;
 
     --border: 220 20% 88%;
