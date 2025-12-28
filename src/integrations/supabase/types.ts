@@ -57,13 +57,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "ai_predictions_medication_id_fkey"
-            columns: ["medication_id"]
-            isOneToOne: false
-            referencedRelation: "public_medications"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "ai_predictions_pharmacy_id_fkey"
             columns: ["pharmacy_id"]
             isOneToOne: false
@@ -157,13 +150,6 @@ export type Database = {
             columns: ["medication_id"]
             isOneToOne: false
             referencedRelation: "medications"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "branch_inventory_medication_id_fkey"
-            columns: ["medication_id"]
-            isOneToOne: false
-            referencedRelation: "public_medications"
             referencedColumns: ["id"]
           },
         ]
@@ -435,13 +421,6 @@ export type Database = {
             columns: ["medication_id"]
             isOneToOne: false
             referencedRelation: "medications"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "marketplace_views_medication_id_fkey"
-            columns: ["medication_id"]
-            isOneToOne: false
-            referencedRelation: "public_medications"
             referencedColumns: ["id"]
           },
           {
@@ -1044,13 +1023,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "prescription_items_medication_id_fkey"
-            columns: ["medication_id"]
-            isOneToOne: false
-            referencedRelation: "public_medications"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "prescription_items_prescription_id_fkey"
             columns: ["prescription_id"]
             isOneToOne: false
@@ -1228,13 +1200,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "reorder_requests_medication_id_fkey"
-            columns: ["medication_id"]
-            isOneToOne: false
-            referencedRelation: "public_medications"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "reorder_requests_pharmacy_id_fkey"
             columns: ["pharmacy_id"]
             isOneToOne: false
@@ -1338,13 +1303,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "sales_medication_id_fkey"
-            columns: ["medication_id"]
-            isOneToOne: false
-            referencedRelation: "public_medications"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "sales_pharmacy_id_fkey"
             columns: ["pharmacy_id"]
             isOneToOne: false
@@ -1441,13 +1399,6 @@ export type Database = {
             columns: ["medication_id"]
             isOneToOne: false
             referencedRelation: "medications"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "shelving_history_medication_id_fkey"
-            columns: ["medication_id"]
-            isOneToOne: false
-            referencedRelation: "public_medications"
             referencedColumns: ["id"]
           },
           {
@@ -1619,13 +1570,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "stock_transfers_medication_id_fkey"
-            columns: ["medication_id"]
-            isOneToOne: false
-            referencedRelation: "public_medications"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "stock_transfers_pharmacy_id_fkey"
             columns: ["pharmacy_id"]
             isOneToOne: false
@@ -1737,13 +1681,6 @@ export type Database = {
             columns: ["medication_id"]
             isOneToOne: false
             referencedRelation: "medications"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "supplier_products_medication_id_fkey"
-            columns: ["medication_id"]
-            isOneToOne: false
-            referencedRelation: "public_medications"
             referencedColumns: ["id"]
           },
           {
@@ -1893,13 +1830,6 @@ export type Database = {
             referencedRelation: "medications"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "upsell_analytics_suggested_medication_id_fkey"
-            columns: ["suggested_medication_id"]
-            isOneToOne: false
-            referencedRelation: "public_medications"
-            referencedColumns: ["id"]
-          },
         ]
       }
       whatsapp_leads: {
@@ -1939,13 +1869,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "whatsapp_leads_medication_id_fkey"
-            columns: ["medication_id"]
-            isOneToOne: false
-            referencedRelation: "public_medications"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "whatsapp_leads_pharmacy_id_fkey"
             columns: ["pharmacy_id"]
             isOneToOne: false
@@ -1956,29 +1879,7 @@ export type Database = {
       }
     }
     Views: {
-      public_medications: {
-        Row: {
-          category: string | null
-          current_stock: number | null
-          dispensing_unit: string | null
-          id: string | null
-          name: string | null
-          pharmacy_address: string | null
-          pharmacy_id: string | null
-          pharmacy_name: string | null
-          pharmacy_phone: string | null
-          selling_price: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "medications_pharmacy_id_fkey"
-            columns: ["pharmacy_id"]
-            isOneToOne: false
-            referencedRelation: "pharmacies"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
+      [_ in never]: never
     }
     Functions: {
       check_and_create_expiry_notifications: { Args: never; Returns: undefined }
@@ -1990,6 +1891,21 @@ export type Database = {
       get_manager_branch_id: {
         Args: { _pharmacy_id: string; _user_id: string }
         Returns: string
+      }
+      get_public_medications: {
+        Args: { location_filter?: string; search_term?: string }
+        Returns: {
+          category: string
+          current_stock: number
+          dispensing_unit: string
+          id: string
+          name: string
+          pharmacy_address: string
+          pharmacy_id: string
+          pharmacy_name: string
+          pharmacy_phone: string
+          selling_price: number
+        }[]
       }
       get_user_pharmacy_id: { Args: { user_uuid: string }; Returns: string }
       get_user_pharmacy_ids: { Args: { _user_id: string }; Returns: string[] }

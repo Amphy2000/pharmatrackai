@@ -55,7 +55,8 @@ import {
   DollarSign,
   BarChart3,
   Home,
-  Building2
+  Building2,
+  Globe
 } from 'lucide-react';
 
 // Animation variants with proper typing
@@ -378,7 +379,7 @@ const Dashboard = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.6 }}
             >
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+              <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
                 <Button
                   variant="outline"
                   className="h-20 flex flex-col items-center justify-center gap-2 hover:bg-primary/5 hover:border-primary/30 transition-all group"
@@ -394,6 +395,14 @@ const Dashboard = () => {
                 >
                   <TrendingUp className="h-5 w-5 group-hover:text-emerald-500 transition-colors" />
                   <span className="text-sm">Upsell Analytics</span>
+                </Button>
+                <Button
+                  variant="outline"
+                  className="h-20 flex flex-col items-center justify-center gap-2 hover:bg-marketplace/10 hover:border-marketplace/30 transition-all group"
+                  onClick={() => navigate('/marketplace-insights')}
+                >
+                  <Globe className="h-5 w-5 group-hover:text-marketplace transition-colors" />
+                  <span className="text-sm">Marketplace</span>
                 </Button>
                 <Button
                   variant="outline"

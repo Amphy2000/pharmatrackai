@@ -65,6 +65,7 @@ export interface Medication {
   min_stock_alert?: number;
   is_shelved?: boolean;
   is_controlled?: boolean;
+  is_public?: boolean;
   nafdac_reg_number?: string;
   dispensing_unit?: DispensingUnit;
   metadata?: Record<string, any> | null;

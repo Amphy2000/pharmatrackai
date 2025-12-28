@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { format, parseISO } from 'date-fns';
-import { Edit2, Trash2, MoreHorizontal, Package, ChevronDown, ChevronUp, Archive, ArchiveRestore, Filter, Link2Off, Hash, Loader2, Printer } from 'lucide-react';
+import { Edit2, Trash2, MoreHorizontal, Package, ChevronDown, ChevronUp, Archive, ArchiveRestore, Filter, Link2Off, Hash, Loader2, Printer, Globe, GlobeLock } from 'lucide-react';
 import { Medication } from '@/types/medication';
 import { BarcodeLabelPrinter } from './BarcodeLabelPrinter';
 import { useMedications } from '@/hooks/useMedications';
@@ -375,6 +375,35 @@ export const MedicationsTable = ({ medications, searchQuery, onEdit }: Medicatio
                                   </DropdownMenuItem>
                                 </>
                               )}
+                              <DropdownMenuSeparator />
+                              {/* Marketplace Toggle */}
+                              <DropdownMenuItem 
+                                onClick={async () => {
+                                  await updateMedication.mutateAsync({
+                                    id: medication.id,
+                                    is_public: !medication.is_public,
+                                  });
+                                  toast({
+                                    title: medication.is_public ? "Removed from Marketplace" : "Listed on Marketplace",
+                                    description: medication.is_public 
+                                      ? "Product is no longer visible publicly" 
+                                      : "Product is now visible on the public marketplace",
+                                  });
+                                }}
+                                className={medication.is_public ? "text-marketplace" : ""}
+                              >
+                                {medication.is_public ? (
+                                  <>
+                                    <Globe className="mr-2 h-4 w-4" />
+                                    Listed on Marketplace
+                                  </>
+                                ) : (
+                                  <>
+                                    <GlobeLock className="mr-2 h-4 w-4" />
+                                    List on Marketplace
+                                  </>
+                                )}
+                              </DropdownMenuItem>
                               <DropdownMenuSeparator />
                               {medication.is_shelved === false ? (
                                 <DropdownMenuItem onClick={() => handleShelving(medication, 'shelve')}>
