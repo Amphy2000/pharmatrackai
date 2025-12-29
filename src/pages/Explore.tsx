@@ -18,6 +18,7 @@ import { DistanceFilter, DistanceRadius, SortOption } from "@/components/explore
 import { ExploreFlyer } from "@/components/explore/ExploreFlyer";
 import { motion, AnimatePresence } from "framer-motion";
 import { useGeolocation, calculateDistance, getApproximateCoordinates } from "@/hooks/useGeolocation";
+import { smartShuffle } from "@/utils/smartShuffle";
 
 interface PublicMedication {
   id: string;
@@ -171,23 +172,34 @@ const Explore = () => {
         );
       }
 
-      // Apply sorting
-      processedMeds = processedMeds.sort((a: any, b: any) => {
-        switch (sortOption) {
-          case 'distance':
-            if (a.distance === undefined && b.distance === undefined) return 0;
-            if (a.distance === undefined) return 1;
-            if (b.distance === undefined) return -1;
-            return a.distance - b.distance;
-          case 'price-low':
-            return (a.selling_price || 0) - (b.selling_price || 0);
-          case 'price-high':
-            return (b.selling_price || 0) - (a.selling_price || 0);
-          case 'availability':
-            return b.current_stock - a.current_stock;
-          default:
-            return 0;
-        }
+      // Apply sorting first (if not default)
+      if (sortOption !== 'distance' || (latitude && longitude)) {
+        processedMeds = processedMeds.sort((a: any, b: any) => {
+          switch (sortOption) {
+            case 'distance':
+              if (a.distance === undefined && b.distance === undefined) return 0;
+              if (a.distance === undefined) return 1;
+              if (b.distance === undefined) return -1;
+              return a.distance - b.distance;
+            case 'price-low':
+              return (a.selling_price || 0) - (b.selling_price || 0);
+            case 'price-high':
+              return (b.selling_price || 0) - (a.selling_price || 0);
+            case 'availability':
+              return b.current_stock - a.current_stock;
+            default:
+              return 0;
+          }
+        });
+      }
+
+      // Apply smart shuffle for fair pharmacy lead distribution
+      // This ensures different users see different arrangements
+      // while still respecting featured items and other priorities
+      processedMeds = smartShuffle(processedMeds, {
+        prioritizeFeatured: true,
+        groupByPharmacy: false,
+        maxPerPharmacy: 5,
       });
 
       setMedications(processedMeds);
