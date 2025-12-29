@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Search, MapPin, MessageCircle, Package, Store, Phone, Star, Download, Smartphone, X, ChevronRight, ArrowLeft, Shield, Clock, Zap, Heart, CheckCircle, Navigation, Sparkles, TrendingUp, Grid3X3, List, SlidersHorizontal } from "lucide-react";
+import { Search, MapPin, MessageCircle, Package, Store, Phone, Star, Download, Smartphone, X, ChevronRight, ArrowLeft, Shield, Clock, Zap, Heart, CheckCircle, Navigation, Sparkles, TrendingUp, Grid3X3, List, SlidersHorizontal, Map } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -13,6 +13,7 @@ import { VoiceSearchButton } from "@/components/explore/VoiceSearchButton";
 import { CategoryChips } from "@/components/explore/CategoryChips";
 import { RequestDrugButton } from "@/components/explore/RequestDrugButton";
 import { ExploreFlyer } from "@/components/explore/ExploreFlyer";
+import { PharmacyMapModal } from "@/components/explore/PharmacyMapModal";
 import { motion, AnimatePresence } from "framer-motion";
 import { useGeolocation, calculateDistance, getApproximateCoordinates, getGoogleMapsLink, getFallbackLocationName } from "@/hooks/useGeolocation";
 import { smartShuffle } from "@/utils/smartShuffle";
@@ -43,6 +44,9 @@ const Explore = () => {
   const [hasSearched, setHasSearched] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [mapModalOpen, setMapModalOpen] = useState(false);
+  const [selectedMedForMap, setSelectedMedForMap] = useState<PublicMedication | null>(null);
+  const [pharmaciesForMap, setPharmaciesForMap] = useState<any[]>([]);
   const { formatPrice } = useCurrency();
   const { toast } = useToast();
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -197,7 +201,76 @@ const Explore = () => {
       setSelectedCategory(null);
       setSearchQuery("");
       setHasSearched(false);
+      loadInitialData(); // Reload initial data when category is cleared
     }
+  };
+
+  // Handle clearing search
+  const handleClearSearch = () => {
+    setSearchQuery("");
+    setSelectedCategory(null);
+    setHasSearched(false);
+    loadInitialData();
+  };
+
+  // Handle input change with auto-clear detection
+  const handleSearchInputChange = (value: string) => {
+    setSearchQuery(value);
+    // If user clears the search, reset to initial state
+    if (value === "" && hasSearched) {
+      setHasSearched(false);
+      setSelectedCategory(null);
+      loadInitialData();
+    }
+  };
+
+  // Show pharmacies on map for a medication
+  const handleShowOnMap = async (medication: PublicMedication) => {
+    try {
+      // Fetch all pharmacies that have this medication
+      const { data, error } = await supabase.rpc("get_public_medications", {
+        search_term: medication.name,
+        location_filter: null,
+      });
+
+      if (error) throw error;
+
+      // Process pharmacies with distance
+      const pharmacies = (data || []).map((med: any) => {
+        const pharmacy: any = {
+          pharmacy_id: med.pharmacy_id,
+          pharmacy_name: med.pharmacy_name,
+          pharmacy_address: med.pharmacy_address,
+          pharmacy_phone: med.pharmacy_phone,
+          selling_price: med.selling_price,
+          current_stock: med.current_stock,
+        };
+        
+        if (latitude && longitude) {
+          const coords = getApproximateCoordinates(med.pharmacy_address);
+          if (coords) {
+            pharmacy.distance = calculateDistance(latitude, longitude, coords.lat, coords.lon);
+          }
+        }
+        
+        return pharmacy;
+      });
+
+      setSelectedMedForMap(medication);
+      setPharmaciesForMap(pharmacies);
+      setMapModalOpen(true);
+    } catch (error) {
+      console.error("Error fetching pharmacies for map:", error);
+    }
+  };
+
+  const handleMapOrder = (pharmacy: any) => {
+    const phone = pharmacy.pharmacy_phone?.replace(/\D/g, "") || "";
+    const message = encodeURIComponent(
+      `Hello, I saw ${selectedMedForMap?.name} in stock on PharmaTrack. I would like to order.`
+    );
+    window.open(`https://wa.me/${phone}?text=${message}`, "_blank");
+    setMapModalOpen(false);
   };
 
   // Track page visit
@@ -343,12 +416,11 @@ const Explore = () => {
       transition={{ duration: 0.25, delay: index * 0.03 }}
     >
       <Card 
-        className={`group overflow-hidden hover:shadow-lg transition-all duration-300 rounded-2xl border border-border/50 cursor-pointer ${
+        className={`group overflow-hidden hover:shadow-lg transition-all duration-300 rounded-2xl border border-border/50 ${
           medication.is_featured 
             ? 'bg-gradient-to-br from-marketplace/5 via-white to-primary/5 dark:from-marketplace/10 dark:via-card dark:to-primary/10 ring-1 ring-marketplace/20' 
             : 'bg-card hover:bg-accent/30'
         }`}
-        onClick={() => handleWhatsAppOrder(medication)}
       >
         <CardContent className="p-3.5">
           {/* Top Row */}
@@ -390,18 +462,25 @@ const Explore = () => {
             )}
           </div>
 
-          {/* CTA */}
-          <Button
-            size="sm"
-            className="w-full bg-[#25D366] hover:bg-[#20BD5A] text-white h-8 text-xs font-semibold rounded-xl shadow-sm"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleWhatsAppOrder(medication);
-            }}
-          >
-            <MessageCircle className="h-3.5 w-3.5 mr-1.5" />
-            Order Now
-          </Button>
+          {/* CTAs */}
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              className="flex-1 bg-[#25D366] hover:bg-[#20BD5A] text-white h-8 text-xs font-semibold rounded-xl shadow-sm"
+              onClick={() => handleWhatsAppOrder(medication)}
+            >
+              <MessageCircle className="h-3.5 w-3.5 mr-1.5" />
+              Order
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 w-8 p-0 rounded-xl border-marketplace/30 hover:bg-marketplace/10 hover:border-marketplace"
+              onClick={() => handleShowOnMap(medication)}
+            >
+              <MapPin className="h-3.5 w-3.5 text-marketplace" />
+            </Button>
+          </div>
         </CardContent>
       </Card>
     </motion.div>
@@ -433,11 +512,22 @@ const Explore = () => {
             <Input
               placeholder="Search medications, pharmacies..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e) => handleSearchInputChange(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-              className="pl-10 pr-24 h-11 text-sm bg-white text-foreground border-0 rounded-xl shadow-lg placeholder:text-muted-foreground/60"
+              className="pl-10 pr-32 h-11 text-sm bg-white text-foreground border-0 rounded-xl shadow-lg placeholder:text-muted-foreground/60"
             />
             <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-1">
+              {/* Clear Button */}
+              {searchQuery && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={handleClearSearch}
+                  className="h-7 w-7 text-muted-foreground hover:text-foreground"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </Button>
+              )}
               <VoiceSearchButton onResult={handleVoiceResult} />
               <CustomerBarcodeScanner onScan={handleBarcodeScanned} />
               <Button 
@@ -716,6 +806,16 @@ const Explore = () => {
           </motion.div>
         )}
       </main>
+
+      {/* Pharmacy Map Modal */}
+      <PharmacyMapModal
+        isOpen={mapModalOpen}
+        onClose={() => setMapModalOpen(false)}
+        medication={selectedMedForMap}
+        pharmacies={pharmaciesForMap}
+        userLocation={latitude && longitude ? { lat: latitude, lon: longitude } : null}
+        onOrder={handleMapOrder}
+      />
     </div>
   );
 };
