@@ -37,7 +37,7 @@ export const SpotlightSection = ({ onOrder }: SpotlightSectionProps) => {
   const [locationEnabled, setLocationEnabled] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const { formatPrice } = useCurrency();
+  const { } = useCurrency(); // Keep hook for potential future use
   const { latitude, longitude, loading: geoLoading, error: geoError, requestLocation } = useGeolocation();
 
   useEffect(() => {
@@ -285,13 +285,13 @@ export const SpotlightSection = ({ onOrder }: SpotlightSectionProps) => {
                   <h3 className="font-bold text-sm md:text-lg mb-1 line-clamp-1">{medication.name}</h3>
                   <Badge variant="secondary" className="mb-2 md:mb-3 text-[10px] md:text-xs">{medication.category}</Badge>
 
-                  {/* Price */}
-                  <p className="text-xl md:text-2xl font-bold text-marketplace mb-2 md:mb-3">
-                    {formatPrice(medication.selling_price || 0)}
-                    <span className="text-[10px] md:text-sm font-normal text-muted-foreground ml-1">
-                      /{medication.dispensing_unit}
-                    </span>
-                  </p>
+                  {/* Stock indicator instead of price */}
+                  <Badge 
+                    variant="outline" 
+                    className="bg-success/10 text-success border-success/30 text-xs mb-2 md:mb-3"
+                  >
+                    {medication.current_stock} in stock
+                  </Badge>
 
                   {/* Pharmacy Info with Distance */}
                   <div className="space-y-1.5 mb-3">

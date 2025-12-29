@@ -283,18 +283,12 @@ const Explore = () => {
                 </div>
                 <Badge variant="secondary" className="text-xs">{medication.category}</Badge>
               </div>
-              <div className="text-right shrink-0">
-                <p className="text-xl md:text-2xl font-bold text-marketplace">
-                  {formatPrice(medication.selling_price || 0)}
-                </p>
-                <p className="text-xs text-muted-foreground">/{medication.dispensing_unit}</p>
-              </div>
-            </div>
-            
-            {/* Compact Price Disclaimer */}
-            <div className="flex items-center gap-2 p-2 bg-warning/10 rounded-lg border border-warning/20 mb-3">
-              <AlertCircle className="h-3.5 w-3.5 text-warning shrink-0" />
-              <p className="text-[11px] text-muted-foreground">Confirm price with pharmacist</p>
+              <Badge 
+                variant="outline" 
+                className="bg-success/10 text-success border-success/30 text-xs shrink-0"
+              >
+                {medication.current_stock} in stock
+              </Badge>
             </div>
             
             {/* Pharmacy Info - Compact */}
@@ -312,13 +306,7 @@ const Explore = () => {
               )}
             </div>
             
-            <div className="flex items-center justify-between gap-3">
-              <Badge 
-                variant="outline" 
-                className="bg-success/10 text-success border-success/30 text-xs"
-              >
-                {medication.current_stock} in stock
-              </Badge>
+            <div className="flex items-center justify-end gap-3">
               
               {/* Mobile-friendly Action Button */}
               <div className="flex items-center gap-2">

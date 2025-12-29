@@ -33,7 +33,7 @@ const ESSENTIAL_CATEGORIES = ['Analgesics', 'Antimalarials', 'Vitamins', 'Antibi
 export const NearbyEssentials = ({ onOrder }: NearbyEssentialsProps) => {
   const [medications, setMedications] = useState<NearbyMedication[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const { formatPrice } = useCurrency();
+  const { } = useCurrency(); // Keep hook for potential future use
   const { latitude, longitude, loading: geoLoading, requestLocation } = useGeolocation();
 
   useEffect(() => {
@@ -192,9 +192,12 @@ export const NearbyEssentials = ({ onOrder }: NearbyEssentialsProps) => {
                 <h3 className="font-semibold text-xs md:text-sm line-clamp-2 mb-1.5 md:mb-2 group-hover:text-marketplace transition-colors min-h-[2.5rem] md:min-h-0">
                   {medication.name}
                 </h3>
-                <p className="text-base md:text-lg font-bold text-marketplace mb-1.5 md:mb-2">
-                  {formatPrice(medication.selling_price || 0)}
-                </p>
+                <Badge 
+                  variant="outline" 
+                  className="bg-success/10 text-success border-success/30 text-[10px] mb-1.5 md:mb-2"
+                >
+                  In Stock
+                </Badge>
                 
                 {/* Pharmacy Name */}
                 <div className="flex items-center gap-1 text-[10px] md:text-xs text-muted-foreground mb-1">

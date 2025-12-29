@@ -714,6 +714,7 @@ export type Database = {
           max_users: number
           name: string
           owner_id: string
+          partner_source: string | null
           paystack_customer_code: string | null
           paystack_subscription_code: string | null
           pharmacist_in_charge: string | null
@@ -750,6 +751,7 @@ export type Database = {
           max_users?: number
           name: string
           owner_id: string
+          partner_source?: string | null
           paystack_customer_code?: string | null
           paystack_subscription_code?: string | null
           pharmacist_in_charge?: string | null
@@ -786,6 +788,7 @@ export type Database = {
           max_users?: number
           name?: string
           owner_id?: string
+          partner_source?: string | null
           paystack_customer_code?: string | null
           paystack_subscription_code?: string | null
           pharmacist_in_charge?: string | null
@@ -1150,6 +1153,114 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      referral_partners: {
+        Row: {
+          commission_type: string
+          commission_value: number
+          contact_email: string | null
+          contact_phone: string | null
+          created_at: string
+          id: string
+          is_active: boolean
+          organization_name: string | null
+          partner_code: string
+          partner_name: string
+          partner_type: string
+          successful_signups: number
+          total_commission_earned: number
+          total_referrals: number
+          updated_at: string
+        }
+        Insert: {
+          commission_type: string
+          commission_value?: number
+          contact_email?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          organization_name?: string | null
+          partner_code: string
+          partner_name: string
+          partner_type: string
+          successful_signups?: number
+          total_commission_earned?: number
+          total_referrals?: number
+          updated_at?: string
+        }
+        Update: {
+          commission_type?: string
+          commission_value?: number
+          contact_email?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          organization_name?: string | null
+          partner_code?: string
+          partner_name?: string
+          partner_type?: string
+          successful_signups?: number
+          total_commission_earned?: number
+          total_referrals?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      referral_signups: {
+        Row: {
+          commission_amount: number | null
+          commission_paid: boolean
+          created_at: string
+          id: string
+          paid_at: string | null
+          partner_code: string
+          partner_id: string | null
+          pharmacy_id: string | null
+          signup_date: string
+          status: string
+        }
+        Insert: {
+          commission_amount?: number | null
+          commission_paid?: boolean
+          created_at?: string
+          id?: string
+          paid_at?: string | null
+          partner_code: string
+          partner_id?: string | null
+          pharmacy_id?: string | null
+          signup_date?: string
+          status?: string
+        }
+        Update: {
+          commission_amount?: number | null
+          commission_paid?: boolean
+          created_at?: string
+          id?: string
+          paid_at?: string | null
+          partner_code?: string
+          partner_id?: string | null
+          pharmacy_id?: string | null
+          signup_date?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "referral_signups_partner_id_fkey"
+            columns: ["partner_id"]
+            isOneToOne: false
+            referencedRelation: "referral_partners"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "referral_signups_pharmacy_id_fkey"
+            columns: ["pharmacy_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       reorder_requests: {
         Row: {
