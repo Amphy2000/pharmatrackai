@@ -51,46 +51,30 @@ export const NearbyEssentials = ({ onOrder }: NearbyEssentialsProps) => {
     try {
       setIsLoading(true);
 
-      // Get all in-stock, public medications (not just essential categories)
-      const { data, error } = await supabase
-        .from('medications')
-        .select(`
-          id,
-          name,
-          category,
-          current_stock,
-          selling_price,
-          dispensing_unit,
-          pharmacy_id,
-          pharmacies!inner (
-            name,
-            phone,
-            address,
-            subscription_status
-          )
-        `)
-        .eq('is_public', true)
-        .eq('is_featured', false) // Non-featured (featured go to spotlight)
-        .eq('is_shelved', true) // On shelf = available
-        .gt('current_stock', 0)
-        .in('pharmacies.subscription_status', ['active', 'trial'])
-        .limit(100); // Get more to have variety after filtering
+      // Use the RPC function which bypasses RLS for public marketplace access
+      const { data, error } = await supabase.rpc('get_public_medications', {
+        search_term: null,
+        location_filter: null
+      });
 
       if (error) throw error;
 
-      let formatted = (data || []).map((m: any) => ({
-        id: m.id,
-        name: m.name,
-        category: m.category,
-        current_stock: m.current_stock,
-        selling_price: m.selling_price,
-        dispensing_unit: m.dispensing_unit,
-        pharmacy_id: m.pharmacy_id,
-        pharmacy_name: m.pharmacies?.name || 'Unknown',
-        pharmacy_phone: m.pharmacies?.phone,
-        pharmacy_address: m.pharmacies?.address,
-        region: getFallbackLocationName(m.pharmacies?.address) || undefined,
-      }));
+      // Filter to non-featured items only (featured go to spotlight)
+      let formatted = (data || [])
+        .filter((m: any) => !m.is_featured)
+        .map((m: any) => ({
+          id: m.id,
+          name: m.name,
+          category: m.category,
+          current_stock: m.current_stock,
+          selling_price: m.selling_price,
+          dispensing_unit: m.dispensing_unit,
+          pharmacy_id: m.pharmacy_id,
+          pharmacy_name: m.pharmacy_name || 'Unknown',
+          pharmacy_phone: m.pharmacy_phone,
+          pharmacy_address: m.pharmacy_address,
+          region: getFallbackLocationName(m.pharmacy_address) || undefined,
+        }));
 
       // Store all medications for "Browse All" fallback
       setAllMedications(formatted);
