@@ -182,10 +182,6 @@ const Explore = () => {
               if (a.distance === undefined) return 1;
               if (b.distance === undefined) return -1;
               return a.distance - b.distance;
-            case 'price-low':
-              return (a.selling_price || 0) - (b.selling_price || 0);
-            case 'price-high':
-              return (b.selling_price || 0) - (a.selling_price || 0);
             case 'availability':
               return b.current_stock - a.current_stock;
             default:
