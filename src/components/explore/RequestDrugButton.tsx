@@ -3,15 +3,18 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 
 interface RequestDrugButtonProps {
-  searchQuery: string;
+  searchQuery?: string;
 }
 
 const ADMIN_WHATSAPP = '2349169153129';
 
 export const RequestDrugButton = ({ searchQuery }: RequestDrugButtonProps) => {
   const handleRequestDrug = () => {
+    const searchText = searchQuery 
+      ? `I searched for "${searchQuery}" but couldn't find it.`
+      : `I'm looking for a medication.`;
     const message = encodeURIComponent(
-      `Hello PharmaTrack Admin! I searched for "${searchQuery}" but couldn't find it. Can you help me locate a pharmacy that has it in stock?`
+      `Hello PharmaTrack Admin! ${searchText} Can you help me locate a pharmacy that has it in stock?`
     );
     window.open(`https://wa.me/${ADMIN_WHATSAPP}?text=${message}`, '_blank');
   };
@@ -22,7 +25,10 @@ export const RequestDrugButton = ({ searchQuery }: RequestDrugButtonProps) => {
         <AlertCircle className="h-12 w-12 text-marketplace mb-4" />
         <h3 className="font-semibold text-lg mb-2">Can't find what you need?</h3>
         <p className="text-sm text-muted-foreground text-center mb-4 max-w-sm">
-          We'll help you find a pharmacy with "{searchQuery}" in stock. Our team will search across our network and get back to you.
+          {searchQuery 
+            ? `We'll help you find a pharmacy with "${searchQuery}" in stock. Our team will search across our network and get back to you.`
+            : `Can't find what you need? Our team will help you locate a pharmacy with it in stock.`
+          }
         </p>
         <Button
           onClick={handleRequestDrug}
