@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Star, ChevronLeft, ChevronRight, MapPin, Store, MessageCircle, Clock, Navigation, Loader2, Sparkles, Zap, ExternalLink, Globe, AlertCircle } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -8,6 +8,7 @@ import { differenceInDays } from 'date-fns';
 import { useGeolocation, calculateDistance, getApproximateCoordinates, getFallbackLocationName, getGoogleMapsLink } from '@/hooks/useGeolocation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { smartShuffle } from '@/utils/smartShuffle';
+import { LocationFilter, LocationSelection } from './LocationFilter';
 
 interface FeaturedMedication {
   id: string;
@@ -36,6 +37,11 @@ export const SpotlightSection = ({ onOrder }: SpotlightSectionProps) => {
   const [isLoading, setIsLoading] = useState(true);
   const [hasNearbyItems, setHasNearbyItems] = useState(true);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [locationFilter, setLocationFilter] = useState<LocationSelection>({
+    state: null,
+    lga: null,
+    neighborhood: null,
+  });
   const scrollRef = useRef<HTMLDivElement>(null);
   const { latitude, longitude, loading: geoLoading, requestLocation } = useGeolocation();
 
@@ -43,70 +49,87 @@ export const SpotlightSection = ({ onOrder }: SpotlightSectionProps) => {
     loadFeaturedMedications();
   }, []);
 
-  // Filter by location when user location is available
-  useEffect(() => {
-    if (featured.length > 0) {
-      if (latitude && longitude) {
-        // Add distance info
-        const withDistance = featured.map(med => {
-          const pharmacyCoords = getApproximateCoordinates(med.pharmacy_address);
-          if (pharmacyCoords) {
-            const distance = calculateDistance(latitude, longitude, pharmacyCoords.lat, pharmacyCoords.lon);
-            return { 
-              ...med, 
-              distance,
-              region: getFallbackLocationName(med.pharmacy_address) || undefined
-            };
-          }
-          return { 
-            ...med, 
-            distance: undefined,
-            region: getFallbackLocationName(med.pharmacy_address) || undefined
-          };
-        });
+  // Filter by location filter or user geolocation
+  const processedFeatured = useMemo(() => {
+    if (featured.length === 0) return [];
 
-        // Check if any are within 10km
-        const nearbyItems = withDistance.filter(med => 
-          med.distance !== undefined && med.distance <= 10
-        );
+    // Add region info to all items
+    let processed = featured.map(med => ({
+      ...med,
+      region: getFallbackLocationName(med.pharmacy_address) || undefined
+    }));
 
-        setHasNearbyItems(nearbyItems.length > 0);
+    // Apply location filter if set
+    if (locationFilter.state || locationFilter.lga || locationFilter.neighborhood) {
+      processed = processed.filter(med => {
+        const address = (med.pharmacy_address || '').toLowerCase();
         
-        // Sort by distance (closest first, unknown distances last)
-        const sorted = withDistance.sort((a, b) => {
+        // Check neighborhood first (most specific)
+        if (locationFilter.neighborhood) {
+          return address.includes(locationFilter.neighborhood.toLowerCase());
+        }
+        
+        // Check LGA
+        if (locationFilter.lga) {
+          return address.includes(locationFilter.lga.toLowerCase());
+        }
+        
+        // Check state
+        if (locationFilter.state) {
+          // Handle special case for Lagos vs Lagos Island etc.
+          const stateLower = locationFilter.state.toLowerCase();
+          return address.includes(stateLower) || 
+                 (med.region && med.region.toLowerCase().includes(stateLower));
+        }
+        
+        return true;
+      });
+    }
+
+    // Add distance info if geolocation available
+    if (latitude && longitude) {
+      processed = processed.map(med => {
+        const pharmacyCoords = getApproximateCoordinates(med.pharmacy_address);
+        if (pharmacyCoords) {
+          const distance = calculateDistance(latitude, longitude, pharmacyCoords.lat, pharmacyCoords.lon);
+          return { ...med, distance };
+        }
+        return med;
+      });
+
+      // Sort by distance if no location filter is active
+      if (!locationFilter.state && !locationFilter.lga && !locationFilter.neighborhood) {
+        processed = processed.sort((a, b) => {
           if (a.distance === undefined && b.distance === undefined) return 0;
           if (a.distance === undefined) return 1;
           if (b.distance === undefined) return -1;
           return a.distance - b.distance;
         });
-        
-        // Apply smart shuffle for fair pharmacy lead distribution
-        const shuffled = smartShuffle(sorted, {
-          prioritizeFeatured: true,
-          groupByPharmacy: false,
-          maxPerPharmacy: 2,
-        });
-        
-        setFilteredFeatured(shuffled);
-      } else {
-        // No location - apply smart shuffle for fair distribution
-        const withRegions = featured.map(med => ({
-          ...med,
-          region: getFallbackLocationName(med.pharmacy_address) || undefined
-        }));
-        
-        const shuffled = smartShuffle(withRegions, {
-          prioritizeFeatured: true,
-          groupByPharmacy: false,
-          maxPerPharmacy: 2,
-        });
-        setFilteredFeatured(shuffled);
-        setHasNearbyItems(false);
       }
-    } else {
-      setFilteredFeatured([]);
     }
-  }, [latitude, longitude, featured]);
+
+    // Apply smart shuffle for fair pharmacy lead distribution
+    return smartShuffle(processed, {
+      prioritizeFeatured: true,
+      groupByPharmacy: false,
+      maxPerPharmacy: 2,
+    });
+  }, [featured, locationFilter, latitude, longitude]);
+
+  // Update filtered featured when processed changes
+  useEffect(() => {
+    setFilteredFeatured(processedFeatured);
+    
+    // Check if any are nearby
+    if (latitude && longitude) {
+      const nearbyItems = processedFeatured.filter(med => 
+        med.distance !== undefined && med.distance <= 10
+      );
+      setHasNearbyItems(nearbyItems.length > 0);
+    } else {
+      setHasNearbyItems(false);
+    }
+  }, [processedFeatured, latitude, longitude]);
 
   // Update active index on scroll
   useEffect(() => {
@@ -224,12 +247,22 @@ export const SpotlightSection = ({ onOrder }: SpotlightSectionProps) => {
           <div>
             <h2 className="text-base md:text-xl font-bold text-foreground">Spotlight</h2>
             <p className="text-[10px] md:text-xs text-muted-foreground">
-              {hasNearbyItems ? 'Featured near you' : 'Featured products'}
+              {locationFilter.state 
+                ? `Featured in ${locationFilter.neighborhood || locationFilter.lga || locationFilter.state}` 
+                : hasNearbyItems 
+                  ? 'Featured near you' 
+                  : 'Featured products'}
             </p>
           </div>
         </div>
         <div className="flex items-center gap-1.5">
-          {!latitude && !geoLoading && (
+          {/* Location Filter */}
+          <LocationFilter 
+            selectedLocation={locationFilter}
+            onLocationChange={setLocationFilter}
+          />
+          
+          {!latitude && !geoLoading && !locationFilter.state && (
             <Button
               variant="ghost"
               size="sm"
@@ -237,7 +270,7 @@ export const SpotlightSection = ({ onOrder }: SpotlightSectionProps) => {
               className="gap-1 text-[10px] md:text-xs h-7 px-2"
             >
               <Navigation className="h-3 w-3" />
-              <span className="hidden sm:inline">Enable</span> Location
+              <span className="hidden sm:inline">GPS</span>
             </Button>
           )}
           {geoLoading && (
