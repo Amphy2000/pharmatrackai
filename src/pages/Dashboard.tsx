@@ -31,6 +31,7 @@ import { DemandForecasting } from '@/components/dashboard/DemandForecasting';
 import { ExpiryDiscountEngine } from '@/components/dashboard/ExpiryDiscountEngine';
 import { QuickGlancePanel } from '@/components/dashboard/QuickGlancePanel';
 import { SavingsROIPanel } from '@/components/dashboard/SavingsROIPanel';
+import { SlowMovingProductsPanel } from '@/components/dashboard/SlowMovingProductsPanel';
 import { LiveActivityFeed } from '@/components/dashboard/LiveActivityFeed';
 import { ProductTour } from '@/components/ProductTour';
 import { PWAInstallPrompt } from '@/components/pwa/PWAInstallPrompt';
@@ -359,6 +360,24 @@ const Dashboard = () => {
                 transition={{ delay: 0.4 }}
               >
                 <AIInsightsPanel medications={medications} />
+              </motion.section>
+            )}
+
+            {/* AI Slow-Moving Products Analysis */}
+            {medications.length > 0 && (
+              <motion.section 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.45 }}
+              >
+                <SlowMovingProductsPanel 
+                  medications={medications} 
+                  salesData={sales?.map(s => ({ 
+                    medication_id: s.medication_id, 
+                    quantity: s.quantity, 
+                    sale_date: s.sale_date 
+                  }))} 
+                />
               </motion.section>
             )}
 

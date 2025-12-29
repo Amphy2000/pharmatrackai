@@ -44,6 +44,7 @@ import Notifications from "./pages/Notifications";
 import DemoDashboard from "./pages/DemoDashboard";
 import UpsellAnalytics from "./pages/UpsellAnalytics";
 import Explore from "./pages/Explore";
+import PartnerLanding from "./pages/PartnerLanding";
 import MarketplaceInsights from "./pages/MarketplaceInsights";
 import NotFound from "./pages/NotFound";
 const queryClient = new QueryClient({
@@ -91,6 +92,7 @@ const App = () => (
                       <Route path="/onboarding" element={<OnboardingWizard />} />
                       <Route path="/demo" element={<DemoDashboard />} />
                       <Route path="/explore" element={<Explore />} />
+                      <Route path="/p/:partnerId" element={<PartnerLanding />} />
 
                       {/* Protected Routes */}
                       <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
