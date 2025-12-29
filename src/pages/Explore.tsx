@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Search, MapPin, MessageCircle, Package, Store, Phone, Star, AlertCircle, Download, Smartphone, X, Menu, ChevronRight, ArrowLeft, Shield, Clock, Zap, TrendingUp, Heart, Sparkles, CheckCircle, Navigation } from "lucide-react";
+import { Search, MapPin, MessageCircle, Package, Store, Phone, Star, Download, Smartphone, X, ChevronRight, ArrowLeft, Shield, Clock, Zap, Heart, CheckCircle, Navigation, Sparkles, TrendingUp } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -14,9 +14,8 @@ import { SpotlightSection } from "@/components/explore/SpotlightSection";
 import { CategoryChips } from "@/components/explore/CategoryChips";
 import { NearbyEssentials } from "@/components/explore/NearbyEssentials";
 import { RequestDrugButton } from "@/components/explore/RequestDrugButton";
-import { DistanceFilter, DistanceRadius, SortOption } from "@/components/explore/DistanceFilter";
 import { ExploreFlyer } from "@/components/explore/ExploreFlyer";
-import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import { useGeolocation, calculateDistance, getApproximateCoordinates, getGoogleMapsLink } from "@/hooks/useGeolocation";
 import { smartShuffle } from "@/utils/smartShuffle";
 
@@ -43,8 +42,7 @@ const Explore = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [distanceRadius, setDistanceRadius] = useState<DistanceRadius>('all');
-  const [sortOption, setSortOption] = useState<SortOption>('distance');
+  const [sortOption, setSortOption] = useState<'distance' | 'availability'>('distance');
   const { formatPrice } = useCurrency();
   const { toast } = useToast();
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
@@ -166,29 +164,16 @@ const Explore = () => {
         return { ...med, distance: undefined as number | undefined };
       });
 
-      // Apply distance filter
-      if (distanceRadius !== 'all' && latitude && longitude) {
-        processedMeds = processedMeds.filter((med: any) => 
-          med.distance === undefined || med.distance <= distanceRadius
-        );
-      }
-
-      // Apply sorting first (if not default)
-      if (sortOption !== 'distance' || (latitude && longitude)) {
+      // Apply sorting
+      if (latitude && longitude) {
         processedMeds = processedMeds.sort((a: any, b: any) => {
-          switch (sortOption) {
-            case 'distance':
-              if (a.distance === undefined && b.distance === undefined) return 0;
-              if (a.distance === undefined) return 1;
-              if (b.distance === undefined) return -1;
-              return a.distance - b.distance;
-            case 'availability':
-              return b.current_stock - a.current_stock;
-            default:
-              return 0;
-          }
+          if (a.distance === undefined && b.distance === undefined) return 0;
+          if (a.distance === undefined) return 1;
+          if (b.distance === undefined) return -1;
+          return a.distance - b.distance;
         });
       }
+
 
       // Apply smart shuffle for fair pharmacy lead distribution
       // This ensures different users see different arrangements
@@ -456,26 +441,12 @@ const Explore = () => {
       </AnimatePresence>
 
       {/* Main Content - Mobile First */}
-      <main className="container mx-auto max-w-4xl px-3 md:px-4 py-4 md:py-8">
-        {/* Category Chips */}
-        <div className="mb-3">
-          <CategoryChips 
-            onCategorySelect={handleCategorySelect} 
-            selectedCategory={selectedCategory} 
-          />
-        </div>
-        
-        {/* Distance & Sort Filters - Separate row */}
-        <div className="flex items-center gap-2 mb-4">
-          <DistanceFilter
-            selectedRadius={distanceRadius}
-            selectedSort={sortOption}
-            onRadiusChange={setDistanceRadius}
-            onSortChange={setSortOption}
-            locationEnabled={!!latitude}
-            onEnableLocation={requestLocation}
-          />
-        </div>
+      <main className="container mx-auto max-w-4xl px-3 md:px-4 py-4 md:py-6">
+        {/* Categories with inline sort */}
+        <CategoryChips 
+          onCategorySelect={handleCategorySelect} 
+          selectedCategory={selectedCategory} 
+        />
 
         {/* Spotlight & Essentials - Always visible when not searching */}
         {!hasSearched && (

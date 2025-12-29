@@ -1,14 +1,13 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { Star, ChevronLeft, ChevronRight, MapPin, Store, MessageCircle, Clock, Navigation, Loader2, Sparkles, Zap, ExternalLink, Globe, AlertCircle } from 'lucide-react';
+import { Star, ChevronLeft, ChevronRight, MapPin, Store, MessageCircle, Clock, Navigation, Loader2, Sparkles, Zap, ExternalLink, Globe } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { differenceInDays } from 'date-fns';
 import { useGeolocation, calculateDistance, getApproximateCoordinates, getFallbackLocationName, getGoogleMapsLink } from '@/hooks/useGeolocation';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { smartShuffle } from '@/utils/smartShuffle';
-import { LocationFilter, LocationSelection } from './LocationFilter';
 
 interface FeaturedMedication {
   id: string;
@@ -33,58 +32,23 @@ interface SpotlightSectionProps {
 
 export const SpotlightSection = ({ onOrder }: SpotlightSectionProps) => {
   const [featured, setFeatured] = useState<FeaturedMedication[]>([]);
-  const [filteredFeatured, setFilteredFeatured] = useState<FeaturedMedication[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [hasNearbyItems, setHasNearbyItems] = useState(true);
   const [activeIndex, setActiveIndex] = useState(0);
-  const [locationFilter, setLocationFilter] = useState<LocationSelection>({
-    state: null,
-    lga: null,
-    neighborhood: null,
-  });
   const scrollRef = useRef<HTMLDivElement>(null);
-  const { latitude, longitude, loading: geoLoading, requestLocation } = useGeolocation();
+  const { latitude, longitude, loading: geoLoading } = useGeolocation();
 
   useEffect(() => {
     loadFeaturedMedications();
   }, []);
 
-  // Filter by location filter or user geolocation
+  // Process featured with distance
   const processedFeatured = useMemo(() => {
     if (featured.length === 0) return [];
 
-    // Add region info to all items
     let processed = featured.map(med => ({
       ...med,
       region: getFallbackLocationName(med.pharmacy_address) || undefined
     }));
-
-    // Apply location filter if set
-    if (locationFilter.state || locationFilter.lga || locationFilter.neighborhood) {
-      processed = processed.filter(med => {
-        const address = (med.pharmacy_address || '').toLowerCase();
-        
-        // Check neighborhood first (most specific)
-        if (locationFilter.neighborhood) {
-          return address.includes(locationFilter.neighborhood.toLowerCase());
-        }
-        
-        // Check LGA
-        if (locationFilter.lga) {
-          return address.includes(locationFilter.lga.toLowerCase());
-        }
-        
-        // Check state
-        if (locationFilter.state) {
-          // Handle special case for Lagos vs Lagos Island etc.
-          const stateLower = locationFilter.state.toLowerCase();
-          return address.includes(stateLower) || 
-                 (med.region && med.region.toLowerCase().includes(stateLower));
-        }
-        
-        return true;
-      });
-    }
 
     // Add distance info if geolocation available
     if (latitude && longitude) {
@@ -97,15 +61,13 @@ export const SpotlightSection = ({ onOrder }: SpotlightSectionProps) => {
         return med;
       });
 
-      // Sort by distance if no location filter is active
-      if (!locationFilter.state && !locationFilter.lga && !locationFilter.neighborhood) {
-        processed = processed.sort((a, b) => {
-          if (a.distance === undefined && b.distance === undefined) return 0;
-          if (a.distance === undefined) return 1;
-          if (b.distance === undefined) return -1;
-          return a.distance - b.distance;
-        });
-      }
+      // Sort by distance
+      processed = processed.sort((a, b) => {
+        if (a.distance === undefined && b.distance === undefined) return 0;
+        if (a.distance === undefined) return 1;
+        if (b.distance === undefined) return -1;
+        return a.distance - b.distance;
+      });
     }
 
     // Apply smart shuffle for fair pharmacy lead distribution
@@ -114,22 +76,7 @@ export const SpotlightSection = ({ onOrder }: SpotlightSectionProps) => {
       groupByPharmacy: false,
       maxPerPharmacy: 2,
     });
-  }, [featured, locationFilter, latitude, longitude]);
-
-  // Update filtered featured when processed changes
-  useEffect(() => {
-    setFilteredFeatured(processedFeatured);
-    
-    // Check if any are nearby
-    if (latitude && longitude) {
-      const nearbyItems = processedFeatured.filter(med => 
-        med.distance !== undefined && med.distance <= 10
-      );
-      setHasNearbyItems(nearbyItems.length > 0);
-    } else {
-      setHasNearbyItems(false);
-    }
-  }, [processedFeatured, latitude, longitude]);
+  }, [featured, latitude, longitude]);
 
   // Update active index on scroll
   useEffect(() => {
@@ -140,20 +87,17 @@ export const SpotlightSection = ({ onOrder }: SpotlightSectionProps) => {
       const scrollLeft = scrollElement.scrollLeft;
       const cardWidth = window.innerWidth < 768 ? 260 : 300;
       const newIndex = Math.round(scrollLeft / cardWidth);
-      setActiveIndex(Math.min(newIndex, filteredFeatured.length - 1));
+      setActiveIndex(Math.min(newIndex, processedFeatured.length - 1));
     };
 
     scrollElement.addEventListener('scroll', handleScroll);
     return () => scrollElement.removeEventListener('scroll', handleScroll);
-  }, [filteredFeatured.length]);
+  }, [processedFeatured.length]);
 
   const loadFeaturedMedications = async () => {
     try {
       setIsLoading(true);
-      
-      // Get featured medications via secure RPC function (bypasses RLS for public marketplace)
       const { data, error } = await supabase.rpc('get_featured_medications');
-
       if (error) throw error;
 
       const formatted = (data || []).map((m: any) => ({
@@ -196,115 +140,70 @@ export const SpotlightSection = ({ onOrder }: SpotlightSectionProps) => {
 
   if (isLoading) {
     return (
-      <div className="mb-6 md:mb-8">
-        <div className="flex items-center gap-2 mb-3 md:mb-4">
-          <Sparkles className="h-4 w-4 md:h-5 md:w-5 text-marketplace animate-pulse" />
-          <div className="h-5 md:h-6 bg-muted rounded w-32 md:w-40 animate-pulse" />
+      <div className="mb-6">
+        <div className="flex items-center gap-2 mb-3">
+          <Sparkles className="h-4 w-4 text-marketplace animate-pulse" />
+          <div className="h-5 bg-muted rounded w-24 animate-pulse" />
         </div>
         <div className="flex gap-3 overflow-hidden">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="min-w-[240px] md:min-w-[300px] h-44 md:h-48 bg-muted rounded-2xl animate-pulse" />
+          {[1, 2].map((i) => (
+            <div key={i} className="min-w-[240px] h-44 bg-muted rounded-2xl animate-pulse" />
           ))}
         </div>
       </div>
     );
   }
 
-  // Always show section with empty state message if no featured items
-  if (filteredFeatured.length === 0 && !isLoading) {
-    return (
-      <div className="mb-6 md:mb-8">
-        <div className="flex items-center gap-1.5 md:gap-2 mb-3">
-          <div className="h-7 w-7 md:h-8 md:w-8 rounded-lg bg-gradient-to-br from-marketplace to-primary flex items-center justify-center">
-            <Sparkles className="h-3.5 w-3.5 md:h-4 md:w-4 text-white" />
-          </div>
-          <div>
-            <h2 className="text-base md:text-xl font-bold text-foreground">Spotlight</h2>
-            <p className="text-[10px] md:text-xs text-muted-foreground">Featured products</p>
-          </div>
-        </div>
-        <div className="text-center py-6 bg-muted/30 rounded-2xl border border-dashed border-muted-foreground/20">
-          <Sparkles className="h-8 w-8 mx-auto text-muted-foreground/40 mb-2" />
-          <p className="text-sm text-muted-foreground">No featured products available yet</p>
-          <p className="text-xs text-muted-foreground/60">Check back soon for special offers!</p>
-        </div>
-      </div>
-    );
+  if (processedFeatured.length === 0) {
+    return null; // Don't show section if no featured items
   }
 
   return (
     <motion.div 
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="mb-6 md:mb-8"
+      className="mb-6"
     >
-      {/* Header - Mobile Optimized */}
-      <div className="flex items-center justify-between mb-3 md:mb-4">
-        <div className="flex items-center gap-1.5 md:gap-2">
-          <div className="h-7 w-7 md:h-8 md:w-8 rounded-lg bg-gradient-to-br from-marketplace to-primary flex items-center justify-center">
-            <Sparkles className="h-3.5 w-3.5 md:h-4 md:w-4 text-white" />
+      {/* Clean Header */}
+      <div className="flex items-center justify-between mb-3">
+        <div className="flex items-center gap-2">
+          <div className="h-6 w-6 rounded-lg bg-gradient-to-br from-marketplace to-primary flex items-center justify-center">
+            <Star className="h-3 w-3 text-white fill-white" />
           </div>
-          <div>
-            <h2 className="text-base md:text-xl font-bold text-foreground">Spotlight</h2>
-            <p className="text-[10px] md:text-xs text-muted-foreground">
-              {locationFilter.state 
-                ? `Featured in ${locationFilter.neighborhood || locationFilter.lga || locationFilter.state}` 
-                : hasNearbyItems 
-                  ? 'Featured near you' 
-                  : 'Featured products'}
-            </p>
-          </div>
+          <h2 className="text-sm font-bold text-foreground">Spotlight</h2>
+          <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">
+            {processedFeatured.length}
+          </Badge>
         </div>
-        <div className="flex items-center gap-1.5">
-          {/* Location Filter */}
-          <LocationFilter 
-            selectedLocation={locationFilter}
-            onLocationChange={setLocationFilter}
-          />
-          
-          {!latitude && !geoLoading && !locationFilter.state && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={requestLocation}
-              className="gap-1 text-[10px] md:text-xs h-7 px-2"
-            >
-              <Navigation className="h-3 w-3" />
-              <span className="hidden sm:inline">GPS</span>
-            </Button>
-          )}
-          {geoLoading && (
-            <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-          )}
-          {/* Scroll arrows - hidden on mobile, visible on desktop */}
-          <div className="hidden md:flex items-center gap-1">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => scroll('left')}
-              className="h-8 w-8"
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => scroll('right')}
-              className="h-8 w-8"
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
+        
+        {/* Minimal scroll arrows */}
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => scroll('left')}
+            className="h-6 w-6 rounded-full"
+          >
+            <ChevronLeft className="h-3.5 w-3.5" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => scroll('right')}
+            className="h-6 w-6 rounded-full"
+          >
+            <ChevronRight className="h-3.5 w-3.5" />
+          </Button>
         </div>
       </div>
 
-      {/* Scrollable Cards Container - Mobile Touch Optimized */}
+      {/* Cards */}
       <div
         ref={scrollRef}
-        className="flex gap-3 overflow-x-auto pb-3 snap-x snap-mandatory scrollbar-hide -mx-3 px-3"
+        className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory scrollbar-hide -mx-3 px-3"
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
-        {filteredFeatured.map((medication, index) => {
+        {processedFeatured.map((medication, index) => {
           const daysLeft = getDaysRemaining(medication.featured_until);
           
           return (
@@ -315,95 +214,63 @@ export const SpotlightSection = ({ onOrder }: SpotlightSectionProps) => {
               transition={{ delay: index * 0.05 }}
               className="shrink-0"
             >
-              <Card
-                className="w-[240px] md:w-[300px] snap-start overflow-hidden border-0 bg-gradient-to-br from-white to-marketplace/5 dark:from-card dark:to-marketplace/10 shadow-lg hover:shadow-xl transition-all rounded-2xl"
-              >
-                <CardContent className="p-3 md:p-4">
-                  {/* Header with badge */}
-                  <div className="flex items-start justify-between mb-2 md:mb-3">
-                    <Badge className="bg-gradient-to-r from-marketplace to-primary text-white gap-1 text-[10px] md:text-xs px-2 py-0.5 rounded-full">
-                      <Star className="h-2.5 w-2.5 md:h-3 md:w-3 fill-current" />
+              <Card className="w-[240px] md:w-[280px] snap-start overflow-hidden border-0 bg-gradient-to-br from-white to-marketplace/5 dark:from-card dark:to-marketplace/10 shadow-md hover:shadow-lg transition-all rounded-xl">
+                <CardContent className="p-3">
+                  {/* Header */}
+                  <div className="flex items-start justify-between mb-2">
+                    <Badge className="bg-gradient-to-r from-marketplace to-primary text-white gap-1 text-[10px] px-2 py-0.5 rounded-full">
+                      <Star className="h-2.5 w-2.5 fill-current" />
                       Spotlight
                     </Badge>
-                    {daysLeft !== null && daysLeft <= 7 && daysLeft > 0 && (
-                      <Badge variant="outline" className="text-[10px] gap-0.5 px-1.5 py-0.5">
-                        <Clock className="h-2.5 w-2.5" />
+                    {daysLeft !== null && daysLeft <= 3 && daysLeft > 0 && (
+                      <Badge variant="outline" className="text-[9px] gap-0.5 px-1.5 py-0">
+                        <Clock className="h-2 w-2" />
                         {daysLeft}d
                       </Badge>
                     )}
                   </div>
 
                   {/* Product Info */}
-                  <h3 className="font-bold text-sm md:text-lg mb-1 line-clamp-1">{medication.name}</h3>
-                  <Badge variant="secondary" className="mb-2 md:mb-3 text-[10px] md:text-xs">{medication.category}</Badge>
+                  <h3 className="font-bold text-sm mb-1 line-clamp-1">{medication.name}</h3>
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <Badge variant="secondary" className="text-[9px] px-1.5 py-0">{medication.category}</Badge>
+                    <Badge variant="outline" className="bg-success/10 text-success border-success/30 text-[9px] px-1.5 py-0">
+                      {medication.current_stock} in stock
+                    </Badge>
+                  </div>
 
-                  {/* Stock indicator */}
-                  <Badge 
-                    variant="outline" 
-                    className="bg-success/10 text-success border-success/30 text-xs mb-2 md:mb-3"
-                  >
-                    {medication.current_stock} in stock
-                  </Badge>
-
-                  {/* Pharmacy Info with Distance */}
-                  <div className="space-y-1.5 mb-3">
-                    <div className="flex items-center gap-1.5 text-xs md:text-sm">
+                  {/* Pharmacy */}
+                  <div className="space-y-1 mb-3 p-2 bg-muted/30 rounded-lg">
+                    <div className="flex items-center gap-1.5 text-xs">
                       <Store className="h-3 w-3 shrink-0 text-muted-foreground" />
                       <span className="font-medium text-foreground line-clamp-1">{medication.pharmacy_name}</span>
                     </div>
                     
-                    {/* Distance Display - Always show */}
                     {medication.distance !== undefined ? (
-                      <div className="flex items-center gap-1.5">
-                        {medication.distance <= 3 ? (
-                          <Badge className="bg-gradient-to-r from-green-500 to-emerald-500 text-white text-[9px] md:text-[10px] px-2 py-0.5 gap-1">
-                            <Zap className="h-2.5 w-2.5" />
-                            Fast Pickup • {medication.distance < 1 ? `${Math.round(medication.distance * 1000)}m` : `${medication.distance.toFixed(1)}km`}
-                          </Badge>
-                        ) : medication.distance <= 10 ? (
-                          <Badge variant="secondary" className="text-[9px] md:text-[10px] px-2 py-0.5 gap-1">
-                            <Navigation className="h-2.5 w-2.5" />
-                            {medication.distance.toFixed(1)}km away
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline" className="text-[9px] md:text-[10px] px-2 py-0.5 text-muted-foreground">
-                            <Globe className="h-2.5 w-2.5 mr-1" />
-                            {medication.region || `${medication.distance.toFixed(0)}km`}
-                          </Badge>
-                        )}
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-1.5">
-                        <Badge variant="outline" className="text-[9px] md:text-[10px] px-2 py-0.5 text-muted-foreground">
-                          📍 {medication.region || 'Location available'}
+                      medication.distance <= 3 ? (
+                        <Badge className="bg-gradient-to-r from-green-500 to-emerald-500 text-white text-[8px] px-1.5 py-0 gap-0.5">
+                          <Zap className="h-2 w-2" />
+                          {medication.distance < 1 ? `${Math.round(medication.distance * 1000)}m` : `${medication.distance.toFixed(1)}km`}
                         </Badge>
-                      </div>
-                    )}
-                    
-                    {/* Clickable Address */}
-                    {medication.pharmacy_address && (
-                      <a 
-                        href={getGoogleMapsLink(medication.pharmacy_address) || '#'}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="flex items-center gap-1.5 text-[10px] md:text-xs text-primary hover:text-primary/80 transition-colors group"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        <MapPin className="h-3 w-3 shrink-0" />
-                        <span className="line-clamp-1 flex-1 underline-offset-2 group-hover:underline">
-                          {medication.pharmacy_address}
+                      ) : (
+                        <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                          <Navigation className="h-2.5 w-2.5" />
+                          {medication.distance.toFixed(1)}km away
                         </span>
-                        <ExternalLink className="h-2.5 w-2.5 shrink-0 opacity-50 group-hover:opacity-100" />
-                      </a>
+                      )
+                    ) : medication.region && (
+                      <span className="text-[10px] text-muted-foreground">
+                        📍 {medication.region}
+                      </span>
                     )}
                   </div>
 
                   {/* CTA */}
                   <Button
                     onClick={() => onOrder(medication)}
-                    className="w-full bg-[#25D366] hover:bg-[#20BD5A] text-white h-9 md:h-10 text-xs md:text-sm font-semibold rounded-xl"
+                    className="w-full bg-[#25D366] hover:bg-[#20BD5A] text-white h-8 text-xs font-semibold rounded-lg"
                   >
-                    <MessageCircle className="h-3.5 w-3.5 md:h-4 md:w-4 mr-1.5" />
+                    <MessageCircle className="h-3.5 w-3.5 mr-1" />
                     Order via WhatsApp
                   </Button>
                 </CardContent>
@@ -413,19 +280,22 @@ export const SpotlightSection = ({ onOrder }: SpotlightSectionProps) => {
         })}
       </div>
 
-      {/* Dot Indicators - Mobile only */}
-      {filteredFeatured.length > 1 && (
-        <div className="flex justify-center gap-1.5 mt-3 md:hidden">
-          {filteredFeatured.map((_, index) => (
+      {/* Minimal dot indicators */}
+      {processedFeatured.length > 2 && (
+        <div className="flex justify-center gap-1 mt-2">
+          {processedFeatured.slice(0, Math.min(processedFeatured.length, 5)).map((_, index) => (
             <div
               key={index}
-              className={`h-1.5 rounded-full transition-all duration-300 ${
+              className={`h-1 rounded-full transition-all duration-300 ${
                 index === activeIndex 
-                  ? 'w-4 bg-marketplace' 
-                  : 'w-1.5 bg-muted-foreground/30'
+                  ? 'w-3 bg-marketplace' 
+                  : 'w-1 bg-muted-foreground/30'
               }`}
             />
           ))}
+          {processedFeatured.length > 5 && (
+            <span className="text-[8px] text-muted-foreground ml-1">+{processedFeatured.length - 5}</span>
+          )}
         </div>
       )}
     </motion.div>
