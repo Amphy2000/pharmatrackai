@@ -101,19 +101,19 @@ export const generateFeatureComparisonPdf = (): jsPDF => {
   // Comparison data - consolidated
   const comparisons = [
     {
+      challenge: 'Patient Discovery',
+      oldWay: 'Walk-in only',
+      newWay: 'Public marketplace by distance',
+    },
+    {
+      challenge: 'Online Visibility',
+      oldWay: 'Zero online presence',
+      newWay: 'Patients find you in 1km-10km',
+    },
+    {
       challenge: 'Price Manipulation',
       oldWay: 'No protection',
       newWay: 'Price Shield locks prices',
-    },
-    {
-      challenge: 'Public Visibility',
-      oldWay: 'No online presence',
-      newWay: 'Marketplace lists your products',
-    },
-    {
-      challenge: 'Patient Discovery',
-      oldWay: 'Walk-in only',
-      newWay: 'Patients find you by distance',
     },
     {
       challenge: 'Expired Products',
@@ -209,25 +209,25 @@ export const generateFeatureComparisonPdf = (): jsPDF => {
   doc.setFont('helvetica', 'bold');
   doc.text('THE MONEY IMPACT', pageWidth / 2, y + 8, { align: 'center' });
 
-  // Stats row
+  // Stats row - 4 columns now
   const statsY = y + 18;
-  const stat1X = pageWidth / 6;
-  const stat2X = pageWidth / 2;
-  const stat3X = (pageWidth * 5) / 6;
+  const statSpacing = pageWidth / 5;
 
-  doc.setFontSize(14);
+  doc.setFontSize(12);
   doc.setTextColor(...COLORS.tealDark);
   doc.setFont('helvetica', 'bold');
-  doc.text('₦50K+', stat1X, statsY, { align: 'center' });
-  doc.text('40%', stat2X, statsY, { align: 'center' });
-  doc.text('3 hrs', stat3X, statsY, { align: 'center' });
+  doc.text('₦50K+', statSpacing, statsY, { align: 'center' });
+  doc.text('40%', statSpacing * 2, statsY, { align: 'center' });
+  doc.text('3 hrs', statSpacing * 3, statsY, { align: 'center' });
+  doc.text('∞', statSpacing * 4, statsY, { align: 'center' });
 
-  doc.setFontSize(6);
+  doc.setFontSize(5.5);
   doc.setTextColor(...COLORS.gray600);
   doc.setFont('helvetica', 'normal');
-  doc.text('saved/month on losses', stat1X, statsY + 5, { align: 'center' });
-  doc.text('less expired products', stat2X, statsY + 5, { align: 'center' });
-  doc.text('saved daily on admin', stat3X, statsY + 5, { align: 'center' });
+  doc.text('saved/month', statSpacing, statsY + 4, { align: 'center' });
+  doc.text('less expiry', statSpacing * 2, statsY + 4, { align: 'center' });
+  doc.text('saved daily', statSpacing * 3, statsY + 4, { align: 'center' });
+  doc.text('new customers', statSpacing * 4, statsY + 4, { align: 'center' });
 
   y += 32;
 

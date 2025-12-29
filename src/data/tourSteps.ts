@@ -111,6 +111,21 @@ export const ownerTourSteps: TourStep[] = [
     animation: 'slide',
   },
   {
+    id: 'marketplace',
+    title: 'Get Discovered by Patients',
+    description: 'Stop waiting for walk-ins. Our public marketplace lets patients within 1-10km find your pharmacy and order via WhatsApp.',
+    features: [
+      'Public product listing (you control what\'s visible)',
+      'Distance-based search (patients find nearby stock)',
+      'Spotlight/Featured products for extra visibility',
+      'WhatsApp ordering integration',
+      'Google Maps directions to your shop',
+      'Neighborhood-based targeting'
+    ],
+    icon: 'zap',
+    animation: 'scale',
+  },
+  {
     id: 'compliance',
     title: 'Stay NAFDAC Compliant',
     description: 'Built-in compliance tools ensure you\'re always audit-ready. Generate reports instantly when inspectors arrive.',
