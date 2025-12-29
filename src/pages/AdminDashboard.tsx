@@ -37,6 +37,7 @@ import {
   DollarSign,
   Settings,
   Plus,
+  Star,
   Loader2,
   Shield,
   Crown,
@@ -59,6 +60,7 @@ import { format } from 'date-fns';
 import { FeatureRequestsPanel } from '@/components/admin/FeatureRequestsPanel';
 import { PlatformMetricsGrid } from '@/components/admin/PlatformMetricsGrid';
 import { ReferralAnalyticsPanel } from '@/components/admin/ReferralAnalyticsPanel';
+import { FeaturedSlotsPanel } from '@/components/admin/FeaturedSlotsPanel';
 
 interface PharmacyWithMetrics {
   id: string;
@@ -410,6 +412,10 @@ const AdminDashboard = () => {
               <Building2 className="h-4 w-4" />
               Pharmacies
             </TabsTrigger>
+            <TabsTrigger value="spotlight" className="gap-2">
+              <Star className="h-4 w-4" />
+              Spotlight
+            </TabsTrigger>
             <TabsTrigger value="referrals" className="gap-2">
               <Users className="h-4 w-4" />
               Referrals
@@ -419,6 +425,10 @@ const AdminDashboard = () => {
               Custom Features
             </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="spotlight">
+            <FeaturedSlotsPanel />
+          </TabsContent>
 
           <TabsContent value="pharmacies" className="space-y-4">
             {/* Search */}
