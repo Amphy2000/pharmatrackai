@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Search, MapPin, MessageCircle, Package, Store, Phone, Star, Download, Smartphone, X, ChevronRight, ArrowLeft, Shield, Clock, Zap, Heart, CheckCircle, Navigation, Sparkles, TrendingUp } from "lucide-react";
+import { Search, MapPin, MessageCircle, Package, Store, Phone, Star, Download, Smartphone, X, ChevronRight, ArrowLeft, Shield, Clock, Zap, Heart, CheckCircle, Navigation, Sparkles, TrendingUp, Grid3X3, List, SlidersHorizontal } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -10,13 +10,11 @@ import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
 import { CustomerBarcodeScanner } from "@/components/explore/CustomerBarcodeScanner";
 import { VoiceSearchButton } from "@/components/explore/VoiceSearchButton";
-import { SpotlightSection } from "@/components/explore/SpotlightSection";
 import { CategoryChips } from "@/components/explore/CategoryChips";
-import { NearbyEssentials } from "@/components/explore/NearbyEssentials";
 import { RequestDrugButton } from "@/components/explore/RequestDrugButton";
 import { ExploreFlyer } from "@/components/explore/ExploreFlyer";
 import { motion, AnimatePresence } from "framer-motion";
-import { useGeolocation, calculateDistance, getApproximateCoordinates, getGoogleMapsLink } from "@/hooks/useGeolocation";
+import { useGeolocation, calculateDistance, getApproximateCoordinates, getGoogleMapsLink, getFallbackLocationName } from "@/hooks/useGeolocation";
 import { smartShuffle } from "@/utils/smartShuffle";
 
 interface PublicMedication {
@@ -33,21 +31,25 @@ interface PublicMedication {
   is_featured: boolean | null;
   featured_until?: string | null;
   distance?: number;
+  region?: string;
 }
 
 const Explore = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [locationFilter, setLocationFilter] = useState("");
   const [medications, setMedications] = useState<PublicMedication[]>([]);
+  const [featuredMedications, setFeaturedMedications] = useState<PublicMedication[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
   const [hasSearched, setHasSearched] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-  const [sortOption, setSortOption] = useState<'distance' | 'availability'>('distance');
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const { formatPrice } = useCurrency();
   const { toast } = useToast();
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showInstallBanner, setShowInstallBanner] = useState(false);
-  const { latitude, longitude, requestLocation } = useGeolocation();
+  const { latitude, longitude, requestLocation, loading: geoLoading } = useGeolocation();
+  const spotlightRef = useRef<HTMLDivElement>(null);
 
   // Listen for PWA install prompt
   useEffect(() => {
@@ -60,6 +62,21 @@ const Explore = () => {
     return () => window.removeEventListener('beforeinstallprompt', handler);
   }, []);
 
+  // Auto-request location and load initial data
+  useEffect(() => {
+    if (!latitude && !longitude && !geoLoading) {
+      requestLocation();
+    }
+    loadInitialData();
+  }, []);
+
+  // Reload when location changes
+  useEffect(() => {
+    if (latitude && longitude) {
+      loadInitialData();
+    }
+  }, [latitude, longitude]);
+
   const handleInstallApp = async () => {
     if (!deferredPrompt) return;
     deferredPrompt.prompt();
@@ -70,8 +87,88 @@ const Explore = () => {
     setDeferredPrompt(null);
   };
 
+  const loadInitialData = async () => {
+    try {
+      setInitialLoading(true);
+
+      // Load featured medications
+      const { data: featuredData } = await supabase.rpc('get_featured_medications');
+      
+      // Load all public medications
+      const { data: allData } = await supabase.rpc('get_public_medications', {
+        search_term: null,
+        location_filter: null
+      });
+
+      // Process featured
+      let processedFeatured: PublicMedication[] = (featuredData || []).map((m: any) => ({
+        id: m.id,
+        name: m.name,
+        category: m.category,
+        current_stock: m.current_stock,
+        selling_price: m.selling_price,
+        dispensing_unit: m.dispensing_unit,
+        pharmacy_id: m.pharmacy_id,
+        pharmacy_name: m.pharmacy_name || 'Unknown',
+        pharmacy_phone: m.pharmacy_phone,
+        pharmacy_address: m.pharmacy_address,
+        is_featured: true,
+        featured_until: m.featured_until,
+        region: getFallbackLocationName(m.pharmacy_address) || undefined,
+      }));
+
+      // Process regular (non-featured)
+      let processedRegular: PublicMedication[] = (allData || [])
+        .filter((m: any) => !m.is_featured)
+        .map((m: any) => ({
+          id: m.id,
+          name: m.name,
+          category: m.category,
+          current_stock: m.current_stock,
+          selling_price: m.selling_price,
+          dispensing_unit: m.dispensing_unit,
+          pharmacy_id: m.pharmacy_id,
+          pharmacy_name: m.pharmacy_name || 'Unknown',
+          pharmacy_phone: m.pharmacy_phone,
+          pharmacy_address: m.pharmacy_address,
+          is_featured: false,
+          region: getFallbackLocationName(m.pharmacy_address) || undefined,
+        }));
+
+      // Add distance if location available
+      if (latitude && longitude) {
+        const addDistance = (items: PublicMedication[]) => 
+          items.map(med => {
+            const coords = getApproximateCoordinates(med.pharmacy_address);
+            if (coords) {
+              return { ...med, distance: calculateDistance(latitude, longitude, coords.lat, coords.lon) };
+            }
+            return med;
+          }).sort((a, b) => {
+            if (a.distance === undefined && b.distance === undefined) return 0;
+            if (a.distance === undefined) return 1;
+            if (b.distance === undefined) return -1;
+            return a.distance - b.distance;
+          });
+
+        processedFeatured = addDistance(processedFeatured);
+        processedRegular = addDistance(processedRegular);
+      }
+
+      // Apply smart shuffle
+      processedFeatured = smartShuffle(processedFeatured, { prioritizeFeatured: true, maxPerPharmacy: 2 });
+      processedRegular = smartShuffle(processedRegular, { prioritizeFeatured: false, maxPerPharmacy: 3 });
+
+      setFeaturedMedications(processedFeatured as PublicMedication[]);
+      setMedications(processedRegular.slice(0, 20) as PublicMedication[]);
+    } catch (error) {
+      console.error('Error loading data:', error);
+    } finally {
+      setInitialLoading(false);
+    }
+  };
+
   const handleBarcodeScanned = async (barcode: string) => {
-    // First try to find in master barcode library
     const { data: drugData } = await supabase
       .from('master_barcode_library')
       .select('product_name')
@@ -82,19 +179,16 @@ const Explore = () => {
       setSearchQuery(drugData.product_name);
       handleSearch(drugData.product_name);
     } else {
-      // Fall back to searching with the barcode itself
       setSearchQuery(barcode);
       handleSearch(barcode);
     }
   };
 
-  // Handle voice search result
   const handleVoiceResult = (transcript: string) => {
     setSearchQuery(transcript);
     handleSearch(transcript);
   };
 
-  // Handle category selection
   const handleCategorySelect = (category: string) => {
     if (category) {
       setSelectedCategory(category);
@@ -107,7 +201,7 @@ const Explore = () => {
     }
   };
 
-  // Track page visit on mount
+  // Track page visit
   useEffect(() => {
     const trackVisit = async () => {
       try {
@@ -137,14 +231,12 @@ const Explore = () => {
     setHasSearched(true);
 
     try {
-      // Track the search
       await supabase.from("marketplace_searches").insert({
         search_query: query,
         location_filter: locationFilter || null,
         results_count: 0,
       });
 
-      // Get public medications using the function (now with fuzzy search)
       const { data, error } = await supabase.rpc("get_public_medications", {
         search_term: query,
         location_filter: locationFilter || null,
@@ -152,19 +244,21 @@ const Explore = () => {
 
       if (error) throw error;
 
-      // Add distance info and apply filters/sorting
-      let processedMeds = (data || []).map((med: PublicMedication) => {
+      let processedMeds = (data || []).map((med: any) => {
+        const result: PublicMedication = {
+          ...med,
+          region: getFallbackLocationName(med.pharmacy_address) || undefined,
+        };
         if (latitude && longitude) {
           const pharmacyCoords = getApproximateCoordinates(med.pharmacy_address);
           if (pharmacyCoords) {
-            const distance = calculateDistance(latitude, longitude, pharmacyCoords.lat, pharmacyCoords.lon);
-            return { ...med, distance };
+            result.distance = calculateDistance(latitude, longitude, pharmacyCoords.lat, pharmacyCoords.lon);
           }
         }
-        return { ...med, distance: undefined as number | undefined };
+        return result;
       });
 
-      // Apply sorting
+      // Sort by distance if available
       if (latitude && longitude) {
         processedMeds = processedMeds.sort((a: any, b: any) => {
           if (a.distance === undefined && b.distance === undefined) return 0;
@@ -174,10 +268,6 @@ const Explore = () => {
         });
       }
 
-
-      // Apply smart shuffle for fair pharmacy lead distribution
-      // This ensures different users see different arrangements
-      // while still respecting featured items and other priorities
       processedMeds = smartShuffle(processedMeds, {
         prioritizeFeatured: true,
         groupByPharmacy: false,
@@ -186,7 +276,6 @@ const Explore = () => {
 
       setMedications(processedMeds);
 
-      // Track pharmacy views for each result
       if (data && data.length > 0) {
         const uniquePharmacies = [...new Set(data.map((m: PublicMedication) => m.pharmacy_id))];
         for (const pharmacyId of uniquePharmacies) {
@@ -209,8 +298,7 @@ const Explore = () => {
     }
   };
 
-  const handleWhatsAppOrder = async (medication: PublicMedication | any, quantity: number = 1) => {
-    // Track the WhatsApp lead
+  const handleWhatsAppOrder = async (medication: PublicMedication, quantity: number = 1) => {
     try {
       await supabase.from("whatsapp_leads").insert({
         pharmacy_id: medication.pharmacy_id,
@@ -219,7 +307,6 @@ const Explore = () => {
         quantity,
       });
 
-      // Send SMS notification via edge function
       await supabase.functions.invoke("notify-whatsapp-lead", {
         body: {
           pharmacy_id: medication.pharmacy_id,
@@ -231,7 +318,6 @@ const Explore = () => {
       console.error("Error tracking WhatsApp lead:", error);
     }
 
-    // Format phone number for WhatsApp
     const phone = medication.pharmacy_phone?.replace(/\D/g, "") || "";
     const message = encodeURIComponent(
       `Hello, I saw ${medication.name} in stock on PharmaTrack. I would like to order ${quantity}.`
@@ -241,169 +327,134 @@ const Explore = () => {
     window.open(whatsappUrl, "_blank");
   };
 
-  // Premium Mobile-optimized Medication Card
-  const MedicationCard = ({ medication, isFeatured = false, index = 0 }: { medication: PublicMedication; isFeatured?: boolean; index?: number }) => (
+  const scrollSpotlight = (direction: 'left' | 'right') => {
+    if (spotlightRef.current) {
+      spotlightRef.current.scrollBy({
+        left: direction === 'left' ? -300 : 300,
+        behavior: 'smooth',
+      });
+    }
+  };
+
+  // Compact Product Card
+  const ProductCard = ({ medication, index = 0 }: { medication: PublicMedication; index?: number }) => (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 15 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3, delay: index * 0.05 }}
+      transition={{ duration: 0.25, delay: index * 0.03 }}
     >
-      <Card className={`overflow-hidden hover:shadow-xl transition-all duration-300 rounded-2xl border-0 ${
-        isFeatured 
-          ? 'bg-gradient-to-br from-marketplace/10 to-primary/5 shadow-marketplace/10' 
-          : 'bg-gradient-to-br from-white to-muted/20 dark:from-card dark:to-muted/10 shadow-md'
-      }`}>
-        <CardContent className="p-0">
-          <div className="p-4 md:p-5">
-            {/* Header Row */}
-            <div className="flex items-start justify-between gap-3 mb-3">
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap mb-1.5">
-                  <h3 className="text-base md:text-lg font-bold text-foreground line-clamp-1">{medication.name}</h3>
-                  {medication.is_featured && (
-                    <Badge className="bg-gradient-to-r from-marketplace to-primary text-white gap-1 shrink-0 text-[10px] px-2 py-0.5 rounded-full">
-                      <Star className="h-2.5 w-2.5 fill-current" />
-                      Featured
-                    </Badge>
-                  )}
-                </div>
-                <Badge variant="secondary" className="text-[10px] md:text-xs rounded-full">{medication.category}</Badge>
-              </div>
-              <Badge 
-                variant="outline" 
-                className="bg-success/10 text-success border-success/30 text-[10px] md:text-xs shrink-0 rounded-full px-2.5"
-              >
-                <CheckCircle className="h-2.5 w-2.5 mr-1" />
-                {medication.current_stock} in stock
+      <Card 
+        className={`group overflow-hidden hover:shadow-lg transition-all duration-300 rounded-2xl border border-border/50 cursor-pointer ${
+          medication.is_featured 
+            ? 'bg-gradient-to-br from-marketplace/5 via-white to-primary/5 dark:from-marketplace/10 dark:via-card dark:to-primary/10 ring-1 ring-marketplace/20' 
+            : 'bg-card hover:bg-accent/30'
+        }`}
+        onClick={() => handleWhatsAppOrder(medication)}
+      >
+        <CardContent className="p-3.5">
+          {/* Top Row */}
+          <div className="flex items-start justify-between gap-2 mb-2">
+            <div className="flex-1 min-w-0">
+              {medication.is_featured && (
+                <Badge className="bg-gradient-to-r from-marketplace to-primary text-white gap-1 text-[9px] px-1.5 py-0 mb-1.5 rounded-full">
+                  <Star className="h-2 w-2 fill-current" />
+                  Spotlight
+                </Badge>
+              )}
+              <h3 className="font-semibold text-sm text-foreground line-clamp-2 group-hover:text-marketplace transition-colors">
+                {medication.name}
+              </h3>
+            </div>
+            {medication.distance !== undefined && medication.distance <= 3 && (
+              <Badge className="bg-gradient-to-r from-emerald-500 to-green-500 text-white text-[8px] px-1.5 py-0.5 shrink-0 gap-0.5 rounded-full">
+                <Zap className="h-2 w-2" />
+                Near
               </Badge>
-            </div>
-            
-            {/* Pharmacy Info */}
-            <div className="space-y-2 mb-4 p-3 bg-muted/30 rounded-xl">
-              <div className="flex items-center gap-2 text-sm">
-                <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                  <Store className="h-4 w-4 text-primary" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <span className="font-semibold text-foreground block truncate">{medication.pharmacy_name}</span>
-                  {medication.distance !== undefined && (
-                    <span className="text-[10px] text-muted-foreground flex items-center gap-1">
-                      <Navigation className="h-2.5 w-2.5" />
-                      {medication.distance < 1 
-                        ? `${Math.round(medication.distance * 1000)}m away` 
-                        : `${medication.distance.toFixed(1)}km away`
-                      }
-                    </span>
-                  )}
-                </div>
-                {medication.distance !== undefined && medication.distance <= 3 && (
-                  <Badge className="bg-gradient-to-r from-green-500 to-emerald-500 text-white text-[9px] px-2 py-0.5 gap-1 shrink-0">
-                    <Zap className="h-2.5 w-2.5" />
-                    Quick Pickup
-                  </Badge>
-                )}
-              </div>
-              
-              {medication.pharmacy_address && (
-                <a 
-                  href={getGoogleMapsLink(medication.pharmacy_address) || '#'}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 text-xs text-primary hover:underline group pl-10"
-                >
-                  <MapPin className="h-3 w-3 shrink-0" />
-                  <span className="truncate">{medication.pharmacy_address}</span>
-                  <ChevronRight className="h-3 w-3 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
-                </a>
-              )}
-            </div>
-            
-            {/* Action Buttons */}
-            <div className="flex items-center gap-2">
-              {medication.pharmacy_phone && (
-                <a 
-                  href={`tel:${medication.pharmacy_phone}`}
-                  className="h-10 w-10 rounded-xl bg-muted flex items-center justify-center hover:bg-muted/80 transition-colors shrink-0"
-                >
-                  <Phone className="h-4 w-4 text-muted-foreground" />
-                </a>
-              )}
-              <Button
-                onClick={() => handleWhatsAppOrder(medication)}
-                className="flex-1 bg-[#25D366] hover:bg-[#20BD5A] text-white font-semibold h-10 rounded-xl shadow-lg shadow-[#25D366]/20"
-              >
-                <MessageCircle className="mr-2 h-4 w-4" />
-                Order via WhatsApp
-              </Button>
-            </div>
+            )}
           </div>
+
+          {/* Category & Stock */}
+          <div className="flex items-center gap-1.5 mb-2.5">
+            <Badge variant="secondary" className="text-[9px] px-1.5 py-0 rounded-full">{medication.category}</Badge>
+            <Badge variant="outline" className="bg-success/10 text-success border-success/20 text-[9px] px-1.5 py-0 rounded-full">
+              <CheckCircle className="h-2 w-2 mr-0.5" />
+              {medication.current_stock}
+            </Badge>
+          </div>
+
+          {/* Pharmacy */}
+          <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground mb-2.5">
+            <Store className="h-3 w-3 shrink-0" />
+            <span className="truncate font-medium">{medication.pharmacy_name}</span>
+            {medication.distance !== undefined && (
+              <span className="shrink-0 text-[10px]">• {medication.distance < 1 ? `${Math.round(medication.distance * 1000)}m` : `${medication.distance.toFixed(1)}km`}</span>
+            )}
+          </div>
+
+          {/* CTA */}
+          <Button
+            size="sm"
+            className="w-full bg-[#25D366] hover:bg-[#20BD5A] text-white h-8 text-xs font-semibold rounded-xl shadow-sm"
+            onClick={(e) => {
+              e.stopPropagation();
+              handleWhatsAppOrder(medication);
+            }}
+          >
+            <MessageCircle className="h-3.5 w-3.5 mr-1.5" />
+            Order Now
+          </Button>
         </CardContent>
       </Card>
     </motion.div>
   );
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-marketplace/5 via-background to-background">
-      {/* Mobile-First Header */}
-      <header className="bg-gradient-to-br from-marketplace via-marketplace to-primary text-marketplace-foreground sticky top-0 z-50">
-        {/* Top Bar - Always visible */}
+    <div className="min-h-screen bg-background">
+      {/* Premium Header */}
+      <header className="bg-gradient-to-br from-marketplace via-marketplace to-primary text-white sticky top-0 z-50 shadow-lg">
         <div className="px-4 py-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <Link to="/" className="h-9 w-9 md:h-10 md:w-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center shadow-lg hover:bg-white/30 transition-colors">
-                <ArrowLeft className="h-5 w-5 md:h-6 md:w-6" />
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-3">
+              <Link to="/" className="h-9 w-9 rounded-xl bg-white/15 backdrop-blur-sm flex items-center justify-center hover:bg-white/25 transition-colors">
+                <ArrowLeft className="h-5 w-5" />
               </Link>
               <div>
-                <h1 className="text-lg md:text-2xl font-bold tracking-tight">PharmaTrack</h1>
-                <p className="text-[10px] md:text-sm opacity-80 -mt-0.5">Find Medicine Near You</p>
+                <h1 className="text-xl font-bold tracking-tight">PharmaTrack</h1>
+                <p className="text-[10px] opacity-80">Find Medicine Near You</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
               <ExploreFlyer />
             </div>
           </div>
-        </div>
 
-        {/* Search Box - Mobile Optimized */}
-        <div className="px-4 pb-4 space-y-2">
+          {/* Unified Search Bar */}
           <div className="relative">
-            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 md:h-5 md:w-5 text-marketplace/60" />
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="Search medications..."
+              placeholder="Search medications, pharmacies..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-              className="pl-10 pr-10 h-11 md:h-14 text-sm md:text-lg bg-white text-foreground border-0 rounded-xl shadow-lg placeholder:text-muted-foreground/60"
+              className="pl-10 pr-24 h-11 text-sm bg-white text-foreground border-0 rounded-xl shadow-lg placeholder:text-muted-foreground/60"
             />
-            <div className="absolute right-2.5 top-1/2 -translate-y-1/2">
+            <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-1">
               <VoiceSearchButton onResult={handleVoiceResult} />
+              <CustomerBarcodeScanner onScan={handleBarcodeScanned} />
+              <Button 
+                onClick={() => handleSearch()} 
+                disabled={isLoading}
+                size="sm"
+                className="bg-marketplace text-white hover:bg-marketplace/90 h-8 px-3 text-xs rounded-lg"
+              >
+                {isLoading ? "..." : "Go"}
+              </Button>
             </div>
-          </div>
-          
-          {/* Location & Actions Row - Responsive */}
-          <div className="flex gap-2">
-            <div className="relative flex-1">
-              <MapPin className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-marketplace/60" />
-              <Input
-                placeholder="Location (e.g., Ikeja)"
-                value={locationFilter}
-                onChange={(e) => setLocationFilter(e.target.value)}
-                className="pl-8 h-9 text-xs md:text-sm bg-white/95 text-foreground border-0 rounded-lg placeholder:text-muted-foreground/60"
-              />
-            </div>
-            <CustomerBarcodeScanner onScan={handleBarcodeScanned} />
-            <Button 
-              onClick={() => handleSearch()} 
-              disabled={isLoading}
-              className="bg-white text-marketplace hover:bg-white/90 font-semibold h-9 px-4 md:px-6 text-sm shadow-md"
-            >
-              {isLoading ? "..." : "Go"}
-            </Button>
           </div>
         </div>
       </header>
 
-      {/* Install App Banner - Mobile Optimized */}
+      {/* Install Banner */}
       <AnimatePresence>
         {showInstallBanner && (
           <motion.div 
@@ -412,26 +463,17 @@ const Explore = () => {
             exit={{ height: 0, opacity: 0 }}
             className="bg-gradient-to-r from-primary to-marketplace text-white overflow-hidden"
           >
-            <div className="px-4 py-2.5 flex items-center justify-between">
+            <div className="px-4 py-2 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Smartphone className="h-4 w-4" />
-                <span className="text-xs md:text-sm font-medium">Install for faster access</span>
+                <span className="text-xs font-medium">Install app for faster access</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <Button
-                  size="sm"
-                  onClick={handleInstallApp}
-                  className="bg-white text-marketplace hover:bg-white/90 h-7 px-3 text-xs"
-                >
+                <Button size="sm" onClick={handleInstallApp} className="bg-white text-marketplace hover:bg-white/90 h-7 px-3 text-xs">
                   <Download className="h-3 w-3 mr-1" />
                   Install
                 </Button>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  onClick={() => setShowInstallBanner(false)}
-                  className="text-white hover:bg-white/10 h-7 w-7"
-                >
+                <Button size="icon" variant="ghost" onClick={() => setShowInstallBanner(false)} className="text-white hover:bg-white/10 h-7 w-7">
                   <X className="h-3.5 w-3.5" />
                 </Button>
               </div>
@@ -440,162 +482,197 @@ const Explore = () => {
         )}
       </AnimatePresence>
 
-      {/* Main Content - Mobile First */}
-      <main className="container mx-auto max-w-4xl px-3 md:px-4 py-4 md:py-6">
-        {/* Categories with inline sort */}
-        <CategoryChips 
-          onCategorySelect={handleCategorySelect} 
-          selectedCategory={selectedCategory} 
-        />
-
-        {/* Spotlight & Essentials - Always visible when not searching */}
-        {!hasSearched && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.3 }}
+      <main className="px-4 py-4 space-y-5">
+        {/* Location Status */}
+        {!latitude && !geoLoading && (
+          <motion.div 
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex items-center justify-between p-3 bg-muted/50 rounded-xl border border-border/50"
           >
-            <SpotlightSection onOrder={handleWhatsAppOrder} />
-            <NearbyEssentials onOrder={handleWhatsAppOrder} />
+            <div className="flex items-center gap-2">
+              <Navigation className="h-4 w-4 text-muted-foreground" />
+              <span className="text-xs text-muted-foreground">Enable location for nearby pharmacies</span>
+            </div>
+            <Button size="sm" variant="secondary" onClick={requestLocation} className="h-7 text-xs">
+              Enable
+            </Button>
           </motion.div>
         )}
 
-        {/* Empty State - Premium Design */}
-        {!hasSearched ? (
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-center py-8 md:py-12"
-          >
-            <div className="h-20 w-20 md:h-28 md:w-28 mx-auto mb-5 md:mb-6 rounded-3xl bg-gradient-to-br from-marketplace/20 to-primary/20 flex items-center justify-center shadow-xl shadow-marketplace/10">
-              <Search className="h-10 w-10 md:h-14 md:w-14 text-marketplace" />
-            </div>
-            <h2 className="text-xl md:text-3xl font-bold text-foreground mb-2">Find Your Medication</h2>
-            <p className="text-sm md:text-base text-muted-foreground max-w-md mx-auto px-4 mb-6">
-              Search for any medication and order directly via WhatsApp!
-            </p>
-            
-            {/* Trust Indicators */}
-            <div className="flex flex-wrap items-center justify-center gap-3 md:gap-4 px-4 mt-6">
-              <div className="flex items-center gap-1.5 text-xs md:text-sm text-muted-foreground bg-muted/50 px-3 py-1.5 rounded-full">
-                <Shield className="h-3.5 w-3.5 text-success" />
-                <span>Verified Pharmacies</span>
-              </div>
-              <div className="flex items-center gap-1.5 text-xs md:text-sm text-muted-foreground bg-muted/50 px-3 py-1.5 rounded-full">
-                <Clock className="h-3.5 w-3.5 text-primary" />
-                <span>Real-time Stock</span>
-              </div>
-              <div className="flex items-center gap-1.5 text-xs md:text-sm text-muted-foreground bg-muted/50 px-3 py-1.5 rounded-full">
-                <Heart className="h-3.5 w-3.5 text-destructive" />
-                <span>Trusted Service</span>
-              </div>
-            </div>
-          </motion.div>
-        ) : isLoading ? (
-          <div className="grid gap-4">
-            {[1, 2, 3].map((i) => (
-              <Card key={i} className="animate-pulse rounded-2xl border-0 shadow-md">
-                <CardContent className="p-5">
-                  <div className="flex items-start gap-3 mb-4">
-                    <div className="h-6 bg-muted rounded-lg flex-1" />
-                    <div className="h-6 bg-muted rounded-full w-24" />
-                  </div>
-                  <div className="h-20 bg-muted/50 rounded-xl mb-4" />
-                  <div className="h-10 bg-muted rounded-xl" />
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        ) : medications.length === 0 ? (
-          <motion.div 
+        {/* Category Chips */}
+        <CategoryChips onCategorySelect={handleCategorySelect} selectedCategory={selectedCategory} />
+
+        {/* Spotlight Section */}
+        {!hasSearched && featuredMedications.length > 0 && (
+          <motion.section
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            className="space-y-6"
+            transition={{ delay: 0.1 }}
           >
-            <div className="text-center py-12">
-              <div className="h-24 w-24 mx-auto mb-6 rounded-3xl bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center shadow-lg">
-                <Package className="h-12 w-12 text-muted-foreground" />
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-marketplace to-primary flex items-center justify-center">
+                  <Sparkles className="h-3.5 w-3.5 text-white" />
+                </div>
+                <div>
+                  <h2 className="text-sm font-bold text-foreground">Spotlight</h2>
+                  <p className="text-[10px] text-muted-foreground">Featured medications</p>
+                </div>
               </div>
-              <h2 className="text-2xl font-bold text-foreground mb-2">No Results Found</h2>
-              <p className="text-muted-foreground max-w-md mx-auto mb-6">
-                We couldn't find "{searchQuery}" in any nearby pharmacies. 
-                Try a different search term or request this drug below.
-              </p>
+              <div className="flex items-center gap-1">
+                <Button variant="ghost" size="icon" onClick={() => scrollSpotlight('left')} className="h-7 w-7 rounded-full">
+                  <ChevronRight className="h-4 w-4 rotate-180" />
+                </Button>
+                <Button variant="ghost" size="icon" onClick={() => scrollSpotlight('right')} className="h-7 w-7 rounded-full">
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
-            <RequestDrugButton searchQuery={searchQuery} />
-          </motion.div>
-        ) : (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            className="space-y-4"
-          >
-            {/* Results Header */}
-            <div className="flex items-center justify-between">
-              <p className="text-sm md:text-base text-muted-foreground">
-                Found <span className="font-bold text-foreground">{medications.length}</span> result{medications.length !== 1 ? 's' : ''} for "<span className="font-medium text-foreground">{searchQuery}</span>"
-              </p>
-              {latitude && (
-                <Badge variant="outline" className="gap-1 text-xs">
-                  <Navigation className="h-3 w-3" />
-                  Location active
-                </Badge>
-              )}
-            </div>
-            
-            {/* Results Grid */}
-            <div className="space-y-3 md:space-y-4">
-              {medications.map((medication, index) => (
-                <MedicationCard 
-                  key={`${medication.id}-${medication.pharmacy_id}`} 
-                  medication={medication}
-                  index={index}
-                />
+
+            <div
+              ref={spotlightRef}
+              className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory scrollbar-hide -mx-4 px-4"
+              style={{ scrollbarWidth: 'none' }}
+            >
+              {featuredMedications.map((med, index) => (
+                <motion.div
+                  key={`spotlight-${med.id}`}
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: index * 0.05 }}
+                  className="shrink-0 snap-start"
+                >
+                  <Card 
+                    className="w-[200px] overflow-hidden border-0 bg-gradient-to-br from-white via-marketplace/5 to-primary/5 dark:from-card dark:via-marketplace/10 dark:to-primary/10 shadow-md hover:shadow-lg transition-all rounded-xl cursor-pointer group"
+                    onClick={() => handleWhatsAppOrder(med)}
+                  >
+                    <CardContent className="p-3">
+                      <Badge className="bg-gradient-to-r from-marketplace to-primary text-white gap-1 text-[9px] px-1.5 py-0 mb-2 rounded-full">
+                        <Star className="h-2 w-2 fill-current" />
+                        Featured
+                      </Badge>
+                      <h3 className="font-bold text-xs mb-1.5 line-clamp-2 group-hover:text-marketplace transition-colors">{med.name}</h3>
+                      <div className="flex items-center gap-1.5 mb-2">
+                        <Badge variant="secondary" className="text-[8px] px-1 py-0">{med.category}</Badge>
+                        <Badge variant="outline" className="bg-success/10 text-success border-success/20 text-[8px] px-1 py-0">
+                          {med.current_stock} left
+                        </Badge>
+                      </div>
+                      <div className="flex items-center gap-1 text-[10px] text-muted-foreground mb-2">
+                        <Store className="h-2.5 w-2.5" />
+                        <span className="truncate">{med.pharmacy_name}</span>
+                      </div>
+                      {med.distance !== undefined && (
+                        <Badge 
+                          className={`text-[8px] px-1.5 py-0 mb-2 ${
+                            med.distance <= 3 
+                              ? 'bg-emerald-500 text-white' 
+                              : 'bg-muted text-muted-foreground'
+                          }`}
+                        >
+                          {med.distance < 1 ? `${Math.round(med.distance * 1000)}m` : `${med.distance.toFixed(1)}km`}
+                        </Badge>
+                      )}
+                      <Button
+                        size="sm"
+                        className="w-full bg-[#25D366] hover:bg-[#20BD5A] text-white h-7 text-[10px] font-semibold rounded-lg"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleWhatsAppOrder(med);
+                        }}
+                      >
+                        <MessageCircle className="h-3 w-3 mr-1" />
+                        Order
+                      </Button>
+                    </CardContent>
+                  </Card>
+                </motion.div>
               ))}
             </div>
+          </motion.section>
+        )}
+
+        {/* Main Products Section */}
+        <motion.section
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.2 }}
+        >
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-2">
+              <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-primary to-blue-600 flex items-center justify-center">
+                {latitude ? <Navigation className="h-3.5 w-3.5 text-white" /> : <Package className="h-3.5 w-3.5 text-white" />}
+              </div>
+              <div>
+                <h2 className="text-sm font-bold text-foreground">
+                  {hasSearched ? `Results for "${searchQuery}"` : latitude ? 'Available Near You' : 'Browse Medications'}
+                </h2>
+                <p className="text-[10px] text-muted-foreground">
+                  {medications.length} {medications.length === 1 ? 'item' : 'items'} available
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-1">
+              <Button 
+                variant={viewMode === 'grid' ? 'secondary' : 'ghost'} 
+                size="icon" 
+                onClick={() => setViewMode('grid')} 
+                className="h-7 w-7 rounded-lg"
+              >
+                <Grid3X3 className="h-3.5 w-3.5" />
+              </Button>
+              <Button 
+                variant={viewMode === 'list' ? 'secondary' : 'ghost'} 
+                size="icon" 
+                onClick={() => setViewMode('list')} 
+                className="h-7 w-7 rounded-lg"
+              >
+                <List className="h-3.5 w-3.5" />
+              </Button>
+            </div>
+          </div>
+
+          {initialLoading ? (
+            <div className={`grid ${viewMode === 'grid' ? 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4' : 'grid-cols-1'} gap-3`}>
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <div key={i} className="h-44 bg-muted rounded-2xl animate-pulse" />
+              ))}
+            </div>
+          ) : medications.length > 0 ? (
+            <div className={`grid ${viewMode === 'grid' ? 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4' : 'grid-cols-1'} gap-3`}>
+              {medications.map((med, index) => (
+                <ProductCard key={`${med.id}-${med.pharmacy_id}`} medication={med} index={index} />
+              ))}
+            </div>
+          ) : hasSearched ? (
+            <div className="text-center py-12 bg-muted/30 rounded-2xl border border-dashed border-muted-foreground/20">
+              <Package className="h-12 w-12 mx-auto text-muted-foreground/40 mb-3" />
+              <p className="text-sm font-medium text-muted-foreground mb-2">No medications found</p>
+              <p className="text-xs text-muted-foreground/60 mb-4">Try a different search term or location</p>
+              <RequestDrugButton searchQuery={searchQuery} />
+            </div>
+          ) : (
+            <div className="text-center py-12 bg-muted/30 rounded-2xl border border-dashed border-muted-foreground/20">
+              <Search className="h-12 w-12 mx-auto text-muted-foreground/40 mb-3" />
+              <p className="text-sm font-medium text-muted-foreground">Search for medications</p>
+              <p className="text-xs text-muted-foreground/60">Type a medication name above to get started</p>
+            </div>
+          )}
+        </motion.section>
+
+        {/* Request Drug CTA */}
+        {!hasSearched && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="text-center pt-4"
+          >
+            <RequestDrugButton />
           </motion.div>
         )}
       </main>
-
-      {/* Premium Footer */}
-      <footer className="bg-gradient-to-t from-muted/80 to-muted/30 py-10 mt-auto border-t border-border/50">
-        <div className="container mx-auto max-w-4xl px-4">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-center md:text-left">
-            <div>
-              <div className="flex items-center justify-center md:justify-start gap-2 mb-2">
-                <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-marketplace to-primary flex items-center justify-center">
-                  <Sparkles className="h-4 w-4 text-white" />
-                </div>
-                <span className="font-bold text-foreground">PharmaTrack</span>
-              </div>
-              <p className="text-xs text-muted-foreground">
-                © {new Date().getFullYear()} PharmaTrack. Connecting patients to pharmacies.
-              </p>
-            </div>
-            
-            <div className="flex flex-col items-center md:items-end gap-2">
-              <Link 
-                to="/auth" 
-                className="inline-flex items-center gap-2 text-sm text-marketplace hover:underline font-medium group"
-              >
-                <Store className="h-4 w-4" />
-                List your pharmacy
-                <ChevronRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
-              </Link>
-              <div className="flex items-center gap-3 text-xs text-muted-foreground">
-                <span className="flex items-center gap-1">
-                  <Shield className="h-3 w-3 text-success" />
-                  Secure
-                </span>
-                <span className="flex items-center gap-1">
-                  <TrendingUp className="h-3 w-3 text-primary" />
-                  Real-time
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 };
