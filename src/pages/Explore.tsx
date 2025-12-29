@@ -36,7 +36,6 @@ interface PublicMedication {
 
 const Explore = () => {
   const [searchQuery, setSearchQuery] = useState("");
-  const [locationFilter, setLocationFilter] = useState("");
   const [medications, setMedications] = useState<PublicMedication[]>([]);
   const [featuredMedications, setFeaturedMedications] = useState<PublicMedication[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -233,13 +232,13 @@ const Explore = () => {
     try {
       await supabase.from("marketplace_searches").insert({
         search_query: query,
-        location_filter: locationFilter || null,
+        location_filter: null,
         results_count: 0,
       });
 
       const { data, error } = await supabase.rpc("get_public_medications", {
         search_term: query,
-        location_filter: locationFilter || null,
+        location_filter: null,
       });
 
       if (error) throw error;
@@ -483,22 +482,66 @@ const Explore = () => {
       </AnimatePresence>
 
       <main className="px-4 py-4 space-y-5">
-        {/* Location Status */}
-        {!latitude && !geoLoading && (
-          <motion.div 
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex items-center justify-between p-3 bg-muted/50 rounded-xl border border-border/50"
-          >
-            <div className="flex items-center gap-2">
-              <Navigation className="h-4 w-4 text-muted-foreground" />
-              <span className="text-xs text-muted-foreground">Enable location for nearby pharmacies</span>
-            </div>
-            <Button size="sm" variant="secondary" onClick={requestLocation} className="h-7 text-xs">
-              Enable
-            </Button>
-          </motion.div>
-        )}
+        {/* Location Status Banner */}
+        <AnimatePresence>
+          {geoLoading && (
+            <motion.div 
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="flex items-center gap-2 p-3 bg-primary/10 rounded-xl border border-primary/20"
+            >
+              <div className="h-4 w-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+              <span className="text-xs text-primary font-medium">Detecting your location...</span>
+            </motion.div>
+          )}
+          
+          {!geoLoading && latitude && longitude && (
+            <motion.div 
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="flex items-center justify-between p-3 bg-success/10 rounded-xl border border-success/20"
+            >
+              <div className="flex items-center gap-2">
+                <div className="h-6 w-6 rounded-full bg-success/20 flex items-center justify-center">
+                  <CheckCircle className="h-3.5 w-3.5 text-success" />
+                </div>
+                <div>
+                  <span className="text-xs font-medium text-success">Location detected</span>
+                  <p className="text-[10px] text-muted-foreground">Showing pharmacies nearest to you first</p>
+                </div>
+              </div>
+              <Badge variant="secondary" className="text-[10px] gap-1">
+                <Navigation className="h-2.5 w-2.5" />
+                Active
+              </Badge>
+            </motion.div>
+          )}
+          
+          {!geoLoading && !latitude && (
+            <motion.div 
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="flex items-center justify-between p-3 bg-amber-500/10 rounded-xl border border-amber-500/20"
+            >
+              <div className="flex items-center gap-2">
+                <div className="h-6 w-6 rounded-full bg-amber-500/20 flex items-center justify-center">
+                  <MapPin className="h-3.5 w-3.5 text-amber-600" />
+                </div>
+                <div>
+                  <span className="text-xs font-medium text-amber-700 dark:text-amber-400">Location not available</span>
+                  <p className="text-[10px] text-muted-foreground">Enable to see nearby pharmacies first</p>
+                </div>
+              </div>
+              <Button size="sm" onClick={requestLocation} className="h-7 text-xs bg-amber-500 hover:bg-amber-600 text-white">
+                <Navigation className="h-3 w-3 mr-1" />
+                Enable
+              </Button>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Category Chips */}
         <CategoryChips onCategorySelect={handleCategorySelect} selectedCategory={selectedCategory} />
