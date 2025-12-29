@@ -711,6 +711,7 @@ export type Database = {
           is_gifted: boolean
           license_number: string | null
           logo_url: string | null
+          marketplace_contact_phone: string | null
           max_users: number
           name: string
           owner_id: string
@@ -748,6 +749,7 @@ export type Database = {
           is_gifted?: boolean
           license_number?: string | null
           logo_url?: string | null
+          marketplace_contact_phone?: string | null
           max_users?: number
           name: string
           owner_id: string
@@ -785,6 +787,7 @@ export type Database = {
           is_gifted?: boolean
           license_number?: string | null
           logo_url?: string | null
+          marketplace_contact_phone?: string | null
           max_users?: number
           name?: string
           owner_id?: string
@@ -2048,6 +2051,7 @@ export type Database = {
           featured_until: string
           id: string
           is_featured: boolean
+          marketplace_contact_phone: string
           name: string
           pharmacy_address: string
           pharmacy_id: string
@@ -2068,6 +2072,7 @@ export type Database = {
           dispensing_unit: string
           id: string
           is_featured: boolean
+          marketplace_contact_phone: string
           name: string
           pharmacy_address: string
           pharmacy_id: string

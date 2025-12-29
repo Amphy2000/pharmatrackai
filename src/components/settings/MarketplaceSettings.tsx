@@ -4,7 +4,8 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Globe, Zap, Package, Info, Save, Loader2 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Globe, Zap, Package, Info, Save, Loader2, Phone, MessageCircle } from 'lucide-react';
 import { usePharmacy } from '@/hooks/usePharmacy';
 import { useMedications } from '@/hooks/useMedications';
 import { supabase } from '@/integrations/supabase/client';
@@ -12,11 +13,22 @@ import { toast } from 'sonner';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 export const MarketplaceSettings = () => {
-  const { pharmacy } = usePharmacy();
+  const { pharmacy, updatePharmacySettings } = usePharmacy();
   const { medications, updateMedication } = useMedications();
   const [autoListEnabled, setAutoListEnabled] = useState(false);
   const [isApplying, setIsApplying] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [marketplaceContactPhone, setMarketplaceContactPhone] = useState('');
+  const [isSavingContact, setIsSavingContact] = useState(false);
+
+  // Load marketplace contact phone
+  useEffect(() => {
+    if (pharmacy) {
+      // TypeScript doesn't know about the new column yet, so we cast
+      const phoneValue = (pharmacy as any).marketplace_contact_phone || '';
+      setMarketplaceContactPhone(phoneValue);
+    }
+  }, [pharmacy]);
 
   // Load the current auto-list setting from pharmacy metadata
   useEffect(() => {
@@ -122,18 +134,97 @@ export const MarketplaceSettings = () => {
 
   const publicCount = medications.filter(m => m.is_public).length;
 
+  const handleSaveContactPhone = async () => {
+    if (!pharmacy?.id) return;
+    
+    setIsSavingContact(true);
+    try {
+      const { error } = await supabase
+        .from('pharmacies')
+        .update({ marketplace_contact_phone: marketplaceContactPhone || null } as any)
+        .eq('id', pharmacy.id);
+
+      if (error) throw error;
+      toast.success('Marketplace contact phone saved');
+    } catch (error) {
+      console.error('Error saving contact phone:', error);
+      toast.error('Failed to save contact phone');
+    } finally {
+      setIsSavingContact(false);
+    }
+  };
+
   return (
     <Card className="glass-card">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Globe className="h-5 w-5 text-marketplace" />
-          Smart Marketplace Listing
+          Marketplace Settings
         </CardTitle>
         <CardDescription>
-          Automatically manage which products appear on the public marketplace
+          Configure how your pharmacy appears on the public marketplace
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
+        {/* Marketplace Contact Phone - NEW */}
+        <div className="p-4 border rounded-lg space-y-4">
+          <div className="flex items-start gap-3">
+            <div className="p-2 rounded-lg bg-green-500/10">
+              <MessageCircle className="h-5 w-5 text-green-600" />
+            </div>
+            <div className="flex-1 space-y-1">
+              <Label htmlFor="marketplace-phone" className="font-medium flex items-center gap-2">
+                Marketplace Contact Phone (WhatsApp)
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <Info className="h-4 w-4 text-muted-foreground" />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs">
+                      <p>This is the phone number customers will contact when they click "Order via WhatsApp" on the marketplace. If not set, your pharmacy's default phone will be used.</p>
+                      <p className="mt-2 text-xs opacity-80">Tip: Use your office/front desk number instead of your personal number.</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                The phone number customers will use to order via WhatsApp (separate from your alert number)
+              </p>
+            </div>
+          </div>
+          
+          <div className="flex gap-3">
+            <div className="flex-1 relative">
+              <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                id="marketplace-phone"
+                placeholder="e.g., 08012345678 (Office/Front Desk)"
+                value={marketplaceContactPhone}
+                onChange={(e) => setMarketplaceContactPhone(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <Button
+              onClick={handleSaveContactPhone}
+              disabled={isSavingContact}
+              className="gap-2"
+            >
+              {isSavingContact ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Save className="h-4 w-4" />
+              )}
+              Save
+            </Button>
+          </div>
+          
+          {!marketplaceContactPhone && pharmacy?.phone && (
+            <p className="text-xs text-muted-foreground bg-muted/50 p-2 rounded">
+              Currently using default pharmacy phone: <strong>{pharmacy.phone}</strong>
+            </p>
+          )}
+        </div>
+
         {/* Current Stats */}
         <div className="flex flex-wrap gap-4 p-4 bg-muted/30 rounded-lg">
           <div className="flex items-center gap-2">
