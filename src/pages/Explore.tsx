@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Search, MapPin, MessageCircle, Package, Store, Phone, Star, Download, Smartphone, X, ChevronRight, ArrowLeft, Shield, Clock, Zap, Heart, CheckCircle, Navigation, Sparkles, TrendingUp, Grid3X3, List, SlidersHorizontal, Map } from "lucide-react";
+import { Search, MapPin, MessageCircle, Package, Store, Phone, Star, Download, Smartphone, X, ChevronRight, ArrowLeft, Shield, Clock, Zap, Heart, CheckCircle, Navigation, Sparkles, TrendingUp, Grid3X3, List, SlidersHorizontal, Map, ChevronDown } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -13,8 +13,10 @@ import { CategoryChips } from "@/components/explore/CategoryChips";
 import { RequestDrugButton } from "@/components/explore/RequestDrugButton";
 import { ExploreFlyer } from "@/components/explore/ExploreFlyer";
 import { PharmacyMapModal } from "@/components/explore/PharmacyMapModal";
+import { LocationPickerModal } from "@/components/explore/LocationPickerModal";
 import { motion, AnimatePresence } from "framer-motion";
 import { useGeolocation, calculateDistance, getApproximateCoordinates, getGoogleMapsLink, getFallbackLocationName } from "@/hooks/useGeolocation";
+import { useLocationOverride } from "@/hooks/useLocationOverride";
 import { smartShuffle } from "@/utils/smartShuffle";
 
 interface PublicMedication {
@@ -44,6 +46,7 @@ const Explore = () => {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [mapModalOpen, setMapModalOpen] = useState(false);
+  const [locationPickerOpen, setLocationPickerOpen] = useState(false);
   const [selectedMedForMap, setSelectedMedForMap] = useState<PublicMedication | null>(null);
   const [selectedPharmacyForMap, setSelectedPharmacyForMap] = useState<{
     pharmacy_id: string;
@@ -53,12 +56,35 @@ const Explore = () => {
     distance?: number;
     current_stock?: number;
   } | null>(null);
-  const [detectedLocationName, setDetectedLocationName] = useState<string | null>(null);
   const { toast } = useToast();
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showInstallBanner, setShowInstallBanner] = useState(false);
   const { latitude, longitude, requestLocation, loading: geoLoading } = useGeolocation();
   const spotlightRef = useRef<HTMLDivElement>(null);
+  
+  // Location override hook for manual neighborhood selection
+  const {
+    activeNeighborhood,
+    isManualSelection,
+    isDetecting,
+    selectNeighborhood,
+    clearManualSelection,
+    getActiveCoordinates,
+  } = useLocationOverride(latitude, longitude, geoLoading);
+
+  // Handle custom location submission (save to database for market research)
+  const handleCustomLocationSubmit = async (location: string) => {
+    try {
+      // Log the custom location request to database for market research
+      await supabase.from("marketplace_searches").insert({
+        search_query: `[CUSTOM_LOCATION] ${location}`,
+        location_filter: location,
+        results_count: 0,
+      });
+    } catch (error) {
+      console.error("Error logging custom location:", error);
+    }
+  };
 
   // Listen for PWA install prompt
   useEffect(() => {
@@ -255,60 +281,6 @@ const Explore = () => {
     window.open(`https://wa.me/${phone}?text=${message}`, "_blank");
     setMapModalOpen(false);
   };
-
-  // Detect location area name when coordinates change
-  useEffect(() => {
-    if (latitude && longitude) {
-      // Use reverse geocoding approximation based on Nigerian locations
-      const locations = [
-        { name: "Kaduna North", lat: 10.5222, lon: 7.4383 },
-        { name: "Kawo", lat: 10.5436, lon: 7.4247 },
-        { name: "Barnawa", lat: 10.4678, lon: 7.4512 },
-        { name: "Sabon Tasha", lat: 10.4234, lon: 7.4678 },
-        { name: "Malali", lat: 10.5678, lon: 7.4123 },
-        { name: "Ungwan Rimi", lat: 10.5123, lon: 7.4567 },
-        { name: "Tudun Wada", lat: 10.4890, lon: 7.4234 },
-        { name: "Lagos Island", lat: 6.4541, lon: 3.4083 },
-        { name: "Victoria Island", lat: 6.4281, lon: 3.4219 },
-        { name: "Ikeja", lat: 6.6018, lon: 3.3515 },
-        { name: "Lekki", lat: 6.4698, lon: 3.5852 },
-        { name: "Surulere", lat: 6.5059, lon: 3.3509 },
-        { name: "Yaba", lat: 6.5077, lon: 3.3792 },
-        { name: "Ikoyi", lat: 6.4503, lon: 3.4286 },
-        { name: "Garki", lat: 9.0579, lon: 7.4951 },
-        { name: "Wuse", lat: 9.0765, lon: 7.4898 },
-        { name: "Maitama", lat: 9.0863, lon: 7.5041 },
-        { name: "Asokoro", lat: 9.0356, lon: 7.5322 },
-        { name: "Kano City", lat: 12.0022, lon: 8.5920 },
-        { name: "Ibadan North", lat: 7.3960, lon: 3.9173 },
-        { name: "Port Harcourt", lat: 4.8156, lon: 7.0498 },
-        { name: "Enugu", lat: 6.4584, lon: 7.5464 },
-        { name: "Benin City", lat: 6.3350, lon: 5.6037 },
-        { name: "Jos", lat: 9.8965, lon: 8.8583 },
-        { name: "Zaria", lat: 11.0785, lon: 7.7199 },
-      ];
-
-      let closestLocation = "your area";
-      let minDistance = Infinity;
-
-      for (const loc of locations) {
-        const dist = calculateDistance(latitude, longitude, loc.lat, loc.lon);
-        if (dist < minDistance) {
-          minDistance = dist;
-          closestLocation = loc.name;
-        }
-      }
-
-      // Only use the name if within 50km of a known location
-      if (minDistance <= 50) {
-        setDetectedLocationName(closestLocation);
-      } else {
-        setDetectedLocationName(null);
-      }
-    } else {
-      setDetectedLocationName(null);
-    }
-  }, [latitude, longitude]);
 
   // Track page visit
   useEffect(() => {
@@ -609,71 +581,81 @@ const Explore = () => {
       </AnimatePresence>
 
       <main className="px-4 py-4 space-y-5">
-        {/* Location Status Banner */}
-        <AnimatePresence>
-          {geoLoading && (
-            <motion.div 
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="flex items-center gap-2 p-3 bg-primary/10 rounded-xl border border-primary/20"
-            >
+        {/* Clickable Location Header */}
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="relative"
+        >
+          {(geoLoading || isDetecting) ? (
+            <div className="flex items-center gap-2 p-3 bg-primary/10 rounded-xl border border-primary/20">
               <div className="h-4 w-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-              <span className="text-xs text-primary font-medium">Detecting your location...</span>
-            </motion.div>
-          )}
-          
-          {!geoLoading && latitude && longitude && (
-            <motion.div 
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="flex items-center justify-between p-3 bg-success/10 rounded-xl border border-success/20"
+              <span className="text-xs text-primary font-medium">Detecting your neighborhood...</span>
+            </div>
+          ) : activeNeighborhood ? (
+            <button
+              onClick={() => setLocationPickerOpen(true)}
+              className="w-full flex items-center justify-between p-3 bg-success/10 rounded-xl border border-success/20 hover:bg-success/15 transition-colors text-left group"
+            >
+              <div className="flex items-center gap-2">
+                <div className="h-6 w-6 rounded-full bg-success/20 flex items-center justify-center">
+                  <MapPin className="h-3.5 w-3.5 text-success" />
+                </div>
+                <div>
+                  <span className="text-xs font-medium text-success">
+                    Showing pharmacies in {activeNeighborhood}
+                  </span>
+                  <p className="text-[10px] text-muted-foreground">
+                    {isManualSelection ? 'Manually selected' : 'Auto-detected'} · Tap to change
+                  </p>
+                </div>
+              </div>
+              <ChevronDown className="h-4 w-4 text-success group-hover:translate-y-0.5 transition-transform" />
+            </button>
+          ) : latitude && longitude ? (
+            <button
+              onClick={() => setLocationPickerOpen(true)}
+              className="w-full flex items-center justify-between p-3 bg-success/10 rounded-xl border border-success/20 hover:bg-success/15 transition-colors text-left group"
             >
               <div className="flex items-center gap-2">
                 <div className="h-6 w-6 rounded-full bg-success/20 flex items-center justify-center">
                   <CheckCircle className="h-3.5 w-3.5 text-success" />
                 </div>
                 <div>
-                  <span className="text-xs font-medium text-success">
-                    {detectedLocationName 
-                      ? `Pharmacies near ${detectedLocationName}` 
-                      : "Location detected"
-                    }
-                  </span>
-                  <p className="text-[10px] text-muted-foreground">Showing pharmacies nearest to you first</p>
+                  <span className="text-xs font-medium text-success">Location detected</span>
+                  <p className="text-[10px] text-muted-foreground">Tap to select your neighborhood</p>
                 </div>
               </div>
-              <Badge variant="secondary" className="text-[10px] gap-1">
-                <Navigation className="h-2.5 w-2.5" />
-                Active
-              </Badge>
-            </motion.div>
-          )}
-          
-          {!geoLoading && !latitude && (
-            <motion.div 
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              className="flex items-center justify-between p-3 bg-amber-500/10 rounded-xl border border-amber-500/20"
-            >
+              <ChevronDown className="h-4 w-4 text-success group-hover:translate-y-0.5 transition-transform" />
+            </button>
+          ) : (
+            <div className="flex items-center justify-between p-3 bg-amber-500/10 rounded-xl border border-amber-500/20">
               <div className="flex items-center gap-2">
                 <div className="h-6 w-6 rounded-full bg-amber-500/20 flex items-center justify-center">
                   <MapPin className="h-3.5 w-3.5 text-amber-600" />
                 </div>
                 <div>
                   <span className="text-xs font-medium text-amber-700 dark:text-amber-400">Location not available</span>
-                  <p className="text-[10px] text-muted-foreground">Enable to see nearby pharmacies first</p>
+                  <p className="text-[10px] text-muted-foreground">Enable GPS or select manually</p>
                 </div>
               </div>
-              <Button size="sm" onClick={requestLocation} className="h-7 text-xs bg-amber-500 hover:bg-amber-600 text-white">
-                <Navigation className="h-3 w-3 mr-1" />
-                Enable
-              </Button>
-            </motion.div>
+              <div className="flex items-center gap-1.5">
+                <Button 
+                  size="sm" 
+                  variant="outline"
+                  onClick={() => setLocationPickerOpen(true)} 
+                  className="h-7 text-xs border-amber-500/30 text-amber-700 hover:bg-amber-500/10"
+                >
+                  Select
+                </Button>
+                <Button size="sm" onClick={requestLocation} className="h-7 text-xs bg-amber-500 hover:bg-amber-600 text-white">
+                  <Navigation className="h-3 w-3 mr-1" />
+                  Enable
+                </Button>
+              </div>
+            </div>
           )}
-        </AnimatePresence>
+        </motion.div>
 
         {/* Category Chips */}
         <CategoryChips onCategorySelect={handleCategorySelect} selectedCategory={selectedCategory} />
@@ -856,6 +838,18 @@ const Explore = () => {
         medication={selectedMedForMap}
         pharmacy={selectedPharmacyForMap}
         onOrder={handleMapOrder}
+      />
+
+      {/* Location Picker Modal */}
+      <LocationPickerModal
+        open={locationPickerOpen}
+        onOpenChange={setLocationPickerOpen}
+        onSelectNeighborhood={selectNeighborhood}
+        onUseAutoDetection={clearManualSelection}
+        currentNeighborhood={activeNeighborhood}
+        isManualSelection={isManualSelection}
+        isDetecting={isDetecting || geoLoading}
+        onSubmitCustomLocation={handleCustomLocationSubmit}
       />
     </div>
   );
