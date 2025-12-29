@@ -95,7 +95,7 @@ export const VideoShowcase = () => {
             <CardContent className="p-0">
               <div className="relative aspect-video">
                 <iframe
-                  src="https://www.youtube.com/embed/m_6VWIEABXQ?rel=0&modestbranding=1"
+                  src="https://www.youtube.com/embed/pPsz4TscDsM?rel=0&modestbranding=1"
                   title="PharmaTrack Demo Video"
                   allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                   allowFullScreen
