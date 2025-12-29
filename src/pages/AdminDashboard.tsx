@@ -58,6 +58,7 @@ import { DeletePharmacyDialog } from '@/components/admin/DeletePharmacyDialog';
 import { format } from 'date-fns';
 import { FeatureRequestsPanel } from '@/components/admin/FeatureRequestsPanel';
 import { PlatformMetricsGrid } from '@/components/admin/PlatformMetricsGrid';
+import { ReferralAnalyticsPanel } from '@/components/admin/ReferralAnalyticsPanel';
 
 interface PharmacyWithMetrics {
   id: string;
@@ -409,6 +410,10 @@ const AdminDashboard = () => {
               <Building2 className="h-4 w-4" />
               Pharmacies
             </TabsTrigger>
+            <TabsTrigger value="referrals" className="gap-2">
+              <Users className="h-4 w-4" />
+              Referrals
+            </TabsTrigger>
             <TabsTrigger value="features" className="gap-2" disabled={!selectedPharmacy}>
               <Settings className="h-4 w-4" />
               Custom Features
@@ -514,6 +519,10 @@ const AdminDashboard = () => {
                 )}
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="referrals" className="space-y-4">
+            <ReferralAnalyticsPanel />
           </TabsContent>
 
           <TabsContent value="features" className="space-y-4">

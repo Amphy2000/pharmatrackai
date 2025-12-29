@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react";
-import { Search, MapPin, MessageCircle, Package, Store, Phone, Star, AlertCircle, Download, Smartphone, X, Menu, ChevronRight, ArrowLeft } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { Search, MapPin, MessageCircle, Package, Store, Phone, Star, AlertCircle, Download, Smartphone, X, Menu, ChevronRight, ArrowLeft, Shield, Clock, Zap, TrendingUp, Heart, Sparkles, CheckCircle, Navigation } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -16,8 +16,8 @@ import { NearbyEssentials } from "@/components/explore/NearbyEssentials";
 import { RequestDrugButton } from "@/components/explore/RequestDrugButton";
 import { DistanceFilter, DistanceRadius, SortOption } from "@/components/explore/DistanceFilter";
 import { ExploreFlyer } from "@/components/explore/ExploreFlyer";
-import { motion, AnimatePresence } from "framer-motion";
-import { useGeolocation, calculateDistance, getApproximateCoordinates } from "@/hooks/useGeolocation";
+import { motion, AnimatePresence, useScroll, useTransform } from "framer-motion";
+import { useGeolocation, calculateDistance, getApproximateCoordinates, getGoogleMapsLink } from "@/hooks/useGeolocation";
 import { smartShuffle } from "@/utils/smartShuffle";
 
 interface PublicMedication {
@@ -33,6 +33,7 @@ interface PublicMedication {
   pharmacy_address: string | null;
   is_featured: boolean | null;
   featured_until?: string | null;
+  distance?: number;
 }
 
 const Explore = () => {
@@ -259,75 +260,100 @@ const Explore = () => {
     window.open(whatsappUrl, "_blank");
   };
 
-  // Mobile-optimized Medication Card
-  const MedicationCard = ({ medication, isFeatured = false }: { medication: PublicMedication; isFeatured?: boolean }) => (
+  // Premium Mobile-optimized Medication Card
+  const MedicationCard = ({ medication, isFeatured = false, index = 0 }: { medication: PublicMedication; isFeatured?: boolean; index?: number }) => (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.3 }}
+      transition={{ duration: 0.3, delay: index * 0.05 }}
     >
-      <Card className={`overflow-hidden hover:shadow-lg transition-all ${isFeatured ? 'border-marketplace/50 bg-marketplace/5' : ''}`}>
+      <Card className={`overflow-hidden hover:shadow-xl transition-all duration-300 rounded-2xl border-0 ${
+        isFeatured 
+          ? 'bg-gradient-to-br from-marketplace/10 to-primary/5 shadow-marketplace/10' 
+          : 'bg-gradient-to-br from-white to-muted/20 dark:from-card dark:to-muted/10 shadow-md'
+      }`}>
         <CardContent className="p-0">
-          {/* Mobile-first layout */}
-          <div className="p-4 md:p-6">
+          <div className="p-4 md:p-5">
+            {/* Header Row */}
             <div className="flex items-start justify-between gap-3 mb-3">
               <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap mb-1">
-                  <h3 className="text-lg md:text-xl font-bold text-foreground truncate">{medication.name}</h3>
+                <div className="flex items-center gap-2 flex-wrap mb-1.5">
+                  <h3 className="text-base md:text-lg font-bold text-foreground line-clamp-1">{medication.name}</h3>
                   {medication.is_featured && (
-                    <Badge className="bg-marketplace text-marketplace-foreground gap-1 shrink-0">
-                      <Star className="h-3 w-3" />
+                    <Badge className="bg-gradient-to-r from-marketplace to-primary text-white gap-1 shrink-0 text-[10px] px-2 py-0.5 rounded-full">
+                      <Star className="h-2.5 w-2.5 fill-current" />
                       Featured
                     </Badge>
                   )}
                 </div>
-                <Badge variant="secondary" className="text-xs">{medication.category}</Badge>
+                <Badge variant="secondary" className="text-[10px] md:text-xs rounded-full">{medication.category}</Badge>
               </div>
               <Badge 
                 variant="outline" 
-                className="bg-success/10 text-success border-success/30 text-xs shrink-0"
+                className="bg-success/10 text-success border-success/30 text-[10px] md:text-xs shrink-0 rounded-full px-2.5"
               >
+                <CheckCircle className="h-2.5 w-2.5 mr-1" />
                 {medication.current_stock} in stock
               </Badge>
             </div>
             
-            {/* Pharmacy Info - Compact */}
-            <div className="space-y-1.5 mb-3">
+            {/* Pharmacy Info */}
+            <div className="space-y-2 mb-4 p-3 bg-muted/30 rounded-xl">
               <div className="flex items-center gap-2 text-sm">
-                <Store className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                <span className="font-medium text-foreground truncate">{medication.pharmacy_name}</span>
+                <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                  <Store className="h-4 w-4 text-primary" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <span className="font-semibold text-foreground block truncate">{medication.pharmacy_name}</span>
+                  {medication.distance !== undefined && (
+                    <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                      <Navigation className="h-2.5 w-2.5" />
+                      {medication.distance < 1 
+                        ? `${Math.round(medication.distance * 1000)}m away` 
+                        : `${medication.distance.toFixed(1)}km away`
+                      }
+                    </span>
+                  )}
+                </div>
+                {medication.distance !== undefined && medication.distance <= 3 && (
+                  <Badge className="bg-gradient-to-r from-green-500 to-emerald-500 text-white text-[9px] px-2 py-0.5 gap-1 shrink-0">
+                    <Zap className="h-2.5 w-2.5" />
+                    Quick Pickup
+                  </Badge>
+                )}
               </div>
               
               {medication.pharmacy_address && (
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <MapPin className="h-3.5 w-3.5 shrink-0" />
+                <a 
+                  href={getGoogleMapsLink(medication.pharmacy_address) || '#'}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex items-center gap-2 text-xs text-primary hover:underline group pl-10"
+                >
+                  <MapPin className="h-3 w-3 shrink-0" />
                   <span className="truncate">{medication.pharmacy_address}</span>
-                </div>
+                  <ChevronRight className="h-3 w-3 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" />
+                </a>
               )}
             </div>
             
-            <div className="flex items-center justify-end gap-3">
-              
-              {/* Mobile-friendly Action Button */}
-              <div className="flex items-center gap-2">
-                {medication.pharmacy_phone && (
-                  <a 
-                    href={`tel:${medication.pharmacy_phone}`}
-                    className="h-9 w-9 rounded-full bg-muted flex items-center justify-center hover:bg-muted/80 transition-colors"
-                  >
-                    <Phone className="h-4 w-4 text-muted-foreground" />
-                  </a>
-                )}
-                <Button
-                  onClick={() => handleWhatsAppOrder(medication)}
-                  className="bg-[#25D366] hover:bg-[#20BD5A] text-white font-semibold h-9 px-4"
-                  size="sm"
+            {/* Action Buttons */}
+            <div className="flex items-center gap-2">
+              {medication.pharmacy_phone && (
+                <a 
+                  href={`tel:${medication.pharmacy_phone}`}
+                  className="h-10 w-10 rounded-xl bg-muted flex items-center justify-center hover:bg-muted/80 transition-colors shrink-0"
                 >
-                  <MessageCircle className="mr-1.5 h-4 w-4" />
-                  <span className="hidden sm:inline">Buy Now</span>
-                  <span className="sm:hidden">Order</span>
-                </Button>
-              </div>
+                  <Phone className="h-4 w-4 text-muted-foreground" />
+                </a>
+              )}
+              <Button
+                onClick={() => handleWhatsAppOrder(medication)}
+                className="flex-1 bg-[#25D366] hover:bg-[#20BD5A] text-white font-semibold h-10 rounded-xl shadow-lg shadow-[#25D366]/20"
+              >
+                <MessageCircle className="mr-2 h-4 w-4" />
+                Order via WhatsApp
+              </Button>
             </div>
           </div>
         </CardContent>
@@ -467,37 +493,60 @@ const Explore = () => {
           </motion.div>
         )}
 
-        {/* Empty State - Hidden when there's content above */}
+        {/* Empty State - Premium Design */}
         {!hasSearched ? (
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-center py-8 md:py-16"
+            className="text-center py-8 md:py-12"
           >
-            <div className="h-16 w-16 md:h-24 md:w-24 mx-auto mb-4 md:mb-6 rounded-full bg-gradient-to-br from-marketplace/20 to-primary/20 flex items-center justify-center">
-              <Search className="h-8 w-8 md:h-12 md:w-12 text-marketplace" />
+            <div className="h-20 w-20 md:h-28 md:w-28 mx-auto mb-5 md:mb-6 rounded-3xl bg-gradient-to-br from-marketplace/20 to-primary/20 flex items-center justify-center shadow-xl shadow-marketplace/10">
+              <Search className="h-10 w-10 md:h-14 md:w-14 text-marketplace" />
             </div>
-            <h2 className="text-xl md:text-2xl font-bold text-foreground mb-2">Find Your Medication</h2>
-            <p className="text-sm md:text-base text-muted-foreground max-w-md mx-auto px-4">
+            <h2 className="text-xl md:text-3xl font-bold text-foreground mb-2">Find Your Medication</h2>
+            <p className="text-sm md:text-base text-muted-foreground max-w-md mx-auto px-4 mb-6">
               Search for any medication and order directly via WhatsApp!
             </p>
+            
+            {/* Trust Indicators */}
+            <div className="flex flex-wrap items-center justify-center gap-3 md:gap-4 px-4 mt-6">
+              <div className="flex items-center gap-1.5 text-xs md:text-sm text-muted-foreground bg-muted/50 px-3 py-1.5 rounded-full">
+                <Shield className="h-3.5 w-3.5 text-success" />
+                <span>Verified Pharmacies</span>
+              </div>
+              <div className="flex items-center gap-1.5 text-xs md:text-sm text-muted-foreground bg-muted/50 px-3 py-1.5 rounded-full">
+                <Clock className="h-3.5 w-3.5 text-primary" />
+                <span>Real-time Stock</span>
+              </div>
+              <div className="flex items-center gap-1.5 text-xs md:text-sm text-muted-foreground bg-muted/50 px-3 py-1.5 rounded-full">
+                <Heart className="h-3.5 w-3.5 text-destructive" />
+                <span>Trusted Service</span>
+              </div>
+            </div>
           </motion.div>
         ) : isLoading ? (
           <div className="grid gap-4">
             {[1, 2, 3].map((i) => (
-              <Card key={i} className="animate-pulse">
-                <CardContent className="p-6">
-                  <div className="h-6 bg-muted rounded w-1/3 mb-4" />
-                  <div className="h-4 bg-muted rounded w-1/2 mb-2" />
-                  <div className="h-4 bg-muted rounded w-1/4" />
+              <Card key={i} className="animate-pulse rounded-2xl border-0 shadow-md">
+                <CardContent className="p-5">
+                  <div className="flex items-start gap-3 mb-4">
+                    <div className="h-6 bg-muted rounded-lg flex-1" />
+                    <div className="h-6 bg-muted rounded-full w-24" />
+                  </div>
+                  <div className="h-20 bg-muted/50 rounded-xl mb-4" />
+                  <div className="h-10 bg-muted rounded-xl" />
                 </CardContent>
               </Card>
             ))}
           </div>
         ) : medications.length === 0 ? (
-          <div className="space-y-6">
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="space-y-6"
+          >
             <div className="text-center py-12">
-              <div className="h-24 w-24 mx-auto mb-6 rounded-full bg-muted flex items-center justify-center">
+              <div className="h-24 w-24 mx-auto mb-6 rounded-3xl bg-gradient-to-br from-muted to-muted/50 flex items-center justify-center shadow-lg">
                 <Package className="h-12 w-12 text-muted-foreground" />
               </div>
               <h2 className="text-2xl font-bold text-foreground mb-2">No Results Found</h2>
@@ -507,35 +556,77 @@ const Explore = () => {
               </p>
             </div>
             <RequestDrugButton searchQuery={searchQuery} />
-          </div>
+          </motion.div>
         ) : (
-          <div className="space-y-4">
-            <p className="text-muted-foreground">
-              Found <span className="font-semibold text-foreground">{medications.length}</span> result{medications.length !== 1 ? 's' : ''} for "{searchQuery}"
-            </p>
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="space-y-4"
+          >
+            {/* Results Header */}
+            <div className="flex items-center justify-between">
+              <p className="text-sm md:text-base text-muted-foreground">
+                Found <span className="font-bold text-foreground">{medications.length}</span> result{medications.length !== 1 ? 's' : ''} for "<span className="font-medium text-foreground">{searchQuery}</span>"
+              </p>
+              {latitude && (
+                <Badge variant="outline" className="gap-1 text-xs">
+                  <Navigation className="h-3 w-3" />
+                  Location active
+                </Badge>
+              )}
+            </div>
             
-            {medications.map((medication) => (
-              <MedicationCard 
-                key={`${medication.id}-${medication.pharmacy_id}`} 
-                medication={medication} 
-              />
-            ))}
-          </div>
+            {/* Results Grid */}
+            <div className="space-y-3 md:space-y-4">
+              {medications.map((medication, index) => (
+                <MedicationCard 
+                  key={`${medication.id}-${medication.pharmacy_id}`} 
+                  medication={medication}
+                  index={index}
+                />
+              ))}
+            </div>
+          </motion.div>
         )}
       </main>
 
-      {/* Footer */}
-      <footer className="bg-muted/50 py-8 mt-auto">
-        <div className="container mx-auto max-w-4xl px-4 text-center">
-          <p className="text-sm text-muted-foreground">
-            © 2024 PharmaTrack. Connecting patients to pharmacies.
-          </p>
-          <p className="text-xs text-muted-foreground mt-2">
-            Are you a pharmacy owner?{" "}
-            <Link to="/auth" className="text-marketplace hover:underline font-medium">
-              List your products here
-            </Link>
-          </p>
+      {/* Premium Footer */}
+      <footer className="bg-gradient-to-t from-muted/80 to-muted/30 py-10 mt-auto border-t border-border/50">
+        <div className="container mx-auto max-w-4xl px-4">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4 text-center md:text-left">
+            <div>
+              <div className="flex items-center justify-center md:justify-start gap-2 mb-2">
+                <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-marketplace to-primary flex items-center justify-center">
+                  <Sparkles className="h-4 w-4 text-white" />
+                </div>
+                <span className="font-bold text-foreground">PharmaTrack</span>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                © {new Date().getFullYear()} PharmaTrack. Connecting patients to pharmacies.
+              </p>
+            </div>
+            
+            <div className="flex flex-col items-center md:items-end gap-2">
+              <Link 
+                to="/auth" 
+                className="inline-flex items-center gap-2 text-sm text-marketplace hover:underline font-medium group"
+              >
+                <Store className="h-4 w-4" />
+                List your pharmacy
+                <ChevronRight className="h-4 w-4 group-hover:translate-x-0.5 transition-transform" />
+              </Link>
+              <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                <span className="flex items-center gap-1">
+                  <Shield className="h-3 w-3 text-success" />
+                  Secure
+                </span>
+                <span className="flex items-center gap-1">
+                  <TrendingUp className="h-3 w-3 text-primary" />
+                  Real-time
+                </span>
+              </div>
+            </div>
+          </div>
         </div>
       </footer>
     </div>
