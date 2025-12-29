@@ -171,8 +171,9 @@ export const generateROIBattleCardPdf = (data: ROIData): jsPDF => {
   const recoveries = [
     { feature: 'AI predicts expiry 60 days early', value: `Recover 70% of expiring stock` },
     { feature: 'Locked pricing (admin only)', value: `Stop ${formatNaira(staffLeakage)}/yr theft` },
-    { feature: 'Public marketplace listing', value: 'Patients find you first' },
-    { feature: 'Distance-based search', value: 'Nearby customers come to you' },
+    { feature: 'PUBLIC MARKETPLACE (Game Changer)', value: 'Patients discover you online' },
+    { feature: 'Distance search (1km-10km)', value: 'Nearby customers come to you' },
+    { feature: 'Spotlight featured products', value: 'Premium visibility boost' },
     { feature: 'Invoice scanner', value: 'Stock 50 items in 30 seconds' },
   ];
 
@@ -183,7 +184,7 @@ export const generateROIBattleCardPdf = (data: ROIData): jsPDF => {
     doc.text(`✓ ${item.feature}:`, margin, y);
     doc.setTextColor(...COLORS.slate);
     doc.setFont('helvetica', 'normal');
-    doc.text(item.value, margin + 60, y);
+    doc.text(item.value, margin + 65, y);
     y += 6;
   });
 

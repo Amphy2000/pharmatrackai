@@ -504,6 +504,159 @@ const Landing = () => {
       {/* Competitor Comparison Section */}
       <CompetitorComparison isInternational={isInternational} />
 
+      {/* Patient Discovery Marketplace Section - THE DIFFERENTIATOR */}
+      <section className="py-20 sm:py-32 relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-br from-marketplace/5 via-background to-primary/5"></div>
+        <div className="container mx-auto px-4 sm:px-6 relative z-10">
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mb-16"
+          >
+            <Badge className="mb-4 bg-marketplace/20 text-marketplace border-marketplace/30">
+              <Globe className="h-3 w-3 mr-2" />
+              Game-Changing Feature
+            </Badge>
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-display font-bold mb-4">
+              Stop Waiting for <span className="text-destructive line-through">Walk-ins</span>
+              <br />
+              <span className="text-gradient-premium">Let Patients Find YOU</span>
+            </h2>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              The ONLY pharmacy system in Nigeria with a <span className="text-marketplace font-semibold">public marketplace</span> where patients search for drugs by distance and order via WhatsApp.
+            </p>
+          </motion.div>
+
+          <div className="grid lg:grid-cols-2 gap-8 max-w-6xl mx-auto items-center">
+            {/* Left: Benefits */}
+            <motion.div
+              initial={{ opacity: 0, x: -30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+              className="space-y-6"
+            >
+              {[
+                {
+                  icon: Globe,
+                  title: 'Distance-Based Search',
+                  description: 'Patients search "Panadol near me" and see pharmacies within 1km, 5km, or 10km. The closest shop wins.',
+                  highlight: 'You become the first choice for nearby customers',
+                },
+                {
+                  icon: Star,
+                  title: 'Spotlight Featured Products',
+                  description: 'Pay ₦1,000-₦2,500 to boost your best products to the top. Like Instagram ads, but for drugs.',
+                  highlight: 'Premium visibility = more orders',
+                },
+                {
+                  icon: MessageCircle,
+                  title: 'WhatsApp Ordering',
+                  description: 'One tap connects customers directly to your WhatsApp. No middleman. No commission. 100% your profit.',
+                  highlight: 'Direct customer relationships',
+                },
+                {
+                  icon: TrendingUp,
+                  title: 'Free Marketing Forever',
+                  description: 'Your products are listed 24/7. While you sleep, patients discover your pharmacy online.',
+                  highlight: 'Zero advertising cost',
+                },
+              ].map((benefit, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: i * 0.1 }}
+                  className="flex gap-4"
+                >
+                  <div className="h-12 w-12 rounded-xl bg-marketplace/20 flex items-center justify-center flex-shrink-0">
+                    <benefit.icon className="h-6 w-6 text-marketplace" />
+                  </div>
+                  <div>
+                    <h3 className="font-display font-bold mb-1">{benefit.title}</h3>
+                    <p className="text-sm text-muted-foreground mb-1">{benefit.description}</p>
+                    <p className="text-xs text-marketplace font-medium">{benefit.highlight}</p>
+                  </div>
+                </motion.div>
+              ))}
+            </motion.div>
+
+            {/* Right: Visual/CTA */}
+            <motion.div
+              initial={{ opacity: 0, x: 30 }}
+              whileInView={{ opacity: 1, x: 0 }}
+              viewport={{ once: true }}
+            >
+              <Card className="border-marketplace/30 bg-gradient-to-br from-marketplace/5 to-primary/5 overflow-hidden">
+                <CardContent className="p-8">
+                  <div className="text-center mb-6">
+                    <div className="h-20 w-20 rounded-full bg-marketplace/20 flex items-center justify-center mx-auto mb-4">
+                      <Globe className="h-10 w-10 text-marketplace" />
+                    </div>
+                    <h3 className="text-2xl font-display font-bold mb-2">See It In Action</h3>
+                    <p className="text-muted-foreground">Try the marketplace right now. Search for any drug and see how patients find pharmacies.</p>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <Link to="/explore">
+                      <Button size="lg" className="w-full bg-marketplace hover:bg-marketplace/90 text-white">
+                        <Globe className="h-5 w-5 mr-2" />
+                        Explore the Marketplace
+                        <ArrowRight className="h-5 w-5 ml-2" />
+                      </Button>
+                    </Link>
+                    <p className="text-center text-xs text-muted-foreground">
+                      No signup required. See how it works instantly.
+                    </p>
+                  </div>
+
+                  {/* Stats */}
+                  <div className="grid grid-cols-3 gap-4 mt-8 pt-6 border-t border-border/50">
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-marketplace">1-10km</div>
+                      <div className="text-xs text-muted-foreground">Distance Filter</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-marketplace">24/7</div>
+                      <div className="text-xs text-muted-foreground">Online Visibility</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-marketplace">0%</div>
+                      <div className="text-xs text-muted-foreground">Commission</div>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          </div>
+
+          {/* Bottom CTA */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="mt-16 text-center"
+          >
+            <Card className="max-w-3xl mx-auto border-success/30 bg-success/5">
+              <CardContent className="p-6 flex flex-col sm:flex-row items-center gap-4">
+                <div className="flex-grow text-left">
+                  <h4 className="font-display font-bold text-lg">The Question That Closes Deals</h4>
+                  <p className="text-sm text-muted-foreground italic">
+                    "Can your current POS app help patients within 5km find your pharmacy online? No? Then you're invisible to customers who are searching RIGHT NOW."
+                  </p>
+                </div>
+                <Link to="/auth?tab=signup">
+                  <Button className="bg-gradient-primary whitespace-nowrap">
+                    Get Listed Free
+                  </Button>
+                </Link>
+              </CardContent>
+            </Card>
+          </motion.div>
+        </div>
+      </section>
+
       {/* Features Bento Grid */}
       <section id="features" className="py-20 sm:py-32 relative">
         <div className="container mx-auto px-4 sm:px-6">

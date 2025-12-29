@@ -18,6 +18,20 @@ export const CompetitorComparison = ({ isInternational = false }: CompetitorComp
 
   const comparisonPoints = [
     {
+      question: "Can patients find your pharmacy online by distance?",
+      genericPOS: false,
+      pharmatrack: true,
+      moneyImpact: "Invisible to customers searching RIGHT NOW",
+      critical: true,
+    },
+    {
+      question: "Does it have a public marketplace for patient discovery?",
+      genericPOS: false,
+      pharmatrack: true,
+      moneyImpact: "Zero online presence = lost sales daily",
+      critical: true,
+    },
+    {
       question: "Does it generate NAFDAC audit reports?",
       genericPOS: false,
       pharmatrack: true,
