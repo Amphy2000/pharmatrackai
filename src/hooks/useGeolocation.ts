@@ -3,6 +3,8 @@ import { useState, useEffect, useCallback } from 'react';
 interface GeolocationState {
   latitude: number | null;
   longitude: number | null;
+  /** Accuracy in meters (lower is better). */
+  accuracy: number | null;
   error: string | null;
   loading: boolean;
   permissionDenied: boolean;
@@ -12,11 +14,13 @@ interface GeolocationState {
 const LOCATION_CACHE_KEY = 'pharmatrack_user_location';
 const CACHE_DURATION = 300000; // 5 minutes
 
-const getCachedLocation = (): { lat: number; lon: number; timestamp: number } | null => {
+type CachedLocation = { lat: number; lon: number; accuracy: number | null; timestamp: number };
+
+const getCachedLocation = (): CachedLocation | null => {
   try {
     const cached = sessionStorage.getItem(LOCATION_CACHE_KEY);
     if (cached) {
-      const data = JSON.parse(cached);
+      const data = JSON.parse(cached) as CachedLocation;
       if (Date.now() - data.timestamp < CACHE_DURATION) {
         return data;
       }
@@ -27,13 +31,25 @@ const getCachedLocation = (): { lat: number; lon: number; timestamp: number } | 
   return null;
 };
 
-const setCachedLocation = (lat: number, lon: number) => {
+const clearCachedLocation = () => {
   try {
-    sessionStorage.setItem(LOCATION_CACHE_KEY, JSON.stringify({
-      lat,
-      lon,
-      timestamp: Date.now()
-    }));
+    sessionStorage.removeItem(LOCATION_CACHE_KEY);
+  } catch {
+    // Ignore cache errors
+  }
+};
+
+const setCachedLocation = (lat: number, lon: number, accuracy: number | null) => {
+  try {
+    sessionStorage.setItem(
+      LOCATION_CACHE_KEY,
+      JSON.stringify({
+        lat,
+        lon,
+        accuracy,
+        timestamp: Date.now(),
+      } satisfies CachedLocation)
+    );
   } catch {
     // Ignore cache errors
   }
@@ -47,6 +63,7 @@ export const useGeolocation = (requestOnMount = false) => {
       return {
         latitude: cached.lat,
         longitude: cached.lon,
+        accuracy: cached.accuracy ?? null,
         error: null,
         loading: false,
         permissionDenied: false,
@@ -55,6 +72,7 @@ export const useGeolocation = (requestOnMount = false) => {
     return {
       latitude: null,
       longitude: null,
+      accuracy: null,
       error: null,
       loading: false,
       permissionDenied: false,
@@ -73,13 +91,15 @@ export const useGeolocation = (requestOnMount = false) => {
       (position) => {
         const lat = position.coords.latitude;
         const lon = position.coords.longitude;
-        
+        const accuracy = Number.isFinite(position.coords.accuracy) ? position.coords.accuracy : null;
+
         // Cache the location
-        setCachedLocation(lat, lon);
-        
+        setCachedLocation(lat, lon, accuracy);
+
         setState({
           latitude: lat,
           longitude: lon,
+          accuracy,
           error: null,
           loading: false,
           permissionDenied: false,
@@ -90,6 +110,7 @@ export const useGeolocation = (requestOnMount = false) => {
         setState({
           latitude: null,
           longitude: null,
+          accuracy: null,
           error: error.message,
           loading: false,
           permissionDenied,
