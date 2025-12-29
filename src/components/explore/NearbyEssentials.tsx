@@ -7,6 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { useGeolocation, calculateDistance, getApproximateCoordinates, getFallbackLocationName, getGoogleMapsLink } from '@/hooks/useGeolocation';
 import { motion } from 'framer-motion';
+import { smartShuffle } from '@/utils/smartShuffle';
 
 interface NearbyMedication {
   id: string;
@@ -103,8 +104,15 @@ export const NearbyEssentials = ({ onOrder }: NearbyEssentialsProps) => {
           });
       }
 
+      // Apply smart shuffle for fair pharmacy lead distribution
+      const shuffled = smartShuffle(formatted, {
+        prioritizeFeatured: false,
+        groupByPharmacy: false,
+        maxPerPharmacy: 2,
+      });
+
       // Limit to 12 items for the grid
-      setMedications(formatted.slice(0, 12));
+      setMedications(shuffled.slice(0, 12));
     } catch (error) {
       console.error('Error loading nearby essentials:', error);
     } finally {

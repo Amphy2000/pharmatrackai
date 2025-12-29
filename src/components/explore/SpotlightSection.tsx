@@ -8,6 +8,7 @@ import { useCurrency } from '@/contexts/CurrencyContext';
 import { differenceInDays } from 'date-fns';
 import { useGeolocation, calculateDistance, getApproximateCoordinates, getFallbackLocationName, getGoogleMapsLink } from '@/hooks/useGeolocation';
 import { motion } from 'framer-motion';
+import { smartShuffle } from '@/utils/smartShuffle';
 
 interface FeaturedMedication {
   id: string;
@@ -66,11 +67,23 @@ export const SpotlightSection = ({ onOrder }: SpotlightSectionProps) => {
           return a.distance - b.distance;
         });
         
-        setFilteredFeatured(sorted);
+        // Apply smart shuffle for fair pharmacy lead distribution
+        const shuffled = smartShuffle(sorted, {
+          prioritizeFeatured: true,
+          groupByPharmacy: false,
+          maxPerPharmacy: 2,
+        });
+        
+        setFilteredFeatured(shuffled);
         setLocationEnabled(true);
       } else {
-        // No location - show all featured items as-is
-        setFilteredFeatured(featured);
+        // No location - apply smart shuffle for fair distribution
+        const shuffled = smartShuffle(featured, {
+          prioritizeFeatured: true,
+          groupByPharmacy: false,
+          maxPerPharmacy: 2,
+        });
+        setFilteredFeatured(shuffled);
         setLocationEnabled(false);
       }
     } else {
