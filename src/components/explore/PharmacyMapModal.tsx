@@ -1,4 +1,3 @@
-import { useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -14,21 +13,17 @@ import {
   MessageCircle, 
   ExternalLink, 
   Store,
-  Clock,
-  CheckCircle,
-  X
+  CheckCircle
 } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
-import { getGoogleMapsLink, getApproximateCoordinates, calculateDistance } from "@/hooks/useGeolocation";
-import { useCurrency } from "@/contexts/CurrencyContext";
+import { motion } from "framer-motion";
+import { getGoogleMapsLink } from "@/hooks/useGeolocation";
 
-interface Pharmacy {
+interface PharmacyInfo {
   pharmacy_id: string;
   pharmacy_name: string;
   pharmacy_address: string | null;
   pharmacy_phone: string | null;
   distance?: number;
-  selling_price?: number | null;
   current_stock?: number;
 }
 
@@ -41,209 +36,138 @@ interface PharmacyMapModalProps {
     category: string;
     dispensing_unit: string;
   } | null;
-  pharmacies: Pharmacy[];
-  userLocation: { lat: number; lon: number } | null;
-  onOrder: (pharmacy: Pharmacy) => void;
+  pharmacy: PharmacyInfo | null;
+  onOrder: () => void;
 }
 
 export const PharmacyMapModal = ({
   isOpen,
   onClose,
   medication,
-  pharmacies,
-  userLocation,
+  pharmacy,
   onOrder,
 }: PharmacyMapModalProps) => {
-  const [selectedPharmacy, setSelectedPharmacy] = useState<Pharmacy | null>(null);
-  const { formatPrice } = useCurrency();
+  if (!medication || !pharmacy) return null;
 
-  if (!medication) return null;
-
-  // Sort pharmacies by distance
-  const sortedPharmacies = [...pharmacies].sort((a, b) => {
-    if (a.distance === undefined && b.distance === undefined) return 0;
-    if (a.distance === undefined) return 1;
-    if (b.distance === undefined) return -1;
-    return a.distance - b.distance;
-  });
-
-  const openInMaps = (pharmacy: Pharmacy) => {
+  const openInMaps = () => {
     const link = getGoogleMapsLink(pharmacy.pharmacy_address);
     if (link) {
       window.open(link, '_blank');
     }
   };
 
+  const handleCall = () => {
+    if (pharmacy.pharmacy_phone) {
+      window.open(`tel:${pharmacy.pharmacy_phone}`, '_blank');
+    }
+  };
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-md p-0 overflow-hidden rounded-2xl">
-        <DialogHeader className="p-4 pb-2 border-b bg-gradient-to-r from-marketplace/10 to-primary/10">
+      <DialogContent className="max-w-sm p-0 overflow-hidden rounded-2xl">
+        <DialogHeader className="p-4 pb-3 border-b bg-gradient-to-r from-marketplace/10 to-primary/10">
           <DialogTitle className="text-base font-bold flex items-center gap-2">
-            <MapPin className="h-4 w-4 text-marketplace" />
-            Pharmacies with {medication.name}
+            <Store className="h-4 w-4 text-marketplace" />
+            {pharmacy.pharmacy_name}
           </DialogTitle>
-          <p className="text-xs text-muted-foreground">
-            {pharmacies.length} {pharmacies.length === 1 ? 'pharmacy has' : 'pharmacies have'} this in stock
-          </p>
         </DialogHeader>
 
-        <div className="p-4 space-y-3 max-h-[60vh] overflow-y-auto">
-          {/* User Location Indicator */}
-          {userLocation && (
-            <div className="flex items-center gap-2 p-2.5 bg-success/10 rounded-xl border border-success/20 mb-3">
-              <div className="h-8 w-8 rounded-full bg-success/20 flex items-center justify-center">
-                <Navigation className="h-4 w-4 text-success" />
-              </div>
-              <div>
-                <p className="text-xs font-medium text-success">Your location detected</p>
-                <p className="text-[10px] text-muted-foreground">Pharmacies sorted by distance</p>
-              </div>
+        <div className="p-4 space-y-4">
+          {/* Medication Info */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="p-3 rounded-xl bg-accent/30 border border-border/50"
+          >
+            <h3 className="font-semibold text-sm mb-1">{medication.name}</h3>
+            <div className="flex items-center gap-2 flex-wrap">
+              <Badge variant="secondary" className="text-[10px] px-1.5 py-0 rounded-full">
+                {medication.category}
+              </Badge>
+              {pharmacy.current_stock && (
+                <Badge variant="outline" className="bg-success/10 text-success border-success/20 text-[10px] px-1.5 py-0 rounded-full">
+                  <CheckCircle className="h-2.5 w-2.5 mr-0.5" />
+                  {pharmacy.current_stock} in stock
+                </Badge>
+              )}
             </div>
-          )}
+          </motion.div>
 
-          {/* Pharmacies List */}
-          <div className="space-y-2">
-            {sortedPharmacies.map((pharmacy, index) => (
-              <motion.div
-                key={pharmacy.pharmacy_id}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05 }}
-                className={`p-3 rounded-xl border transition-all cursor-pointer ${
-                  selectedPharmacy?.pharmacy_id === pharmacy.pharmacy_id
-                    ? 'border-marketplace bg-marketplace/5 shadow-md'
-                    : 'border-border hover:border-marketplace/50 hover:bg-accent/30'
-                }`}
-                onClick={() => setSelectedPharmacy(pharmacy)}
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <Store className="h-3.5 w-3.5 text-marketplace shrink-0" />
-                      <h3 className="font-semibold text-sm truncate">{pharmacy.pharmacy_name}</h3>
-                    </div>
-                    
-                    {pharmacy.pharmacy_address && (
-                      <p className="text-[11px] text-muted-foreground line-clamp-2 mb-2 pl-5">
-                        {pharmacy.pharmacy_address}
-                      </p>
-                    )}
+          {/* Pharmacy Details */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.05 }}
+            className="space-y-2"
+          >
+            {pharmacy.pharmacy_address && (
+              <div className="flex items-start gap-2 text-sm">
+                <MapPin className="h-4 w-4 text-muted-foreground shrink-0 mt-0.5" />
+                <span className="text-muted-foreground">{pharmacy.pharmacy_address}</span>
+              </div>
+            )}
+            
+            {pharmacy.distance !== undefined && (
+              <div className="flex items-center gap-2">
+                <Navigation className="h-4 w-4 text-marketplace shrink-0" />
+                <Badge 
+                  className={`text-xs px-2 py-0.5 ${
+                    pharmacy.distance <= 3 
+                      ? 'bg-emerald-500 text-white' 
+                      : pharmacy.distance <= 10
+                      ? 'bg-amber-500 text-white'
+                      : 'bg-muted text-muted-foreground'
+                  }`}
+                >
+                  {pharmacy.distance < 1 
+                    ? `${Math.round(pharmacy.distance * 1000)}m away` 
+                    : `${pharmacy.distance.toFixed(1)}km away`
+                  }
+                </Badge>
+              </div>
+            )}
+          </motion.div>
 
-                    <div className="flex items-center gap-2 flex-wrap pl-5">
-                      {pharmacy.distance !== undefined && (
-                        <Badge 
-                          className={`text-[9px] px-1.5 py-0 ${
-                            pharmacy.distance <= 3 
-                              ? 'bg-emerald-500 text-white' 
-                              : pharmacy.distance <= 10
-                              ? 'bg-amber-500 text-white'
-                              : 'bg-muted text-muted-foreground'
-                          }`}
-                        >
-                          {pharmacy.distance < 1 
-                            ? `${Math.round(pharmacy.distance * 1000)}m away` 
-                            : `${pharmacy.distance.toFixed(1)}km away`
-                          }
-                        </Badge>
-                      )}
-                      {pharmacy.current_stock && (
-                        <Badge variant="outline" className="bg-success/10 text-success border-success/20 text-[9px] px-1.5 py-0">
-                          <CheckCircle className="h-2 w-2 mr-0.5" />
-                          {pharmacy.current_stock} in stock
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-
-                  {pharmacy.selling_price && (
-                    <div className="text-right shrink-0">
-                      <p className="text-sm font-bold text-marketplace">
-                        {formatPrice(pharmacy.selling_price)}
-                      </p>
-                      <p className="text-[9px] text-muted-foreground">per {medication.dispensing_unit}</p>
-                    </div>
-                  )}
-                </div>
-
-                {/* Expanded Actions */}
-                <AnimatePresence>
-                  {selectedPharmacy?.pharmacy_id === pharmacy.pharmacy_id && (
-                    <motion.div
-                      initial={{ height: 0, opacity: 0 }}
-                      animate={{ height: 'auto', opacity: 1 }}
-                      exit={{ height: 0, opacity: 0 }}
-                      className="overflow-hidden"
-                    >
-                      <div className="flex items-center gap-2 mt-3 pt-3 border-t border-border/50">
-                        <Button
-                          size="sm"
-                          className="flex-1 bg-[#25D366] hover:bg-[#20BD5A] text-white h-8 text-xs rounded-lg"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            onOrder(pharmacy);
-                          }}
-                        >
-                          <MessageCircle className="h-3 w-3 mr-1" />
-                          Order via WhatsApp
-                        </Button>
-                        
-                        {pharmacy.pharmacy_phone && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-8 w-8 p-0 rounded-lg"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              window.open(`tel:${pharmacy.pharmacy_phone}`, '_blank');
-                            }}
-                          >
-                            <Phone className="h-3.5 w-3.5" />
-                          </Button>
-                        )}
-                        
-                        {pharmacy.pharmacy_address && (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-8 w-8 p-0 rounded-lg"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              openInMaps(pharmacy);
-                            }}
-                          >
-                            <ExternalLink className="h-3.5 w-3.5" />
-                          </Button>
-                        )}
-                      </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-              </motion.div>
-            ))}
-          </div>
-
-          {pharmacies.length === 0 && (
-            <div className="text-center py-8">
-              <Store className="h-10 w-10 mx-auto text-muted-foreground/40 mb-2" />
-              <p className="text-sm text-muted-foreground">No pharmacies found</p>
-            </div>
-          )}
-        </div>
-
-        {/* Static Map Preview */}
-        {sortedPharmacies.length > 0 && sortedPharmacies[0].pharmacy_address && (
-          <div className="p-4 pt-0">
+          {/* Action Buttons */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="space-y-2 pt-2"
+          >
             <Button
-              variant="outline"
-              className="w-full h-10 text-xs font-medium rounded-xl border-dashed"
-              onClick={() => openInMaps(sortedPharmacies[0])}
+              className="w-full bg-[#25D366] hover:bg-[#20BD5A] text-white h-11 text-sm font-semibold rounded-xl shadow-sm"
+              onClick={onOrder}
             >
-              <MapPin className="h-3.5 w-3.5 mr-2 text-marketplace" />
-              Open Nearest in Google Maps
-              <ExternalLink className="h-3 w-3 ml-2" />
+              <MessageCircle className="h-4 w-4 mr-2" />
+              Order via WhatsApp
             </Button>
-          </div>
-        )}
+            
+            <div className="flex gap-2">
+              {pharmacy.pharmacy_phone && (
+                <Button
+                  variant="outline"
+                  className="flex-1 h-10 rounded-xl"
+                  onClick={handleCall}
+                >
+                  <Phone className="h-4 w-4 mr-2" />
+                  Call
+                </Button>
+              )}
+              
+              {pharmacy.pharmacy_address && (
+                <Button
+                  variant="outline"
+                  className="flex-1 h-10 rounded-xl border-marketplace/30 hover:bg-marketplace/10 hover:border-marketplace"
+                  onClick={openInMaps}
+                >
+                  <ExternalLink className="h-4 w-4 mr-2 text-marketplace" />
+                  Get Directions
+                </Button>
+              )}
+            </div>
+          </motion.div>
+        </div>
       </DialogContent>
     </Dialog>
   );

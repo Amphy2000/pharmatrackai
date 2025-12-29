@@ -5,7 +5,6 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
-import { useCurrency } from "@/contexts/CurrencyContext";
 import { useToast } from "@/hooks/use-toast";
 import { Link } from "react-router-dom";
 import { CustomerBarcodeScanner } from "@/components/explore/CustomerBarcodeScanner";
@@ -46,8 +45,15 @@ const Explore = () => {
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [mapModalOpen, setMapModalOpen] = useState(false);
   const [selectedMedForMap, setSelectedMedForMap] = useState<PublicMedication | null>(null);
-  const [pharmaciesForMap, setPharmaciesForMap] = useState<any[]>([]);
-  const { formatPrice } = useCurrency();
+  const [selectedPharmacyForMap, setSelectedPharmacyForMap] = useState<{
+    pharmacy_id: string;
+    pharmacy_name: string;
+    pharmacy_address: string | null;
+    pharmacy_phone: string | null;
+    distance?: number;
+    current_stock?: number;
+  } | null>(null);
+  const [detectedLocationName, setDetectedLocationName] = useState<string | null>(null);
   const { toast } = useToast();
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showInstallBanner, setShowInstallBanner] = useState(false);
@@ -224,54 +230,85 @@ const Explore = () => {
     }
   };
 
-  // Show pharmacies on map for a medication
-  const handleShowOnMap = async (medication: PublicMedication) => {
-    try {
-      // Fetch all pharmacies that have this medication
-      const { data, error } = await supabase.rpc("get_public_medications", {
-        search_term: medication.name,
-        location_filter: null,
-      });
-
-      if (error) throw error;
-
-      // Process pharmacies with distance
-      const pharmacies = (data || []).map((med: any) => {
-        const pharmacy: any = {
-          pharmacy_id: med.pharmacy_id,
-          pharmacy_name: med.pharmacy_name,
-          pharmacy_address: med.pharmacy_address,
-          pharmacy_phone: med.pharmacy_phone,
-          selling_price: med.selling_price,
-          current_stock: med.current_stock,
-        };
-        
-        if (latitude && longitude) {
-          const coords = getApproximateCoordinates(med.pharmacy_address);
-          if (coords) {
-            pharmacy.distance = calculateDistance(latitude, longitude, coords.lat, coords.lon);
-          }
-        }
-        
-        return pharmacy;
-      });
-
-      setSelectedMedForMap(medication);
-      setPharmaciesForMap(pharmacies);
-      setMapModalOpen(true);
-    } catch (error) {
-      console.error("Error fetching pharmacies for map:", error);
-    }
+  // Show pharmacy preview for a medication (only the pharmacy that has it, not competitors)
+  const handleShowOnMap = (medication: PublicMedication) => {
+    const pharmacy = {
+      pharmacy_id: medication.pharmacy_id,
+      pharmacy_name: medication.pharmacy_name,
+      pharmacy_address: medication.pharmacy_address,
+      pharmacy_phone: medication.pharmacy_phone,
+      distance: medication.distance,
+      current_stock: medication.current_stock,
+    };
+    
+    setSelectedMedForMap(medication);
+    setSelectedPharmacyForMap(pharmacy);
+    setMapModalOpen(true);
   };
 
-  const handleMapOrder = (pharmacy: any) => {
-    const phone = pharmacy.pharmacy_phone?.replace(/\D/g, "") || "";
+  const handleMapOrder = () => {
+    if (!selectedPharmacyForMap || !selectedMedForMap) return;
+    const phone = selectedPharmacyForMap.pharmacy_phone?.replace(/\D/g, "") || "";
     const message = encodeURIComponent(
-      `Hello, I saw ${selectedMedForMap?.name} in stock on PharmaTrack. I would like to order.`
+      `Hello, I saw ${selectedMedForMap.name} in stock on PharmaTrack. I would like to order.`
     );
     window.open(`https://wa.me/${phone}?text=${message}`, "_blank");
     setMapModalOpen(false);
   };
+
+  // Detect location area name when coordinates change
+  useEffect(() => {
+    if (latitude && longitude) {
+      // Use reverse geocoding approximation based on Nigerian locations
+      const locations = [
+        { name: "Kaduna North", lat: 10.5222, lon: 7.4383 },
+        { name: "Kawo", lat: 10.5436, lon: 7.4247 },
+        { name: "Barnawa", lat: 10.4678, lon: 7.4512 },
+        { name: "Sabon Tasha", lat: 10.4234, lon: 7.4678 },
+        { name: "Malali", lat: 10.5678, lon: 7.4123 },
+        { name: "Ungwan Rimi", lat: 10.5123, lon: 7.4567 },
+        { name: "Tudun Wada", lat: 10.4890, lon: 7.4234 },
+        { name: "Lagos Island", lat: 6.4541, lon: 3.4083 },
+        { name: "Victoria Island", lat: 6.4281, lon: 3.4219 },
+        { name: "Ikeja", lat: 6.6018, lon: 3.3515 },
+        { name: "Lekki", lat: 6.4698, lon: 3.5852 },
+        { name: "Surulere", lat: 6.5059, lon: 3.3509 },
+        { name: "Yaba", lat: 6.5077, lon: 3.3792 },
+        { name: "Ikoyi", lat: 6.4503, lon: 3.4286 },
+        { name: "Garki", lat: 9.0579, lon: 7.4951 },
+        { name: "Wuse", lat: 9.0765, lon: 7.4898 },
+        { name: "Maitama", lat: 9.0863, lon: 7.5041 },
+        { name: "Asokoro", lat: 9.0356, lon: 7.5322 },
+        { name: "Kano City", lat: 12.0022, lon: 8.5920 },
+        { name: "Ibadan North", lat: 7.3960, lon: 3.9173 },
+        { name: "Port Harcourt", lat: 4.8156, lon: 7.0498 },
+        { name: "Enugu", lat: 6.4584, lon: 7.5464 },
+        { name: "Benin City", lat: 6.3350, lon: 5.6037 },
+        { name: "Jos", lat: 9.8965, lon: 8.8583 },
+        { name: "Zaria", lat: 11.0785, lon: 7.7199 },
+      ];
+
+      let closestLocation = "your area";
+      let minDistance = Infinity;
+
+      for (const loc of locations) {
+        const dist = calculateDistance(latitude, longitude, loc.lat, loc.lon);
+        if (dist < minDistance) {
+          minDistance = dist;
+          closestLocation = loc.name;
+        }
+      }
+
+      // Only use the name if within 50km of a known location
+      if (minDistance <= 50) {
+        setDetectedLocationName(closestLocation);
+      } else {
+        setDetectedLocationName(null);
+      }
+    } else {
+      setDetectedLocationName(null);
+    }
+  }, [latitude, longitude]);
 
   // Track page visit
   useEffect(() => {
@@ -598,7 +635,12 @@ const Explore = () => {
                   <CheckCircle className="h-3.5 w-3.5 text-success" />
                 </div>
                 <div>
-                  <span className="text-xs font-medium text-success">Location detected</span>
+                  <span className="text-xs font-medium text-success">
+                    {detectedLocationName 
+                      ? `Pharmacies near ${detectedLocationName}` 
+                      : "Location detected"
+                    }
+                  </span>
                   <p className="text-[10px] text-muted-foreground">Showing pharmacies nearest to you first</p>
                 </div>
               </div>
@@ -812,8 +854,7 @@ const Explore = () => {
         isOpen={mapModalOpen}
         onClose={() => setMapModalOpen(false)}
         medication={selectedMedForMap}
-        pharmacies={pharmaciesForMap}
-        userLocation={latitude && longitude ? { lat: latitude, lon: longitude } : null}
+        pharmacy={selectedPharmacyForMap}
         onOrder={handleMapOrder}
       />
     </div>
