@@ -1,13 +1,12 @@
 import { useState, useEffect, useRef } from 'react';
-import { Star, ChevronLeft, ChevronRight, MapPin, Store, MessageCircle, Clock, Navigation, Loader2, Sparkles, Zap, ExternalLink } from 'lucide-react';
+import { Star, ChevronLeft, ChevronRight, MapPin, Store, MessageCircle, Clock, Navigation, Loader2, Sparkles, Zap, ExternalLink, Globe, AlertCircle } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
-import { useCurrency } from '@/contexts/CurrencyContext';
 import { differenceInDays } from 'date-fns';
 import { useGeolocation, calculateDistance, getApproximateCoordinates, getFallbackLocationName, getGoogleMapsLink } from '@/hooks/useGeolocation';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { smartShuffle } from '@/utils/smartShuffle';
 
 interface FeaturedMedication {
@@ -24,6 +23,7 @@ interface FeaturedMedication {
   is_featured: boolean;
   featured_until: string | null;
   distance?: number;
+  region?: string;
 }
 
 interface SpotlightSectionProps {
@@ -34,30 +34,43 @@ export const SpotlightSection = ({ onOrder }: SpotlightSectionProps) => {
   const [featured, setFeatured] = useState<FeaturedMedication[]>([]);
   const [filteredFeatured, setFilteredFeatured] = useState<FeaturedMedication[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [locationEnabled, setLocationEnabled] = useState(false);
+  const [hasNearbyItems, setHasNearbyItems] = useState(true);
   const [activeIndex, setActiveIndex] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const { } = useCurrency(); // Keep hook for potential future use
-  const { latitude, longitude, loading: geoLoading, error: geoError, requestLocation } = useGeolocation();
+  const { latitude, longitude, loading: geoLoading, requestLocation } = useGeolocation();
 
   useEffect(() => {
     loadFeaturedMedications();
   }, []);
 
   // Filter by location when user location is available
-  // Note: We no longer filter OUT items - we just sort by distance and add distance info
   useEffect(() => {
     if (featured.length > 0) {
       if (latitude && longitude) {
-        // Add distance info but don't filter out any products
+        // Add distance info
         const withDistance = featured.map(med => {
           const pharmacyCoords = getApproximateCoordinates(med.pharmacy_address);
           if (pharmacyCoords) {
             const distance = calculateDistance(latitude, longitude, pharmacyCoords.lat, pharmacyCoords.lon);
-            return { ...med, distance };
+            return { 
+              ...med, 
+              distance,
+              region: getFallbackLocationName(med.pharmacy_address) || undefined
+            };
           }
-          return { ...med, distance: undefined };
+          return { 
+            ...med, 
+            distance: undefined,
+            region: getFallbackLocationName(med.pharmacy_address) || undefined
+          };
         });
+
+        // Check if any are within 10km
+        const nearbyItems = withDistance.filter(med => 
+          med.distance !== undefined && med.distance <= 10
+        );
+
+        setHasNearbyItems(nearbyItems.length > 0);
         
         // Sort by distance (closest first, unknown distances last)
         const sorted = withDistance.sort((a, b) => {
@@ -75,16 +88,20 @@ export const SpotlightSection = ({ onOrder }: SpotlightSectionProps) => {
         });
         
         setFilteredFeatured(shuffled);
-        setLocationEnabled(true);
       } else {
         // No location - apply smart shuffle for fair distribution
-        const shuffled = smartShuffle(featured, {
+        const withRegions = featured.map(med => ({
+          ...med,
+          region: getFallbackLocationName(med.pharmacy_address) || undefined
+        }));
+        
+        const shuffled = smartShuffle(withRegions, {
           prioritizeFeatured: true,
           groupByPharmacy: false,
           maxPerPharmacy: 2,
         });
         setFilteredFeatured(shuffled);
-        setLocationEnabled(false);
+        setHasNearbyItems(false);
       }
     } else {
       setFilteredFeatured([]);
@@ -170,7 +187,7 @@ export const SpotlightSection = ({ onOrder }: SpotlightSectionProps) => {
     );
   }
 
-  // Always show section with empty state message on mobile if no featured items
+  // Always show section with empty state message if no featured items
   if (filteredFeatured.length === 0 && !isLoading) {
     return (
       <div className="mb-6 md:mb-8">
@@ -206,7 +223,9 @@ export const SpotlightSection = ({ onOrder }: SpotlightSectionProps) => {
           </div>
           <div>
             <h2 className="text-base md:text-xl font-bold text-foreground">Spotlight</h2>
-            <p className="text-[10px] md:text-xs text-muted-foreground">Featured products</p>
+            <p className="text-[10px] md:text-xs text-muted-foreground">
+              {hasNearbyItems ? 'Featured near you' : 'Featured products'}
+            </p>
           </div>
         </div>
         <div className="flex items-center gap-1.5">
@@ -257,7 +276,7 @@ export const SpotlightSection = ({ onOrder }: SpotlightSectionProps) => {
           
           return (
             <motion.div
-              key={`spotlight-${medication.id}`}
+              key={`spotlight-${medication.id}-${medication.pharmacy_id}`}
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ delay: index * 0.05 }}
@@ -285,7 +304,7 @@ export const SpotlightSection = ({ onOrder }: SpotlightSectionProps) => {
                   <h3 className="font-bold text-sm md:text-lg mb-1 line-clamp-1">{medication.name}</h3>
                   <Badge variant="secondary" className="mb-2 md:mb-3 text-[10px] md:text-xs">{medication.category}</Badge>
 
-                  {/* Stock indicator instead of price */}
+                  {/* Stock indicator */}
                   <Badge 
                     variant="outline" 
                     className="bg-success/10 text-success border-success/30 text-xs mb-2 md:mb-3"
@@ -303,21 +322,27 @@ export const SpotlightSection = ({ onOrder }: SpotlightSectionProps) => {
                     {/* Distance Display - Always show */}
                     {medication.distance !== undefined ? (
                       <div className="flex items-center gap-1.5">
-                        {medication.distance <= 5 ? (
+                        {medication.distance <= 3 ? (
                           <Badge className="bg-gradient-to-r from-green-500 to-emerald-500 text-white text-[9px] md:text-[10px] px-2 py-0.5 gap-1">
                             <Zap className="h-2.5 w-2.5" />
                             Fast Pickup • {medication.distance < 1 ? `${Math.round(medication.distance * 1000)}m` : `${medication.distance.toFixed(1)}km`}
                           </Badge>
+                        ) : medication.distance <= 10 ? (
+                          <Badge variant="secondary" className="text-[9px] md:text-[10px] px-2 py-0.5 gap-1">
+                            <Navigation className="h-2.5 w-2.5" />
+                            {medication.distance.toFixed(1)}km away
+                          </Badge>
                         ) : (
-                          <Badge variant="secondary" className="text-[9px] md:text-[10px] px-2 py-0.5">
-                            📍 {medication.distance.toFixed(1)}km away
+                          <Badge variant="outline" className="text-[9px] md:text-[10px] px-2 py-0.5 text-muted-foreground">
+                            <Globe className="h-2.5 w-2.5 mr-1" />
+                            {medication.region || `${medication.distance.toFixed(0)}km`}
                           </Badge>
                         )}
                       </div>
                     ) : (
                       <div className="flex items-center gap-1.5">
                         <Badge variant="outline" className="text-[9px] md:text-[10px] px-2 py-0.5 text-muted-foreground">
-                          📍 {getFallbackLocationName(medication.pharmacy_address) || 'Location available'}
+                          📍 {medication.region || 'Location available'}
                         </Badge>
                       </div>
                     )}

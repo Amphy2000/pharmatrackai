@@ -5,19 +5,65 @@ interface GeolocationState {
   longitude: number | null;
   error: string | null;
   loading: boolean;
+  permissionDenied: boolean;
 }
 
+// Cache location in session storage for faster subsequent loads
+const LOCATION_CACHE_KEY = 'pharmatrack_user_location';
+const CACHE_DURATION = 300000; // 5 minutes
+
+const getCachedLocation = (): { lat: number; lon: number; timestamp: number } | null => {
+  try {
+    const cached = sessionStorage.getItem(LOCATION_CACHE_KEY);
+    if (cached) {
+      const data = JSON.parse(cached);
+      if (Date.now() - data.timestamp < CACHE_DURATION) {
+        return data;
+      }
+    }
+  } catch {
+    // Ignore cache errors
+  }
+  return null;
+};
+
+const setCachedLocation = (lat: number, lon: number) => {
+  try {
+    sessionStorage.setItem(LOCATION_CACHE_KEY, JSON.stringify({
+      lat,
+      lon,
+      timestamp: Date.now()
+    }));
+  } catch {
+    // Ignore cache errors
+  }
+};
+
 export const useGeolocation = (requestOnMount = false) => {
-  const [state, setState] = useState<GeolocationState>({
-    latitude: null,
-    longitude: null,
-    error: null,
-    loading: false,
+  const [state, setState] = useState<GeolocationState>(() => {
+    // Initialize with cached location if available
+    const cached = getCachedLocation();
+    if (cached) {
+      return {
+        latitude: cached.lat,
+        longitude: cached.lon,
+        error: null,
+        loading: false,
+        permissionDenied: false,
+      };
+    }
+    return {
+      latitude: null,
+      longitude: null,
+      error: null,
+      loading: false,
+      permissionDenied: false,
+    };
   });
 
   const requestLocation = useCallback(() => {
     if (!navigator.geolocation) {
-      setState(prev => ({ ...prev, error: 'Geolocation is not supported' }));
+      setState(prev => ({ ...prev, error: 'Geolocation is not supported', permissionDenied: true }));
       return;
     }
 
@@ -25,34 +71,43 @@ export const useGeolocation = (requestOnMount = false) => {
 
     navigator.geolocation.getCurrentPosition(
       (position) => {
+        const lat = position.coords.latitude;
+        const lon = position.coords.longitude;
+        
+        // Cache the location
+        setCachedLocation(lat, lon);
+        
         setState({
-          latitude: position.coords.latitude,
-          longitude: position.coords.longitude,
+          latitude: lat,
+          longitude: lon,
           error: null,
           loading: false,
+          permissionDenied: false,
         });
       },
       (error) => {
+        const permissionDenied = error.code === error.PERMISSION_DENIED;
         setState({
           latitude: null,
           longitude: null,
           error: error.message,
           loading: false,
+          permissionDenied,
         });
       },
       {
         enableHighAccuracy: true,
-        timeout: 10000,
+        timeout: 15000, // Increased timeout for slower connections
         maximumAge: 300000, // 5 minutes cache
       }
     );
   }, []);
 
   useEffect(() => {
-    if (requestOnMount) {
+    if (requestOnMount && !state.latitude) {
       requestLocation();
     }
-  }, [requestOnMount, requestLocation]);
+  }, [requestOnMount, requestLocation, state.latitude]);
 
   return { ...state, requestLocation };
 };
