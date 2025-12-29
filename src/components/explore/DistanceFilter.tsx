@@ -1,4 +1,4 @@
-import { MapPin, ArrowUpDown, Package, DollarSign, Navigation } from 'lucide-react';
+import { MapPin, ArrowUpDown, Package, Navigation } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -11,7 +11,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 
 export type DistanceRadius = 1 | 5 | 10 | 'all';
-export type SortOption = 'distance' | 'price-low' | 'price-high' | 'availability';
+export type SortOption = 'distance' | 'availability';
 
 interface DistanceFilterProps {
   selectedRadius: DistanceRadius;
@@ -39,8 +39,6 @@ export const DistanceFilter = ({
 
   const sortOptions: { value: SortOption; label: string; icon: React.ReactNode }[] = [
     { value: 'distance', label: 'Nearest first', icon: <Navigation className="h-4 w-4" /> },
-    { value: 'price-low', label: 'Price: Low to High', icon: <DollarSign className="h-4 w-4" /> },
-    { value: 'price-high', label: 'Price: High to Low', icon: <DollarSign className="h-4 w-4" /> },
     { value: 'availability', label: 'Most in stock', icon: <Package className="h-4 w-4" /> },
   ];
 
