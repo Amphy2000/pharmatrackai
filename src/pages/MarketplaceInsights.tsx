@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { format, subDays } from "date-fns";
+import { format, subDays, addDays } from "date-fns";
 import { 
   Eye, 
   TrendingUp, 
@@ -13,7 +13,9 @@ import {
   Search,
   Star,
   Clock,
-  Users
+  Users,
+  Rocket,
+  Loader2
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -29,6 +31,21 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { usePharmacy } from "@/hooks/usePharmacy";
 import { useToast } from "@/hooks/use-toast";
@@ -44,6 +61,12 @@ import {
   ResponsiveContainer,
 } from "recharts";
 
+const BOOST_OPTIONS = [
+  { value: 7, label: '7 Days', price: '₦1,000' },
+  { value: 14, label: '14 Days', price: '₦1,500' },
+  { value: 30, label: '30 Days', price: '₦2,500' },
+];
+
 const MarketplaceInsights = () => {
   const { pharmacy } = usePharmacy();
   const { toast } = useToast();
@@ -51,6 +74,9 @@ const MarketplaceInsights = () => {
   const queryClient = useQueryClient();
   const [searchFilter, setSearchFilter] = useState("");
   const [activeTab, setActiveTab] = useState("overview");
+  const [boostDialogOpen, setBoostDialogOpen] = useState(false);
+  const [selectedMedForBoost, setSelectedMedForBoost] = useState<{ id: string; name: string } | null>(null);
+  const [selectedBoostDuration, setSelectedBoostDuration] = useState(7);
 
   // Fetch store views for the last 7 days
   const { data: viewsData } = useQuery({
@@ -219,6 +245,42 @@ const MarketplaceInsights = () => {
         variant: "destructive",
       });
     }
+  };
+
+  // Boost mutation for featured spotlight
+  const boostMutation = useMutation({
+    mutationFn: async ({ medicationId, duration }: { medicationId: string; duration: number }) => {
+      const expiryDate = addDays(new Date(), duration);
+      const { error } = await supabase
+        .from("medications")
+        .update({
+          is_featured: true,
+          featured_until: expiryDate.toISOString(),
+        })
+        .eq("id", medicationId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["marketplace-medications"] });
+      setBoostDialogOpen(false);
+      setSelectedMedForBoost(null);
+      toast({
+        title: "Product Boosted! 🚀",
+        description: `Your product is now featured in the Spotlight for ${selectedBoostDuration} days.`,
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Boost Failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleBoost = (med: { id: string; name: string }) => {
+    setSelectedMedForBoost(med);
+    setBoostDialogOpen(true);
   };
 
   const totalViews = viewsData?.reduce((sum, day) => sum + day.views, 0) || 0;
@@ -487,10 +549,10 @@ const MarketplaceInsights = () => {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Product</TableHead>
-                        <TableHead>Category</TableHead>
+                        <TableHead className="hidden sm:table-cell">Category</TableHead>
                         <TableHead>Stock</TableHead>
-                        <TableHead>Price</TableHead>
-                        <TableHead className="text-center">Featured</TableHead>
+                        <TableHead className="hidden sm:table-cell">Price</TableHead>
+                        <TableHead className="text-center">Boost</TableHead>
                         <TableHead className="text-right">Marketplace</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -499,13 +561,13 @@ const MarketplaceInsights = () => {
                         <TableRow key={med.id}>
                           <TableCell className="font-medium">
                             <div className="flex items-center gap-2">
-                              {med.name}
+                              <span className="truncate max-w-[150px]">{med.name}</span>
                               {med.is_featured && (
-                                <Star className="h-4 w-4 text-marketplace fill-marketplace" />
+                                <Star className="h-4 w-4 text-marketplace fill-marketplace flex-shrink-0" />
                               )}
                             </div>
                           </TableCell>
-                          <TableCell>
+                          <TableCell className="hidden sm:table-cell">
                             <Badge variant="outline">{med.category}</Badge>
                           </TableCell>
                           <TableCell>
@@ -516,13 +578,25 @@ const MarketplaceInsights = () => {
                               {med.current_stock}
                             </Badge>
                           </TableCell>
-                          <TableCell>{formatPrice(med.selling_price || 0)}</TableCell>
+                          <TableCell className="hidden sm:table-cell">{formatPrice(med.selling_price || 0)}</TableCell>
                           <TableCell className="text-center">
-                            <Checkbox
-                              checked={med.is_featured || false}
-                              onCheckedChange={() => toggleFeaturedStatus(med.id, med.is_featured || false)}
-                              disabled={!med.is_public}
-                            />
+                            {med.is_featured ? (
+                              <Badge variant="secondary" className="text-xs bg-marketplace/10 text-marketplace">
+                                <Star className="h-3 w-3 mr-1 fill-current" />
+                                Live
+                              </Badge>
+                            ) : (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-7 text-xs gap-1 border-marketplace/30 text-marketplace hover:bg-marketplace/10"
+                                onClick={() => handleBoost({ id: med.id, name: med.name })}
+                                disabled={!med.is_public || med.current_stock === 0}
+                              >
+                                <Rocket className="h-3 w-3" />
+                                Boost
+                              </Button>
+                            )}
                           </TableCell>
                           <TableCell className="text-right">
                             <div className="flex items-center justify-end gap-2">
@@ -548,6 +622,77 @@ const MarketplaceInsights = () => {
             </Card>
           </TabsContent>
         </Tabs>
+
+        {/* Boost Dialog */}
+        <Dialog open={boostDialogOpen} onOpenChange={setBoostDialogOpen}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Rocket className="h-5 w-5 text-marketplace" />
+                Boost to Spotlight
+              </DialogTitle>
+              <DialogDescription>
+                Get more visibility! Your product will appear in the featured "Spotlight" section.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4 py-4">
+              <div className="p-3 bg-muted rounded-lg">
+                <p className="text-sm font-medium">{selectedMedForBoost?.name}</p>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">Select Duration</label>
+                <Select
+                  value={selectedBoostDuration.toString()}
+                  onValueChange={(val) => setSelectedBoostDuration(parseInt(val))}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {BOOST_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value.toString()}>
+                        <div className="flex items-center justify-between gap-4">
+                          <span>{option.label}</span>
+                          <Badge variant="outline" className="text-marketplace">{option.price}</Badge>
+                        </div>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="p-3 bg-marketplace/10 rounded-lg border border-marketplace/20">
+                <p className="text-sm text-marketplace font-medium">
+                  ✨ Featured products get 3x more views on average!
+                </p>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setBoostDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  if (selectedMedForBoost) {
+                    boostMutation.mutate({
+                      medicationId: selectedMedForBoost.id,
+                      duration: selectedBoostDuration,
+                    });
+                  }
+                }}
+                disabled={boostMutation.isPending}
+                className="gap-2 bg-marketplace hover:bg-marketplace/90"
+              >
+                {boostMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+                <Rocket className="h-4 w-4" />
+                Boost Now
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </main>
     </div>
   );

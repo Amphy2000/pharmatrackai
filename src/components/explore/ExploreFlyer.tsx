@@ -125,7 +125,7 @@ export const ExploreFlyer = ({
           <span className="hidden sm:inline">Get Flyer</span>
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-md mx-auto">
+      <DialogContent className="max-w-md mx-auto max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <QrCode className="h-5 w-5 text-emerald-600" />

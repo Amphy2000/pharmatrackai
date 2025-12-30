@@ -254,8 +254,8 @@ export const FeaturedSlotsPanel = () => {
 
       {/* Assign Dialog */}
       <Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
+        <DialogContent className="max-w-md max-h-[85vh] overflow-hidden flex flex-col">
+          <DialogHeader className="flex-shrink-0">
             <DialogTitle className="flex items-center gap-2">
               <Gift className="h-5 w-5 text-marketplace" />
               Assign Featured Slot
@@ -265,7 +265,7 @@ export const FeaturedSlotsPanel = () => {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-4">
+          <div className="space-y-4 py-4 overflow-y-auto flex-1">
             {/* Pharmacy Select */}
             <div className="space-y-2">
               <label className="text-sm font-medium">Pharmacy</label>
@@ -279,7 +279,7 @@ export const FeaturedSlotsPanel = () => {
                 <SelectTrigger>
                   <SelectValue placeholder="Select a pharmacy" />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent className="max-h-60">
                   {pharmacies.map((pharmacy) => (
                     <SelectItem key={pharmacy.id} value={pharmacy.id}>
                       {pharmacy.name}
@@ -310,7 +310,7 @@ export const FeaturedSlotsPanel = () => {
                     <SelectTrigger>
                       <SelectValue placeholder="Select a medication" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="max-h-60">
                       {pharmacyMedications.map((med) => (
                         <SelectItem 
                           key={med.id} 
@@ -318,9 +318,9 @@ export const FeaturedSlotsPanel = () => {
                           disabled={med.is_featured}
                         >
                           <div className="flex items-center gap-2">
-                            <span>{med.name}</span>
+                            <span className="truncate">{med.name}</span>
                             {med.is_featured && (
-                              <Badge variant="secondary" className="text-[10px]">Already featured</Badge>
+                              <Badge variant="secondary" className="text-[10px] flex-shrink-0">Featured</Badge>
                             )}
                           </div>
                         </SelectItem>
@@ -354,7 +354,7 @@ export const FeaturedSlotsPanel = () => {
             )}
           </div>
 
-          <DialogFooter>
+          <DialogFooter className="flex-shrink-0 border-t pt-4">
             <Button variant="outline" onClick={() => setAssignDialogOpen(false)}>
               Cancel
             </Button>
