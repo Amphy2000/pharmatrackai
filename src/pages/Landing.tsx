@@ -1,12 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { 
-  Clock, ShieldCheck, Globe, Smartphone, Sparkles, Check, Calculator,
-  ArrowRight, Star, Zap, TrendingUp, Lock, BadgeCheck, ChevronRight,
-  FileUp, Wand2, Timer, WifiOff, Database, Headphones, X, DollarSign, AlertTriangle,
-  Phone, MessageCircle, Menu, Play
-} from 'lucide-react';
+import { Clock, ShieldCheck, Globe, Smartphone, Sparkles, Check, Calculator, ArrowRight, Star, Zap, TrendingUp, Lock, BadgeCheck, ChevronRight, FileUp, Wand2, Timer, WifiOff, Database, Headphones, X, DollarSign, AlertTriangle, Phone, MessageCircle, Menu, Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/Logo';
 import { Card, CardContent } from '@/components/ui/card';
@@ -21,58 +16,79 @@ import { ProfitProtectorCalculator } from '@/components/landing/ProfitProtectorC
 import { FeatureDemo } from '@/components/landing/FeatureDemo';
 import { VideoShowcase } from '@/components/landing/VideoShowcase';
 import { CompetitorComparison } from '@/components/landing/CompetitorComparison';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 // Animation variants
 const fadeInUp = {
-  hidden: { opacity: 0, y: 30 },
-  visible: { opacity: 1, y: 0 }
+  hidden: {
+    opacity: 0,
+    y: 30
+  },
+  visible: {
+    opacity: 1,
+    y: 0
+  }
 };
-
 const staggerContainer = {
-  hidden: { opacity: 0 },
-  visible: { opacity: 1, transition: { staggerChildren: 0.15 } }
+  hidden: {
+    opacity: 0
+  },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.15
+    }
+  }
 };
-
 const scaleIn = {
-  hidden: { opacity: 0, scale: 0.9 },
-  visible: { opacity: 1, scale: 1 }
+  hidden: {
+    opacity: 0,
+    scale: 0.9
+  },
+  visible: {
+    opacity: 1,
+    scale: 1
+  }
 };
-
 const Landing = () => {
-  const { user, isLoading } = useAuth();
-  const { enableDemoMode } = useDemo();
+  const {
+    user,
+    isLoading
+  } = useAuth();
+  const {
+    enableDemoMode
+  } = useDemo();
   const navigate = useNavigate();
   const [isInternational, setIsInternational] = useState(false);
   const [monthlyRevenue, setMonthlyRevenue] = useState('');
-
   useEffect(() => {
     if (!isLoading && user) {
       navigate('/dashboard');
     }
   }, [user, isLoading, navigate]);
-
   const handleTryDemo = () => {
     enableDemoMode();
     navigate('/demo');
   };
-
   const calculateSavings = () => {
     const revenue = parseFloat(monthlyRevenue.replace(/,/g, '')) || 0;
     if (isInternational) {
-      return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(revenue * 12 * 0.05);
+      return new Intl.NumberFormat('en-US', {
+        style: 'currency',
+        currency: 'USD',
+        maximumFractionDigits: 0
+      }).format(revenue * 12 * 0.05);
     }
-    return new Intl.NumberFormat('en-NG', { style: 'currency', currency: 'NGN', maximumFractionDigits: 0 }).format(revenue * 12 * 0.05);
+    return new Intl.NumberFormat('en-NG', {
+      style: 'currency',
+      currency: 'NGN',
+      maximumFractionDigits: 0
+    }).format(revenue * 12 * 0.05);
   };
 
   // NGN Pricing (Disruptive 3-Tier Model)
   const ngnPricing = {
-    starter: { 
+    starter: {
       name: 'Switch & Save',
       tagline: 'Lifetime License Feel',
       setup: '₦150,000',
@@ -82,7 +98,7 @@ const Landing = () => {
       features: ['Lifetime License Feel', 'Cloud Backups', '1 User Account', 'Unlimited SKUs', 'Basic POS System', 'Expiry Tracking', 'Email Support'],
       highlight: false
     },
-    pro: { 
+    pro: {
       name: 'AI Powerhouse',
       tagline: 'Stop Drug Waste with AI',
       setup: '₦0',
@@ -92,7 +108,7 @@ const Landing = () => {
       features: ['₦0 Setup Fee', 'Automated Expiry Discounting', 'Demand Forecasting AI', 'Unlimited Users', 'Multi-Branch Ready', 'Staff Clock-in Tracking', 'NAFDAC Compliance Reports', 'Controlled Drugs Register', 'Manufacturing Date Tracking', 'Priority Support'],
       highlight: true
     },
-    enterprise: { 
+    enterprise: {
       name: 'Enterprise',
       tagline: 'Global Standard',
       setup: 'Custom',
@@ -106,14 +122,14 @@ const Landing = () => {
 
   // USD Pricing (International)
   const usdPricing = {
-    pro: { 
+    pro: {
       name: 'Pro',
       tagline: 'Everything You Need',
       monthly: '$99',
       features: ['Unlimited Users', 'Unlimited SKUs', 'AI Expiry Insights', 'Demand Forecasting', 'Multi-Branch Support', 'Staff Management', 'Priority Support', 'Mobile Scanning'],
       highlight: true
     },
-    enterprise: { 
+    enterprise: {
       name: 'Enterprise',
       tagline: 'For Large Organizations',
       monthly: '$299',
@@ -123,43 +139,79 @@ const Landing = () => {
   };
 
   // Generic POS vs PharmaTrack AI - Comprehensive Comparison Table
-  const comparisonData = [
-    { feature: 'Inventory Entry', oldApp: 'Manual search of 100k items', pharmatrack: 'AI Invoice Scanner: Snap & Stock 50+ items in 10 secs', critical: true },
-    { feature: 'Patient Discovery', oldApp: 'Walk-in only, no online presence', pharmatrack: 'Public Marketplace: Patients find you by distance (1-10km)', critical: true },
-    { feature: 'Compliance', oldApp: 'Generic Expiry alerts only', pharmatrack: '2025 NAFDAC Ready: Auto-generates Batch/BN Traceability logs', critical: true },
-    { feature: 'Anti-Theft', oldApp: 'Staff can edit prices easily', pharmatrack: 'Locked Pricing: Zero-Price-Manipulation (Admin Only)', critical: true },
-    { feature: 'Clinical Care', oldApp: 'Basic grocery-style receipt', pharmatrack: 'Digital Dispensing: Integrated Dosage & Ingredient Search', critical: true },
-    { feature: 'Owner Alerts', oldApp: 'No automated notifications', pharmatrack: 'SMS & WhatsApp: Instant low-stock & expiry alerts to your phone', critical: true },
-    { feature: 'Performance', oldApp: 'Bloated app; lags on older phones', pharmatrack: 'High-Speed Lite: Instant login on all Nigerian networks', critical: false },
-  ];
+  const comparisonData = [{
+    feature: 'Inventory Entry',
+    oldApp: 'Manual search of 100k items',
+    pharmatrack: 'AI Invoice Scanner: Snap & Stock 50+ items in 10 secs',
+    critical: true
+  }, {
+    feature: 'Patient Discovery',
+    oldApp: 'Walk-in only, no online presence',
+    pharmatrack: 'Public Marketplace: Patients find you by distance (1-10km)',
+    critical: true
+  }, {
+    feature: 'Compliance',
+    oldApp: 'Generic Expiry alerts only',
+    pharmatrack: '2025 NAFDAC Ready: Auto-generates Batch/BN Traceability logs',
+    critical: true
+  }, {
+    feature: 'Anti-Theft',
+    oldApp: 'Staff can edit prices easily',
+    pharmatrack: 'Locked Pricing: Zero-Price-Manipulation (Admin Only)',
+    critical: true
+  }, {
+    feature: 'Clinical Care',
+    oldApp: 'Basic grocery-style receipt',
+    pharmatrack: 'Digital Dispensing: Integrated Dosage & Ingredient Search',
+    critical: true
+  }, {
+    feature: 'Owner Alerts',
+    oldApp: 'No automated notifications',
+    pharmatrack: 'SMS & WhatsApp: Instant low-stock & expiry alerts to your phone',
+    critical: true
+  }, {
+    feature: 'Performance',
+    oldApp: 'Bloated app; lags on older phones',
+    pharmatrack: 'High-Speed Lite: Instant login on all Nigerian networks',
+    critical: false
+  }];
 
   // Compliance badges for pharmacy-specific positioning
-  const complianceBadges = [
-    { icon: ShieldCheck, label: 'NAFDAC Ready', description: 'Audit-ready compliance reports' },
-    { icon: Lock, label: 'Controlled Drugs Register', description: 'Legal narcotics tracking' },
-    { icon: BadgeCheck, label: 'Drug Interaction Alerts', description: 'Patient safety at checkout' },
-  ];
-
-  if (isLoading) return (
-    <div className="min-h-screen bg-background flex items-center justify-center">
-      <motion.div 
-        initial={{ opacity: 0, scale: 0.9 }}
-        animate={{ opacity: 1, scale: 1 }}
-      >
+  const complianceBadges = [{
+    icon: ShieldCheck,
+    label: 'NAFDAC Ready',
+    description: 'Audit-ready compliance reports'
+  }, {
+    icon: Lock,
+    label: 'Controlled Drugs Register',
+    description: 'Legal narcotics tracking'
+  }, {
+    icon: BadgeCheck,
+    label: 'Drug Interaction Alerts',
+    description: 'Patient safety at checkout'
+  }];
+  if (isLoading) return <div className="min-h-screen bg-background flex items-center justify-center">
+      <motion.div initial={{
+      opacity: 0,
+      scale: 0.9
+    }} animate={{
+      opacity: 1,
+      scale: 1
+    }}>
         <Logo showText={false} size="lg" linkTo="" />
       </motion.div>
-    </div>
-  );
-
-  return (
-    <div className="min-h-screen bg-background overflow-x-hidden">
+    </div>;
+  return <div className="min-h-screen bg-background overflow-x-hidden">
       {/* Navigation */}
-      <motion.nav 
-        initial={{ y: -20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        transition={{ duration: 0.5 }}
-        className="fixed top-0 left-0 right-0 z-50 border-b border-border/40 backdrop-blur-xl bg-background/80"
-      >
+      <motion.nav initial={{
+      y: -20,
+      opacity: 0
+    }} animate={{
+      y: 0,
+      opacity: 1
+    }} transition={{
+      duration: 0.5
+    }} className="fixed top-0 left-0 right-0 z-50 border-b border-border/40 backdrop-blur-xl bg-background/80">
         <div className="container mx-auto px-4 sm:px-6 py-4 flex items-center justify-between">
           <Logo size="sm" linkTo="/" />
           
@@ -169,10 +221,18 @@ const Landing = () => {
               <Globe className="h-4 w-4" />
               Marketplace
             </Link>
-            <button onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })} className="text-sm text-muted-foreground hover:text-foreground transition-colors">Features</button>
-            <button onClick={() => document.getElementById('comparison')?.scrollIntoView({ behavior: 'smooth' })} className="text-sm text-muted-foreground hover:text-foreground transition-colors">Why PharmaTrack</button>
-            <button onClick={() => document.getElementById('testimonials')?.scrollIntoView({ behavior: 'smooth' })} className="text-sm text-muted-foreground hover:text-foreground transition-colors">Testimonials</button>
-            <button onClick={() => document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' })} className="text-sm text-muted-foreground hover:text-foreground transition-colors">Pricing</button>
+            <button onClick={() => document.getElementById('features')?.scrollIntoView({
+            behavior: 'smooth'
+          })} className="text-sm text-muted-foreground hover:text-foreground transition-colors">Features</button>
+            <button onClick={() => document.getElementById('comparison')?.scrollIntoView({
+            behavior: 'smooth'
+          })} className="text-sm text-muted-foreground hover:text-foreground transition-colors">Why PharmaTrack</button>
+            <button onClick={() => document.getElementById('testimonials')?.scrollIntoView({
+            behavior: 'smooth'
+          })} className="text-sm text-muted-foreground hover:text-foreground transition-colors">Testimonials</button>
+            <button onClick={() => document.getElementById('pricing')?.scrollIntoView({
+            behavior: 'smooth'
+          })} className="text-sm text-muted-foreground hover:text-foreground transition-colors">Pricing</button>
           </div>
 
           <div className="flex items-center gap-3">
@@ -201,16 +261,24 @@ const Landing = () => {
                     Marketplace
                   </Link>
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => document.getElementById('features')?.scrollIntoView({ behavior: 'smooth' })}>
+                <DropdownMenuItem onClick={() => document.getElementById('features')?.scrollIntoView({
+                behavior: 'smooth'
+              })}>
                   Features
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => document.getElementById('comparison')?.scrollIntoView({ behavior: 'smooth' })}>
+                <DropdownMenuItem onClick={() => document.getElementById('comparison')?.scrollIntoView({
+                behavior: 'smooth'
+              })}>
                   Why PharmaTrack
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => document.getElementById('testimonials')?.scrollIntoView({ behavior: 'smooth' })}>
+                <DropdownMenuItem onClick={() => document.getElementById('testimonials')?.scrollIntoView({
+                behavior: 'smooth'
+              })}>
                   Testimonials
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => document.getElementById('pricing')?.scrollIntoView({ behavior: 'smooth' })}>
+                <DropdownMenuItem onClick={() => document.getElementById('pricing')?.scrollIntoView({
+                behavior: 'smooth'
+              })}>
                   Pricing
                 </DropdownMenuItem>
                 <DropdownMenuItem asChild>
@@ -229,92 +297,95 @@ const Landing = () => {
       <section className="relative pt-32 pb-20 sm:pt-40 sm:pb-32 overflow-hidden">
         {/* Background Effects */}
         <div className="absolute inset-0 bg-gradient-mesh opacity-50"></div>
-        <motion.div 
-          className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl"
-          animate={{ y: [0, -20, 0], scale: [1, 1.05, 1] }}
-          transition={{ duration: 8, repeat: Infinity, ease: 'easeInOut' }}
-        />
-        <motion.div 
-          className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-secondary/10 rounded-full blur-3xl"
-          animate={{ y: [0, 20, 0], scale: [1, 1.1, 1] }}
-          transition={{ duration: 10, repeat: Infinity, ease: 'easeInOut', delay: 1 }}
-        />
+        <motion.div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl" animate={{
+        y: [0, -20, 0],
+        scale: [1, 1.05, 1]
+      }} transition={{
+        duration: 8,
+        repeat: Infinity,
+        ease: 'easeInOut'
+      }} />
+        <motion.div className="absolute bottom-1/4 right-1/4 w-80 h-80 bg-secondary/10 rounded-full blur-3xl" animate={{
+        y: [0, 20, 0],
+        scale: [1, 1.1, 1]
+      }} transition={{
+        duration: 10,
+        repeat: Infinity,
+        ease: 'easeInOut',
+        delay: 1
+      }} />
         
         <div className="container mx-auto px-4 sm:px-6 relative z-10">
-          <motion.div 
-            variants={staggerContainer}
-            initial="hidden"
-            animate="visible"
-            className="max-w-4xl mx-auto text-center"
-          >
+          <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="max-w-4xl mx-auto text-center">
             {/* Free Migration Badge */}
-            <motion.div 
-              variants={fadeInUp}
-              transition={{ duration: 0.6 }}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-success/10 border border-success/30 mb-6"
-            >
+            <motion.div variants={fadeInUp} transition={{
+            duration: 0.6
+          }} className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-success/10 border border-success/30 mb-6">
               <FileUp className="h-4 w-4 text-success" />
               <span className="text-sm font-medium text-success">Free Data Migration: We move your stock in 24 hours</span>
             </motion.div>
 
             {/* Headline */}
-            <motion.h1 
-              variants={fadeInUp}
-              transition={{ duration: 0.7, delay: 0.1 }}
-              className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-display font-bold leading-tight mb-6"
-            >
+            <motion.h1 variants={fadeInUp} transition={{
+            duration: 0.7,
+            delay: 0.1
+          }} className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-display font-bold leading-tight mb-6">
               Stop Guessing.{' '}
               <span className="text-gradient-premium">Start Growing.</span>
               <br />
-              <motion.span 
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.5, duration: 0.8 }}
-                className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl text-muted-foreground"
-              >
+              <motion.span initial={{
+              opacity: 0
+            }} animate={{
+              opacity: 1
+            }} transition={{
+              delay: 0.5,
+              duration: 0.8
+            }} className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl text-muted-foreground">
                 The AI Brain for Your Pharmacy.
               </motion.span>
             </motion.h1>
 
             {/* Sub-headline */}
-            <motion.p 
-              variants={fadeInUp}
-              transition={{ duration: 0.6, delay: 0.2 }}
-              className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto mb-10"
-            >
+            <motion.p variants={fadeInUp} transition={{
+            duration: 0.6,
+            delay: 0.2
+          }} className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto mb-10">
               Eliminate expiry waste, stop staff leakage, and automate your inventory with the world's most advanced pharmacy intelligence system.
             </motion.p>
 
             {/* CTA */}
-            <motion.div 
-              variants={fadeInUp}
-              transition={{ duration: 0.6, delay: 0.3 }}
-              className="flex flex-col sm:flex-row items-center justify-center gap-4"
-            >
+            <motion.div variants={fadeInUp} transition={{
+            duration: 0.6,
+            delay: 0.3
+          }} className="flex flex-col sm:flex-row items-center justify-center gap-4">
               <Link to="/auth?tab=signup">
-                <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.98 }}>
-                  <Button 
-                    size="lg" 
-                    className="bg-gradient-primary hover:opacity-90 text-lg px-8 py-6 shadow-glow-primary font-semibold relative overflow-hidden group"
-                  >
-                    <motion.span
-                      className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent"
-                      initial={{ x: '-100%' }}
-                      animate={{ x: '200%' }}
-                      transition={{ repeat: Infinity, duration: 2, ease: 'linear', repeatDelay: 3 }}
-                    />
+                <motion.div whileHover={{
+                scale: 1.05
+              }} whileTap={{
+                scale: 0.98
+              }}>
+                  <Button size="lg" className="bg-gradient-primary hover:opacity-90 text-lg px-8 py-6 shadow-glow-primary font-semibold relative overflow-hidden group">
+                    <motion.span className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent" initial={{
+                    x: '-100%'
+                  }} animate={{
+                    x: '200%'
+                  }} transition={{
+                    repeat: Infinity,
+                    duration: 2,
+                    ease: 'linear',
+                    repeatDelay: 3
+                  }} />
                     Start 7-Day Free Trial
                     <ArrowRight className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
                   </Button>
                 </motion.div>
               </Link>
-              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.98 }}>
-                <Button 
-                  size="lg" 
-                  variant="outline"
-                  onClick={handleTryDemo}
-                  className="text-lg px-8 py-6 border-2 border-primary/30 hover:bg-primary/5 hover:border-primary/50 font-semibold"
-                >
+              <motion.div whileHover={{
+              scale: 1.05
+            }} whileTap={{
+              scale: 0.98
+            }}>
+                <Button size="lg" variant="outline" onClick={handleTryDemo} className="text-lg px-8 py-6 border-2 border-primary/30 hover:bg-primary/5 hover:border-primary/50 font-semibold">
                   <Play className="mr-2 h-5 w-5" />
                   Try Demo
                 </Button>
@@ -325,37 +396,48 @@ const Landing = () => {
             </p>
 
             {/* Trust Indicators */}
-            <motion.div 
-              variants={fadeInUp}
-              transition={{ duration: 0.6, delay: 0.5 }}
-              className="mt-16 flex flex-wrap items-center justify-center gap-8"
-            >
-              {[
-                { icon: Zap, text: 'Built by Pharmacists, for Pharmacists', color: 'text-warning' },
-                { icon: Lock, text: 'Enterprise-grade security', color: 'text-primary' },
-                { icon: Headphones, text: '24/7 Priority support', color: 'text-success' }
-              ].map((item, i) => (
-                <motion.div 
-                  key={i}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.6 + i * 0.1 }}
-                  className="flex items-center gap-2 text-muted-foreground"
-                >
+            <motion.div variants={fadeInUp} transition={{
+            duration: 0.6,
+            delay: 0.5
+          }} className="mt-16 flex flex-wrap items-center justify-center gap-8">
+              {[{
+              icon: Zap,
+              text: 'Built by Pharmacists, for Pharmacists',
+              color: 'text-warning'
+            }, {
+              icon: Lock,
+              text: 'Enterprise-grade security',
+              color: 'text-primary'
+            }, {
+              icon: Headphones,
+              text: '24/7 Priority support',
+              color: 'text-success'
+            }].map((item, i) => <motion.div key={i} initial={{
+              opacity: 0,
+              y: 10
+            }} animate={{
+              opacity: 1,
+              y: 0
+            }} transition={{
+              delay: 0.6 + i * 0.1
+            }} className="flex items-center gap-2 text-muted-foreground">
                   <item.icon className={`h-5 w-5 ${item.color}`} />
                   <span className="text-sm">{item.text}</span>
-                </motion.div>
-              ))}
+                </motion.div>)}
             </motion.div>
           </motion.div>
 
           {/* Profit Protector Calculator */}
-          <motion.div
-            initial={{ opacity: 0, y: 40 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.7, duration: 0.6 }}
-            className="mt-16 max-w-4xl mx-auto"
-          >
+          <motion.div initial={{
+          opacity: 0,
+          y: 40
+        }} animate={{
+          opacity: 1,
+          y: 0
+        }} transition={{
+          delay: 0.7,
+          duration: 0.6
+        }} className="mt-16 max-w-4xl mx-auto">
             <ProfitProtectorCalculator isInternational={isInternational} />
           </motion.div>
         </div>
@@ -367,12 +449,15 @@ const Landing = () => {
       {/* Stop the Leakage Pitch Section */}
       <section className="py-16 sm:py-24 relative bg-gradient-hero hero-medical">
         <div className="container mx-auto px-4 sm:px-6">
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center mb-12"
-          >
+          <motion.div initial={{
+          opacity: 0,
+          y: 20
+        }} whileInView={{
+          opacity: 1,
+          y: 0
+        }} viewport={{
+          once: true
+        }} className="text-center mb-12">
             <Badge className="mb-4 bg-destructive/20 text-destructive border-destructive/30">
               <AlertTriangle className="h-3 w-3 mr-2" />
               The Truth About General POS Apps
@@ -387,12 +472,17 @@ const Landing = () => {
 
           {/* Stop the Leakage Points */}
           <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto mb-12">
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.1 }}
-            >
+            <motion.div initial={{
+            opacity: 0,
+            y: 30
+          }} whileInView={{
+            opacity: 1,
+            y: 0
+          }} viewport={{
+            once: true
+          }} transition={{
+            delay: 0.1
+          }}>
               <Card className="h-full bg-white/10 backdrop-blur-xl border-white/20 overflow-hidden">
                 <CardContent className="p-6">
                   <div className="h-12 w-12 rounded-xl bg-destructive/20 flex items-center justify-center mb-4">
@@ -406,12 +496,17 @@ const Landing = () => {
               </Card>
             </motion.div>
 
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.2 }}
-            >
+            <motion.div initial={{
+            opacity: 0,
+            y: 30
+          }} whileInView={{
+            opacity: 1,
+            y: 0
+          }} viewport={{
+            once: true
+          }} transition={{
+            delay: 0.2
+          }}>
               <Card className="h-full bg-white/10 backdrop-blur-xl border-white/20 overflow-hidden">
                 <CardContent className="p-6">
                   <div className="h-12 w-12 rounded-xl bg-primary/20 flex items-center justify-center mb-4">
@@ -425,12 +520,17 @@ const Landing = () => {
               </Card>
             </motion.div>
 
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.3 }}
-            >
+            <motion.div initial={{
+            opacity: 0,
+            y: 30
+          }} whileInView={{
+            opacity: 1,
+            y: 0
+          }} viewport={{
+            once: true
+          }} transition={{
+            delay: 0.3
+          }}>
               <Card className="h-full bg-white/10 backdrop-blur-xl border-white/20 overflow-hidden">
                 <CardContent className="p-6">
                   <div className="h-12 w-12 rounded-xl bg-success/20 flex items-center justify-center mb-4">
@@ -447,14 +547,17 @@ const Landing = () => {
 
           {/* Compliance Badges Grid */}
           <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
-            {complianceBadges.map((badge, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: 0.4 + i * 0.1 }}
-              >
+            {complianceBadges.map((badge, i) => <motion.div key={i} initial={{
+            opacity: 0,
+            y: 30
+          }} whileInView={{
+            opacity: 1,
+            y: 0
+          }} viewport={{
+            once: true
+          }} transition={{
+            delay: 0.4 + i * 0.1
+          }}>
                 <Card className="h-full bg-white/5 backdrop-blur-xl border-white/10 overflow-hidden group hover:bg-white/10 transition-all">
                   <CardContent className="p-6 text-center">
                     <div className="h-14 w-14 rounded-2xl bg-gradient-primary flex items-center justify-center mx-auto mb-4 group-hover:shadow-glow-primary transition-all">
@@ -465,17 +568,19 @@ const Landing = () => {
                     <p className="text-sm text-white/70">{badge.description}</p>
                   </CardContent>
                 </Card>
-              </motion.div>
-            ))}
+              </motion.div>)}
           </div>
 
           {/* Call-out Box */}
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="mt-12 max-w-3xl mx-auto"
-          >
+          <motion.div initial={{
+          opacity: 0,
+          y: 20
+        }} whileInView={{
+          opacity: 1,
+          y: 0
+        }} viewport={{
+          once: true
+        }} className="mt-12 max-w-3xl mx-auto">
             <Card className="border-warning/50 bg-warning/10 backdrop-blur-xl">
               <CardContent className="p-6">
                 <div className="flex items-start gap-4">
@@ -508,12 +613,15 @@ const Landing = () => {
       <section className="py-20 sm:py-32 relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-marketplace/5 via-background to-primary/5"></div>
         <div className="container mx-auto px-4 sm:px-6 relative z-10">
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center mb-16"
-          >
+          <motion.div initial={{
+          opacity: 0,
+          y: 20
+        }} whileInView={{
+          opacity: 1,
+          y: 0
+        }} viewport={{
+          once: true
+        }} className="text-center mb-16">
             <Badge className="mb-4 bg-marketplace/20 text-marketplace border-marketplace/30">
               <Globe className="h-3 w-3 mr-2" />
               Game-Changing Feature
@@ -530,46 +638,46 @@ const Landing = () => {
 
           <div className="grid lg:grid-cols-2 gap-8 max-w-6xl mx-auto items-center">
             {/* Left: Benefits */}
-            <motion.div
-              initial={{ opacity: 0, x: -30 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-              className="space-y-6"
-            >
-              {[
-                {
-                  icon: Globe,
-                  title: 'Distance-Based Search',
-                  description: 'Patients search "Panadol near me" and see pharmacies within 1km, 5km, or 10km. The closest shop wins.',
-                  highlight: 'You become the first choice for nearby customers',
-                },
-                {
-                  icon: Star,
-                  title: 'Spotlight Featured Products',
-                  description: 'Pay ₦1,000-₦2,500 to boost your best products to the top. Like Instagram ads, but for drugs.',
-                  highlight: 'Premium visibility = more orders',
-                },
-                {
-                  icon: MessageCircle,
-                  title: 'WhatsApp Ordering',
-                  description: 'One tap connects customers directly to your WhatsApp. No middleman. No commission. 100% your profit.',
-                  highlight: 'Direct customer relationships',
-                },
-                {
-                  icon: TrendingUp,
-                  title: 'Free Marketing Forever',
-                  description: 'Your products are listed 24/7. While you sleep, patients discover your pharmacy online.',
-                  highlight: 'Zero advertising cost',
-                },
-              ].map((benefit, i) => (
-                <motion.div
-                  key={i}
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: i * 0.1 }}
-                  className="flex gap-4"
-                >
+            <motion.div initial={{
+            opacity: 0,
+            x: -30
+          }} whileInView={{
+            opacity: 1,
+            x: 0
+          }} viewport={{
+            once: true
+          }} className="space-y-6">
+              {[{
+              icon: Globe,
+              title: 'Distance-Based Search',
+              description: 'Patients search "Panadol near me" and see pharmacies within 1km, 5km, or 10km. The closest shop wins.',
+              highlight: 'You become the first choice for nearby customers'
+            }, {
+              icon: Star,
+              title: 'Spotlight Featured Products',
+              description: 'Pay ₦1,000-₦2,500 to boost your best products to the top. Like Instagram ads, but for drugs.',
+              highlight: 'Premium visibility = more orders'
+            }, {
+              icon: MessageCircle,
+              title: 'WhatsApp Ordering',
+              description: 'One tap connects customers directly to your WhatsApp. No middleman. No commission. 100% your profit.',
+              highlight: 'Direct customer relationships'
+            }, {
+              icon: TrendingUp,
+              title: 'Free Marketing Forever',
+              description: 'Your products are listed 24/7. While you sleep, patients discover your pharmacy online.',
+              highlight: 'Zero advertising cost'
+            }].map((benefit, i) => <motion.div key={i} initial={{
+              opacity: 0,
+              y: 20
+            }} whileInView={{
+              opacity: 1,
+              y: 0
+            }} viewport={{
+              once: true
+            }} transition={{
+              delay: i * 0.1
+            }} className="flex gap-4">
                   <div className="h-12 w-12 rounded-xl bg-marketplace/20 flex items-center justify-center flex-shrink-0">
                     <benefit.icon className="h-6 w-6 text-marketplace" />
                   </div>
@@ -578,16 +686,19 @@ const Landing = () => {
                     <p className="text-sm text-muted-foreground mb-1">{benefit.description}</p>
                     <p className="text-xs text-marketplace font-medium">{benefit.highlight}</p>
                   </div>
-                </motion.div>
-              ))}
+                </motion.div>)}
             </motion.div>
 
             {/* Right: Visual/CTA */}
-            <motion.div
-              initial={{ opacity: 0, x: 30 }}
-              whileInView={{ opacity: 1, x: 0 }}
-              viewport={{ once: true }}
-            >
+            <motion.div initial={{
+            opacity: 0,
+            x: 30
+          }} whileInView={{
+            opacity: 1,
+            x: 0
+          }} viewport={{
+            once: true
+          }}>
               <Card className="border-marketplace/30 bg-gradient-to-br from-marketplace/5 to-primary/5 overflow-hidden">
                 <CardContent className="p-8">
                   <div className="text-center mb-6">
@@ -632,16 +743,19 @@ const Landing = () => {
           </div>
 
           {/* Bottom CTA */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="mt-16 text-center"
-          >
+          <motion.div initial={{
+          opacity: 0,
+          y: 20
+        }} whileInView={{
+          opacity: 1,
+          y: 0
+        }} viewport={{
+          once: true
+        }} className="mt-16 text-center">
             <Card className="max-w-3xl mx-auto border-success/30 bg-success/5">
               <CardContent className="p-6 flex flex-col sm:flex-row items-center gap-4">
                 <div className="flex-grow text-left">
-                  <h4 className="font-display font-bold text-lg">The Question That Closes Deals</h4>
+                  <h4 className="font-display font-bold text-lg">Can Your Current POS app?</h4>
                   <p className="text-sm text-muted-foreground italic">
                     "Can your current POS app help patients within 5km find your pharmacy online? No? Then you're invisible to customers who are searching RIGHT NOW."
                   </p>
@@ -660,13 +774,17 @@ const Landing = () => {
       {/* Features Bento Grid */}
       <section id="features" className="py-20 sm:py-32 relative">
         <div className="container mx-auto px-4 sm:px-6">
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-            className="text-center mb-16"
-          >
+          <motion.div initial={{
+          opacity: 0,
+          y: 20
+        }} whileInView={{
+          opacity: 1,
+          y: 0
+        }} viewport={{
+          once: true
+        }} transition={{
+          duration: 0.6
+        }} className="text-center mb-16">
             <Badge variant="outline" className="mb-4 border-primary/30 text-primary">Complete Solution</Badge>
             <h2 className="text-3xl sm:text-4xl md:text-5xl font-display font-bold mb-4">
               Everything You Need to <span className="text-gradient">Dominate</span>
@@ -678,13 +796,17 @@ const Landing = () => {
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 max-w-6xl mx-auto">
             {/* AI Expiry - Featured Card */}
-            <motion.div 
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5 }}
-              className="md:col-span-2 lg:col-span-1 lg:row-span-2"
-            >
+            <motion.div initial={{
+            opacity: 0,
+            y: 30
+          }} whileInView={{
+            opacity: 1,
+            y: 0
+          }} viewport={{
+            once: true
+          }} transition={{
+            duration: 0.5
+          }} className="md:col-span-2 lg:col-span-1 lg:row-span-2">
               <Card className="h-full glass-card border-primary/30 overflow-hidden group hover:border-primary/50 transition-all duration-500">
                 <CardContent className="p-6 sm:p-8 h-full flex flex-col">
                   <div className="h-14 w-14 rounded-2xl bg-gradient-primary flex items-center justify-center mb-6 group-hover:shadow-glow-primary transition-all">
@@ -704,12 +826,18 @@ const Landing = () => {
             </motion.div>
 
             {/* POS System */}
-            <motion.div 
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: 0.1 }}
-            >
+            <motion.div initial={{
+            opacity: 0,
+            y: 30
+          }} whileInView={{
+            opacity: 1,
+            y: 0
+          }} viewport={{
+            once: true
+          }} transition={{
+            duration: 0.5,
+            delay: 0.1
+          }}>
               <Card className="h-full glass-card border-border/50 overflow-hidden group hover:border-success/30 transition-all">
                 <CardContent className="p-6 h-full flex flex-col">
                   <div className="h-12 w-12 rounded-xl bg-success/20 flex items-center justify-center mb-4">
@@ -722,12 +850,18 @@ const Landing = () => {
             </motion.div>
 
             {/* Staff Management */}
-            <motion.div 
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: 0.2 }}
-            >
+            <motion.div initial={{
+            opacity: 0,
+            y: 30
+          }} whileInView={{
+            opacity: 1,
+            y: 0
+          }} viewport={{
+            once: true
+          }} transition={{
+            duration: 0.5,
+            delay: 0.2
+          }}>
               <Card className="h-full glass-card border-border/50 overflow-hidden group hover:border-secondary/30 transition-all">
                 <CardContent className="p-6 h-full flex flex-col">
                   <div className="h-12 w-12 rounded-xl bg-secondary/20 flex items-center justify-center mb-4">
@@ -740,12 +874,18 @@ const Landing = () => {
             </motion.div>
 
             {/* Demand Forecasting */}
-            <motion.div 
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: 0.3 }}
-            >
+            <motion.div initial={{
+            opacity: 0,
+            y: 30
+          }} whileInView={{
+            opacity: 1,
+            y: 0
+          }} viewport={{
+            once: true
+          }} transition={{
+            duration: 0.5,
+            delay: 0.3
+          }}>
               <Card className="h-full glass-card border-border/50 overflow-hidden group hover:border-info/30 transition-all">
                 <CardContent className="p-6 h-full flex flex-col">
                   <div className="h-12 w-12 rounded-xl bg-info/20 flex items-center justify-center mb-4">
@@ -758,12 +898,18 @@ const Landing = () => {
             </motion.div>
 
             {/* Multi-Branch */}
-            <motion.div 
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: 0.4 }}
-            >
+            <motion.div initial={{
+            opacity: 0,
+            y: 30
+          }} whileInView={{
+            opacity: 1,
+            y: 0
+          }} viewport={{
+            once: true
+          }} transition={{
+            duration: 0.5,
+            delay: 0.4
+          }}>
               <Card className="h-full glass-card border-border/50 overflow-hidden group hover:border-warning/30 transition-all">
                 <CardContent className="p-6 h-full flex flex-col">
                   <div className="h-12 w-12 rounded-xl bg-warning/20 flex items-center justify-center mb-4">
@@ -776,13 +922,18 @@ const Landing = () => {
             </motion.div>
 
             {/* Barcode Scanning */}
-            <motion.div 
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ duration: 0.5, delay: 0.5 }}
-              className="md:col-span-2 lg:col-span-1"
-            >
+            <motion.div initial={{
+            opacity: 0,
+            y: 30
+          }} whileInView={{
+            opacity: 1,
+            y: 0
+          }} viewport={{
+            once: true
+          }} transition={{
+            duration: 0.5,
+            delay: 0.5
+          }} className="md:col-span-2 lg:col-span-1">
               <Card className="glass-card border-border/50 overflow-hidden group hover:border-primary/30 transition-all">
                 <CardContent className="p-6 flex items-start gap-4">
                   <div className="h-12 w-12 rounded-xl bg-primary/20 flex items-center justify-center flex-shrink-0">
@@ -798,26 +949,40 @@ const Landing = () => {
           </div>
 
           {/* Additional Features Grid */}
-          <motion.div 
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.5, delay: 0.6 }}
-            className="mt-12 max-w-6xl mx-auto"
-          >
+          <motion.div initial={{
+          opacity: 0,
+          y: 30
+        }} whileInView={{
+          opacity: 1,
+          y: 0
+        }} viewport={{
+          once: true
+        }} transition={{
+          duration: 0.5,
+          delay: 0.6
+        }} className="mt-12 max-w-6xl mx-auto">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {[
-                { icon: TrendingUp, label: 'Sales Analytics', desc: 'Real-time insights' },
-                { icon: Phone, label: 'Automated Alerts', desc: 'SMS & WhatsApp' },
-                { icon: ShieldCheck, label: 'NAFDAC Compliance', desc: 'Audit-ready reports' },
-                { icon: Sparkles, label: 'Controlled Drugs', desc: 'Narcotics register' },
-              ].map((feature, i) => (
-                <div key={i} className="p-4 rounded-xl bg-muted/30 border border-border/50 text-center hover:bg-muted/50 transition-colors">
+              {[{
+              icon: TrendingUp,
+              label: 'Sales Analytics',
+              desc: 'Real-time insights'
+            }, {
+              icon: Phone,
+              label: 'Automated Alerts',
+              desc: 'SMS & WhatsApp'
+            }, {
+              icon: ShieldCheck,
+              label: 'NAFDAC Compliance',
+              desc: 'Audit-ready reports'
+            }, {
+              icon: Sparkles,
+              label: 'Controlled Drugs',
+              desc: 'Narcotics register'
+            }].map((feature, i) => <div key={i} className="p-4 rounded-xl bg-muted/30 border border-border/50 text-center hover:bg-muted/50 transition-colors">
                   <feature.icon className="h-6 w-6 mx-auto mb-2 text-primary" />
                   <p className="font-medium text-sm">{feature.label}</p>
                   <p className="text-xs text-muted-foreground">{feature.desc}</p>
-                </div>
-              ))}
+                </div>)}
             </div>
           </motion.div>
         </div>
@@ -826,12 +991,15 @@ const Landing = () => {
       {/* Generic POS vs PharmaTrack Comparison Table Section */}
       <section id="comparison" className="py-20 sm:py-32 relative bg-muted/20">
         <div className="container mx-auto px-4 sm:px-6">
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center mb-16"
-          >
+          <motion.div initial={{
+          opacity: 0,
+          y: 20
+        }} whileInView={{
+          opacity: 1,
+          y: 0
+        }} viewport={{
+          once: true
+        }} className="text-center mb-16">
             <Badge variant="outline" className="mb-4 border-destructive/30 text-destructive">Why Pharmacies Are Switching</Badge>
             <h2 className="text-3xl sm:text-4xl md:text-5xl font-display font-bold mb-4">
               Generic Retail POS vs <span className="text-gradient">PharmaTrack AI</span>
@@ -841,12 +1009,15 @@ const Landing = () => {
             </p>
           </motion.div>
 
-          <motion.div 
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="max-w-5xl mx-auto"
-          >
+          <motion.div initial={{
+          opacity: 0,
+          y: 30
+        }} whileInView={{
+          opacity: 1,
+          y: 0
+        }} viewport={{
+          once: true
+        }} className="max-w-5xl mx-auto">
             <Card className="comparison-table overflow-hidden shadow-elevated">
               <div className="overflow-x-auto">
                 <Table>
@@ -868,14 +1039,11 @@ const Landing = () => {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {comparisonData.map((row, i) => (
-                      <TableRow key={i} className="border-border/30 hover:bg-muted/50 transition-colors">
+                    {comparisonData.map((row, i) => <TableRow key={i} className="border-border/30 hover:bg-muted/50 transition-colors">
                         <TableCell className="font-semibold py-4">
                           <span className="flex items-center gap-2">
                             {row.feature}
-                            {row.critical && (
-                              <Badge variant="destructive" className="text-[10px] px-1.5 py-0">Critical</Badge>
-                            )}
+                            {row.critical && <Badge variant="destructive" className="text-[10px] px-1.5 py-0">Critical</Badge>}
                           </span>
                         </TableCell>
                         <TableCell className="text-center py-4">
@@ -890,8 +1058,7 @@ const Landing = () => {
                             {row.pharmatrack}
                           </span>
                         </TableCell>
-                      </TableRow>
-                    ))}
+                      </TableRow>)}
                   </TableBody>
                 </Table>
               </div>
@@ -899,35 +1066,47 @@ const Landing = () => {
 
             {/* Key Differentiators */}
             <div className="grid md:grid-cols-3 gap-4 mt-8">
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: 0.1 }}
-                className="p-4 rounded-xl bg-destructive/5 border border-destructive/20 text-center"
-              >
+              <motion.div initial={{
+              opacity: 0,
+              y: 20
+            }} whileInView={{
+              opacity: 1,
+              y: 0
+            }} viewport={{
+              once: true
+            }} transition={{
+              delay: 0.1
+            }} className="p-4 rounded-xl bg-destructive/5 border border-destructive/20 text-center">
                 <DollarSign className="h-6 w-6 mx-auto mb-2 text-destructive" />
                 <p className="text-sm font-medium">No Expensive Hardware</p>
                 <p className="text-xs text-muted-foreground">Generic systems need ₦300k devices. We run on your existing phone.</p>
               </motion.div>
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: 0.2 }}
-                className="p-4 rounded-xl bg-primary/5 border border-primary/20 text-center"
-              >
+              <motion.div initial={{
+              opacity: 0,
+              y: 20
+            }} whileInView={{
+              opacity: 1,
+              y: 0
+            }} viewport={{
+              once: true
+            }} transition={{
+              delay: 0.2
+            }} className="p-4 rounded-xl bg-primary/5 border border-primary/20 text-center">
                 <ShieldCheck className="h-6 w-6 mx-auto mb-2 text-primary" />
                 <p className="text-sm font-medium">The "Batch Number" Hero</p>
                 <p className="text-xs text-muted-foreground">We automate the most annoying part of pharmacy work.</p>
               </motion.div>
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: 0.3 }}
-                className="p-4 rounded-xl bg-success/5 border border-success/20 text-center"
-              >
+              <motion.div initial={{
+              opacity: 0,
+              y: 20
+            }} whileInView={{
+              opacity: 1,
+              y: 0
+            }} viewport={{
+              once: true
+            }} transition={{
+              delay: 0.3
+            }} className="p-4 rounded-xl bg-success/5 border border-success/20 text-center">
                 <Zap className="h-6 w-6 mx-auto mb-2 text-success" />
                 <p className="text-sm font-medium">The Speed Advantage</p>
                 <p className="text-xs text-muted-foreground">When they see your app open in 1 second, the sale is 80% done.</p>
@@ -940,12 +1119,15 @@ const Landing = () => {
       {/* Migration Section */}
       <section className="py-20 sm:py-32 relative">
         <div className="container mx-auto px-4 sm:px-6">
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center mb-16"
-          >
+          <motion.div initial={{
+          opacity: 0,
+          y: 20
+        }} whileInView={{
+          opacity: 1,
+          y: 0
+        }} viewport={{
+          once: true
+        }} className="text-center mb-16">
             <Badge variant="outline" className="mb-4 border-success/30 text-success">Easy Migration</Badge>
             <h2 className="text-3xl sm:text-4xl md:text-5xl font-display font-bold mb-4">
               Switching is <span className="text-gradient">Easier Than You Think</span>
@@ -957,36 +1139,35 @@ const Landing = () => {
 
           {/* 3-Step Migration Process */}
           <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto mb-16">
-            {[
-              {
-                step: 1,
-                icon: FileUp,
-                title: 'Export Your Data',
-                description: 'Just download your current stock list from your old app or send us your Excel/invoice files.',
-                color: 'bg-info/20 text-info'
-              },
-              {
-                step: 2,
-                icon: Wand2,
-                title: 'We Do the Heavy Lifting',
-                description: 'Our team (or AI) cleans and imports your data into PharmaTrack. No manual typing required.',
-                color: 'bg-secondary/20 text-secondary'
-              },
-              {
-                step: 3,
-                icon: Timer,
-                title: '15-Minute Training',
-                description: 'We show your staff how to scan their first item. If they can use WhatsApp, they can use PharmaTrack.',
-                color: 'bg-success/20 text-success'
-              }
-            ].map((item, i) => (
-              <motion.div
-                key={i}
-                initial={{ opacity: 0, y: 30 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: i * 0.15 }}
-              >
+            {[{
+            step: 1,
+            icon: FileUp,
+            title: 'Export Your Data',
+            description: 'Just download your current stock list from your old app or send us your Excel/invoice files.',
+            color: 'bg-info/20 text-info'
+          }, {
+            step: 2,
+            icon: Wand2,
+            title: 'We Do the Heavy Lifting',
+            description: 'Our team (or AI) cleans and imports your data into PharmaTrack. No manual typing required.',
+            color: 'bg-secondary/20 text-secondary'
+          }, {
+            step: 3,
+            icon: Timer,
+            title: '15-Minute Training',
+            description: 'We show your staff how to scan their first item. If they can use WhatsApp, they can use PharmaTrack.',
+            color: 'bg-success/20 text-success'
+          }].map((item, i) => <motion.div key={i} initial={{
+            opacity: 0,
+            y: 30
+          }} whileInView={{
+            opacity: 1,
+            y: 0
+          }} viewport={{
+            once: true
+          }} transition={{
+            delay: i * 0.15
+          }}>
                 <Card className="h-full glass-card border-border/50 overflow-hidden group hover:border-primary/30 transition-all">
                   <CardContent className="p-6 text-center">
                     <div className="relative inline-block mb-6">
@@ -1001,17 +1182,19 @@ const Landing = () => {
                     <p className="text-muted-foreground">{item.description}</p>
                   </CardContent>
                 </Card>
-              </motion.div>
-            ))}
+              </motion.div>)}
           </div>
 
           {/* Peace of Mind Trust Box */}
-          <motion.div 
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="max-w-4xl mx-auto"
-          >
+          <motion.div initial={{
+          opacity: 0,
+          y: 30
+        }} whileInView={{
+          opacity: 1,
+          y: 0
+        }} viewport={{
+          once: true
+        }} className="max-w-4xl mx-auto">
             <Card className="glass-card border-success/30 overflow-hidden">
               <CardContent className="p-8">
                 <div className="text-center mb-8">
@@ -1019,31 +1202,25 @@ const Landing = () => {
                   <h3 className="text-2xl font-display font-bold">Zero Risk Migration</h3>
                 </div>
                 <div className="grid md:grid-cols-3 gap-6">
-                  {[
-                    {
-                      icon: Timer,
-                      title: 'Zero Downtime',
-                      description: 'Keep selling on your old system while we set up your new one. We switch you over in minutes.'
-                    },
-                    {
-                      icon: Database,
-                      title: 'Data Integrity',
-                      description: 'We cross-check every batch and expiry date during migration to ensure 100% accuracy.'
-                    },
-                    {
-                      icon: WifiOff,
-                      title: 'Offline Reliability',
-                      description: 'Even if the internet is shaky, your POS keeps running. Never lose a sale.'
-                    }
-                  ].map((item, i) => (
-                    <div key={i} className="text-center">
+                  {[{
+                  icon: Timer,
+                  title: 'Zero Downtime',
+                  description: 'Keep selling on your old system while we set up your new one. We switch you over in minutes.'
+                }, {
+                  icon: Database,
+                  title: 'Data Integrity',
+                  description: 'We cross-check every batch and expiry date during migration to ensure 100% accuracy.'
+                }, {
+                  icon: WifiOff,
+                  title: 'Offline Reliability',
+                  description: 'Even if the internet is shaky, your POS keeps running. Never lose a sale.'
+                }].map((item, i) => <div key={i} className="text-center">
                       <div className="h-12 w-12 rounded-xl bg-success/20 flex items-center justify-center mx-auto mb-4">
                         <item.icon className="h-6 w-6 text-success" />
                       </div>
                       <h4 className="font-display font-bold mb-2">{item.title}</h4>
                       <p className="text-sm text-muted-foreground">{item.description}</p>
-                    </div>
-                  ))}
+                    </div>)}
                 </div>
               </CardContent>
             </Card>
@@ -1057,21 +1234,24 @@ const Landing = () => {
       {/* ROI Calculator */}
       <section className="py-20 sm:py-32 relative bg-muted/20">
         <div className="container mx-auto px-4 sm:px-6">
-          <motion.div 
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-            className="max-w-4xl mx-auto"
-          >
+          <motion.div initial={{
+          opacity: 0,
+          y: 30
+        }} whileInView={{
+          opacity: 1,
+          y: 0
+        }} viewport={{
+          once: true
+        }} transition={{
+          duration: 0.6
+        }} className="max-w-4xl mx-auto">
             <Card className="glass-card border-border/50 overflow-hidden">
               <CardContent className="p-8 sm:p-12">
                 <div className="grid md:grid-cols-2 gap-8 items-center">
                   <div>
-                    <motion.div 
-                      whileHover={{ rotate: 10 }}
-                      className="h-14 w-14 rounded-2xl bg-gradient-primary flex items-center justify-center mb-6 shadow-glow-primary"
-                    >
+                    <motion.div whileHover={{
+                    rotate: 10
+                  }} className="h-14 w-14 rounded-2xl bg-gradient-primary flex items-center justify-center mb-6 shadow-glow-primary">
                       <Calculator className="h-7 w-7 text-primary-foreground" />
                     </motion.div>
                     <h2 className="text-3xl sm:text-4xl font-display font-bold mb-4">
@@ -1090,22 +1270,15 @@ const Landing = () => {
                       <Label htmlFor="revenue" className="text-sm text-muted-foreground mb-2 block">
                         Monthly Revenue ({isInternational ? '$' : '₦'})
                       </Label>
-                      <Input 
-                        id="revenue" 
-                        type="text" 
-                        placeholder={isInternational ? "e.g., 50,000" : "e.g., 5,000,000"} 
-                        value={monthlyRevenue} 
-                        onChange={(e) => setMonthlyRevenue(e.target.value)} 
-                        className="h-14 text-lg bg-background/50 border-border/50 focus:border-primary" 
-                      />
+                      <Input id="revenue" type="text" placeholder={isInternational ? "e.g., 50,000" : "e.g., 5,000,000"} value={monthlyRevenue} onChange={e => setMonthlyRevenue(e.target.value)} className="h-14 text-lg bg-background/50 border-border/50 focus:border-primary" />
                     </div>
-                    <motion.div 
-                      initial={{ scale: 0.95 }}
-                      animate={{ scale: monthlyRevenue ? 1 : 0.95 }}
-                      className="p-6 rounded-2xl bg-success/10 border border-success/30"
-                    >
+                    <motion.div initial={{
+                    scale: 0.95
+                  }} animate={{
+                    scale: monthlyRevenue ? 1 : 0.95
+                  }} className="p-6 rounded-2xl bg-success/10 border border-success/30">
                       <p className="text-sm text-success mb-2">Estimated Annual Recovery</p>
-                      <p className="text-4xl font-display font-bold text-success">{monthlyRevenue ? calculateSavings() : (isInternational ? '$0' : '₦0')}</p>
+                      <p className="text-4xl font-display font-bold text-success">{monthlyRevenue ? calculateSavings() : isInternational ? '$0' : '₦0'}</p>
                       <p className="text-xs text-muted-foreground mt-2">Based on 5% recovery rate from reduced waste</p>
                     </motion.div>
                   </div>
@@ -1119,12 +1292,15 @@ const Landing = () => {
       {/* Pricing Section */}
       <section id="pricing" className="py-20 sm:py-32 relative">
         <div className="container mx-auto px-4 sm:px-6">
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center mb-16"
-          >
+          <motion.div initial={{
+          opacity: 0,
+          y: 20
+        }} whileInView={{
+          opacity: 1,
+          y: 0
+        }} viewport={{
+          once: true
+        }} className="text-center mb-16">
             <Badge variant="outline" className="mb-4 border-primary/30 text-primary">Disruptive Pricing</Badge>
             <h2 className="text-3xl sm:text-4xl md:text-5xl font-display font-bold mb-4">
               Investment in <span className="text-gradient">Your Success</span>
@@ -1142,17 +1318,20 @@ const Landing = () => {
           </motion.div>
 
           {/* NGN Pricing */}
-          {!isInternational && (
-            <div className="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto">
-              {Object.entries(ngnPricing).map(([key, plan], index) => (
-                <motion.div
-                  key={key}
-                  initial={{ opacity: 0, y: 30 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: index * 0.1 }}
-                  whileHover={{ y: -8 }}
-                >
+          {!isInternational && <div className="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto">
+              {Object.entries(ngnPricing).map(([key, plan], index) => <motion.div key={key} initial={{
+            opacity: 0,
+            y: 30
+          }} whileInView={{
+            opacity: 1,
+            y: 0
+          }} viewport={{
+            once: true
+          }} transition={{
+            delay: index * 0.1
+          }} whileHover={{
+            y: -8
+          }}>
                   <Card className={`h-full glass-card overflow-hidden ${plan.highlight ? 'border-primary/50 shadow-glow-primary relative' : 'border-border/50'}`}>
                     {plan.highlight && <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-primary"></div>}
                     <CardContent className="p-6 sm:p-8">
@@ -1173,50 +1352,53 @@ const Landing = () => {
                       </div>
 
                       <Link to="/auth?tab=signup">
-                        <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                          <Button 
-                            className={`w-full mb-6 ${plan.highlight ? 'bg-gradient-primary hover:opacity-90 shadow-glow-primary' : ''}`} 
-                            variant={plan.highlight ? 'default' : 'outline'}
-                          >
+                        <motion.div whileHover={{
+                    scale: 1.02
+                  }} whileTap={{
+                    scale: 0.98
+                  }}>
+                          <Button className={`w-full mb-6 ${plan.highlight ? 'bg-gradient-primary hover:opacity-90 shadow-glow-primary' : ''}`} variant={plan.highlight ? 'default' : 'outline'}>
                             {key === 'enterprise' ? 'Contact Sales' : 'Start Free Trial'}
                           </Button>
                         </motion.div>
                       </Link>
                       
                       <ul className="space-y-3">
-                        {plan.features.map((feature, i) => (
-                          <motion.li 
-                            key={i}
-                            initial={{ opacity: 0, x: -10 }}
-                            whileInView={{ opacity: 1, x: 0 }}
-                            viewport={{ once: true }}
-                            transition={{ delay: 0.3 + i * 0.05 }}
-                            className="flex items-center gap-2 text-sm"
-                          >
+                        {plan.features.map((feature, i) => <motion.li key={i} initial={{
+                    opacity: 0,
+                    x: -10
+                  }} whileInView={{
+                    opacity: 1,
+                    x: 0
+                  }} viewport={{
+                    once: true
+                  }} transition={{
+                    delay: 0.3 + i * 0.05
+                  }} className="flex items-center gap-2 text-sm">
                             <Check className={`h-4 w-4 shrink-0 ${plan.highlight ? 'text-primary' : 'text-success'}`} />
                             <span className={plan.highlight ? '' : 'text-muted-foreground'}>{feature}</span>
-                          </motion.li>
-                        ))}
+                          </motion.li>)}
                       </ul>
                     </CardContent>
                   </Card>
-                </motion.div>
-              ))}
-            </div>
-          )}
+                </motion.div>)}
+            </div>}
 
           {/* USD Pricing */}
-          {isInternational && (
-            <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
-              {Object.entries(usdPricing).map(([key, plan], index) => (
-                <motion.div
-                  key={key}
-                  initial={{ opacity: 0, y: 30 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  transition={{ delay: index * 0.1 }}
-                  whileHover={{ y: -8 }}
-                >
+          {isInternational && <div className="grid md:grid-cols-2 gap-6 max-w-4xl mx-auto">
+              {Object.entries(usdPricing).map(([key, plan], index) => <motion.div key={key} initial={{
+            opacity: 0,
+            y: 30
+          }} whileInView={{
+            opacity: 1,
+            y: 0
+          }} viewport={{
+            once: true
+          }} transition={{
+            delay: index * 0.1
+          }} whileHover={{
+            y: -8
+          }}>
                   <Card className={`h-full glass-card overflow-hidden ${plan.highlight ? 'border-primary/50 shadow-glow-primary relative' : 'border-border/50'}`}>
                     {plan.highlight && <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-primary"></div>}
                     <CardContent className="p-6 sm:p-8">
@@ -1232,44 +1414,45 @@ const Landing = () => {
                       </div>
 
                       <Link to="/auth?tab=signup">
-                        <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-                          <Button 
-                            className={`w-full mb-6 ${plan.highlight ? 'bg-gradient-primary hover:opacity-90 shadow-glow-primary' : ''}`} 
-                            variant={plan.highlight ? 'default' : 'outline'}
-                          >
+                        <motion.div whileHover={{
+                    scale: 1.02
+                  }} whileTap={{
+                    scale: 0.98
+                  }}>
+                          <Button className={`w-full mb-6 ${plan.highlight ? 'bg-gradient-primary hover:opacity-90 shadow-glow-primary' : ''}`} variant={plan.highlight ? 'default' : 'outline'}>
                             {key === 'enterprise' ? 'Contact Sales' : 'Start Free Trial'}
                           </Button>
                         </motion.div>
                       </Link>
                       
                       <ul className="space-y-3">
-                        {plan.features.map((feature, i) => (
-                          <motion.li 
-                            key={i}
-                            initial={{ opacity: 0, x: -10 }}
-                            whileInView={{ opacity: 1, x: 0 }}
-                            viewport={{ once: true }}
-                            transition={{ delay: 0.3 + i * 0.05 }}
-                            className="flex items-center gap-2 text-sm"
-                          >
+                        {plan.features.map((feature, i) => <motion.li key={i} initial={{
+                    opacity: 0,
+                    x: -10
+                  }} whileInView={{
+                    opacity: 1,
+                    x: 0
+                  }} viewport={{
+                    once: true
+                  }} transition={{
+                    delay: 0.3 + i * 0.05
+                  }} className="flex items-center gap-2 text-sm">
                             <Check className={`h-4 w-4 shrink-0 ${plan.highlight ? 'text-primary' : 'text-success'}`} />
                             <span className={plan.highlight ? '' : 'text-muted-foreground'}>{feature}</span>
-                          </motion.li>
-                        ))}
+                          </motion.li>)}
                       </ul>
                     </CardContent>
                   </Card>
-                </motion.div>
-              ))}
-            </div>
-          )}
+                </motion.div>)}
+            </div>}
 
-          <motion.div 
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            viewport={{ once: true }}
-            className="text-center mt-12 space-y-4"
-          >
+          <motion.div initial={{
+          opacity: 0
+        }} whileInView={{
+          opacity: 1
+        }} viewport={{
+          once: true
+        }} className="text-center mt-12 space-y-4">
             <div className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-success/10 border border-success/30">
               <BadgeCheck className="h-5 w-5 text-success" />
               <span className="text-success font-medium">30-Day Money-Back Guarantee</span>
@@ -1285,13 +1468,17 @@ const Landing = () => {
       {/* Bank-Grade Security & Trust Section */}
       <section className="py-20 sm:py-28 relative bg-gradient-to-b from-background to-muted/30">
         <div className="container mx-auto px-4 sm:px-6">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ duration: 0.6 }}
-            className="text-center mb-16"
-          >
+          <motion.div initial={{
+          opacity: 0,
+          y: 20
+        }} whileInView={{
+          opacity: 1,
+          y: 0
+        }} viewport={{
+          once: true
+        }} transition={{
+          duration: 0.6
+        }} className="text-center mb-16">
             <Badge variant="outline" className="mb-4 border-success/30 text-success">
               <Lock className="h-3 w-3 mr-1" />
               Bank-Grade Security
@@ -1306,12 +1493,17 @@ const Landing = () => {
 
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
             {/* Data Ownership */}
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.1 }}
-            >
+            <motion.div initial={{
+            opacity: 0,
+            y: 30
+          }} whileInView={{
+            opacity: 1,
+            y: 0
+          }} viewport={{
+            once: true
+          }} transition={{
+            delay: 0.1
+          }}>
               <Card className="h-full glass-card border-border/50 hover:border-success/30 transition-all">
                 <CardContent className="p-6 text-center">
                   <div className="h-14 w-14 rounded-2xl bg-success/20 flex items-center justify-center mx-auto mb-4">
@@ -1326,12 +1518,17 @@ const Landing = () => {
             </motion.div>
 
             {/* Offline Mode */}
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.2 }}
-            >
+            <motion.div initial={{
+            opacity: 0,
+            y: 30
+          }} whileInView={{
+            opacity: 1,
+            y: 0
+          }} viewport={{
+            once: true
+          }} transition={{
+            delay: 0.2
+          }}>
               <Card className="h-full glass-card border-border/50 hover:border-primary/30 transition-all">
                 <CardContent className="p-6 text-center">
                   <div className="h-14 w-14 rounded-2xl bg-primary/20 flex items-center justify-center mx-auto mb-4">
@@ -1346,12 +1543,17 @@ const Landing = () => {
             </motion.div>
 
             {/* Professional Support */}
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.3 }}
-            >
+            <motion.div initial={{
+            opacity: 0,
+            y: 30
+          }} whileInView={{
+            opacity: 1,
+            y: 0
+          }} viewport={{
+            once: true
+          }} transition={{
+            delay: 0.3
+          }}>
               <Card className="h-full glass-card border-border/50 hover:border-secondary/30 transition-all">
                 <CardContent className="p-6 text-center">
                   <div className="h-14 w-14 rounded-2xl bg-secondary/20 flex items-center justify-center mx-auto mb-4">
@@ -1366,12 +1568,17 @@ const Landing = () => {
             </motion.div>
 
             {/* Prediction Power */}
-            <motion.div
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.4 }}
-            >
+            <motion.div initial={{
+            opacity: 0,
+            y: 30
+          }} whileInView={{
+            opacity: 1,
+            y: 0
+          }} viewport={{
+            once: true
+          }} transition={{
+            delay: 0.4
+          }}>
               <Card className="h-full glass-card border-border/50 hover:border-warning/30 transition-all">
                 <CardContent className="p-6 text-center">
                   <div className="h-14 w-14 rounded-2xl bg-warning/20 flex items-center justify-center mx-auto mb-4">
@@ -1387,24 +1594,33 @@ const Landing = () => {
           </div>
 
           {/* Trust Badges */}
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.5 }}
-            className="mt-12 flex flex-wrap items-center justify-center gap-6"
-          >
-            {[
-              { icon: Lock, text: '256-bit Encryption' },
-              { icon: ShieldCheck, text: 'GDPR Compliant' },
-              { icon: BadgeCheck, text: 'NAFDAC Certified' },
-              { icon: Globe, text: '99.9% Uptime SLA' }
-            ].map((item, i) => (
-              <div key={i} className="flex items-center gap-2 px-4 py-2 rounded-full bg-muted/50 border border-border/50">
+          <motion.div initial={{
+          opacity: 0,
+          y: 20
+        }} whileInView={{
+          opacity: 1,
+          y: 0
+        }} viewport={{
+          once: true
+        }} transition={{
+          delay: 0.5
+        }} className="mt-12 flex flex-wrap items-center justify-center gap-6">
+            {[{
+            icon: Lock,
+            text: '256-bit Encryption'
+          }, {
+            icon: ShieldCheck,
+            text: 'GDPR Compliant'
+          }, {
+            icon: BadgeCheck,
+            text: 'NAFDAC Certified'
+          }, {
+            icon: Globe,
+            text: '99.9% Uptime SLA'
+          }].map((item, i) => <div key={i} className="flex items-center gap-2 px-4 py-2 rounded-full bg-muted/50 border border-border/50">
                 <item.icon className="h-4 w-4 text-success" />
                 <span className="text-sm text-muted-foreground">{item.text}</span>
-              </div>
-            ))}
+              </div>)}
           </motion.div>
         </div>
       </section>
@@ -1413,11 +1629,11 @@ const Landing = () => {
       <footer className="py-12 border-t border-border/40">
         <div className="container mx-auto px-4 sm:px-6">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
-            <motion.div 
-              initial={{ opacity: 0 }}
-              whileInView={{ opacity: 1 }}
-              className="md:col-span-1"
-            >
+            <motion.div initial={{
+            opacity: 0
+          }} whileInView={{
+            opacity: 1
+          }} className="md:col-span-1">
               <Logo size="sm" linkTo="/" />
               <p className="text-sm text-muted-foreground mt-4">
                 The AI-powered pharmacy management system built by pharmacists, for pharmacists.
@@ -1440,12 +1656,7 @@ const Landing = () => {
                   <Phone className="h-4 w-4" />
                   <span>+234 913 242 4169</span>
                 </a>
-                <a 
-                  href="https://wa.link/jsn5d9" 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  className="flex items-center gap-2 hover:text-success transition-colors"
-                >
+                <a href="https://wa.link/jsn5d9" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 hover:text-success transition-colors">
                   <MessageCircle className="h-4 w-4" />
                   <span>Chat on WhatsApp</span>
                 </a>
@@ -1456,12 +1667,10 @@ const Landing = () => {
             <div className="md:col-span-1">
               <h4 className="font-semibold mb-4">Compliance</h4>
               <div className="flex flex-col gap-2 text-sm text-muted-foreground">
-                {['NAFDAC', 'GDPR'].map((cert, i) => (
-                  <div key={i} className="flex items-center gap-2">
+                {['NAFDAC', 'GDPR'].map((cert, i) => <div key={i} className="flex items-center gap-2">
                     <BadgeCheck className="h-4 w-4 text-success" />
                     <span>{cert} Compliant</span>
-                  </div>
-                ))}
+                  </div>)}
               </div>
             </div>
           </div>
@@ -1470,8 +1679,6 @@ const Landing = () => {
           </div>
         </div>
       </footer>
-    </div>
-  );
+    </div>;
 };
-
 export default Landing;
