@@ -366,11 +366,79 @@ const Checkout = () => {
     
     // Store cart items before clearing
     const currentItems = [...cart.items];
-    const currentTotal = cart.getTotal();
     const currentCustomer = customerName;
     const currentPaymentMethod = paymentMethod;
     
     try {
+      // SAFEGUARD 1: Verify stock availability before processing
+      // This catches cases where another user sold the item while it was in cart
+      const stockIssues: string[] = [];
+      const priceChanges: { name: string; oldPrice: number; newPrice: number }[] = [];
+      
+      for (const item of currentItems) {
+        const freshMed = branchMedications.find(m => m.id === item.medication.id);
+        if (!freshMed) {
+          stockIssues.push(`${item.medication.name} is no longer available`);
+          continue;
+        }
+        
+        // Check stock
+        if (freshMed.branch_stock < item.quantity) {
+          if (freshMed.branch_stock === 0) {
+            stockIssues.push(`${item.medication.name} is now out of stock`);
+          } else {
+            stockIssues.push(`${item.medication.name}: only ${freshMed.branch_stock} left (you have ${item.quantity} in cart)`);
+          }
+        }
+        
+        // SAFEGUARD 2: Check for price changes since item was added to cart
+        const cartPrice = item.medication.selling_price || item.medication.unit_price;
+        const currentPrice = freshMed.selling_price || freshMed.unit_price;
+        if (cartPrice !== currentPrice) {
+          priceChanges.push({
+            name: item.medication.name,
+            oldPrice: cartPrice,
+            newPrice: currentPrice,
+          });
+        }
+      }
+      
+      // Show stock issues as error
+      if (stockIssues.length > 0) {
+        toast({
+          title: 'Stock Changed',
+          description: stockIssues.join('. ') + '. Please update your cart.',
+          variant: 'destructive',
+        });
+        setIsProcessing(false);
+        return;
+      }
+      
+      // Warn about price changes but allow proceeding
+      if (priceChanges.length > 0) {
+        const priceMsg = priceChanges.map(p => 
+          `${p.name}: ${formatPrice(p.oldPrice)} → ${formatPrice(p.newPrice)}`
+        ).join(', ');
+        toast({
+          title: 'Price Updated',
+          description: `Prices changed: ${priceMsg}. Sale will use current prices.`,
+        });
+        // Update cart items with fresh prices for accurate receipt
+        currentItems.forEach(item => {
+          const fresh = branchMedications.find(m => m.id === item.medication.id);
+          if (fresh) {
+            item.medication.selling_price = fresh.selling_price;
+            item.medication.unit_price = fresh.unit_price;
+          }
+        });
+      }
+      
+      // Recalculate total with verified prices
+      const currentTotal = currentItems.reduce((sum, item) => {
+        const price = item.medication.selling_price || item.medication.unit_price;
+        return sum + (price * item.quantity);
+      }, 0);
+      
       const result = await completeSale.mutateAsync({
         items: currentItems,
         customerName: selectedPatient?.full_name || currentCustomer || undefined,
