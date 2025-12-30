@@ -24,7 +24,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Star, Search, Plus, Trash2, Loader2, Gift, Store, Package } from 'lucide-react';
+import { Star, Search, Trash2, Loader2, Gift, Store, Package, Sparkles } from 'lucide-react';
 
 interface FeaturedMedication {
   id: string;
@@ -35,21 +35,31 @@ interface FeaturedMedication {
   featured_until: string | null;
 }
 
+interface FeaturedCredit {
+  id: string;
+  pharmacy_id: string;
+  pharmacy_name: string;
+  duration_days: number;
+  created_at: string;
+  used: boolean;
+  used_at?: string;
+  used_for_medication_id?: string;
+}
+
 const DURATION_OPTIONS = [
-  { value: 7, label: '7 Days' },
-  { value: 14, label: '14 Days' },
-  { value: 30, label: '30 Days' },
-  { value: 60, label: '60 Days' },
-  { value: 90, label: '90 Days' },
+  { value: 7, label: '7 Days', description: 'Basic spotlight' },
+  { value: 14, label: '14 Days', description: 'Extended visibility' },
+  { value: 30, label: '30 Days', description: 'Premium placement' },
+  { value: 60, label: '60 Days', description: 'Double premium' },
+  { value: 90, label: '90 Days', description: 'Quarter spotlight' },
 ];
 
 export const FeaturedSlotsPanel = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState('');
-  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+  const [giftDialogOpen, setGiftDialogOpen] = useState(false);
   const [selectedPharmacyId, setSelectedPharmacyId] = useState<string | null>(null);
-  const [selectedMedicationId, setSelectedMedicationId] = useState<string | null>(null);
   const [selectedDuration, setSelectedDuration] = useState(7);
 
   // Fetch current featured medications
@@ -68,58 +78,47 @@ export const FeaturedSlotsPanel = () => {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('pharmacies')
-        .select('id, name')
+        .select('id, name, email')
         .order('name');
       if (error) throw error;
       return data;
     },
   });
 
-  // Fetch medications for selected pharmacy
-  const { data: pharmacyMedications = [], isLoading: loadingMedications } = useQuery({
-    queryKey: ['pharmacy-medications', selectedPharmacyId],
-    queryFn: async () => {
-      if (!selectedPharmacyId) return [];
-      const { data, error } = await supabase
-        .from('medications')
-        .select('id, name, category, current_stock, is_featured')
-        .eq('pharmacy_id', selectedPharmacyId)
-        .eq('is_public', true)
-        .gt('current_stock', 0)
-        .order('name');
-      if (error) throw error;
-      return data;
-    },
-    enabled: !!selectedPharmacyId,
-  });
-
-  // Assign featured slot mutation
-  const assignFeaturedMutation = useMutation({
-    mutationFn: async ({ medicationId, duration }: { medicationId: string; duration: number }) => {
-      const expiryDate = addDays(new Date(), duration);
+  // Gift featured credit to pharmacy - this creates a custom feature they can use
+  const giftCreditMutation = useMutation({
+    mutationFn: async ({ pharmacyId, durationDays }: { pharmacyId: string; durationDays: number }) => {
+      // Create a custom feature for the pharmacy with the featured credit
       const { error } = await supabase
-        .from('medications')
-        .update({
-          is_featured: true,
-          featured_until: expiryDate.toISOString(),
-        })
-        .eq('id', medicationId);
+        .from('pharmacy_custom_features')
+        .insert({
+          pharmacy_id: pharmacyId,
+          feature_key: `featured_credit_${Date.now()}`,
+          feature_name: `Featured Product Credit (${durationDays} days)`,
+          description: `Gift credit for ${durationDays} days of featured placement. Apply this to any product in Marketplace Insights.`,
+          is_enabled: true,
+          config: { 
+            type: 'featured_credit', 
+            duration_days: durationDays,
+            granted_at: new Date().toISOString(),
+            used: false
+          },
+        });
       if (error) throw error;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['admin-featured-medications'] });
-      queryClient.invalidateQueries({ queryKey: ['pharmacy-medications'] });
-      setAssignDialogOpen(false);
+      queryClient.invalidateQueries({ queryKey: ['admin-pharmacies-list'] });
+      setGiftDialogOpen(false);
       setSelectedPharmacyId(null);
-      setSelectedMedicationId(null);
+      setSelectedDuration(7);
       toast({
-        title: 'Featured slot assigned',
-        description: 'The medication is now featured in the Spotlight section.',
+        title: 'Featured credit gifted!',
+        description: 'The pharmacy can now apply this credit to any of their products.',
       });
     },
     onError: (error: Error) => {
       toast({
-        title: 'Failed to assign slot',
+        title: 'Failed to gift credit',
         description: error.message,
         variant: 'destructive',
       });
@@ -159,6 +158,13 @@ export const FeaturedSlotsPanel = () => {
     med.pharmacy_name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
+  const filteredPharmacies = pharmacies.filter(p =>
+    p.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    p.email.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const selectedPharmacy = pharmacies.find(p => p.id === selectedPharmacyId);
+
   return (
     <Card>
       <CardHeader>
@@ -169,12 +175,12 @@ export const FeaturedSlotsPanel = () => {
             </div>
             <div>
               <CardTitle className="text-lg">Spotlight Management</CardTitle>
-              <CardDescription>Assign or remove featured slots for pharmacies</CardDescription>
+              <CardDescription>Gift featured credits to pharmacies or manage active featured products</CardDescription>
             </div>
           </div>
-          <Button onClick={() => setAssignDialogOpen(true)} className="gap-2">
+          <Button onClick={() => setGiftDialogOpen(true)} className="gap-2 bg-gradient-to-r from-marketplace to-primary">
             <Gift className="h-4 w-4" />
-            Assign Slot
+            Gift Featured Credit
           </Button>
         </div>
       </CardHeader>
@@ -183,7 +189,7 @@ export const FeaturedSlotsPanel = () => {
         <div className="relative mb-4">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search featured medications..."
+            placeholder="Search featured medications or pharmacies..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             className="pl-10"
@@ -199,6 +205,7 @@ export const FeaturedSlotsPanel = () => {
           <div className="text-center py-8 text-muted-foreground">
             <Star className="h-8 w-8 mx-auto mb-2 opacity-30" />
             <p className="text-sm">No featured medications</p>
+            <p className="text-xs mt-1">Gift a credit to a pharmacy to get started</p>
           </div>
         ) : (
           <Table>
@@ -252,127 +259,111 @@ export const FeaturedSlotsPanel = () => {
         )}
       </CardContent>
 
-      {/* Assign Dialog */}
-      <Dialog open={assignDialogOpen} onOpenChange={setAssignDialogOpen}>
-        <DialogContent className="max-w-md max-h-[85vh] overflow-hidden flex flex-col">
-          <DialogHeader className="flex-shrink-0">
+      {/* Gift Credit Dialog - Simplified */}
+      <Dialog open={giftDialogOpen} onOpenChange={setGiftDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Gift className="h-5 w-5 text-marketplace" />
-              Assign Featured Slot
+              <Sparkles className="h-5 w-5 text-marketplace" />
+              Gift Featured Credit
             </DialogTitle>
             <DialogDescription>
-              Select a pharmacy and medication to feature in the Spotlight section.
+              Gift a featured credit to a pharmacy. They can apply it to any product they choose.
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-4 overflow-y-auto flex-1">
-            {/* Pharmacy Select */}
+          <div className="space-y-4 py-4">
+            {/* Pharmacy Select with search */}
             <div className="space-y-2">
-              <label className="text-sm font-medium">Pharmacy</label>
+              <label className="text-sm font-medium">Select Pharmacy</label>
               <Select
                 value={selectedPharmacyId || ''}
-                onValueChange={(val) => {
-                  setSelectedPharmacyId(val);
-                  setSelectedMedicationId(null);
-                }}
+                onValueChange={setSelectedPharmacyId}
               >
                 <SelectTrigger>
-                  <SelectValue placeholder="Select a pharmacy" />
+                  <SelectValue placeholder="Choose a pharmacy to gift..." />
                 </SelectTrigger>
                 <SelectContent className="max-h-60">
-                  {pharmacies.map((pharmacy) => (
+                  {filteredPharmacies.map((pharmacy) => (
                     <SelectItem key={pharmacy.id} value={pharmacy.id}>
-                      {pharmacy.name}
+                      <div className="flex flex-col">
+                        <span>{pharmacy.name}</span>
+                        <span className="text-xs text-muted-foreground">{pharmacy.email}</span>
+                      </div>
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
 
-            {/* Medication Select */}
-            {selectedPharmacyId && (
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Medication</label>
-                {loadingMedications ? (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Loading medications...
-                  </div>
-                ) : pharmacyMedications.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    No eligible medications (must be public with stock)
-                  </p>
-                ) : (
-                  <Select
-                    value={selectedMedicationId || ''}
-                    onValueChange={setSelectedMedicationId}
+            {/* Duration Select with descriptions */}
+            <div className="space-y-2">
+              <label className="text-sm font-medium">Credit Duration</label>
+              <div className="grid gap-2">
+                {DURATION_OPTIONS.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => setSelectedDuration(option.value)}
+                    className={`flex items-center justify-between p-3 rounded-lg border transition-all ${
+                      selectedDuration === option.value
+                        ? 'border-primary bg-primary/5 ring-1 ring-primary'
+                        : 'border-border hover:bg-muted/50'
+                    }`}
                   >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select a medication" />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-60">
-                      {pharmacyMedications.map((med) => (
-                        <SelectItem 
-                          key={med.id} 
-                          value={med.id}
-                          disabled={med.is_featured}
-                        >
-                          <div className="flex items-center gap-2">
-                            <span className="truncate">{med.name}</span>
-                            {med.is_featured && (
-                              <Badge variant="secondary" className="text-[10px] flex-shrink-0">Featured</Badge>
-                            )}
-                          </div>
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
+                    <div className="flex items-center gap-3">
+                      <div className={`h-8 w-8 rounded-full flex items-center justify-center ${
+                        selectedDuration === option.value ? 'bg-primary text-primary-foreground' : 'bg-muted'
+                      }`}>
+                        <Star className="h-4 w-4" />
+                      </div>
+                      <div className="text-left">
+                        <p className="font-medium text-sm">{option.label}</p>
+                        <p className="text-xs text-muted-foreground">{option.description}</p>
+                      </div>
+                    </div>
+                    {selectedDuration === option.value && (
+                      <Badge className="bg-primary">Selected</Badge>
+                    )}
+                  </button>
+                ))}
               </div>
-            )}
+            </div>
 
-            {/* Duration Select */}
-            {selectedMedicationId && (
-              <div className="space-y-2">
-                <label className="text-sm font-medium">Duration</label>
-                <Select
-                  value={selectedDuration.toString()}
-                  onValueChange={(val) => setSelectedDuration(parseInt(val))}
-                >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {DURATION_OPTIONS.map((option) => (
-                      <SelectItem key={option.value} value={option.value.toString()}>
-                        {option.label}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+            {/* Preview */}
+            {selectedPharmacy && (
+              <div className="p-4 rounded-lg bg-muted/50 border border-dashed">
+                <div className="flex items-center gap-2 text-sm">
+                  <Gift className="h-4 w-4 text-marketplace" />
+                  <span>Gifting <strong>{selectedDuration} days</strong> featured credit to</span>
+                </div>
+                <p className="font-medium mt-1">{selectedPharmacy.name}</p>
+                <p className="text-xs text-muted-foreground mt-2">
+                  The pharmacy owner will see this credit in their settings and can apply it to any product.
+                </p>
               </div>
             )}
           </div>
 
-          <DialogFooter className="flex-shrink-0 border-t pt-4">
-            <Button variant="outline" onClick={() => setAssignDialogOpen(false)}>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setGiftDialogOpen(false)}>
               Cancel
             </Button>
             <Button
               onClick={() => {
-                if (selectedMedicationId) {
-                  assignFeaturedMutation.mutate({
-                    medicationId: selectedMedicationId,
-                    duration: selectedDuration,
+                if (selectedPharmacyId) {
+                  giftCreditMutation.mutate({
+                    pharmacyId: selectedPharmacyId,
+                    durationDays: selectedDuration,
                   });
                 }
               }}
-              disabled={!selectedMedicationId || assignFeaturedMutation.isPending}
-              className="gap-2"
+              disabled={!selectedPharmacyId || giftCreditMutation.isPending}
+              className="gap-2 bg-gradient-to-r from-marketplace to-primary"
             >
-              {assignFeaturedMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
-              <Star className="h-4 w-4" />
-              Assign Slot
+              {giftCreditMutation.isPending && <Loader2 className="h-4 w-4 animate-spin" />}
+              <Gift className="h-4 w-4" />
+              Gift Credit
             </Button>
           </DialogFooter>
         </DialogContent>
