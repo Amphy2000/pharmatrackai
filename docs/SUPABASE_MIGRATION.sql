@@ -124,7 +124,77 @@ CREATE TABLE public.staff_permissions (
     permission_key text NOT NULL,
     is_granted boolean NOT NULL DEFAULT true,
     created_at timestamp with time zone NOT NULL DEFAULT now(),
+    updated_at timestamp with time zone NOT NULL DEFAULT now(),
     UNIQUE(staff_id, permission_key)
+);
+
+-- Staff shifts table (replaces old 'shifts' table)
+CREATE TABLE public.staff_shifts (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    pharmacy_id uuid NOT NULL REFERENCES public.pharmacies(id) ON DELETE CASCADE,
+    staff_id uuid NOT NULL REFERENCES public.pharmacy_staff(id) ON DELETE CASCADE,
+    clock_in timestamp with time zone NOT NULL DEFAULT now(),
+    clock_out timestamp with time zone,
+    clock_in_method text DEFAULT 'manual',
+    clock_in_wifi_name text,
+    is_wifi_verified boolean DEFAULT false,
+    notes text,
+    total_sales numeric DEFAULT 0,
+    total_transactions integer DEFAULT 0,
+    created_at timestamp with time zone NOT NULL DEFAULT now(),
+    updated_at timestamp with time zone NOT NULL DEFAULT now()
+);
+
+-- Subscription payments table
+CREATE TABLE public.subscription_payments (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    pharmacy_id uuid NOT NULL REFERENCES public.pharmacies(id) ON DELETE CASCADE,
+    plan subscription_plan NOT NULL,
+    amount numeric NOT NULL,
+    currency text NOT NULL DEFAULT 'NGN',
+    status text NOT NULL DEFAULT 'pending',
+    paystack_reference text,
+    paystack_transaction_id text,
+    payment_date timestamp with time zone NOT NULL DEFAULT now(),
+    is_gift boolean NOT NULL DEFAULT false,
+    created_at timestamp with time zone NOT NULL DEFAULT now()
+);
+
+-- Symptom drug mapping table
+CREATE TABLE public.symptom_drug_mapping (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    symptom_keywords text[] NOT NULL,
+    drug_categories text[] NOT NULL,
+    drug_names text[],
+    created_at timestamp with time zone DEFAULT now()
+);
+
+-- Upsell analytics table
+CREATE TABLE public.upsell_analytics (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    pharmacy_id uuid NOT NULL REFERENCES public.pharmacies(id) ON DELETE CASCADE,
+    branch_id uuid REFERENCES public.branches(id) ON DELETE SET NULL,
+    staff_id uuid REFERENCES public.pharmacy_staff(id) ON DELETE SET NULL,
+    sale_id uuid REFERENCES public.sales(id) ON DELETE SET NULL,
+    suggested_medication_id uuid NOT NULL REFERENCES public.medications(id) ON DELETE CASCADE,
+    cart_medication_ids uuid[] NOT NULL DEFAULT '{}',
+    suggestion_reason text,
+    confidence_score numeric,
+    was_accepted boolean NOT NULL DEFAULT false,
+    suggested_at timestamp with time zone NOT NULL DEFAULT now(),
+    accepted_at timestamp with time zone,
+    created_at timestamp with time zone NOT NULL DEFAULT now()
+);
+
+-- WhatsApp leads table
+CREATE TABLE public.whatsapp_leads (
+    id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    pharmacy_id uuid NOT NULL REFERENCES public.pharmacies(id) ON DELETE CASCADE,
+    medication_id uuid NOT NULL REFERENCES public.medications(id) ON DELETE CASCADE,
+    medication_name text NOT NULL,
+    quantity integer,
+    viewer_ip text,
+    clicked_at timestamp with time zone DEFAULT now()
 );
 
 -- Medications table
@@ -1236,6 +1306,7 @@ ALTER TABLE public.pharmacies ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.branches ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.pharmacy_staff ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.staff_permissions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.staff_shifts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.medications ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.branch_inventory ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.stock_transfers ENABLE ROW LEVEL SECURITY;
@@ -1262,6 +1333,10 @@ ALTER TABLE public.marketplace_views ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.marketplace_searches ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.referral_partners ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.referral_signups ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.subscription_payments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.symptom_drug_mapping ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.upsell_analytics ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.whatsapp_leads ENABLE ROW LEVEL SECURITY;
 
 -- =====================================================
 -- STEP 9: CREATE RLS POLICIES
@@ -1437,6 +1512,28 @@ CREATE POLICY "Platform admins can manage referral partners" ON public.referral_
 CREATE POLICY "Pharmacy owners can view own signup" ON public.referral_signups FOR SELECT USING (pharmacy_id IN (SELECT get_user_pharmacy_ids(auth.uid())));
 CREATE POLICY "Platform admins can manage referral signups" ON public.referral_signups FOR ALL USING (is_platform_admin(auth.uid())) WITH CHECK (is_platform_admin(auth.uid()));
 
+-- Staff shifts policies (replaces old shifts table)
+CREATE POLICY "Staff can view pharmacy shifts" ON public.staff_shifts FOR SELECT USING (pharmacy_id IN (SELECT get_user_pharmacy_ids(auth.uid())));
+CREATE POLICY "Staff can insert shifts" ON public.staff_shifts FOR INSERT WITH CHECK (pharmacy_id IN (SELECT get_user_pharmacy_ids(auth.uid())));
+CREATE POLICY "Staff can update shifts" ON public.staff_shifts FOR UPDATE USING (pharmacy_id IN (SELECT get_user_pharmacy_ids(auth.uid())));
+
+-- Subscription payments policies
+CREATE POLICY "Staff can view pharmacy payments" ON public.subscription_payments FOR SELECT USING (pharmacy_id IN (SELECT get_user_pharmacy_ids(auth.uid())));
+CREATE POLICY "System can insert payments" ON public.subscription_payments FOR INSERT WITH CHECK (true);
+
+-- Symptom drug mapping policies
+CREATE POLICY "Anyone can view symptom mappings" ON public.symptom_drug_mapping FOR SELECT USING (true);
+CREATE POLICY "Platform admins can manage symptom mappings" ON public.symptom_drug_mapping FOR ALL USING (is_platform_admin(auth.uid()));
+
+-- Upsell analytics policies
+CREATE POLICY "Staff can view pharmacy upsell analytics" ON public.upsell_analytics FOR SELECT USING (pharmacy_id IN (SELECT get_user_pharmacy_ids(auth.uid())));
+CREATE POLICY "Staff can insert upsell analytics" ON public.upsell_analytics FOR INSERT WITH CHECK (pharmacy_id IN (SELECT get_user_pharmacy_ids(auth.uid())));
+CREATE POLICY "Staff can update upsell analytics" ON public.upsell_analytics FOR UPDATE USING (pharmacy_id IN (SELECT get_user_pharmacy_ids(auth.uid())));
+
+-- WhatsApp leads policies
+CREATE POLICY "Anyone can insert whatsapp leads" ON public.whatsapp_leads FOR INSERT WITH CHECK (true);
+CREATE POLICY "Staff can view pharmacy leads" ON public.whatsapp_leads FOR SELECT USING (pharmacy_id IN (SELECT get_user_pharmacy_ids(auth.uid())));
+
 -- =====================================================
 -- STEP 10: CREATE STORAGE BUCKETS
 -- =====================================================
@@ -1451,6 +1548,17 @@ CREATE POLICY "Users can update their pharmacy logos" ON storage.objects FOR UPD
 -- Storage policies for prescriptions
 CREATE POLICY "Staff can view prescription images" ON storage.objects FOR SELECT USING (bucket_id = 'prescriptions' AND auth.role() = 'authenticated');
 CREATE POLICY "Staff can upload prescription images" ON storage.objects FOR INSERT WITH CHECK (bucket_id = 'prescriptions' AND auth.role() = 'authenticated');
+
+-- =====================================================
+-- ADDITIONAL TRIGGERS FOR NEW TABLES
+-- =====================================================
+CREATE TRIGGER update_staff_permissions_updated_at
+  BEFORE UPDATE ON public.staff_permissions
+  FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
+
+CREATE TRIGGER update_staff_shifts_updated_at
+  BEFORE UPDATE ON public.staff_shifts
+  FOR EACH ROW EXECUTE FUNCTION public.update_updated_at_column();
 
 -- =====================================================
 -- MIGRATION COMPLETE
