@@ -8,29 +8,26 @@ const corsHeaders = {
 
 const TERMII_API_KEY = Deno.env.get("TERMII_API_KEY");
 
-interface ExpiringPromotion {
-  medication_id: string;
-  medication_name: string;
-  pharmacy_id: string;
-  pharmacy_name: string;
-  pharmacy_phone: string | null;
-  pharmacy_email: string;
-  days_until_expiry: number;
-  featured_until: string;
-}
-
-async function sendSMS(phone: string, message: string) {
+async function sendSMS(phone: string, message: string): Promise<boolean> {
   if (!TERMII_API_KEY) {
     console.log("TERMII_API_KEY not configured, skipping SMS");
-    return;
+    return false;
   }
 
   try {
+    // Clean phone number
+    let cleanPhone = phone.replace(/\D/g, "");
+    if (cleanPhone.startsWith("0")) {
+      cleanPhone = "234" + cleanPhone.substring(1);
+    } else if (!cleanPhone.startsWith("234")) {
+      cleanPhone = "234" + cleanPhone;
+    }
+
     const response = await fetch("https://api.ng.termii.com/api/sms/send", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        to: phone,
+        to: cleanPhone,
         from: "PharmaTrack",
         sms: message,
         type: "plain",
@@ -40,11 +37,30 @@ async function sendSMS(phone: string, message: string) {
     });
 
     const result = await response.json();
-    console.log("SMS sent:", result);
-    return result;
+    console.log("SMS sent to", cleanPhone, ":", result);
+    return response.ok;
   } catch (error) {
     console.error("SMS error:", error);
+    return false;
   }
+}
+
+async function getEngagementStats(supabase: any, medicationId: string, pharmacyId: string) {
+  const [viewsResult, leadsResult] = await Promise.all([
+    supabase
+      .from("marketplace_views")
+      .select("id", { count: "exact" })
+      .eq("medication_id", medicationId),
+    supabase
+      .from("whatsapp_leads")
+      .select("id", { count: "exact" })
+      .eq("medication_id", medicationId),
+  ]);
+
+  return {
+    views: viewsResult.count || 0,
+    leads: leadsResult.count || 0,
+  };
 }
 
 serve(async (req) => {
@@ -58,17 +74,21 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Get promotions expiring in 2 days
-    const twoDaysFromNow = new Date();
-    twoDaysFromNow.setDate(twoDaysFromNow.getDate() + 2);
-    const twoDaysFromNowStr = twoDaysFromNow.toISOString().split('T')[0];
-    
-    const oneDayFromNow = new Date();
-    oneDayFromNow.setDate(oneDayFromNow.getDate() + 1);
-    const oneDayFromNowStr = oneDayFromNow.toISOString().split('T')[0];
+    const now = new Date();
+    const sentReminders: Array<{
+      type: string;
+      pharmacy: string;
+      medication: string;
+      views: number;
+      leads: number;
+      hours_left?: number;
+    }> = [];
 
-    // Get medications expiring in 2 days
-    const { data: expiringIn2Days, error: error2Days } = await supabase
+    // ============ 6-HOUR WARNING (Re-Up Strategy) ============
+    const sixHoursFromNow = new Date(now.getTime() + 6 * 60 * 60 * 1000);
+    const twelveHoursFromNow = new Date(now.getTime() + 12 * 60 * 60 * 1000);
+
+    const { data: expiringSoon, error: soonError } = await supabase
       .from("medications")
       .select(`
         id,
@@ -78,95 +98,207 @@ serve(async (req) => {
         pharmacies!inner (
           name,
           phone,
-          email
+          marketplace_contact_phone
         )
       `)
       .eq("is_featured", true)
-      .gte("featured_until", `${twoDaysFromNowStr}T00:00:00`)
-      .lt("featured_until", `${twoDaysFromNowStr}T23:59:59`);
+      .gte("featured_until", sixHoursFromNow.toISOString())
+      .lte("featured_until", twelveHoursFromNow.toISOString());
 
-    if (error2Days) throw error2Days;
+    if (soonError) throw soonError;
 
-    // Get medications expiring in 1 day (final reminder)
-    const { data: expiringIn1Day, error: error1Day } = await supabase
-      .from("medications")
-      .select(`
-        id,
-        name,
-        featured_until,
-        pharmacy_id,
-        pharmacies!inner (
-          name,
-          phone,
-          email
-        )
-      `)
-      .eq("is_featured", true)
-      .gte("featured_until", `${oneDayFromNowStr}T00:00:00`)
-      .lt("featured_until", `${oneDayFromNowStr}T23:59:59`);
-
-    if (error1Day) throw error1Day;
-
-    const sentReminders: string[] = [];
-
-    // Send 2-day reminders
-    for (const med of expiringIn2Days || []) {
+    for (const med of expiringSoon || []) {
       const pharmacy = (med as any).pharmacies;
-      const phone = pharmacy?.phone?.replace(/\D/g, "") || "";
+      const phone = pharmacy?.marketplace_contact_phone || pharmacy?.phone;
       
-      if (phone) {
-        const message = `PharmaTrack: Your featured promotion for "${med.name}" expires in 2 days. Renew now to stay visible on the marketplace. Visit your dashboard to extend.`;
-        await sendSMS(phone, message);
-        sentReminders.push(`2-day: ${med.name} (${pharmacy?.name})`);
-      }
+      if (!phone) continue;
 
-      // Create notification in the database
+      // Check if already notified recently
+      const { data: existingNotif } = await supabase
+        .from("notifications")
+        .select("id")
+        .eq("entity_id", med.id)
+        .eq("entity_type", "featured_expiry_6hr")
+        .gte("created_at", new Date(now.getTime() - 12 * 60 * 60 * 1000).toISOString())
+        .maybeSingle();
+
+      if (existingNotif) continue;
+
+      const stats = await getEngagementStats(supabase, med.id, med.pharmacy_id);
+      const hoursLeft = Math.round((new Date(med.featured_until).getTime() - now.getTime()) / (1000 * 60 * 60));
+
+      // ROI-focused message
+      const message = `🚀 PharmaTrack: "${med.name}" spotlight ends in ${hoursLeft}hrs! Stats: ${stats.views} views, ${stats.leads} customer inquiries. Extend for ₦1,000/week? Visit app now!`;
+
+      const smsSent = await sendSMS(phone, message);
+
       await supabase.from("notifications").insert({
         pharmacy_id: med.pharmacy_id,
-        title: "Promotion Expiring Soon",
-        message: `Your featured promotion for "${med.name}" expires in 2 days. Renew to stay visible.`,
+        title: `⏰ Spotlight Ending: ${med.name}`,
+        message: `Your boost expires in ${hoursLeft} hours! You've reached ${stats.views} customers with ${stats.leads} inquiries. Extend now to keep the momentum!`,
         type: "warning",
         priority: "high",
-        link: "/settings",
-        entity_type: "medication",
+        entity_type: "featured_expiry_6hr",
         entity_id: med.id,
+        link: "/marketplace-insights",
+        metadata: { views: stats.views, leads: stats.leads, hours_left: hoursLeft, sms_sent: smsSent },
+      });
+
+      sentReminders.push({
+        type: "6hr-warning",
+        pharmacy: pharmacy.name,
+        medication: med.name,
+        views: stats.views,
+        leads: stats.leads,
+        hours_left: hoursLeft,
       });
     }
 
-    // Send 1-day reminders (final warning)
-    for (const med of expiringIn1Day || []) {
-      const pharmacy = (med as any).pharmacies;
-      const phone = pharmacy?.phone?.replace(/\D/g, "") || "";
-      
-      if (phone) {
-        const message = `⚠️ FINAL: Your featured promotion for "${med.name}" expires TOMORROW. Renew immediately to avoid losing visibility on PharmaTrack marketplace.`;
-        await sendSMS(phone, message);
-        sentReminders.push(`1-day: ${med.name} (${pharmacy?.name})`);
-      }
+    // ============ 24-HOUR WARNING ============
+    const twentyFourHoursFromNow = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+    const thirtyHoursFromNow = new Date(now.getTime() + 30 * 60 * 60 * 1000);
 
-      // Create notification in the database
+    const { data: expiringTomorrow, error: tomorrowError } = await supabase
+      .from("medications")
+      .select(`
+        id,
+        name,
+        featured_until,
+        pharmacy_id,
+        pharmacies!inner (
+          name,
+          phone,
+          marketplace_contact_phone
+        )
+      `)
+      .eq("is_featured", true)
+      .gte("featured_until", twentyFourHoursFromNow.toISOString())
+      .lte("featured_until", thirtyHoursFromNow.toISOString());
+
+    if (tomorrowError) throw tomorrowError;
+
+    for (const med of expiringTomorrow || []) {
+      const pharmacy = (med as any).pharmacies;
+      const phone = pharmacy?.marketplace_contact_phone || pharmacy?.phone;
+      
+      if (!phone) continue;
+
+      const { data: existingNotif } = await supabase
+        .from("notifications")
+        .select("id")
+        .eq("entity_id", med.id)
+        .eq("entity_type", "featured_expiry_24hr")
+        .gte("created_at", new Date(now.getTime() - 20 * 60 * 60 * 1000).toISOString())
+        .maybeSingle();
+
+      if (existingNotif) continue;
+
+      const stats = await getEngagementStats(supabase, med.id, med.pharmacy_id);
+
+      const message = `📊 PharmaTrack: "${med.name}" spotlight expires tomorrow. You've gotten ${stats.views} views & ${stats.leads} inquiries so far. Renew to keep growing!`;
+
+      await sendSMS(phone, message);
+
       await supabase.from("notifications").insert({
         pharmacy_id: med.pharmacy_id,
-        title: "Promotion Expires Tomorrow!",
-        message: `FINAL WARNING: Your featured promotion for "${med.name}" expires tomorrow. Renew now!`,
+        title: `Spotlight Expires Tomorrow: ${med.name}`,
+        message: `Your featured boost expires in ~24 hours. Current stats: ${stats.views} views, ${stats.leads} customer inquiries.`,
         type: "warning",
-        priority: "urgent",
-        link: "/settings",
-        entity_type: "medication",
+        priority: "medium",
+        entity_type: "featured_expiry_24hr",
         entity_id: med.id,
+        link: "/marketplace-insights",
+        metadata: { views: stats.views, leads: stats.leads },
+      });
+
+      sentReminders.push({
+        type: "24hr-warning",
+        pharmacy: pharmacy.name,
+        medication: med.name,
+        views: stats.views,
+        leads: stats.leads,
       });
     }
+
+    // ============ JUST EXPIRED (Re-Up Offer) ============
+    const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
+
+    const { data: justExpired, error: expiredError } = await supabase
+      .from("medications")
+      .select(`
+        id,
+        name,
+        featured_until,
+        pharmacy_id,
+        pharmacies!inner (
+          name,
+          phone,
+          marketplace_contact_phone
+        )
+      `)
+      .eq("is_featured", false)
+      .gte("featured_until", oneHourAgo.toISOString())
+      .lte("featured_until", now.toISOString());
+
+    if (expiredError) throw expiredError;
+
+    for (const med of justExpired || []) {
+      const pharmacy = (med as any).pharmacies;
+      const phone = pharmacy?.marketplace_contact_phone || pharmacy?.phone;
+      
+      if (!phone) continue;
+
+      const { data: existingNotif } = await supabase
+        .from("notifications")
+        .select("id")
+        .eq("entity_id", med.id)
+        .eq("entity_type", "featured_expired")
+        .gte("created_at", oneHourAgo.toISOString())
+        .maybeSingle();
+
+      if (existingNotif) continue;
+
+      const stats = await getEngagementStats(supabase, med.id, med.pharmacy_id);
+
+      // Strong re-up CTA
+      const message = `💰 PharmaTrack: "${med.name}" spotlight ended! Final: ${stats.views} views, ${stats.leads} inquiries. Re-boost for just ₦1,000/week - don't lose momentum! Visit app now.`;
+
+      await sendSMS(phone, message);
+
+      await supabase.from("notifications").insert({
+        pharmacy_id: med.pharmacy_id,
+        title: `📈 Spotlight Ended: ${med.name}`,
+        message: `Your boost has ended. Final results: ${stats.views} customer views, ${stats.leads} WhatsApp inquiries. Re-boost now to maintain visibility!`,
+        type: "info",
+        priority: "high",
+        entity_type: "featured_expired",
+        entity_id: med.id,
+        link: "/marketplace-insights",
+        metadata: { views: stats.views, leads: stats.leads, final: true },
+      });
+
+      sentReminders.push({
+        type: "expired-reup",
+        pharmacy: pharmacy.name,
+        medication: med.name,
+        views: stats.views,
+        leads: stats.leads,
+      });
+    }
+
+    console.log(`Sent ${sentReminders.length} promotion reminders`);
 
     return new Response(
       JSON.stringify({
         success: true,
         reminders_sent: sentReminders.length,
         details: sentReminders,
+        timestamp: now.toISOString(),
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error: any) {
-    console.error("Error:", error);
+    console.error("Error in promotion-expiry-reminder:", error);
     return new Response(
       JSON.stringify({ error: error.message }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
