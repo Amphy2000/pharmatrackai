@@ -2064,6 +2064,7 @@ export type Database = {
           current_stock: number
           dispensing_unit: string
           featured_until: string
+          hide_marketplace_prices: boolean
           id: string
           is_featured: boolean
           marketplace_contact_phone: string
@@ -2085,6 +2086,7 @@ export type Database = {
           category: string
           current_stock: number
           dispensing_unit: string
+          hide_marketplace_prices: boolean
           id: string
           is_featured: boolean
           marketplace_contact_phone: string
