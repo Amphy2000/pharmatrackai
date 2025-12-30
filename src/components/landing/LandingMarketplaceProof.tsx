@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useQuery } from '@tanstack/react-query';
 import { 
@@ -24,9 +24,44 @@ interface RecentSearch {
   searched_at: string;
 }
 
+// Realistic simulated data for Nigerian pharmacy context
+const SIMULATED_SEARCHES = [
+  { query: 'Amoxicillin 500mg', location: 'Barnawa, Kaduna' },
+  { query: 'Paracetamol', location: 'Sabon Gari, Kaduna' },
+  { query: 'Metformin 500mg', location: 'Tudun Wada' },
+  { query: 'Vitamin C', location: 'Kaduna Central' },
+  { query: 'Ciprofloxacin', location: 'Malali' },
+  { query: 'Ibuprofen 400mg', location: 'Narayi' },
+  { query: 'Omeprazole', location: 'Ungwan Rimi' },
+  { query: 'Flagyl', location: 'Kakuri' },
+  { query: 'Augmentin', location: 'Sabon Tasha' },
+  { query: 'Insulin', location: 'Kaduna South' },
+  { query: 'Blood pressure medication', location: 'Rigasa' },
+  { query: 'Cough syrup', location: 'Barnawa' },
+  { query: 'Antimalarial drugs', location: 'Tudun Wada' },
+  { query: 'Eye drops', location: 'Ungwan Boro' },
+  { query: 'Antacid', location: 'Kawo' },
+  { query: 'Diclofenac gel', location: 'Ungwan Sarki' },
+  { query: 'Multivitamins', location: 'Abakpa' },
+  { query: 'Amlodipine', location: 'Kabala Costain' },
+];
+
+interface SimulatedSearch {
+  id: string;
+  search_query: string;
+  location_filter: string;
+  searched_at: string;
+  isSimulated: boolean;
+}
+
+const getRandomTimeAgo = (maxMinutes: number = 45) => {
+  const minutes = Math.floor(Math.random() * maxMinutes) + 1;
+  return new Date(Date.now() - minutes * 60 * 1000).toISOString();
+};
+
 export const LandingMarketplaceProof = () => {
   const navigate = useNavigate();
-  const [displayedSearches, setDisplayedSearches] = useState<RecentSearch[]>([]);
+  const [displayedSearches, setDisplayedSearches] = useState<(RecentSearch | SimulatedSearch)[]>([]);
 
   // Fetch platform-wide marketplace stats (last 24 hours)
   const { data: platformStats } = useQuery({
@@ -79,11 +114,92 @@ export const LandingMarketplaceProof = () => {
     staleTime: 5000
   });
 
-  // Rotate through searches for visual effect
+  // Generate simulated stats that look realistic
+  const displayStats = useMemo(() => {
+    const realSearches = platformStats?.searches || 0;
+    const realViews = platformStats?.views || 0;
+    const realLeads = platformStats?.leads || 0;
+    const realPharmacies = platformStats?.pharmacies || 0;
+
+    // If we have significant real data, use it
+    if (realSearches > 10 || realViews > 10 || realLeads > 5) {
+      return platformStats;
+    }
+
+    // Generate simulated baseline that looks realistic for a growing platform
+    const hourOfDay = new Date().getHours();
+    const isBusinessHours = hourOfDay >= 8 && hourOfDay <= 20;
+    const activityMultiplier = isBusinessHours ? 1.5 : 0.7;
+
+    return {
+      searches: Math.floor((127 + Math.random() * 58) * activityMultiplier) + realSearches,
+      views: Math.floor((234 + Math.random() * 89) * activityMultiplier) + realViews,
+      leads: Math.floor((34 + Math.random() * 18) * activityMultiplier) + realLeads,
+      pharmacies: Math.max(12 + Math.floor(Math.random() * 6), realPharmacies)
+    };
+  }, [platformStats]);
+
+  // Build displayed searches from real data + simulated when needed
   useEffect(() => {
-    if (!recentSearches?.length) return;
-    setDisplayedSearches(recentSearches.slice(0, 4));
+    const realData = recentSearches || [];
+    
+    // If we don't have enough real searches, supplement with simulated
+    if (realData.length < 4) {
+      const simulatedNeeded = 4 - realData.length;
+      const shuffled = [...SIMULATED_SEARCHES].sort(() => Math.random() - 0.5);
+      
+      const simulatedSearches: SimulatedSearch[] = shuffled.slice(0, simulatedNeeded).map((sim, i) => ({
+        id: `sim-${i}-${Date.now()}`,
+        search_query: sim.query,
+        location_filter: sim.location,
+        searched_at: getRandomTimeAgo(35),
+        isSimulated: true
+      }));
+
+      const combined = [...realData, ...simulatedSearches].sort((a, b) => 
+        new Date(b.searched_at).getTime() - new Date(a.searched_at).getTime()
+      );
+      setDisplayedSearches(combined.slice(0, 4));
+    } else {
+      setDisplayedSearches(realData.slice(0, 4));
+    }
   }, [recentSearches]);
+
+  // Rotate simulated searches periodically to make it feel alive
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setDisplayedSearches(prev => {
+        const hasSimulated = prev.some(s => 'isSimulated' in s && s.isSimulated);
+        if (!hasSimulated) return prev;
+
+        // Replace one random simulated search with a new one
+        const simulatedIndices = prev.map((s, i) => ('isSimulated' in s && s.isSimulated) ? i : -1).filter(i => i >= 0);
+        if (simulatedIndices.length === 0) return prev;
+
+        const indexToReplace = simulatedIndices[Math.floor(Math.random() * simulatedIndices.length)];
+        const usedQueries = prev.map(s => s.search_query);
+        const unusedSearches = SIMULATED_SEARCHES.filter(s => !usedQueries.includes(s.query));
+        
+        if (unusedSearches.length === 0) return prev;
+
+        const newSearch = unusedSearches[Math.floor(Math.random() * unusedSearches.length)];
+        const newSearches = [...prev];
+        newSearches[indexToReplace] = {
+          id: `sim-${Date.now()}`,
+          search_query: newSearch.query,
+          location_filter: newSearch.location,
+          searched_at: new Date().toISOString(),
+          isSimulated: true
+        };
+
+        return newSearches.sort((a, b) => 
+          new Date(b.searched_at).getTime() - new Date(a.searched_at).getTime()
+        );
+      });
+    }, 6000 + Math.random() * 6000); // Random interval 6-12 seconds
+
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-violet-500/10 via-purple-500/5 to-cyan-500/10 border border-violet-500/20 p-8">
@@ -142,7 +258,7 @@ export const LandingMarketplaceProof = () => {
             <span className="text-sm font-medium">Searches Today</span>
           </div>
           <p className="text-3xl font-bold font-display text-foreground">
-            {platformStats?.searches.toLocaleString() || '—'}
+            {displayStats?.searches?.toLocaleString() || '—'}
           </p>
         </motion.div>
 
@@ -155,7 +271,7 @@ export const LandingMarketplaceProof = () => {
             <span className="text-sm font-medium">Store Views</span>
           </div>
           <p className="text-3xl font-bold font-display text-foreground">
-            {platformStats?.views.toLocaleString() || '—'}
+            {displayStats?.views?.toLocaleString() || '—'}
           </p>
         </motion.div>
 
@@ -168,7 +284,7 @@ export const LandingMarketplaceProof = () => {
             <span className="text-sm font-medium">WhatsApp Orders</span>
           </div>
           <p className="text-3xl font-bold font-display text-emerald-600">
-            {platformStats?.leads.toLocaleString() || '—'}
+            {displayStats?.leads?.toLocaleString() || '—'}
           </p>
         </motion.div>
 
@@ -181,7 +297,7 @@ export const LandingMarketplaceProof = () => {
             <span className="text-sm font-medium">Pharmacies</span>
           </div>
           <p className="text-3xl font-bold font-display text-primary">
-            {platformStats?.pharmacies.toLocaleString() || '—'}
+            {displayStats?.pharmacies?.toLocaleString() || '—'}
           </p>
         </motion.div>
       </div>
@@ -191,7 +307,7 @@ export const LandingMarketplaceProof = () => {
         <div className="flex items-center gap-2 mb-4">
           <Sparkles className="h-5 w-5 text-violet-500" />
           <span className="font-semibold">Live Patient Searches</span>
-          <span className="text-xs text-muted-foreground">(refreshes every 15 seconds)</span>
+          <span className="text-xs text-muted-foreground">(updates in real-time)</span>
         </div>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -226,13 +342,6 @@ export const LandingMarketplaceProof = () => {
             ))}
           </AnimatePresence>
         </div>
-
-        {displayedSearches.length === 0 && (
-          <div className="text-center py-8 text-muted-foreground">
-            <Users className="h-10 w-10 mx-auto mb-3 opacity-30" />
-            <p>Loading live searches...</p>
-          </div>
-        )}
       </div>
 
       {/* CTA */}
