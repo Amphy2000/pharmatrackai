@@ -70,80 +70,48 @@ serve(async (req) => {
       );
     }
 
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+    if (!GEMINI_API_KEY) {
+      throw new Error("GEMINI_API_KEY is not configured");
     }
 
     const medicationNames = medications.map((m: { name: string }) => m.name).join(", ");
 
     console.log(`Checking drug interactions for user ${user.id}, pharmacy ${staffRecord.pharmacy_id}`);
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          {
-            role: "system",
-            content: `You are a pharmaceutical drug interaction checker. Given a list of medications, identify any potentially dangerous drug interactions. Be concise but clear about the risks. Focus only on clinically significant interactions.
+    const systemPrompt = `You are a pharmaceutical drug interaction checker. Given a list of medications, identify any potentially dangerous drug interactions. Be concise but clear about the risks. Focus only on clinically significant interactions.
 
 IMPORTANT: Only report interactions that are well-documented and clinically significant. Do not report minor or theoretical interactions.
 
-Respond using the provided function to return structured data.`
-          },
+Return a JSON object with this exact structure:
+{
+  "interactions": [
+    {
+      "drugs": ["Drug A", "Drug B"],
+      "severity": "low" | "moderate" | "high" | "severe",
+      "description": "Brief description of the interaction and its effects",
+      "recommendation": "What the pharmacist should do or advise"
+    }
+  ]
+}
+
+If there are no significant interactions, return: {"interactions": []}`;
+
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        contents: [
           {
-            role: "user",
-            content: `Check for drug interactions between these medications: ${medicationNames}`
+            role: 'user',
+            parts: [{ text: `${systemPrompt}\n\nCheck for drug interactions between these medications: ${medicationNames}` }]
           }
         ],
-        tools: [
-          {
-            type: "function",
-            function: {
-              name: "report_interactions",
-              description: "Report drug interactions found between medications",
-              parameters: {
-                type: "object",
-                properties: {
-                  interactions: {
-                    type: "array",
-                    items: {
-                      type: "object",
-                      properties: {
-                        drugs: {
-                          type: "array",
-                          items: { type: "string" },
-                          description: "The two drugs that interact"
-                        },
-                        severity: {
-                          type: "string",
-                          enum: ["low", "moderate", "high", "severe"],
-                          description: "Severity level of the interaction"
-                        },
-                        description: {
-                          type: "string",
-                          description: "Brief description of the interaction and its effects"
-                        },
-                        recommendation: {
-                          type: "string",
-                          description: "What the pharmacist should do or advise"
-                        }
-                      },
-                      required: ["drugs", "severity", "description", "recommendation"]
-                    }
-                  }
-                },
-                required: ["interactions"]
-              }
-            }
-          }
-        ],
-        tool_choice: { type: "function", function: { name: "report_interactions" } }
+        generationConfig: {
+          responseMimeType: 'application/json',
+        },
       }),
     });
 
@@ -154,29 +122,22 @@ Respond using the provided function to return structured data.`
           { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "AI credits exhausted. Please add credits." }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
       const errorText = await response.text();
-      console.error("AI gateway error:", response.status, errorText);
+      console.error("Gemini API error:", response.status, errorText);
       throw new Error(`AI gateway error: ${response.status}`);
     }
 
     const data = await response.json();
+    const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
     
-    // Extract the tool call result
-    const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
     let interactions: any[] = [];
     
-    if (toolCall?.function?.arguments) {
+    if (content) {
       try {
-        const args = JSON.parse(toolCall.function.arguments);
-        interactions = args.interactions || [];
+        const parsed = JSON.parse(content);
+        interactions = parsed.interactions || [];
       } catch (e) {
-        console.error("Failed to parse tool call arguments:", e);
+        console.error("Failed to parse AI response:", e);
       }
     }
 

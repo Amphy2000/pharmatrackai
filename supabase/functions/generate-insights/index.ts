@@ -19,7 +19,7 @@ interface Medication {
   reorder_level: number;
   expiry_date: string;
   unit_price: number;
-  selling_price?: number;
+  selling_price?: number | null;
   is_shelved?: boolean;
 }
 
@@ -54,7 +54,8 @@ function validateMedication(m: unknown, index: number): Medication {
   if (typeof med.unit_price !== 'number' || med.unit_price < 0) {
     throw new Error(`Invalid unit_price at index ${index}`);
   }
-  if (med.selling_price !== undefined && (typeof med.selling_price !== 'number' || med.selling_price < 0)) {
+  // Allow null, undefined, or valid number for selling_price
+  if (med.selling_price !== undefined && med.selling_price !== null && (typeof med.selling_price !== 'number' || med.selling_price < 0)) {
     throw new Error(`Invalid selling_price at index ${index}`);
   }
   if (med.is_shelved !== undefined && typeof med.is_shelved !== 'boolean') {
@@ -70,7 +71,7 @@ function validateMedication(m: unknown, index: number): Medication {
     reorder_level: med.reorder_level as number,
     expiry_date: med.expiry_date as string,
     unit_price: med.unit_price as number,
-    selling_price: med.selling_price as number | undefined,
+    selling_price: med.selling_price as number | null | undefined,
     is_shelved: med.is_shelved as boolean | undefined,
   };
 }
@@ -150,10 +151,10 @@ serve(async (req) => {
     const body = await req.json();
     const { medications, currency, currencySymbol } = validateInput(body);
     
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
 
-    if (!LOVABLE_API_KEY) {
-      throw new Error('LOVABLE_API_KEY is not configured');
+    if (!GEMINI_API_KEY) {
+      throw new Error('GEMINI_API_KEY is not configured');
     }
 
     console.log(`Generating insights for user ${user.id}, pharmacy ${staffRecord.pharmacy_id}, ${medications.length} medications`);
@@ -238,21 +239,23 @@ ${JSON.stringify(medications.map(m => ({
 
 Provide 6 actionable insights in JSON format with specific dollar amounts and actions.`;
 
-    console.log('Calling Lovable AI for enhanced insights generation...');
+    console.log('Calling Gemini API for enhanced insights generation...');
 
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: userPrompt }
+        contents: [
+          {
+            role: 'user',
+            parts: [{ text: `${systemPrompt}\n\n${userPrompt}` }]
+          }
         ],
-        response_format: { type: 'json_object' },
+        generationConfig: {
+          responseMimeType: 'application/json',
+        },
       }),
     });
 
@@ -263,19 +266,13 @@ Provide 6 actionable insights in JSON format with specific dollar amounts and ac
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         });
       }
-      if (response.status === 402) {
-        return new Response(JSON.stringify({ error: "Payment required. Please add credits to continue.", insights: [] }), {
-          status: 402,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      }
       const errorText = await response.text();
-      console.error('Lovable AI error:', response.status, errorText);
+      console.error('Gemini API error:', response.status, errorText);
       throw new Error(`AI gateway error: ${response.status}`);
     }
 
     const data = await response.json();
-    const content = data.choices?.[0]?.message?.content;
+    const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
 
     if (!content) {
       throw new Error('No content in AI response');
