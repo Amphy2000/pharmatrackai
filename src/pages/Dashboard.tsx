@@ -33,6 +33,7 @@ import { QuickGlancePanel } from '@/components/dashboard/QuickGlancePanel';
 import { SavingsROIPanel } from '@/components/dashboard/SavingsROIPanel';
 import { SlowMovingProductsPanel } from '@/components/dashboard/SlowMovingProductsPanel';
 import { LiveActivityFeed } from '@/components/dashboard/LiveActivityFeed';
+import { MarketplaceProofWidget } from '@/components/dashboard/MarketplaceProofWidget';
 import { ProductTour } from '@/components/ProductTour';
 import { PWAInstallPrompt } from '@/components/pwa/PWAInstallPrompt';
 import { BranchAlertSummaryWidget } from '@/components/dashboard/BranchAlertSummaryWidget';
@@ -341,7 +342,14 @@ const Dashboard = () => {
             {/* Branch-Specific Alert Summary Widget */}
             <BranchAlertSummaryWidget />
 
-            {/* Money Saver Summary - ROI Dashboard */}
+            {/* Live Marketplace Proof - Show value of marketplace */}
+            <motion.section 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.25 }}
+            >
+              <MarketplaceProofWidget />
+            </motion.section>
             {isOwnerOrManager && (
               <motion.section 
                 initial={{ opacity: 0, y: 20 }}
