@@ -171,12 +171,9 @@ export const MarketplaceSettings = () => {
     
     setIsSavingContact(true);
     try {
-      const { error } = await supabase
-        .from('pharmacies')
-        .update({ marketplace_contact_phone: marketplaceContactPhone || null } as any)
-        .eq('id', pharmacy.id);
-
-      if (error) throw error;
+      await updatePharmacySettings.mutateAsync({ 
+        marketplace_contact_phone: marketplaceContactPhone || null 
+      } as any);
       toast.success('Marketplace contact phone saved');
     } catch (error) {
       console.error('Error saving contact phone:', error);
@@ -208,12 +205,7 @@ export const MarketplaceSettings = () => {
         updateData.marketplace_lon = geocodeData.longitude;
       }
 
-      const { error } = await supabase
-        .from('pharmacies')
-        .update(updateData)
-        .eq('id', pharmacy.id);
-
-      if (error) throw error;
+      await updatePharmacySettings.mutateAsync(updateData as any);
       
       toast.success(`Location saved! Your pharmacy will appear in "${selectedZone}" on the marketplace`);
     } catch (error) {
@@ -229,12 +221,9 @@ export const MarketplaceSettings = () => {
     
     setIsSavingPriceHide(true);
     try {
-      const { error } = await supabase
-        .from('pharmacies')
-        .update({ hide_marketplace_prices: hideMarketplacePrices } as any)
-        .eq('id', pharmacy.id);
-
-      if (error) throw error;
+      await updatePharmacySettings.mutateAsync({ 
+        hide_marketplace_prices: hideMarketplacePrices 
+      } as any);
       toast.success(hideMarketplacePrices 
         ? 'Prices are now hidden on marketplace' 
         : 'Prices are now visible on marketplace'

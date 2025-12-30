@@ -47,7 +47,7 @@ export const usePharmacy = () => {
       // Explicitly select non-sensitive columns only - excludes paystack codes and admin_pin_hash
       const { data, error } = await supabase
         .from('pharmacies')
-        .select('id, name, email, phone, address, license_number, logo_url, subscription_status, subscription_plan, subscription_ends_at, trial_ends_at, max_users, active_branches_limit, branch_fee_per_month, owner_id, created_at, updated_at, enable_logo_on_print, pharmacist_in_charge, termii_sender_id, alert_recipient_phone, alert_channel, shop_wifi_name, shop_location_qr, require_wifi_clockin, default_margin_percent, price_lock_enabled, auto_renew, is_gifted, cancelled_at, cancellation_reason')
+        .select('id, name, email, phone, address, license_number, logo_url, subscription_status, subscription_plan, subscription_ends_at, trial_ends_at, max_users, active_branches_limit, branch_fee_per_month, owner_id, created_at, updated_at, enable_logo_on_print, pharmacist_in_charge, termii_sender_id, alert_recipient_phone, alert_channel, shop_wifi_name, shop_location_qr, require_wifi_clockin, default_margin_percent, price_lock_enabled, auto_renew, is_gifted, cancelled_at, cancellation_reason, marketplace_contact_phone, marketplace_zone, marketplace_city, hide_marketplace_prices, marketplace_lat, marketplace_lon')
         .eq('id', pharmacyId)
         .maybeSingle();
 
