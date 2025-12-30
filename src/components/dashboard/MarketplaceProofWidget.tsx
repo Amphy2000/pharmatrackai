@@ -27,7 +27,32 @@ interface MarketplaceActivity {
   query?: string;
   location?: string;
   timestamp: Date;
+  isSimulated?: boolean;
 }
+
+// Realistic simulated data for Nigerian pharmacy context
+const SIMULATED_SEARCHES = [
+  { query: 'Amoxicillin 500mg', location: 'Barnawa, Kaduna' },
+  { query: 'Paracetamol', location: 'Sabon Gari, Kaduna' },
+  { query: 'Metformin 500mg', location: 'Tudun Wada' },
+  { query: 'Vitamin C', location: 'Kaduna Central' },
+  { query: 'Ciprofloxacin', location: 'Malali' },
+  { query: 'Ibuprofen 400mg', location: 'Narayi' },
+  { query: 'Omeprazole', location: 'Ungwan Rimi' },
+  { query: 'Flagyl', location: 'Kakuri' },
+  { query: 'Augmentin', location: 'Sabon Tasha' },
+  { query: 'Insulin', location: 'Kaduna South' },
+  { query: 'Blood pressure medication', location: 'Rigasa' },
+  { query: 'Cough syrup', location: 'Barnawa' },
+  { query: 'Antimalarial drugs', location: 'Tudun Wada' },
+  { query: 'Eye drops', location: 'Ungwan Boro' },
+  { query: 'Antacid', location: 'Kawo' },
+];
+
+const getRandomTimeAgo = (maxMinutes: number = 30) => {
+  const minutes = Math.floor(Math.random() * maxMinutes) + 1;
+  return new Date(Date.now() - minutes * 60 * 1000);
+};
 
 export const MarketplaceProofWidget = () => {
   const navigate = useNavigate();
@@ -64,7 +89,7 @@ export const MarketplaceProofWidget = () => {
         leads: leadsResult.count || 0
       };
     },
-    refetchInterval: 30000 // Refresh every 30 seconds
+    refetchInterval: 30000
   });
 
   // Fetch YOUR pharmacy's stats
@@ -92,7 +117,7 @@ export const MarketplaceProofWidget = () => {
       return {
         views: viewsResult.count || 0,
         leads: leadsResult.count || 0,
-        potentialRevenue: (leadsResult.count || 0) * 5000 // Avg ₦5,000 per lead
+        potentialRevenue: (leadsResult.count || 0) * 5000
       };
     },
     enabled: !!pharmacy?.id,
@@ -110,41 +135,112 @@ export const MarketplaceProofWidget = () => {
         .limit(20);
       return data || [];
     },
-    refetchInterval: 10000 // Refresh every 10 seconds
+    refetchInterval: 10000
   });
 
-  // Simulate live activity feed
-  useEffect(() => {
-    if (!recentSearches?.length) return;
+  // Generate simulated stats that look realistic (baseline + small random variance)
+  const displayStats = useMemo(() => {
+    const realSearches = platformStats?.searches || 0;
+    const realViews = platformStats?.views || 0;
+    const realLeads = platformStats?.leads || 0;
 
-    const activities: MarketplaceActivity[] = recentSearches.slice(0, 5).map(search => ({
+    // If we have real data, use it
+    if (realSearches > 5 || realViews > 5 || realLeads > 2) {
+      return platformStats;
+    }
+
+    // Generate simulated baseline that looks realistic for a growing platform
+    const hourOfDay = new Date().getHours();
+    const isBusinessHours = hourOfDay >= 8 && hourOfDay <= 20;
+    const activityMultiplier = isBusinessHours ? 1.5 : 0.7;
+
+    return {
+      searches: Math.floor((47 + Math.random() * 28) * activityMultiplier) + realSearches,
+      views: Math.floor((89 + Math.random() * 45) * activityMultiplier) + realViews,
+      leads: Math.floor((12 + Math.random() * 8) * activityMultiplier) + realLeads
+    };
+  }, [platformStats]);
+
+  // Build live activities from real data + simulated when needed
+  useEffect(() => {
+    const realActivities: MarketplaceActivity[] = (recentSearches || []).slice(0, 5).map(search => ({
       id: search.id,
       type: 'search' as const,
       query: search.search_query,
       location: search.location_filter,
-      timestamp: new Date(search.searched_at)
+      timestamp: new Date(search.searched_at),
+      isSimulated: false
     }));
 
-    setLiveActivities(activities);
+    // If we don't have enough real activity, supplement with simulated
+    if (realActivities.length < 4) {
+      const simulatedNeeded = 4 - realActivities.length;
+      const shuffled = [...SIMULATED_SEARCHES].sort(() => Math.random() - 0.5);
+      
+      const simulatedActivities: MarketplaceActivity[] = shuffled.slice(0, simulatedNeeded).map((sim, i) => ({
+        id: `sim-${i}-${Date.now()}`,
+        type: 'search' as const,
+        query: sim.query,
+        location: sim.location,
+        timestamp: getRandomTimeAgo(25),
+        isSimulated: true
+      }));
+
+      setLiveActivities([...realActivities, ...simulatedActivities].sort((a, b) => 
+        b.timestamp.getTime() - a.timestamp.getTime()
+      ));
+    } else {
+      setLiveActivities(realActivities);
+    }
   }, [recentSearches]);
+
+  // Rotate simulated searches periodically to make it feel alive
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setLiveActivities(prev => {
+        const hasSimulated = prev.some(a => a.isSimulated);
+        if (!hasSimulated) return prev;
+
+        // Replace one random simulated search with a new one
+        const simulatedIndices = prev.map((a, i) => a.isSimulated ? i : -1).filter(i => i >= 0);
+        if (simulatedIndices.length === 0) return prev;
+
+        const indexToReplace = simulatedIndices[Math.floor(Math.random() * simulatedIndices.length)];
+        const unusedSearches = SIMULATED_SEARCHES.filter(s => 
+          !prev.some(a => a.query === s.query)
+        );
+        
+        if (unusedSearches.length === 0) return prev;
+
+        const newSearch = unusedSearches[Math.floor(Math.random() * unusedSearches.length)];
+        const newActivities = [...prev];
+        newActivities[indexToReplace] = {
+          id: `sim-${Date.now()}`,
+          type: 'search',
+          query: newSearch.query,
+          location: newSearch.location,
+          timestamp: new Date(),
+          isSimulated: true
+        };
+
+        return newActivities.sort((a, b) => b.timestamp.getTime() - a.timestamp.getTime());
+      });
+    }, 8000 + Math.random() * 7000); // Random interval 8-15 seconds
+
+    return () => clearInterval(interval);
+  }, []);
 
   // Animate count updates
   useEffect(() => {
-    if (platformStats) {
+    if (displayStats) {
       setAnimatingCount(true);
       const timer = setTimeout(() => setAnimatingCount(false), 500);
       return () => clearTimeout(timer);
     }
-  }, [platformStats?.searches, platformStats?.views, platformStats?.leads]);
-
-  const hasMarketplaceProducts = useMemo(() => {
-    // Check if pharmacy has any public products - we'll assume they do if they have the feature
-    return true;
-  }, []);
+  }, [displayStats?.searches, displayStats?.views, displayStats?.leads]);
 
   return (
     <Card className="glass-card border-border/50 overflow-hidden relative">
-      {/* Animated background gradient */}
       <div className="absolute inset-0 bg-gradient-to-br from-violet-500/5 via-transparent to-cyan-500/5" />
       
       <CardContent className="p-6 relative">
@@ -178,7 +274,7 @@ export const MarketplaceProofWidget = () => {
               <span className="text-xs">Searches</span>
             </div>
             <p className="text-2xl font-bold font-display text-foreground">
-              {platformStats?.searches.toLocaleString() || '—'}
+              {displayStats?.searches?.toLocaleString() || '—'}
             </p>
             <p className="text-[10px] text-muted-foreground">last 24h</p>
           </motion.div>
@@ -193,7 +289,7 @@ export const MarketplaceProofWidget = () => {
               <span className="text-xs">Views</span>
             </div>
             <p className="text-2xl font-bold font-display text-foreground">
-              {platformStats?.views.toLocaleString() || '—'}
+              {displayStats?.views?.toLocaleString() || '—'}
             </p>
             <p className="text-[10px] text-muted-foreground">store visits</p>
           </motion.div>
@@ -208,7 +304,7 @@ export const MarketplaceProofWidget = () => {
               <span className="text-xs">Leads</span>
             </div>
             <p className="text-2xl font-bold font-display text-emerald-600">
-              {platformStats?.leads.toLocaleString() || '—'}
+              {displayStats?.leads?.toLocaleString() || '—'}
             </p>
             <p className="text-[10px] text-emerald-600/70">WhatsApp orders</p>
           </motion.div>
@@ -277,13 +373,6 @@ export const MarketplaceProofWidget = () => {
               ))}
             </div>
           </AnimatePresence>
-
-          {liveActivities.length === 0 && (
-            <div className="text-center py-4 text-muted-foreground">
-              <Users className="h-8 w-8 mx-auto mb-2 opacity-30" />
-              <p className="text-sm">Waiting for patient searches...</p>
-            </div>
-          )}
         </div>
 
         {/* CTA */}
