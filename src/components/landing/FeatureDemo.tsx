@@ -168,6 +168,102 @@ const AIUpsellDemo = () => {
   );
 };
 
+// Prescription Fraud Detection Animation
+const FraudDetectionDemo = () => {
+  return (
+    <div className="relative h-48 overflow-hidden rounded-xl bg-gradient-to-br from-destructive/5 to-orange-500/10 border border-destructive/20">
+      {/* Prescription document */}
+      <motion.div
+        className="absolute left-[20%] top-1/4 w-14 h-18 bg-white rounded shadow-lg border border-border"
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.5 }}
+      >
+        <div className="p-1.5 space-y-1">
+          <div className="w-8 h-0.5 bg-muted-foreground/30 rounded" />
+          <div className="w-10 h-0.5 bg-muted-foreground/30 rounded" />
+          <div className="flex items-center gap-1">
+            <FileSearch className="w-2 h-2 text-primary" />
+            <div className="w-6 h-0.5 bg-primary/30 rounded" />
+          </div>
+          <div className="w-8 h-0.5 bg-muted-foreground/30 rounded" />
+        </div>
+      </motion.div>
+
+      {/* AI Scanning effect */}
+      <motion.div
+        className="absolute left-[25%] top-1/4 w-10 h-16"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: [0, 1, 0] }}
+        transition={{ duration: 1.5, delay: 0.8, repeat: Infinity, repeatDelay: 3 }}
+      >
+        <motion.div
+          className="w-full h-0.5 bg-destructive/50"
+          animate={{ y: [0, 50, 0] }}
+          transition={{ duration: 1.5, repeat: Infinity, repeatDelay: 3 }}
+        />
+      </motion.div>
+
+      {/* AI analyzing center */}
+      <motion.div 
+        className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
+      >
+        <motion.div
+          className="w-12 h-12 rounded-full border-2 border-destructive/30 flex items-center justify-center"
+          animate={{ borderColor: ['hsl(var(--destructive) / 0.3)', 'hsl(var(--destructive) / 0.8)', 'hsl(var(--destructive) / 0.3)'] }}
+          transition={{ duration: 2, repeat: Infinity }}
+        >
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ duration: 3, repeat: Infinity, ease: 'linear' }}
+          >
+            <Shield className="w-5 h-5 text-destructive" />
+          </motion.div>
+        </motion.div>
+      </motion.div>
+
+      {/* Alert popup */}
+      <motion.div
+        className="absolute right-[12%] top-[25%] bg-destructive/10 border border-destructive/30 rounded-lg p-2"
+        initial={{ opacity: 0, scale: 0.5 }}
+        animate={{ opacity: [0, 1, 1, 0], scale: [0.5, 1, 1, 0.9] }}
+        transition={{ duration: 2, delay: 2, repeat: Infinity, repeatDelay: 2.5 }}
+      >
+        <div className="flex items-center gap-1 mb-1">
+          <AlertTriangle className="w-3 h-3 text-destructive animate-pulse" />
+          <span className="text-[8px] font-bold text-destructive">FRAUD ALERT</span>
+        </div>
+        <div className="text-[7px] text-muted-foreground">
+          Duplicate Rx detected
+        </div>
+      </motion.div>
+
+      {/* Pattern indicators */}
+      <div className="absolute right-[15%] bottom-[35%] space-y-1">
+        {[
+          { label: 'Same patient', color: 'destructive' },
+          { label: '3 times today', color: 'warning' },
+        ].map((item, i) => (
+          <motion.div
+            key={i}
+            className={`flex items-center gap-1 text-[7px] text-${item.color}`}
+            initial={{ opacity: 0, x: 10 }}
+            animate={{ opacity: [0, 1], x: [10, 0] }}
+            transition={{ duration: 0.3, delay: 2.3 + i * 0.2, repeat: Infinity, repeatDelay: 4 }}
+          >
+            <X className="w-2 h-2" />
+            <span>{item.label}</span>
+          </motion.div>
+        ))}
+      </div>
+
+      {/* Label */}
+      <div className="absolute bottom-2 left-2 text-[10px] text-muted-foreground font-medium">
+        Catches suspicious patterns
+      </div>
+    </div>
+  );
+};
 
 // Automated Alerts Animation - Owner's Peace of Mind
 const AutomatedAlertsDemo = () => {
@@ -573,6 +669,14 @@ export const FeatureDemo = ({ isInternational = false }: FeatureDemoProps) => {
       demo: <AIUpsellDemo />,
       color: 'purple-500',
       badge: 'Revenue Booster'
+    },
+    {
+      title: 'Fraud Detection',
+      description: 'AI scans prescriptions for duplicate fills, suspicious patterns, and flags potential abuse before dispensing.',
+      icon: Shield,
+      demo: <FraudDetectionDemo />,
+      color: 'destructive',
+      badge: 'License Protector'
     },
     {
       title: 'Price Lock Shield',
