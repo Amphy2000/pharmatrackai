@@ -389,9 +389,9 @@ const MarketplaceInsights = () => {
               </CardContent>
             </Card>
 
-            <div className="grid md:grid-cols-2 gap-8 items-start">
+            <div className="grid md:grid-cols-2 gap-8">
               {/* Top Searched Drugs (Out of Stock) */}
-              <Card>
+              <Card className="h-full flex flex-col">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <AlertTriangle className="h-5 w-5 text-warning" />
@@ -401,7 +401,7 @@ const MarketplaceInsights = () => {
                     People are searching for these drugs but you don't have them in stock
                   </p>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="flex-1">
                   {outOfStockSearches && outOfStockSearches.length > 0 ? (
                     <div className="space-y-3">
                       {outOfStockSearches.map((item, index) => (
@@ -425,14 +425,14 @@ const MarketplaceInsights = () => {
               </Card>
 
               {/* Recent WhatsApp Leads */}
-              <Card>
+              <Card className="h-full flex flex-col">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <MessageCircle className="h-5 w-5 text-[#25D366]" />
                     Recent WhatsApp Leads
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="flex-1">
                   {leadsData && leadsData.length > 0 ? (
                     <div className="max-h-80 overflow-auto">
                       <Table>
