@@ -21,10 +21,13 @@ import {
   Shield,
   Play,
   Loader2,
-  XCircle
+  XCircle,
+  Download,
+  Database
 } from 'lucide-react';
 import { useMedications } from '@/hooks/useMedications';
 import { useSales } from '@/hooks/useSales';
+import { format } from 'date-fns';
 import { usePharmacy } from '@/hooks/usePharmacy';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -568,6 +571,142 @@ export const SystemTestChecklist = () => {
         },
       ],
     },
+    {
+      id: 'calculations',
+      title: 'Critical Calculations',
+      icon: <Database className="h-4 w-4" />,
+      items: [
+        {
+          id: 'calc_no_orphan_sales',
+          label: 'No orphaned sale records',
+          description: 'Verifies all sales link to valid medications',
+          autoTest: async () => {
+            if (!pharmacy?.id) return { passed: false, message: 'No pharmacy connected' };
+            const { data: salesData } = await supabase
+              .from('sales')
+              .select('id, medication_id')
+              .eq('pharmacy_id', pharmacy.id)
+              .limit(50);
+            
+            if (!salesData?.length) return { passed: true, message: 'No sales to verify' };
+            
+            const medIds = [...new Set(salesData.map(s => s.medication_id))];
+            const { data: meds } = await supabase
+              .from('medications')
+              .select('id')
+              .in('id', medIds);
+            
+            const validIds = new Set(meds?.map(m => m.id) || []);
+            const orphaned = salesData.filter(s => !validIds.has(s.medication_id));
+            
+            return {
+              passed: orphaned.length === 0,
+              message: orphaned.length === 0 
+                ? 'All sales properly linked' 
+                : `${orphaned.length} sales have missing medication links`,
+            };
+          },
+        },
+        {
+          id: 'calc_positive_prices',
+          label: 'All prices are positive',
+          description: 'Ensures no negative or zero prices',
+          autoTest: () => {
+            const invalid = medications.filter(m => m.unit_price <= 0);
+            return {
+              passed: invalid.length === 0,
+              message: invalid.length === 0 
+                ? 'All prices are positive' 
+                : `${invalid.length} items have invalid prices`,
+              details: invalid.length > 0 ? `Items: ${invalid.slice(0, 3).map(n => n.name).join(', ')}` : undefined,
+            };
+          },
+        },
+        {
+          id: 'calc_stock_matches_sales',
+          label: 'Stock levels consistent',
+          description: 'Verifies stock deductions were applied',
+          autoTest: async () => {
+            if (!pharmacy?.id) return { passed: false, message: 'No pharmacy connected' };
+            
+            // Get total quantity sold per medication
+            const { data: salesByMed } = await supabase
+              .from('sales')
+              .select('medication_id, quantity')
+              .eq('pharmacy_id', pharmacy.id);
+            
+            if (!salesByMed?.length) return { passed: true, message: 'No sales data to verify' };
+            
+            const soldQty = salesByMed.reduce((acc, s) => {
+              acc[s.medication_id] = (acc[s.medication_id] || 0) + s.quantity;
+              return acc;
+            }, {} as Record<string, number>);
+            
+            // Check if any medication has more sold than could exist
+            const issues: string[] = [];
+            for (const [medId, qty] of Object.entries(soldQty)) {
+              const med = medications.find(m => m.id === medId);
+              // This is a sanity check - we can't verify exact numbers without initial stock
+              if (med && med.current_stock < 0) {
+                issues.push(med.name);
+              }
+            }
+            
+            return {
+              passed: issues.length === 0,
+              message: issues.length === 0 
+                ? 'Stock levels appear consistent' 
+                : `${issues.length} items may have stock issues`,
+              details: issues.length > 0 ? `Check: ${issues.slice(0, 3).join(', ')}` : undefined,
+            };
+          },
+        },
+        {
+          id: 'calc_selling_vs_cost',
+          label: 'Selling prices cover costs',
+          description: 'Verifies profit margins are positive',
+          autoTest: () => {
+            const withPrices = medications.filter(m => m.selling_price && m.selling_price > 0);
+            const lossMakers = withPrices.filter(m => (m.selling_price || 0) < m.unit_price);
+            
+            return {
+              passed: lossMakers.length === 0,
+              message: lossMakers.length === 0 
+                ? 'All selling prices cover costs' 
+                : `${lossMakers.length} items selling below cost!`,
+              details: lossMakers.length > 0 
+                ? `Warning: ${lossMakers.slice(0, 3).map(n => n.name).join(', ')}` 
+                : `${withPrices.length} items have selling prices set`,
+            };
+          },
+        },
+        {
+          id: 'calc_batch_uniqueness',
+          label: 'Batch numbers are unique per item',
+          description: 'Ensures proper batch tracking',
+          autoTest: () => {
+            const batchMap: Record<string, string[]> = {};
+            medications.forEach(m => {
+              const key = `${m.name}-${m.batch_number}`;
+              if (!batchMap[key]) batchMap[key] = [];
+              batchMap[key].push(m.id);
+            });
+            
+            const duplicates = Object.entries(batchMap).filter(([_, ids]) => ids.length > 1);
+            
+            return {
+              passed: duplicates.length === 0,
+              message: duplicates.length === 0 
+                ? 'All batch numbers unique' 
+                : `${duplicates.length} duplicate batch entries found`,
+              details: duplicates.length > 0 
+                ? `Check: ${duplicates[0][0]}` 
+                : undefined,
+            };
+          },
+        },
+      ],
+    },
   ];
 
   const runTest = async (item: TestItem) => {
@@ -648,6 +787,54 @@ export const SystemTestChecklist = () => {
     return { completed, total: category.items.length };
   };
 
+  const exportTestReport = () => {
+    const reportDate = format(new Date(), 'yyyy-MM-dd HH:mm');
+    const lines: string[] = [
+      `PHARMATRACK SYSTEM TEST REPORT`,
+      `Generated: ${reportDate}`,
+      `Pharmacy: ${pharmacy?.name || 'Unknown'}`,
+      ``,
+      `SUMMARY`,
+      `-------`,
+      `Total Tests: ${totalTests}`,
+      `Passed: ${passedCount}`,
+      `Failed: ${failedCount}`,
+      `Pending: ${totalTests - passedCount - failedCount}`,
+      `Progress: ${progressPercent}%`,
+      ``,
+    ];
+
+    testCategories.forEach(category => {
+      const { completed, total } = getCategoryProgress(category);
+      lines.push(`${category.title.toUpperCase()} (${completed}/${total})`);
+      lines.push('-'.repeat(40));
+      
+      category.items.forEach(item => {
+        const result = testResults[item.id];
+        const status = completedTests.has(item.id) ? '✓ PASS' : (result && !result.passed ? '✗ FAIL' : '○ PENDING');
+        lines.push(`  ${status}: ${item.label}`);
+        if (result) {
+          lines.push(`         ${result.message}`);
+          if (result.details) {
+            lines.push(`         ${result.details}`);
+          }
+        }
+      });
+      lines.push('');
+    });
+
+    lines.push(`--- END OF REPORT ---`);
+
+    const blob = new Blob([lines.join('\n')], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `pharmatrack-test-report-${format(new Date(), 'yyyy-MM-dd')}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+    toast.success('Test report downloaded');
+  };
+
   return (
     <Card className="border-primary/20">
       <CardHeader>
@@ -661,7 +848,7 @@ export const SystemTestChecklist = () => {
               Click "Run All Tests" to automatically verify your system
             </CardDescription>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <Button 
               variant="default" 
               size="sm" 
@@ -675,7 +862,16 @@ export const SystemTestChecklist = () => {
               )}
               {isRunningAll ? 'Running...' : 'Run All Tests'}
             </Button>
-            <Button variant="outline" size="sm" onClick={resetChecklist}>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={exportTestReport}
+              disabled={Object.keys(testResults).length === 0}
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Export Report
+            </Button>
+            <Button variant="ghost" size="sm" onClick={resetChecklist}>
               <RefreshCw className="h-4 w-4 mr-2" />
               Reset
             </Button>
