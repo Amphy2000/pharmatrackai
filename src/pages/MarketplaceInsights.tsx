@@ -15,7 +15,8 @@ import {
   Clock,
   Users,
   Rocket,
-  Loader2
+  Loader2,
+  EyeOff
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -247,6 +248,49 @@ const MarketplaceInsights = () => {
     }
   };
 
+  // Toggle price visibility - sets selling_price to null to hide, or keeps it visible
+  const togglePriceVisibility = async (medicationId: string, currentPrice: number | null) => {
+    try {
+      // If price is currently set, we store it in metadata and set to null
+      // If price is null, we restore from metadata or do nothing
+      const med = medications?.find(m => m.id === medicationId);
+      
+      if (currentPrice !== null) {
+        // Hide price - store in metadata first, then set to null
+        const { error } = await supabase
+          .from("medications")
+          .update({ 
+            selling_price: null,
+            metadata: { hidden_price: currentPrice }
+          })
+          .eq("id", medicationId);
+
+        if (error) throw error;
+
+        toast({
+          title: "Price Hidden",
+          description: "Customers will see 'Price on Request' and contact you via WhatsApp",
+        });
+      } else {
+        // Show price - we'd need to have a stored price or prompt to enter one
+        toast({
+          title: "Set a Price",
+          description: "Go to Inventory to set a selling price for this product",
+        });
+        return;
+      }
+
+      refetchMedications();
+    } catch (error) {
+      console.error("Error toggling price visibility:", error);
+      toast({
+        title: "Error",
+        description: "Failed to update price visibility",
+        variant: "destructive",
+      });
+    }
+  };
+
   // Boost mutation for featured spotlight
   const boostMutation = useMutation({
     mutationFn: async ({ medicationId, duration }: { medicationId: string; duration: number }) => {
@@ -389,9 +433,9 @@ const MarketplaceInsights = () => {
               </CardContent>
             </Card>
 
-            <div className="grid md:grid-cols-2 gap-8">
+            <div className="grid md:grid-cols-2 gap-8 items-stretch">
               {/* Top Searched Drugs (Out of Stock) */}
-              <Card className="h-full flex flex-col">
+              <Card className="flex flex-col">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <AlertTriangle className="h-5 w-5 text-warning" />
@@ -401,9 +445,9 @@ const MarketplaceInsights = () => {
                     People are searching for these drugs but you don't have them in stock
                   </p>
                 </CardHeader>
-                <CardContent className="flex-1">
+                <CardContent className="flex-1 flex flex-col">
                   {outOfStockSearches && outOfStockSearches.length > 0 ? (
-                    <div className="space-y-3">
+                    <div className="space-y-3 flex-1">
                       {outOfStockSearches.map((item, index) => (
                         <div 
                           key={index}
@@ -417,24 +461,26 @@ const MarketplaceInsights = () => {
                       ))}
                     </div>
                   ) : (
-                    <p className="text-center text-muted-foreground py-8">
-                      No missed opportunities found. Great job!
-                    </p>
+                    <div className="flex-1 flex items-center justify-center">
+                      <p className="text-center text-muted-foreground py-8">
+                        No missed opportunities found. Great job!
+                      </p>
+                    </div>
                   )}
                 </CardContent>
               </Card>
 
               {/* Recent WhatsApp Leads */}
-              <Card className="h-full flex flex-col">
+              <Card className="flex flex-col">
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <MessageCircle className="h-5 w-5 text-[#25D366]" />
                     Recent WhatsApp Leads
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="flex-1">
+                <CardContent className="flex-1 flex flex-col">
                   {leadsData && leadsData.length > 0 ? (
-                    <div className="max-h-80 overflow-auto">
+                    <div className="flex-1 overflow-auto">
                       <Table>
                         <TableHeader>
                           <TableRow>
@@ -457,9 +503,11 @@ const MarketplaceInsights = () => {
                       </Table>
                     </div>
                   ) : (
-                    <p className="text-center text-muted-foreground py-8">
-                      No WhatsApp leads yet. List products to get started!
-                    </p>
+                    <div className="flex-1 flex items-center justify-center">
+                      <p className="text-center text-muted-foreground py-8">
+                        No WhatsApp leads yet. List products to get started!
+                      </p>
+                    </div>
                   )}
                 </CardContent>
               </Card>
@@ -551,70 +599,92 @@ const MarketplaceInsights = () => {
                         <TableHead>Product</TableHead>
                         <TableHead className="hidden sm:table-cell">Category</TableHead>
                         <TableHead>Stock</TableHead>
-                        <TableHead className="hidden sm:table-cell">Price</TableHead>
+                        <TableHead className="text-center">Price</TableHead>
                         <TableHead className="text-center">Boost</TableHead>
                         <TableHead className="text-right">Marketplace</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {medications?.map((med) => (
-                        <TableRow key={med.id}>
-                          <TableCell className="font-medium">
-                            <div className="flex items-center gap-2">
-                              <span className="truncate max-w-[150px]">{med.name}</span>
-                              {med.is_featured && (
-                                <Star className="h-4 w-4 text-marketplace fill-marketplace flex-shrink-0" />
-                              )}
-                            </div>
-                          </TableCell>
-                          <TableCell className="hidden sm:table-cell">
-                            <Badge variant="outline">{med.category}</Badge>
-                          </TableCell>
-                          <TableCell>
-                            <Badge 
-                              variant="outline" 
-                              className={med.current_stock > 0 ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"}
-                            >
-                              {med.current_stock}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="hidden sm:table-cell">{formatPrice(med.selling_price || 0)}</TableCell>
-                          <TableCell className="text-center">
-                            {med.is_featured ? (
-                              <Badge variant="secondary" className="text-xs bg-marketplace/10 text-marketplace">
-                                <Star className="h-3 w-3 mr-1 fill-current" />
-                                Live
-                              </Badge>
-                            ) : (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="h-7 text-xs gap-1 border-marketplace/30 text-marketplace hover:bg-marketplace/10"
-                                onClick={() => handleBoost({ id: med.id, name: med.name })}
-                                disabled={!med.is_public || med.current_stock === 0}
+                      {medications?.map((med) => {
+                        const hasPrice = med.selling_price !== null && med.selling_price > 0;
+                        return (
+                          <TableRow key={med.id}>
+                            <TableCell className="font-medium">
+                              <div className="flex items-center gap-2">
+                                <span className="truncate max-w-[150px]">{med.name}</span>
+                                {med.is_featured && (
+                                  <Star className="h-4 w-4 text-marketplace fill-marketplace flex-shrink-0" />
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell className="hidden sm:table-cell">
+                              <Badge variant="outline">{med.category}</Badge>
+                            </TableCell>
+                            <TableCell>
+                              <Badge 
+                                variant="outline" 
+                                className={med.current_stock > 0 ? "bg-success/10 text-success" : "bg-destructive/10 text-destructive"}
                               >
-                                <Rocket className="h-3 w-3" />
-                                Boost
-                              </Button>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            <div className="flex items-center justify-end gap-2">
-                              {med.is_public ? (
-                                <ToggleRight 
-                                  className="h-8 w-8 text-marketplace cursor-pointer hover:scale-110 transition-transform" 
-                                  onClick={() => togglePublicStatus(med.id, true)}
-                                />
+                                {med.current_stock}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-center">
+                              {hasPrice ? (
+                                <div className="flex items-center justify-center gap-2">
+                                  <span className="text-sm font-medium">{formatPrice(med.selling_price!)}</span>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
+                                    onClick={() => togglePriceVisibility(med.id, med.selling_price)}
+                                    title="Hide price (show 'Price on Request')"
+                                  >
+                                    <EyeOff className="h-3.5 w-3.5" />
+                                  </Button>
+                                </div>
                               ) : (
-                                <ToggleLeft 
-                                  className="h-8 w-8 text-muted-foreground cursor-pointer hover:scale-110 transition-transform" 
-                                  onClick={() => togglePublicStatus(med.id, false)}
-                                />
+                                <Badge variant="outline" className="bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-700/50 text-[10px]">
+                                  On Request
+                                </Badge>
                               )}
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                            </TableCell>
+                            <TableCell className="text-center">
+                              {med.is_featured ? (
+                                <Badge variant="secondary" className="text-xs bg-marketplace/10 text-marketplace">
+                                  <Star className="h-3 w-3 mr-1 fill-current" />
+                                  Live
+                                </Badge>
+                              ) : (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-7 text-xs gap-1 border-marketplace/30 text-marketplace hover:bg-marketplace/10"
+                                  onClick={() => handleBoost({ id: med.id, name: med.name })}
+                                  disabled={!med.is_public || med.current_stock === 0}
+                                >
+                                  <Rocket className="h-3 w-3" />
+                                  Boost
+                                </Button>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex items-center justify-end gap-2">
+                                {med.is_public ? (
+                                  <ToggleRight 
+                                    className="h-8 w-8 text-marketplace cursor-pointer hover:scale-110 transition-transform" 
+                                    onClick={() => togglePublicStatus(med.id, true)}
+                                  />
+                                ) : (
+                                  <ToggleLeft 
+                                    className="h-8 w-8 text-muted-foreground cursor-pointer hover:scale-110 transition-transform" 
+                                    onClick={() => togglePublicStatus(med.id, false)}
+                                  />
+                                )}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
                     </TableBody>
                   </Table>
                 </div>
