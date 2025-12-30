@@ -14,6 +14,10 @@ import { RequestDrugButton } from "@/components/explore/RequestDrugButton";
 import { ExploreFlyer } from "@/components/explore/ExploreFlyer";
 import { PharmacyMapModal } from "@/components/explore/PharmacyMapModal";
 import { LocationPickerModal } from "@/components/explore/LocationPickerModal";
+import { TrendingSection } from "@/components/explore/TrendingSection";
+import { LiveActivityTicker } from "@/components/explore/LiveActivityTicker";
+import { VerifiedBadge } from "@/components/explore/VerifiedBadge";
+import { EmptyState } from "@/components/explore/EmptyState";
 import { motion, AnimatePresence } from "framer-motion";
 import { useGeolocation, calculateDistance, getApproximateCoordinates, getGoogleMapsLink, getFallbackLocationName } from "@/hooks/useGeolocation";
 import { useLocationOverride } from "@/hooks/useLocationOverride";
@@ -490,12 +494,12 @@ const Explore = () => {
             {/* Top Row */}
             <div className="flex items-start justify-between gap-2 mb-2">
               <div className="flex-1 min-w-0">
-                {medication.is_featured && (
-                  <Badge className="bg-gradient-to-r from-marketplace to-primary text-white gap-1 text-[9px] px-1.5 py-0 mb-1.5 rounded-full">
-                    <Star className="h-2 w-2 fill-current" />
-                    Spotlight
-                  </Badge>
-                )}
+              {medication.is_featured && (
+                <Badge className="bg-gradient-to-r from-marketplace to-primary text-white gap-1 text-[9px] px-1.5 py-0 mb-1.5 rounded-full">
+                  <Star className="h-2 w-2 fill-current" />
+                  Spotlight
+                </Badge>
+              )}
                 <h3 className="font-semibold text-sm text-foreground line-clamp-2 group-hover:text-marketplace transition-colors">
                   {medication.name}
                 </h3>
@@ -833,6 +837,20 @@ const Explore = () => {
         {/* Category Chips */}
         <CategoryChips onCategorySelect={handleCategorySelect} selectedCategory={selectedCategory} />
 
+        {/* Live Activity Ticker */}
+        <LiveActivityTicker />
+
+        {/* Trending Section */}
+        {!hasSearched && (
+          <TrendingSection
+            neighborhood={activeNeighborhood}
+            onTrendingClick={(term) => {
+              setSearchQuery(term);
+              handleSearch(term);
+            }}
+          />
+        )}
+
         {/* Trust Badges */}
         <motion.div
           initial={{ opacity: 0 }}
@@ -1019,18 +1037,25 @@ const Explore = () => {
               ))}
             </div>
           ) : hasSearched ? (
-            <div className="text-center py-12 bg-muted/30 rounded-2xl border border-dashed border-muted-foreground/20">
-              <Package className="h-12 w-12 mx-auto text-muted-foreground/40 mb-3" />
-              <p className="text-sm font-medium text-muted-foreground mb-2">No medications found</p>
-              <p className="text-xs text-muted-foreground/60 mb-4">Try a different search term or location</p>
-              <RequestDrugButton searchQuery={searchQuery} />
-            </div>
+            <EmptyState
+              type="no-results"
+              searchQuery={searchQuery}
+              onSuggestionClick={(term) => {
+                setSearchQuery(term);
+                handleSearch(term);
+              }}
+              onNeighborhoodClick={(n) => {
+                selectNeighborhood(n);
+              }}
+            />
           ) : (
-            <div className="text-center py-12 bg-muted/30 rounded-2xl border border-dashed border-muted-foreground/20">
-              <Search className="h-12 w-12 mx-auto text-muted-foreground/40 mb-3" />
-              <p className="text-sm font-medium text-muted-foreground">Search for medications</p>
-              <p className="text-xs text-muted-foreground/60">Type a medication name above to get started</p>
-            </div>
+            <EmptyState
+              type="initial"
+              onSuggestionClick={(term) => {
+                setSearchQuery(term);
+                handleSearch(term);
+              }}
+            />
           )}
         </motion.section>
 
