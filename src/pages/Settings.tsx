@@ -1,7 +1,7 @@
 import { Header } from '@/components/Header';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Settings as SettingsIcon, Users, Globe, CreditCard, Shield, ImageIcon, ShieldCheck, FileText, RotateCcw, Bell, Clock, Star, Store } from 'lucide-react';
+import { Settings as SettingsIcon, Users, Globe, CreditCard, Shield, ImageIcon, ShieldCheck, FileText, RotateCcw, Bell, Clock, Star, Store, ClipboardCheck } from 'lucide-react';
 import { StaffManagement } from '@/components/settings/StaffManagement';
 import { PermissionsManagement } from '@/components/settings/PermissionsManagement';
 import { RegionCurrencySettings } from '@/components/settings/RegionCurrencySettings';
@@ -12,6 +12,7 @@ import { AlertSettings } from '@/components/settings/AlertSettings';
 import { ClockInSecuritySettings } from '@/components/settings/ClockInSecuritySettings';
 import { PromotionsManagement } from '@/components/settings/PromotionsManagement';
 import { MarketplaceSettings } from '@/components/settings/MarketplaceSettings';
+import { SystemTestChecklist } from '@/components/settings/SystemTestChecklist';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useSearchParams, Navigate, Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -113,6 +114,11 @@ const Settings = () => {
                   <Clock className="h-3 w-3 sm:h-4 sm:w-4" />
                   <span className="hidden xs:inline">Clock-In</span>
                   <span className="xs:hidden">Clock</span>
+                </TabsTrigger>
+                <TabsTrigger value="testing" className="gap-2 text-xs sm:text-sm">
+                  <ClipboardCheck className="h-3 w-3 sm:h-4 sm:w-4" />
+                  <span className="hidden xs:inline">Testing</span>
+                  <span className="xs:hidden">Test</span>
                 </TabsTrigger>
                 {canManageStaff && (
                   <TabsTrigger value="permissions" className="gap-2 text-xs sm:text-sm">
@@ -228,6 +234,10 @@ const Settings = () => {
 
           <TabsContent value="clockin">
             <ClockInSecuritySettings />
+          </TabsContent>
+
+          <TabsContent value="testing">
+            <SystemTestChecklist />
           </TabsContent>
         </Tabs>
       </main>
