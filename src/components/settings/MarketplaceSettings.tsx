@@ -5,14 +5,22 @@ import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Globe, Zap, Package, Info, Save, Loader2, Phone, MessageCircle, MapPin, Check, Navigation } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Globe, Zap, Package, Info, Save, Loader2, Phone, MessageCircle, MapPin, Check, Navigation, EyeOff } from 'lucide-react';
 import { usePharmacy } from '@/hooks/usePharmacy';
 import { useMedications } from '@/hooks/useMedications';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { AddressAutocomplete } from '@/components/common/AddressAutocomplete';
-import { detectMarketplaceZone } from '@/utils/zoneDetector';
+import { NIGERIAN_CITY_NEIGHBORHOODS, getNeighborhoodNames } from '@/data/kadunaNighborhoods';
+
+// Supported cities for marketplace
+const SUPPORTED_CITIES = Object.keys(NIGERIAN_CITY_NEIGHBORHOODS).map(city => ({
+  value: city,
+  label: city.charAt(0).toUpperCase() + city.slice(1).replace('-', ' ')
+}));
+
 export const MarketplaceSettings = () => {
   const { pharmacy, updatePharmacySettings } = usePharmacy();
   const { medications, updateMedication } = useMedications();
@@ -23,6 +31,10 @@ export const MarketplaceSettings = () => {
   const [isSavingContact, setIsSavingContact] = useState(false);
   const [pharmacyAddress, setPharmacyAddress] = useState('');
   const [isSavingAddress, setIsSavingAddress] = useState(false);
+  const [selectedCity, setSelectedCity] = useState('');
+  const [selectedZone, setSelectedZone] = useState('');
+  const [hideMarketplacePrices, setHideMarketplacePrices] = useState(false);
+  const [isSavingPriceHide, setIsSavingPriceHide] = useState(false);
   const [geocodeData, setGeocodeData] = useState<{
     latitude: number;
     longitude: number;
@@ -31,24 +43,22 @@ export const MarketplaceSettings = () => {
     state?: string;
     country?: string;
   } | null>(null);
-  const [detectedZone, setDetectedZone] = useState<{
-    zone: string;
-    city: string;
-    confidence: 'high' | 'medium' | 'low';
-  } | null>(null);
 
-  // Load marketplace contact phone, address, and zone
+  // Get zones for selected city
+  const availableZones = selectedCity ? getNeighborhoodNames(selectedCity) : [];
+
+  // Load marketplace contact phone, address, zone, and price hide setting
   useEffect(() => {
     if (pharmacy) {
-      // TypeScript doesn't know about the new column yet, so we cast
       const phoneValue = (pharmacy as any).marketplace_contact_phone || '';
       const zoneValue = (pharmacy as any).marketplace_zone || '';
       const cityValue = (pharmacy as any).marketplace_city || '';
+      const hidePrices = (pharmacy as any).hide_marketplace_prices || false;
       setMarketplaceContactPhone(phoneValue);
       setPharmacyAddress(pharmacy.address || '');
-      if (zoneValue) {
-        setDetectedZone({ zone: zoneValue, city: cityValue, confidence: 'high' });
-      }
+      setSelectedCity(cityValue);
+      setSelectedZone(zoneValue);
+      setHideMarketplacePrices(hidePrices);
     }
   }, [pharmacy]);
 
@@ -176,24 +186,20 @@ export const MarketplaceSettings = () => {
     }
   };
 
-  const handleSaveAddress = async () => {
+  const handleSaveLocation = async () => {
     if (!pharmacy?.id) return;
+    
+    if (!selectedCity || !selectedZone) {
+      toast.error('Please select both city and zone');
+      return;
+    }
     
     setIsSavingAddress(true);
     try {
-      // Detect zone from address/coordinates
-      const zoneResult = detectMarketplaceZone({
-        latitude: geocodeData?.latitude,
-        longitude: geocodeData?.longitude,
-        address: pharmacyAddress,
-        city: geocodeData?.city,
-        state: geocodeData?.state,
-      });
-
       const updateData: Record<string, any> = { 
         address: pharmacyAddress || null,
-        marketplace_zone: zoneResult.zone,
-        marketplace_city: zoneResult.city,
+        marketplace_zone: selectedZone,
+        marketplace_city: selectedCity,
       };
 
       // Also save coordinates if available
@@ -209,18 +215,35 @@ export const MarketplaceSettings = () => {
 
       if (error) throw error;
       
-      setDetectedZone({
-        zone: zoneResult.zone,
-        city: zoneResult.city,
-        confidence: zoneResult.confidence,
-      });
-      
-      toast.success(`Location saved! Your pharmacy will appear in "${zoneResult.zone}" on the marketplace`);
+      toast.success(`Location saved! Your pharmacy will appear in "${selectedZone}" on the marketplace`);
     } catch (error) {
-      console.error('Error saving address:', error);
-      toast.error('Failed to save address');
+      console.error('Error saving location:', error);
+      toast.error('Failed to save location');
     } finally {
       setIsSavingAddress(false);
+    }
+  };
+
+  const handleSavePriceHide = async () => {
+    if (!pharmacy?.id) return;
+    
+    setIsSavingPriceHide(true);
+    try {
+      const { error } = await supabase
+        .from('pharmacies')
+        .update({ hide_marketplace_prices: hideMarketplacePrices } as any)
+        .eq('id', pharmacy.id);
+
+      if (error) throw error;
+      toast.success(hideMarketplacePrices 
+        ? 'Prices are now hidden on marketplace' 
+        : 'Prices are now visible on marketplace'
+      );
+    } catch (error) {
+      console.error('Error saving price hide setting:', error);
+      toast.error('Failed to save setting');
+    } finally {
+      setIsSavingPriceHide(false);
     }
   };
 
@@ -236,14 +259,14 @@ export const MarketplaceSettings = () => {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Marketplace Location Address */}
+        {/* Marketplace Location - City & Zone Selection */}
         <div className="p-4 border rounded-lg space-y-4">
           <div className="flex items-start gap-3">
             <div className="p-2 rounded-lg bg-blue-500/10">
               <MapPin className="h-5 w-5 text-blue-600" />
             </div>
             <div className="flex-1 space-y-1">
-              <Label htmlFor="pharmacy-address" className="font-medium flex items-center gap-2">
+              <Label className="font-medium flex items-center gap-2">
                 Pharmacy Location
                 <TooltipProvider>
                   <Tooltip>
@@ -251,60 +274,100 @@ export const MarketplaceSettings = () => {
                       <Info className="h-4 w-4 text-muted-foreground" />
                     </TooltipTrigger>
                     <TooltipContent className="max-w-xs">
-                      <p>This address determines where your pharmacy appears in location-based searches. Customers can filter by location to find pharmacies near them.</p>
-                      <p className="mt-2 text-xs opacity-80">Tip: Use a complete address with city and state for better visibility.</p>
+                      <p>Select your city and zone/area. This determines where your pharmacy appears in location-based searches.</p>
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
               </Label>
               <p className="text-sm text-muted-foreground">
-                Your pharmacy's address for marketplace location filtering
+                Select your city and major area for marketplace location filtering
               </p>
             </div>
           </div>
           
-          <div className="space-y-3">
-            <AddressAutocomplete
-              value={pharmacyAddress}
-              onChange={(newAddress, geoData) => {
-                setPharmacyAddress(newAddress);
-                if (geoData) {
-                  setGeocodeData(geoData);
-                }
-              }}
-              placeholder="Start typing your pharmacy address..."
-            />
-            {geocodeData && (
-              <p className="text-xs text-muted-foreground flex items-center gap-1">
-                <Check className="h-3 w-3 text-green-500" />
-                Location verified: {geocodeData.city}, {geocodeData.state}
-              </p>
+          <div className="space-y-4">
+            {/* City Selection */}
+            <div className="space-y-2">
+              <Label htmlFor="city-select">City</Label>
+              <Select value={selectedCity} onValueChange={(value) => {
+                setSelectedCity(value);
+                setSelectedZone(''); // Reset zone when city changes
+              }}>
+                <SelectTrigger id="city-select">
+                  <SelectValue placeholder="Select your city" />
+                </SelectTrigger>
+                <SelectContent>
+                  {SUPPORTED_CITIES.map(city => (
+                    <SelectItem key={city.value} value={city.value}>
+                      {city.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Zone Selection - Only show after city is selected */}
+            {selectedCity && (
+              <div className="space-y-2">
+                <Label htmlFor="zone-select">Major Area / Zone</Label>
+                <Select value={selectedZone} onValueChange={setSelectedZone}>
+                  <SelectTrigger id="zone-select">
+                    <SelectValue placeholder="Select your zone/area" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {availableZones.map(zone => (
+                      <SelectItem key={zone} value={zone}>
+                        {zone}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             )}
-            
-            {/* Detected Zone Display */}
-            {detectedZone && (
+
+            {/* Full Address (Optional) */}
+            <div className="space-y-2">
+              <Label htmlFor="pharmacy-address">Full Address (Optional)</Label>
+              <AddressAutocomplete
+                value={pharmacyAddress}
+                onChange={(newAddress, geoData) => {
+                  setPharmacyAddress(newAddress);
+                  if (geoData) {
+                    setGeocodeData(geoData);
+                  }
+                }}
+                placeholder="Enter your full street address..."
+              />
+              {geocodeData && (
+                <p className="text-xs text-muted-foreground flex items-center gap-1">
+                  <Check className="h-3 w-3 text-green-500" />
+                  Address verified: {geocodeData.formatted_address}
+                </p>
+              )}
+            </div>
+
+            {/* Selected Zone Display */}
+            {selectedCity && selectedZone && (
               <div className="p-3 bg-primary/5 border border-primary/20 rounded-lg">
                 <div className="flex items-center gap-2">
                   <Navigation className="h-4 w-4 text-primary" />
                   <span className="text-sm font-medium">Marketplace Zone:</span>
                   <Badge variant="secondary" className="bg-primary/10 text-primary">
-                    {detectedZone.zone}
+                    {selectedZone}
                   </Badge>
-                  {detectedZone.confidence === 'high' && (
-                    <Badge variant="outline" className="text-xs bg-green-500/10 text-green-600 border-green-500/20">
-                      Verified
-                    </Badge>
-                  )}
+                  <Badge variant="outline" className="text-xs">
+                    {SUPPORTED_CITIES.find(c => c.value === selectedCity)?.label}
+                  </Badge>
                 </div>
                 <p className="text-xs text-muted-foreground mt-1">
-                  Customers filtering by "{detectedZone.zone}" will see your products
+                  Customers filtering by "{selectedZone}" will see your products
                 </p>
               </div>
             )}
             
             <Button
-              onClick={handleSaveAddress}
-              disabled={isSavingAddress}
+              onClick={handleSaveLocation}
+              disabled={isSavingAddress || !selectedCity || !selectedZone}
               className="gap-2"
             >
               {isSavingAddress ? (
@@ -315,6 +378,54 @@ export const MarketplaceSettings = () => {
               Save Location
             </Button>
           </div>
+        </div>
+
+        {/* Hide All Prices Toggle */}
+        <div className="p-4 border rounded-lg space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-start gap-3">
+              <div className="p-2 rounded-lg bg-orange-500/10">
+                <EyeOff className="h-5 w-5 text-orange-600" />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor="hide-prices" className="font-medium flex items-center gap-2">
+                  Hide All Prices on Marketplace
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger>
+                        <Info className="h-4 w-4 text-muted-foreground" />
+                      </TooltipTrigger>
+                      <TooltipContent className="max-w-xs">
+                        <p>When enabled, all your product prices will be hidden on the marketplace. Customers will see "Contact for price" instead.</p>
+                      </TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </Label>
+                <p className="text-sm text-muted-foreground">
+                  Show "Contact for price" instead of actual prices for all products
+                </p>
+              </div>
+            </div>
+            <Switch
+              id="hide-prices"
+              checked={hideMarketplacePrices}
+              onCheckedChange={setHideMarketplacePrices}
+            />
+          </div>
+          
+          <Button
+            onClick={handleSavePriceHide}
+            disabled={isSavingPriceHide}
+            size="sm"
+            className="gap-2"
+          >
+            {isSavingPriceHide ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <Save className="h-4 w-4" />
+            )}
+            Save Price Setting
+          </Button>
         </div>
 
         {/* Marketplace Contact Phone */}
