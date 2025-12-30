@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Camera, Package, Lock, Shield, Bell, Check, X, Scan, MessageCircle, Smartphone, Clock, AlertTriangle, Timer, Zap, Sparkles, TrendingUp, ShoppingCart, FileSearch, Users } from 'lucide-react';
+import { Camera, Package, Lock, Shield, Bell, Check, X, Scan, MessageCircle, Smartphone, Clock, AlertTriangle, Timer, Zap, Sparkles, TrendingUp, ShoppingCart, FileSearch, Users, Globe, MapPin, Search, Navigation } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 
 const fadeInUp = {
@@ -446,6 +446,137 @@ const PriceLockDemo = () => {
   );
 };
 
+// Public Marketplace Animation - Patient Discovery Feature
+const MarketplaceDiscoveryDemo = () => {
+  return (
+    <div className="relative h-48 overflow-hidden rounded-xl bg-gradient-to-br from-marketplace/5 to-marketplace/10 border border-marketplace/20">
+      {/* Search Bar */}
+      <motion.div
+        className="absolute left-1/2 top-4 -translate-x-1/2 w-[70%] bg-background border border-border rounded-lg shadow-sm flex items-center gap-2 px-2 py-1.5"
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4 }}
+      >
+        <Search className="w-3 h-3 text-muted-foreground" />
+        <motion.div
+          className="flex items-center"
+          initial={{ width: 0 }}
+          animate={{ width: 'auto' }}
+          transition={{ duration: 1, delay: 0.5 }}
+        >
+          <motion.span 
+            className="text-[9px] font-medium text-foreground"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.5, delay: 1.5 }}
+          >
+            Panadol Extra
+          </motion.span>
+        </motion.div>
+      </motion.div>
+
+      {/* Map Background */}
+      <div className="absolute inset-0 top-12 opacity-20">
+        <svg className="w-full h-full" viewBox="0 0 100 60">
+          {/* Road lines */}
+          <motion.path d="M0 30 L100 30" stroke="currentColor" strokeWidth="0.5" className="text-muted-foreground" />
+          <motion.path d="M50 0 L50 60" stroke="currentColor" strokeWidth="0.5" className="text-muted-foreground" />
+          <motion.path d="M20 10 L80 50" stroke="currentColor" strokeWidth="0.3" className="text-muted-foreground" />
+          <motion.path d="M80 10 L20 50" stroke="currentColor" strokeWidth="0.3" className="text-muted-foreground" />
+        </svg>
+      </div>
+
+      {/* Patient Location Pulse */}
+      <motion.div
+        className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 2 }}
+      >
+        <motion.div
+          className="absolute inset-0 bg-primary/30 rounded-full"
+          animate={{ scale: [1, 2, 2.5], opacity: [0.6, 0.3, 0] }}
+          transition={{ duration: 2, repeat: Infinity, repeatDelay: 1 }}
+          style={{ width: 20, height: 20, marginLeft: -10, marginTop: -10 }}
+        />
+        <div className="w-5 h-5 rounded-full bg-primary border-2 border-background shadow-lg flex items-center justify-center">
+          <Navigation className="w-2.5 h-2.5 text-primary-foreground" />
+        </div>
+      </motion.div>
+
+      {/* Pharmacy Pins Appearing */}
+      {[
+        { left: '25%', top: '40%', delay: 2.5, distance: '0.5km' },
+        { left: '70%', top: '35%', delay: 2.7, distance: '1.2km' },
+        { left: '35%', top: '65%', delay: 2.9, distance: '0.8km' },
+      ].map((pin, i) => (
+        <motion.div
+          key={i}
+          className="absolute"
+          style={{ left: pin.left, top: pin.top }}
+          initial={{ opacity: 0, scale: 0 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.4, delay: pin.delay, type: 'spring' }}
+        >
+          <div className="relative">
+            <div className="w-6 h-6 rounded-full bg-marketplace border-2 border-background shadow-lg flex items-center justify-center">
+              <MapPin className="w-3 h-3 text-white" />
+            </div>
+            <motion.div
+              className="absolute -bottom-4 left-1/2 -translate-x-1/2 bg-background/90 rounded px-1 py-0.5 text-[6px] font-medium text-marketplace whitespace-nowrap border border-marketplace/30"
+              initial={{ opacity: 0, y: -5 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: pin.delay + 0.3 }}
+            >
+              {pin.distance}
+            </motion.div>
+          </div>
+        </motion.div>
+      ))}
+
+      {/* Result Cards Appearing */}
+      <motion.div
+        className="absolute right-2 top-14 w-20 space-y-1"
+        initial={{ opacity: 0, x: 20 }}
+        animate={{ opacity: 1, x: 0 }}
+        transition={{ delay: 3.3, duration: 0.4 }}
+      >
+        {['HealthPlus', 'MedCare', 'PharmOne'].map((name, i) => (
+          <motion.div
+            key={i}
+            className="bg-background/90 border border-border/50 rounded px-1.5 py-1 shadow-sm"
+            initial={{ opacity: 0, x: 10 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 3.5 + i * 0.15 }}
+          >
+            <div className="flex items-center gap-1">
+              <div className="w-2 h-2 rounded-full bg-marketplace/30" />
+              <span className="text-[6px] font-medium truncate">{name}</span>
+            </div>
+            <div className="text-[5px] text-success">In Stock</div>
+          </motion.div>
+        ))}
+      </motion.div>
+
+      {/* WhatsApp Order Button */}
+      <motion.div
+        className="absolute left-2 bottom-6 bg-success/20 border border-success/30 rounded-lg px-2 py-1 flex items-center gap-1"
+        initial={{ opacity: 0, scale: 0.8 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ delay: 4.2, type: 'spring' }}
+      >
+        <MessageCircle className="w-3 h-3 text-success" />
+        <span className="text-[7px] font-medium text-success">Order via WhatsApp</span>
+      </motion.div>
+
+      {/* Label */}
+      <div className="absolute bottom-2 left-2 text-[10px] text-muted-foreground font-medium">
+        Patients find you online
+      </div>
+    </div>
+  );
+};
+
 // Speed Comparison Animation
 const SpeedComparisonDemo = () => {
   return (
@@ -570,6 +701,14 @@ export const FeatureDemo = ({ isInternational = false }: FeatureDemoProps) => {
       demo: <SpeedComparisonDemo />,
       color: 'success',
       badge: 'Performance'
+    },
+    {
+      title: 'Public Marketplace',
+      description: 'Patients search for drugs by distance and find YOUR pharmacy. Get free leads 24/7 without advertising.',
+      icon: Globe,
+      demo: <MarketplaceDiscoveryDemo />,
+      color: 'marketplace',
+      badge: 'Patient Discovery'
     }
   ];
 
