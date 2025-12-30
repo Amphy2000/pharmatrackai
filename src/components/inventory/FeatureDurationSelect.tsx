@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Star, Clock, Loader2, Sparkles, Zap, Crown, Check } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Star, Clock, Loader2, Sparkles, Zap, Crown, Check, CreditCard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -30,6 +30,21 @@ interface FeatureDurationSelectProps {
   onOpenChange: (open: boolean) => void;
 }
 
+// Load Paystack script dynamically
+const loadPaystackScript = (): Promise<void> => {
+  return new Promise((resolve, reject) => {
+    if ((window as any).PaystackPop) {
+      resolve();
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = 'https://js.paystack.co/v1/inline.js';
+    script.onload = () => resolve();
+    script.onerror = () => reject(new Error('Failed to load Paystack script'));
+    document.body.appendChild(script);
+  });
+};
+
 export const FeatureDurationSelect = ({
   medicationId,
   medicationName,
@@ -38,49 +53,84 @@ export const FeatureDurationSelect = ({
 }: FeatureDurationSelectProps) => {
   const [duration, setDuration] = useState<string>('14');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [paystackReady, setPaystackReady] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const { formatPrice } = useCurrency();
+
+  useEffect(() => {
+    if (open) {
+      loadPaystackScript()
+        .then(() => setPaystackReady(true))
+        .catch(console.error);
+    }
+  }, [open]);
 
   const calculateExpiryDate = (days: number) => {
     return addDays(new Date(), days);
   };
 
-  const handleFeature = async () => {
+  const handlePayWithPaystack = async () => {
     setIsSubmitting(true);
     try {
-      const daysToAdd = parseInt(duration, 10);
-      const expiryDate = calculateExpiryDate(daysToAdd);
+      // Initialize payment on the backend
+      const { data: paymentData, error } = await supabase.functions.invoke('create-featured-payment', {
+        body: {
+          medication_id: medicationId,
+          medication_name: medicationName,
+          duration: parseInt(duration, 10),
+          callback_url: window.location.href,
+        },
+      });
+
+      if (error) throw error;
+      if (!paymentData) throw new Error('Failed to initialize payment');
+
       const selectedOption = DURATION_OPTIONS.find(o => o.value === duration);
 
-      const { error } = await supabase
-        .from('medications')
-        .update({
-          is_featured: true,
-          featured_until: expiryDate.toISOString(),
-        })
-        .eq('id', medicationId);
-
-      if (error) {
-        throw error;
-      }
-
-      toast({
-        title: 'Product Featured!',
-        description: `"${medicationName}" will be featured until ${format(expiryDate, 'MMM d, yyyy')}. Cost: ${formatPrice(selectedOption?.price || 0)}`,
+      // Open Paystack inline popup
+      const handler = (window as any).PaystackPop.setup({
+        key: paymentData.key || import.meta.env.VITE_PAYSTACK_PUBLIC_KEY,
+        email: paymentData.email,
+        amount: selectedOption!.price * 100, // Convert to kobo
+        ref: paymentData.reference,
+        currency: 'NGN',
+        channels: ['card', 'bank', 'ussd', 'bank_transfer'],
+        metadata: {
+          medication_id: medicationId,
+          medication_name: medicationName,
+          duration: parseInt(duration, 10),
+          type: 'featured_product',
+        },
+        onClose: () => {
+          setIsSubmitting(false);
+          toast({
+            title: 'Payment Cancelled',
+            description: 'You closed the payment window. Try again when ready.',
+            variant: 'destructive',
+          });
+        },
+        callback: (response: any) => {
+          console.log('Payment successful:', response);
+          queryClient.invalidateQueries({ queryKey: ['medications'] });
+          queryClient.invalidateQueries({ queryKey: ['featured-medications'] });
+          onOpenChange(false);
+          toast({
+            title: 'Payment Successful! 🎉',
+            description: `"${medicationName}" is now featured in the Spotlight for ${duration} days.`,
+          });
+          setIsSubmitting(false);
+        },
       });
 
-      queryClient.invalidateQueries({ queryKey: ['medications'] });
-      queryClient.invalidateQueries({ queryKey: ['featured-medications'] });
-      onOpenChange(false);
+      handler.openIframe();
     } catch (error) {
-      console.error('Error featuring product:', error);
+      console.error('Error initializing payment:', error);
       toast({
-        title: 'Error',
-        description: 'Failed to feature product. Please try again.',
+        title: 'Payment Error',
+        description: error instanceof Error ? error.message : 'Failed to initialize payment',
         variant: 'destructive',
       });
-    } finally {
       setIsSubmitting(false);
     }
   };
@@ -190,9 +240,10 @@ export const FeatureDurationSelect = ({
             </div>
           </div>
           
-          <p className="text-xs text-muted-foreground text-center">
-            Payment will be added to your monthly invoice
-          </p>
+          <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+            <CreditCard className="h-3.5 w-3.5" />
+            <span>Secure payment powered by Paystack</span>
+          </div>
         </div>
 
         <DialogFooter className="gap-2 sm:gap-0">
@@ -200,19 +251,19 @@ export const FeatureDurationSelect = ({
             Cancel
           </Button>
           <Button 
-            onClick={handleFeature} 
-            disabled={isSubmitting}
+            onClick={handlePayWithPaystack} 
+            disabled={isSubmitting || !paystackReady}
             className="bg-marketplace hover:bg-marketplace/90"
           >
             {isSubmitting ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Featuring...
+                Processing...
               </>
             ) : (
               <>
-                <Star className="mr-2 h-4 w-4" />
-                Feature for {formatPrice(selectedDuration?.price || 0)}
+                <CreditCard className="mr-2 h-4 w-4" />
+                Pay {formatPrice(selectedDuration?.price || 0)}
               </>
             )}
           </Button>

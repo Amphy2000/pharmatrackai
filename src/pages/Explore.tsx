@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Search, MapPin, MessageCircle, Package, Store, Phone, Star, Download, Smartphone, X, ChevronRight, ArrowLeft, Shield, Clock, Zap, Heart, CheckCircle, Navigation, Sparkles, TrendingUp, Grid3X3, List, SlidersHorizontal, Map, ChevronDown } from "lucide-react";
+import { Search, MapPin, MessageCircle, Package, Store, Phone, Star, Download, Smartphone, X, ChevronRight, ArrowLeft, Shield, Clock, Zap, Heart, CheckCircle, Navigation, Sparkles, TrendingUp, Grid3X3, List, SlidersHorizontal, Map, ChevronDown, Filter, Flame, Verified, ThumbsUp, Users } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -18,6 +18,14 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useGeolocation, calculateDistance, getApproximateCoordinates, getGoogleMapsLink, getFallbackLocationName } from "@/hooks/useGeolocation";
 import { useLocationOverride } from "@/hooks/useLocationOverride";
 import { smartShuffle } from "@/utils/smartShuffle";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import { Slider } from "@/components/ui/slider";
 
 interface PublicMedication {
   id: string;
@@ -56,6 +64,10 @@ const Explore = () => {
     distance?: number;
     current_stock?: number;
   } | null>(null);
+  const [priceRange, setPriceRange] = useState<[number, number]>([0, 50000]);
+  const [maxDistance, setMaxDistance] = useState<number>(50);
+  const [sortBy, setSortBy] = useState<'relevance' | 'price_low' | 'price_high' | 'distance'>('relevance');
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const { toast } = useToast();
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [showInstallBanner, setShowInstallBanner] = useState(false);
@@ -75,7 +87,6 @@ const Explore = () => {
   // Handle custom location submission (save to database for market research)
   const handleCustomLocationSubmit = async (location: string) => {
     try {
-      // Log the custom location request to database for market research
       await supabase.from("marketplace_searches").insert({
         search_query: `[CUSTOM_LOCATION] ${location}`,
         location_filter: location,
@@ -195,7 +206,7 @@ const Explore = () => {
       processedRegular = smartShuffle(processedRegular, { prioritizeFeatured: false, maxPerPharmacy: 3 });
 
       setFeaturedMedications(processedFeatured as PublicMedication[]);
-      setMedications(processedRegular.slice(0, 20) as PublicMedication[]);
+      setMedications(processedRegular.slice(0, 24) as PublicMedication[]);
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -233,11 +244,10 @@ const Explore = () => {
       setSelectedCategory(null);
       setSearchQuery("");
       setHasSearched(false);
-      loadInitialData(); // Reload initial data when category is cleared
+      loadInitialData();
     }
   };
 
-  // Handle clearing search
   const handleClearSearch = () => {
     setSearchQuery("");
     setSelectedCategory(null);
@@ -245,10 +255,8 @@ const Explore = () => {
     loadInitialData();
   };
 
-  // Handle input change with auto-clear detection
   const handleSearchInputChange = (value: string) => {
     setSearchQuery(value);
-    // If user clears the search, reset to initial state
     if (value === "" && hasSearched) {
       setHasSearched(false);
       setSelectedCategory(null);
@@ -256,7 +264,6 @@ const Explore = () => {
     }
   };
 
-  // Show pharmacy preview for a medication (only the pharmacy that has it, not competitors)
   const handleShowOnMap = (medication: PublicMedication) => {
     const pharmacy = {
       pharmacy_id: medication.pharmacy_id,
@@ -339,21 +346,8 @@ const Explore = () => {
         return result;
       });
 
-      // Sort by distance if available
-      if (latitude && longitude) {
-        processedMeds = processedMeds.sort((a: any, b: any) => {
-          if (a.distance === undefined && b.distance === undefined) return 0;
-          if (a.distance === undefined) return 1;
-          if (b.distance === undefined) return -1;
-          return a.distance - b.distance;
-        });
-      }
-
-      processedMeds = smartShuffle(processedMeds, {
-        prioritizeFeatured: true,
-        groupByPharmacy: false,
-        maxPerPharmacy: 5,
-      });
+      // Apply filters
+      processedMeds = applyFilters(processedMeds);
 
       setMedications(processedMeds);
 
@@ -377,6 +371,48 @@ const Explore = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const applyFilters = (meds: PublicMedication[]) => {
+    let filtered = meds.filter(med => {
+      // Price filter
+      const price = med.selling_price || 0;
+      if (price < priceRange[0] || price > priceRange[1]) return false;
+      
+      // Distance filter (if location available)
+      if (latitude && longitude && med.distance !== undefined) {
+        if (med.distance > maxDistance) return false;
+      }
+      
+      return true;
+    });
+
+    // Apply sorting
+    switch (sortBy) {
+      case 'price_low':
+        filtered.sort((a, b) => (a.selling_price || 0) - (b.selling_price || 0));
+        break;
+      case 'price_high':
+        filtered.sort((a, b) => (b.selling_price || 0) - (a.selling_price || 0));
+        break;
+      case 'distance':
+        filtered.sort((a, b) => {
+          if (a.distance === undefined && b.distance === undefined) return 0;
+          if (a.distance === undefined) return 1;
+          if (b.distance === undefined) return -1;
+          return a.distance - b.distance;
+        });
+        break;
+      default:
+        // Relevance - featured first, then by distance if available
+        filtered = smartShuffle(filtered, {
+          prioritizeFeatured: true,
+          groupByPharmacy: false,
+          maxPerPharmacy: 5,
+        });
+    }
+
+    return filtered;
   };
 
   const handleWhatsAppOrder = async (medication: PublicMedication, quantity: number = 1) => {
@@ -417,82 +453,187 @@ const Explore = () => {
     }
   };
 
-  // Compact Product Card
-  const ProductCard = ({ medication, index = 0 }: { medication: PublicMedication; index?: number }) => (
-    <motion.div
-      initial={{ opacity: 0, y: 15 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ duration: 0.25, delay: index * 0.03 }}
-    >
-      <Card 
-        className={`group overflow-hidden hover:shadow-lg transition-all duration-300 rounded-2xl border border-border/50 ${
-          medication.is_featured 
-            ? 'bg-gradient-to-br from-marketplace/5 via-white to-primary/5 dark:from-marketplace/10 dark:via-card dark:to-primary/10 ring-1 ring-marketplace/20' 
-            : 'bg-card hover:bg-accent/30'
-        }`}
+  // Premium Product Card with enhanced visuals
+  const ProductCard = ({ medication, index = 0 }: { medication: PublicMedication; index?: number }) => {
+    const formatPriceCompact = (price: number | null) => {
+      if (!price) return 'Price on request';
+      return `₦${price.toLocaleString()}`;
+    };
+
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: 15 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.25, delay: index * 0.03 }}
+        className="h-full"
       >
-        <CardContent className="p-3.5">
-          {/* Top Row */}
-          <div className="flex items-start justify-between gap-2 mb-2">
-            <div className="flex-1 min-w-0">
-              {medication.is_featured && (
-                <Badge className="bg-gradient-to-r from-marketplace to-primary text-white gap-1 text-[9px] px-1.5 py-0 mb-1.5 rounded-full">
-                  <Star className="h-2 w-2 fill-current" />
-                  Spotlight
-                </Badge>
-              )}
-              <h3 className="font-semibold text-sm text-foreground line-clamp-2 group-hover:text-marketplace transition-colors">
-                {medication.name}
-              </h3>
+        <Card 
+          className={`group h-full overflow-hidden hover:shadow-xl transition-all duration-300 rounded-2xl border border-border/50 ${
+            medication.is_featured 
+              ? 'bg-gradient-to-br from-marketplace/5 via-white to-primary/5 dark:from-marketplace/10 dark:via-card dark:to-primary/10 ring-1 ring-marketplace/20' 
+              : 'bg-card hover:bg-accent/30'
+          }`}
+        >
+          <CardContent className="p-3.5 flex flex-col h-full">
+            {/* Top Row */}
+            <div className="flex items-start justify-between gap-2 mb-2">
+              <div className="flex-1 min-w-0">
+                {medication.is_featured && (
+                  <Badge className="bg-gradient-to-r from-marketplace to-primary text-white gap-1 text-[9px] px-1.5 py-0 mb-1.5 rounded-full">
+                    <Star className="h-2 w-2 fill-current" />
+                    Spotlight
+                  </Badge>
+                )}
+                <h3 className="font-semibold text-sm text-foreground line-clamp-2 group-hover:text-marketplace transition-colors">
+                  {medication.name}
+                </h3>
+              </div>
+              <div className="flex flex-col items-end gap-1">
+                {medication.distance !== undefined && medication.distance <= 3 && (
+                  <Badge className="bg-gradient-to-r from-emerald-500 to-green-500 text-white text-[8px] px-1.5 py-0.5 shrink-0 gap-0.5 rounded-full">
+                    <Zap className="h-2 w-2" />
+                    Near
+                  </Badge>
+                )}
+              </div>
             </div>
-            {medication.distance !== undefined && medication.distance <= 3 && (
-              <Badge className="bg-gradient-to-r from-emerald-500 to-green-500 text-white text-[8px] px-1.5 py-0.5 shrink-0 gap-0.5 rounded-full">
-                <Zap className="h-2 w-2" />
-                Near
+
+            {/* Price - prominent display */}
+            {medication.selling_price && (
+              <div className="mb-2">
+                <span className="text-lg font-bold text-marketplace">
+                  {formatPriceCompact(medication.selling_price)}
+                </span>
+                <span className="text-[10px] text-muted-foreground ml-1">/{medication.dispensing_unit}</span>
+              </div>
+            )}
+
+            {/* Category & Stock */}
+            <div className="flex items-center gap-1.5 mb-2.5 flex-wrap">
+              <Badge variant="secondary" className="text-[9px] px-1.5 py-0 rounded-full">{medication.category}</Badge>
+              <Badge variant="outline" className="bg-success/10 text-success border-success/20 text-[9px] px-1.5 py-0 rounded-full">
+                <CheckCircle className="h-2 w-2 mr-0.5" />
+                {medication.current_stock} in stock
               </Badge>
-            )}
+            </div>
+
+            {/* Pharmacy with verification badge */}
+            <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground mb-2.5">
+              <Store className="h-3 w-3 shrink-0" />
+              <span className="truncate font-medium">{medication.pharmacy_name}</span>
+              <Verified className="h-3 w-3 text-primary shrink-0" />
+              {medication.distance !== undefined && (
+                <span className="shrink-0 text-[10px]">• {medication.distance < 1 ? `${Math.round(medication.distance * 1000)}m` : `${medication.distance.toFixed(1)}km`}</span>
+              )}
+            </div>
+
+            {/* CTAs - push to bottom */}
+            <div className="flex items-center gap-2 mt-auto pt-2">
+              <Button
+                size="sm"
+                className="flex-1 bg-[#25D366] hover:bg-[#20BD5A] text-white h-9 text-xs font-semibold rounded-xl shadow-sm"
+                onClick={() => handleWhatsAppOrder(medication)}
+              >
+                <MessageCircle className="h-3.5 w-3.5 mr-1.5" />
+                Order Now
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-9 w-9 p-0 rounded-xl border-marketplace/30 hover:bg-marketplace/10 hover:border-marketplace"
+                onClick={() => handleShowOnMap(medication)}
+              >
+                <MapPin className="h-3.5 w-3.5 text-marketplace" />
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
+    );
+  };
+
+  // Filter Sheet Component
+  const FiltersSheet = () => (
+    <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
+      <SheetContent side="bottom" className="h-[70vh] rounded-t-3xl">
+        <SheetHeader className="mb-6">
+          <SheetTitle className="flex items-center gap-2">
+            <SlidersHorizontal className="h-5 w-5" />
+            Filter & Sort
+          </SheetTitle>
+        </SheetHeader>
+        
+        <div className="space-y-6">
+          {/* Sort By */}
+          <div>
+            <label className="text-sm font-medium mb-3 block">Sort by</label>
+            <div className="grid grid-cols-2 gap-2">
+              {[
+                { value: 'relevance', label: 'Relevance', icon: Sparkles },
+                { value: 'price_low', label: 'Price: Low to High', icon: TrendingUp },
+                { value: 'price_high', label: 'Price: High to Low', icon: TrendingUp },
+                { value: 'distance', label: 'Distance', icon: Navigation },
+              ].map((option) => (
+                <Button
+                  key={option.value}
+                  variant={sortBy === option.value ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setSortBy(option.value as any)}
+                  className="justify-start gap-2"
+                >
+                  <option.icon className="h-3.5 w-3.5" />
+                  {option.label}
+                </Button>
+              ))}
+            </div>
           </div>
 
-          {/* Category & Stock */}
-          <div className="flex items-center gap-1.5 mb-2.5">
-            <Badge variant="secondary" className="text-[9px] px-1.5 py-0 rounded-full">{medication.category}</Badge>
-            <Badge variant="outline" className="bg-success/10 text-success border-success/20 text-[9px] px-1.5 py-0 rounded-full">
-              <CheckCircle className="h-2 w-2 mr-0.5" />
-              {medication.current_stock}
-            </Badge>
+          {/* Price Range */}
+          <div>
+            <label className="text-sm font-medium mb-3 block">
+              Price Range: ₦{priceRange[0].toLocaleString()} - ₦{priceRange[1].toLocaleString()}
+            </label>
+            <Slider
+              value={priceRange}
+              onValueChange={(value) => setPriceRange(value as [number, number])}
+              min={0}
+              max={50000}
+              step={500}
+              className="w-full"
+            />
           </div>
 
-          {/* Pharmacy */}
-          <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground mb-2.5">
-            <Store className="h-3 w-3 shrink-0" />
-            <span className="truncate font-medium">{medication.pharmacy_name}</span>
-            {medication.distance !== undefined && (
-              <span className="shrink-0 text-[10px]">• {medication.distance < 1 ? `${Math.round(medication.distance * 1000)}m` : `${medication.distance.toFixed(1)}km`}</span>
-            )}
-          </div>
+          {/* Max Distance */}
+          {latitude && longitude && (
+            <div>
+              <label className="text-sm font-medium mb-3 block">
+                Max Distance: {maxDistance}km
+              </label>
+              <Slider
+                value={[maxDistance]}
+                onValueChange={(value) => setMaxDistance(value[0])}
+                min={1}
+                max={100}
+                step={1}
+                className="w-full"
+              />
+            </div>
+          )}
 
-          {/* CTAs */}
-          <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              className="flex-1 bg-[#25D366] hover:bg-[#20BD5A] text-white h-8 text-xs font-semibold rounded-xl shadow-sm"
-              onClick={() => handleWhatsAppOrder(medication)}
-            >
-              <MessageCircle className="h-3.5 w-3.5 mr-1.5" />
-              Order
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-8 w-8 p-0 rounded-xl border-marketplace/30 hover:bg-marketplace/10 hover:border-marketplace"
-              onClick={() => handleShowOnMap(medication)}
-            >
-              <MapPin className="h-3.5 w-3.5 text-marketplace" />
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-    </motion.div>
+          <Button 
+            onClick={() => {
+              if (hasSearched) {
+                handleSearch();
+              }
+              setFiltersOpen(false);
+            }} 
+            className="w-full bg-marketplace hover:bg-marketplace/90"
+          >
+            Apply Filters
+          </Button>
+        </div>
+      </SheetContent>
+    </Sheet>
   );
 
   return (
@@ -511,6 +652,14 @@ const Explore = () => {
               </div>
             </div>
             <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => setFiltersOpen(true)}
+                className="h-9 w-9 text-white hover:bg-white/15 rounded-xl"
+              >
+                <SlidersHorizontal className="h-5 w-5" />
+              </Button>
               <ExploreFlyer />
             </div>
           </div>
@@ -523,10 +672,9 @@ const Explore = () => {
               value={searchQuery}
               onChange={(e) => handleSearchInputChange(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && handleSearch()}
-              className="pl-10 pr-32 h-11 text-sm bg-white text-foreground border-0 rounded-xl shadow-lg placeholder:text-muted-foreground/60"
+              className="pl-10 pr-32 h-12 text-sm bg-white text-foreground border-0 rounded-2xl shadow-lg placeholder:text-muted-foreground/60"
             />
-            <div className="absolute right-1 top-1/2 -translate-y-1/2 flex items-center gap-1">
-              {/* Clear Button */}
+            <div className="absolute right-1.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
               {searchQuery && (
                 <Button
                   variant="ghost"
@@ -543,9 +691,9 @@ const Explore = () => {
                 onClick={() => handleSearch()} 
                 disabled={isLoading}
                 size="sm"
-                className="bg-marketplace text-white hover:bg-marketplace/90 h-8 px-3 text-xs rounded-lg"
+                className="bg-marketplace text-white hover:bg-marketplace/90 h-9 px-4 text-xs rounded-xl font-semibold"
               >
-                {isLoading ? "..." : "Go"}
+                {isLoading ? "..." : "Search"}
               </Button>
             </div>
           </div>
@@ -561,13 +709,13 @@ const Explore = () => {
             exit={{ height: 0, opacity: 0 }}
             className="bg-gradient-to-r from-primary to-marketplace text-white overflow-hidden"
           >
-            <div className="px-4 py-2 flex items-center justify-between">
+            <div className="px-4 py-2.5 flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Smartphone className="h-4 w-4" />
                 <span className="text-xs font-medium">Install app for faster access</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <Button size="sm" onClick={handleInstallApp} className="bg-white text-marketplace hover:bg-white/90 h-7 px-3 text-xs">
+                <Button size="sm" onClick={handleInstallApp} className="bg-white text-marketplace hover:bg-white/90 h-7 px-3 text-xs font-semibold">
                   <Download className="h-3 w-3 mr-1" />
                   Install
                 </Button>
@@ -598,12 +746,12 @@ const Explore = () => {
               className="w-full flex items-center justify-between p-3 bg-success/10 rounded-xl border border-success/20 hover:bg-success/15 transition-colors text-left group"
             >
               <div className="flex items-center gap-2">
-                <div className="h-6 w-6 rounded-full bg-success/20 flex items-center justify-center">
-                  <MapPin className="h-3.5 w-3.5 text-success" />
+                <div className="h-7 w-7 rounded-full bg-success/20 flex items-center justify-center">
+                  <MapPin className="h-4 w-4 text-success" />
                 </div>
                 <div>
-                  <span className="text-xs font-medium text-success">
-                    Showing pharmacies in {activeNeighborhood}
+                  <span className="text-xs font-semibold text-success">
+                    {activeNeighborhood}
                   </span>
                   <p className="text-[10px] text-muted-foreground">
                     {isManualSelection ? 'Manually selected' : 'Auto-detected'} · Tap to change
@@ -618,11 +766,11 @@ const Explore = () => {
               className="w-full flex items-center justify-between p-3 bg-success/10 rounded-xl border border-success/20 hover:bg-success/15 transition-colors text-left group"
             >
               <div className="flex items-center gap-2">
-                <div className="h-6 w-6 rounded-full bg-success/20 flex items-center justify-center">
-                  <CheckCircle className="h-3.5 w-3.5 text-success" />
+                <div className="h-7 w-7 rounded-full bg-success/20 flex items-center justify-center">
+                  <CheckCircle className="h-4 w-4 text-success" />
                 </div>
                 <div>
-                  <span className="text-xs font-medium text-success">Location detected</span>
+                  <span className="text-xs font-semibold text-success">Location detected</span>
                   <p className="text-[10px] text-muted-foreground">Tap to select your neighborhood</p>
                 </div>
               </div>
@@ -631,11 +779,11 @@ const Explore = () => {
           ) : (
             <div className="flex items-center justify-between p-3 bg-amber-500/10 rounded-xl border border-amber-500/20">
               <div className="flex items-center gap-2">
-                <div className="h-6 w-6 rounded-full bg-amber-500/20 flex items-center justify-center">
-                  <MapPin className="h-3.5 w-3.5 text-amber-600" />
+                <div className="h-7 w-7 rounded-full bg-amber-500/20 flex items-center justify-center">
+                  <MapPin className="h-4 w-4 text-amber-600" />
                 </div>
                 <div>
-                  <span className="text-xs font-medium text-amber-700 dark:text-amber-400">Location not available</span>
+                  <span className="text-xs font-semibold text-amber-700 dark:text-amber-400">Location not available</span>
                   <p className="text-[10px] text-muted-foreground">Enable GPS or select manually</p>
                 </div>
               </div>
@@ -644,11 +792,11 @@ const Explore = () => {
                   size="sm" 
                   variant="outline"
                   onClick={() => setLocationPickerOpen(true)} 
-                  className="h-7 text-xs border-amber-500/30 text-amber-700 hover:bg-amber-500/10"
+                  className="h-8 text-xs border-amber-500/30 text-amber-700 hover:bg-amber-500/10"
                 >
                   Select
                 </Button>
-                <Button size="sm" onClick={requestLocation} className="h-7 text-xs bg-amber-500 hover:bg-amber-600 text-white">
+                <Button size="sm" onClick={requestLocation} className="h-8 text-xs bg-amber-500 hover:bg-amber-600 text-white">
                   <Navigation className="h-3 w-3 mr-1" />
                   Enable
                 </Button>
@@ -660,6 +808,27 @@ const Explore = () => {
         {/* Category Chips */}
         <CategoryChips onCategorySelect={handleCategorySelect} selectedCategory={selectedCategory} />
 
+        {/* Trust Badges */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.05 }}
+          className="flex items-center justify-center gap-4 py-2"
+        >
+          <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+            <Shield className="h-3 w-3 text-success" />
+            <span>Verified Pharmacies</span>
+          </div>
+          <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+            <Zap className="h-3 w-3 text-warning" />
+            <span>Fast Delivery</span>
+          </div>
+          <div className="flex items-center gap-1 text-[10px] text-muted-foreground">
+            <ThumbsUp className="h-3 w-3 text-primary" />
+            <span>Best Prices</span>
+          </div>
+        </motion.div>
+
         {/* Spotlight Section */}
         {!hasSearched && featuredMedications.length > 0 && (
           <motion.section
@@ -669,11 +838,11 @@ const Explore = () => {
           >
             <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-2">
-                <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-marketplace to-primary flex items-center justify-center">
-                  <Sparkles className="h-3.5 w-3.5 text-white" />
+                <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-marketplace to-primary flex items-center justify-center shadow-lg shadow-marketplace/20">
+                  <Flame className="h-4 w-4 text-white" />
                 </div>
                 <div>
-                  <h2 className="text-sm font-bold text-foreground">Spotlight</h2>
+                  <h2 className="text-sm font-bold text-foreground">Hot Deals</h2>
                   <p className="text-[10px] text-muted-foreground">Featured medications</p>
                 </div>
               </div>
@@ -701,46 +870,52 @@ const Explore = () => {
                   className="shrink-0 snap-start"
                 >
                   <Card 
-                    className="w-[200px] overflow-hidden border-0 bg-gradient-to-br from-white via-marketplace/5 to-primary/5 dark:from-card dark:via-marketplace/10 dark:to-primary/10 shadow-md hover:shadow-lg transition-all rounded-xl cursor-pointer group"
+                    className="w-[220px] overflow-hidden border-0 bg-gradient-to-br from-white via-marketplace/5 to-primary/5 dark:from-card dark:via-marketplace/10 dark:to-primary/10 shadow-lg hover:shadow-xl transition-all rounded-2xl cursor-pointer group ring-1 ring-marketplace/10"
                     onClick={() => handleWhatsAppOrder(med)}
                   >
-                    <CardContent className="p-3">
-                      <Badge className="bg-gradient-to-r from-marketplace to-primary text-white gap-1 text-[9px] px-1.5 py-0 mb-2 rounded-full">
-                        <Star className="h-2 w-2 fill-current" />
-                        Featured
-                      </Badge>
-                      <h3 className="font-bold text-xs mb-1.5 line-clamp-2 group-hover:text-marketplace transition-colors">{med.name}</h3>
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Badge className="bg-gradient-to-r from-marketplace to-primary text-white gap-1 text-[9px] px-2 py-0.5 rounded-full">
+                          <Star className="h-2 w-2 fill-current" />
+                          Featured
+                        </Badge>
+                        {med.distance !== undefined && med.distance <= 5 && (
+                          <Badge className="bg-emerald-500 text-white text-[8px] px-1.5 py-0.5 rounded-full">
+                            Nearby
+                          </Badge>
+                        )}
+                      </div>
+                      <h3 className="font-bold text-sm mb-1 line-clamp-2 group-hover:text-marketplace transition-colors">{med.name}</h3>
+                      
+                      {med.selling_price && (
+                        <div className="mb-2">
+                          <span className="text-lg font-bold text-marketplace">₦{med.selling_price.toLocaleString()}</span>
+                        </div>
+                      )}
+                      
                       <div className="flex items-center gap-1.5 mb-2">
-                        <Badge variant="secondary" className="text-[8px] px-1 py-0">{med.category}</Badge>
-                        <Badge variant="outline" className="bg-success/10 text-success border-success/20 text-[8px] px-1 py-0">
+                        <Badge variant="secondary" className="text-[8px] px-1.5 py-0">{med.category}</Badge>
+                        <Badge variant="outline" className="bg-success/10 text-success border-success/20 text-[8px] px-1.5 py-0">
                           {med.current_stock} left
                         </Badge>
                       </div>
-                      <div className="flex items-center gap-1 text-[10px] text-muted-foreground mb-2">
+                      
+                      <div className="flex items-center gap-1 text-[10px] text-muted-foreground mb-3">
                         <Store className="h-2.5 w-2.5" />
                         <span className="truncate">{med.pharmacy_name}</span>
+                        <Verified className="h-2.5 w-2.5 text-primary" />
                       </div>
-                      {med.distance !== undefined && (
-                        <Badge 
-                          className={`text-[8px] px-1.5 py-0 mb-2 ${
-                            med.distance <= 3 
-                              ? 'bg-emerald-500 text-white' 
-                              : 'bg-muted text-muted-foreground'
-                          }`}
-                        >
-                          {med.distance < 1 ? `${Math.round(med.distance * 1000)}m` : `${med.distance.toFixed(1)}km`}
-                        </Badge>
-                      )}
+                      
                       <Button
                         size="sm"
-                        className="w-full bg-[#25D366] hover:bg-[#20BD5A] text-white h-7 text-[10px] font-semibold rounded-lg"
+                        className="w-full bg-[#25D366] hover:bg-[#20BD5A] text-white h-9 text-xs font-semibold rounded-xl shadow-md"
                         onClick={(e) => {
                           e.stopPropagation();
                           handleWhatsAppOrder(med);
                         }}
                       >
-                        <MessageCircle className="h-3 w-3 mr-1" />
-                        Order
+                        <MessageCircle className="h-3.5 w-3.5 mr-1.5" />
+                        Order Now
                       </Button>
                     </CardContent>
                   </Card>
@@ -758,8 +933,8 @@ const Explore = () => {
         >
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
-              <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-primary to-blue-600 flex items-center justify-center">
-                {latitude ? <Navigation className="h-3.5 w-3.5 text-white" /> : <Package className="h-3.5 w-3.5 text-white" />}
+              <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-primary to-blue-600 flex items-center justify-center shadow-lg shadow-primary/20">
+                {latitude ? <Navigation className="h-4 w-4 text-white" /> : <Package className="h-4 w-4 text-white" />}
               </div>
               <div>
                 <h2 className="text-sm font-bold text-foreground">
@@ -775,17 +950,17 @@ const Explore = () => {
                 variant={viewMode === 'grid' ? 'secondary' : 'ghost'} 
                 size="icon" 
                 onClick={() => setViewMode('grid')} 
-                className="h-7 w-7 rounded-lg"
+                className="h-8 w-8 rounded-xl"
               >
-                <Grid3X3 className="h-3.5 w-3.5" />
+                <Grid3X3 className="h-4 w-4" />
               </Button>
               <Button 
                 variant={viewMode === 'list' ? 'secondary' : 'ghost'} 
                 size="icon" 
                 onClick={() => setViewMode('list')} 
-                className="h-7 w-7 rounded-lg"
+                className="h-8 w-8 rounded-xl"
               >
-                <List className="h-3.5 w-3.5" />
+                <List className="h-4 w-4" />
               </Button>
             </div>
           </div>
@@ -793,7 +968,7 @@ const Explore = () => {
           {initialLoading ? (
             <div className={`grid ${viewMode === 'grid' ? 'grid-cols-2 md:grid-cols-3 lg:grid-cols-4' : 'grid-cols-1'} gap-3`}>
               {[1, 2, 3, 4, 5, 6].map((i) => (
-                <div key={i} className="h-44 bg-muted rounded-2xl animate-pulse" />
+                <div key={i} className="h-52 bg-muted rounded-2xl animate-pulse" />
               ))}
             </div>
           ) : medications.length > 0 ? (
@@ -830,6 +1005,9 @@ const Explore = () => {
           </motion.div>
         )}
       </main>
+
+      {/* Filters Sheet */}
+      <FiltersSheet />
 
       {/* Pharmacy Map Modal */}
       <PharmacyMapModal
