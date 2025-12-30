@@ -1095,6 +1095,86 @@ const Explore = () => {
         isDetecting={isDetecting || geoLoading}
         onSubmitCustomLocation={handleCustomLocationSubmit}
       />
+
+      {/* Premium Footer */}
+      <footer className="mt-16 py-12 border-t border-border/40 bg-gradient-to-b from-transparent to-muted/30">
+        <div className="container mx-auto px-4 sm:px-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
+            <motion.div 
+              initial={{ opacity: 0 }} 
+              whileInView={{ opacity: 1 }} 
+              className="md:col-span-1"
+            >
+              <Link to="/" className="flex items-center gap-2 mb-4">
+                <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center">
+                  <Package className="h-4 w-4 text-primary-foreground" />
+                </div>
+                <span className="font-display font-bold text-lg">PharmaTrack</span>
+              </Link>
+              <p className="text-sm text-muted-foreground">
+                Find medicines near you instantly. Nigeria's trusted pharmacy marketplace.
+              </p>
+            </motion.div>
+            
+            {/* Quick Links */}
+            <div className="md:col-span-1">
+              <h4 className="font-semibold mb-4">Quick Links</h4>
+              <div className="flex flex-col gap-2 text-sm text-muted-foreground">
+                <Link to="/" className="hover:text-primary transition-colors">Home</Link>
+                <Link to="/auth" className="hover:text-primary transition-colors">Pharmacy Login</Link>
+                <button 
+                  onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                  className="text-left hover:text-primary transition-colors"
+                >
+                  Search Medicines
+                </button>
+              </div>
+            </div>
+
+            {/* Contact Section */}
+            <div className="md:col-span-1">
+              <h4 className="font-semibold mb-4">Contact Us</h4>
+              <div className="flex flex-col gap-3 text-sm text-muted-foreground">
+                <a href="mailto:pharmatrackai@gmail.com" className="flex items-center gap-2 hover:text-primary transition-colors">
+                  <Store className="h-4 w-4" />
+                  <span>pharmatrackai@gmail.com</span>
+                </a>
+                <a href="tel:+2349169153129" className="flex items-center gap-2 hover:text-primary transition-colors">
+                  <Phone className="h-4 w-4" />
+                  <span>+234 916 915 3129</span>
+                </a>
+                <a href="https://wa.link/jsn5d9" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 hover:text-success transition-colors">
+                  <MessageCircle className="h-4 w-4" />
+                  <span>Chat on WhatsApp</span>
+                </a>
+              </div>
+            </div>
+
+            {/* Trust Badges */}
+            <div className="md:col-span-1">
+              <h4 className="font-semibold mb-4">Trust & Safety</h4>
+              <div className="flex flex-col gap-2 text-sm text-muted-foreground">
+                <div className="flex items-center gap-2">
+                  <Shield className="h-4 w-4 text-success" />
+                  <span>Verified Pharmacies</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-success" />
+                  <span>Real-time Stock</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Zap className="h-4 w-4 text-success" />
+                  <span>Instant Contact</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div className="text-center pt-8 border-t border-border/40 text-sm text-muted-foreground">
+            © {new Date().getFullYear()} PharmaTrack AI. All rights reserved.
+          </div>
+        </div>
+      </footer>
     </div>
   );
 };
