@@ -375,11 +375,14 @@ const Explore = () => {
 
   const applyFilters = (meds: PublicMedication[]) => {
     let filtered = meds.filter(med => {
-      // Price filter
-      const price = med.selling_price || 0;
-      if (price < priceRange[0] || price > priceRange[1]) return false;
+      // Price filter - only apply to products WITH a listed price
+      // Products without price ("Price on Request") are always included regardless of price filter
+      if (med.selling_price !== null) {
+        const price = med.selling_price;
+        if (price < priceRange[0] || price > priceRange[1]) return false;
+      }
       
-      // Distance filter (if location available)
+      // Distance filter applies to ALL products (if location available)
       if (latitude && longitude && med.distance !== undefined) {
         if (med.distance > maxDistance) return false;
       }
@@ -390,10 +393,22 @@ const Explore = () => {
     // Apply sorting
     switch (sortBy) {
       case 'price_low':
-        filtered.sort((a, b) => (a.selling_price || 0) - (b.selling_price || 0));
+        // Products with prices first (sorted low to high), then "Price on Request" at the end
+        filtered.sort((a, b) => {
+          if (a.selling_price === null && b.selling_price === null) return 0;
+          if (a.selling_price === null) return 1;
+          if (b.selling_price === null) return -1;
+          return a.selling_price - b.selling_price;
+        });
         break;
       case 'price_high':
-        filtered.sort((a, b) => (b.selling_price || 0) - (a.selling_price || 0));
+        // Products with prices first (sorted high to low), then "Price on Request" at the end
+        filtered.sort((a, b) => {
+          if (a.selling_price === null && b.selling_price === null) return 0;
+          if (a.selling_price === null) return 1;
+          if (b.selling_price === null) return -1;
+          return b.selling_price - a.selling_price;
+        });
         break;
       case 'distance':
         filtered.sort((a, b) => {
@@ -455,10 +470,7 @@ const Explore = () => {
 
   // Premium Product Card with enhanced visuals
   const ProductCard = ({ medication, index = 0 }: { medication: PublicMedication; index?: number }) => {
-    const formatPriceCompact = (price: number | null) => {
-      if (!price) return 'Price on request';
-      return `₦${price.toLocaleString()}`;
-    };
+    const hasPrice = medication.selling_price !== null && medication.selling_price > 0;
 
     return (
       <motion.div
@@ -498,15 +510,22 @@ const Explore = () => {
               </div>
             </div>
 
-            {/* Price - prominent display */}
-            {medication.selling_price && (
-              <div className="mb-2">
-                <span className="text-lg font-bold text-marketplace">
-                  {formatPriceCompact(medication.selling_price)}
-                </span>
-                <span className="text-[10px] text-muted-foreground ml-1">/{medication.dispensing_unit}</span>
-              </div>
-            )}
+            {/* Price - prominent display OR "Price on Request" badge */}
+            <div className="mb-2">
+              {hasPrice ? (
+                <>
+                  <span className="text-lg font-bold text-marketplace">
+                    ₦{medication.selling_price!.toLocaleString()}
+                  </span>
+                  <span className="text-[10px] text-muted-foreground ml-1">/{medication.dispensing_unit}</span>
+                </>
+              ) : (
+                <Badge variant="outline" className="bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-700/50 text-xs px-2 py-0.5">
+                  <Phone className="h-3 w-3 mr-1" />
+                  Price on Request
+                </Badge>
+              )}
+            </div>
 
             {/* Category & Stock */}
             <div className="flex items-center gap-1.5 mb-2.5 flex-wrap">
@@ -535,7 +554,7 @@ const Explore = () => {
                 onClick={() => handleWhatsAppOrder(medication)}
               >
                 <MessageCircle className="h-3.5 w-3.5 mr-1.5" />
-                Order Now
+                {hasPrice ? 'Order Now' : 'Ask Price'}
               </Button>
               <Button
                 size="sm"
@@ -590,9 +609,12 @@ const Explore = () => {
 
           {/* Price Range */}
           <div>
-            <label className="text-sm font-medium mb-3 block">
+            <label className="text-sm font-medium mb-2 block">
               Price Range: ₦{priceRange[0].toLocaleString()} - ₦{priceRange[1].toLocaleString()}
             </label>
+            <p className="text-[10px] text-muted-foreground mb-3">
+              Note: "Price on Request" products are always shown regardless of this filter
+            </p>
             <Slider
               value={priceRange}
               onValueChange={(value) => setPriceRange(value as [number, number])}
@@ -861,66 +883,82 @@ const Explore = () => {
               className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory scrollbar-hide -mx-4 px-4"
               style={{ scrollbarWidth: 'none' }}
             >
-              {featuredMedications.map((med, index) => (
-                <motion.div
-                  key={`spotlight-${med.id}`}
-                  initial={{ opacity: 0, scale: 0.95 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: index * 0.05 }}
-                  className="shrink-0 snap-start"
-                >
-                  <Card 
-                    className="w-[220px] overflow-hidden border-0 bg-gradient-to-br from-white via-marketplace/5 to-primary/5 dark:from-card dark:via-marketplace/10 dark:to-primary/10 shadow-lg hover:shadow-xl transition-all rounded-2xl cursor-pointer group ring-1 ring-marketplace/10"
-                    onClick={() => handleWhatsAppOrder(med)}
+              {featuredMedications.map((med, index) => {
+                const hasPrice = med.selling_price !== null && med.selling_price > 0;
+                return (
+                  <motion.div
+                    key={`spotlight-${med.id}`}
+                    initial={{ opacity: 0, scale: 0.95 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: index * 0.05 }}
+                    className="shrink-0 snap-start"
                   >
-                    <CardContent className="p-4">
-                      <div className="flex items-center gap-2 mb-2">
-                        <Badge className="bg-gradient-to-r from-marketplace to-primary text-white gap-1 text-[9px] px-2 py-0.5 rounded-full">
-                          <Star className="h-2 w-2 fill-current" />
-                          Featured
-                        </Badge>
-                        {med.distance !== undefined && med.distance <= 5 && (
-                          <Badge className="bg-emerald-500 text-white text-[8px] px-1.5 py-0.5 rounded-full">
-                            Nearby
+                    <Card 
+                      className="w-[220px] overflow-hidden border-0 bg-gradient-to-br from-white via-marketplace/5 to-primary/5 dark:from-card dark:via-marketplace/10 dark:to-primary/10 shadow-lg hover:shadow-xl transition-all rounded-2xl group ring-1 ring-marketplace/10"
+                    >
+                      <CardContent className="p-4">
+                        <div className="flex items-center gap-2 mb-2">
+                          <Badge className="bg-gradient-to-r from-marketplace to-primary text-white gap-1 text-[9px] px-2 py-0.5 rounded-full">
+                            <Star className="h-2 w-2 fill-current" />
+                            Featured
                           </Badge>
-                        )}
-                      </div>
-                      <h3 className="font-bold text-sm mb-1 line-clamp-2 group-hover:text-marketplace transition-colors">{med.name}</h3>
-                      
-                      {med.selling_price && (
-                        <div className="mb-2">
-                          <span className="text-lg font-bold text-marketplace">₦{med.selling_price.toLocaleString()}</span>
+                          {med.distance !== undefined && med.distance <= 5 && (
+                            <Badge className="bg-emerald-500 text-white text-[8px] px-1.5 py-0.5 rounded-full">
+                              Nearby
+                            </Badge>
+                          )}
                         </div>
-                      )}
-                      
-                      <div className="flex items-center gap-1.5 mb-2">
-                        <Badge variant="secondary" className="text-[8px] px-1.5 py-0">{med.category}</Badge>
-                        <Badge variant="outline" className="bg-success/10 text-success border-success/20 text-[8px] px-1.5 py-0">
-                          {med.current_stock} left
-                        </Badge>
-                      </div>
-                      
-                      <div className="flex items-center gap-1 text-[10px] text-muted-foreground mb-3">
-                        <Store className="h-2.5 w-2.5" />
-                        <span className="truncate">{med.pharmacy_name}</span>
-                        <Verified className="h-2.5 w-2.5 text-primary" />
-                      </div>
-                      
-                      <Button
-                        size="sm"
-                        className="w-full bg-[#25D366] hover:bg-[#20BD5A] text-white h-9 text-xs font-semibold rounded-xl shadow-md"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleWhatsAppOrder(med);
-                        }}
-                      >
-                        <MessageCircle className="h-3.5 w-3.5 mr-1.5" />
-                        Order Now
-                      </Button>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              ))}
+                        <h3 className="font-bold text-sm mb-1 line-clamp-2 group-hover:text-marketplace transition-colors">{med.name}</h3>
+                        
+                        {/* Price Display */}
+                        <div className="mb-2">
+                          {hasPrice ? (
+                            <span className="text-lg font-bold text-marketplace">₦{med.selling_price!.toLocaleString()}</span>
+                          ) : (
+                            <Badge variant="outline" className="bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-700/50 text-[10px] px-1.5 py-0.5">
+                              <Phone className="h-2.5 w-2.5 mr-0.5" />
+                              Price on Request
+                            </Badge>
+                          )}
+                        </div>
+                        
+                        <div className="flex items-center gap-1.5 mb-2">
+                          <Badge variant="secondary" className="text-[8px] px-1.5 py-0">{med.category}</Badge>
+                          <Badge variant="outline" className="bg-success/10 text-success border-success/20 text-[8px] px-1.5 py-0">
+                            {med.current_stock} left
+                          </Badge>
+                        </div>
+                        
+                        <div className="flex items-center gap-1 text-[10px] text-muted-foreground mb-3">
+                          <Store className="h-2.5 w-2.5" />
+                          <span className="truncate">{med.pharmacy_name}</span>
+                          <Verified className="h-2.5 w-2.5 text-primary" />
+                        </div>
+                        
+                        {/* CTAs with Map button */}
+                        <div className="flex items-center gap-2">
+                          <Button
+                            size="sm"
+                            className="flex-1 bg-[#25D366] hover:bg-[#20BD5A] text-white h-9 text-xs font-semibold rounded-xl shadow-md"
+                            onClick={() => handleWhatsAppOrder(med)}
+                          >
+                            <MessageCircle className="h-3.5 w-3.5 mr-1.5" />
+                            {hasPrice ? 'Order Now' : 'Ask Price'}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-9 w-9 p-0 rounded-xl border-marketplace/30 hover:bg-marketplace/10 hover:border-marketplace shrink-0"
+                            onClick={() => handleShowOnMap(med)}
+                          >
+                            <MapPin className="h-3.5 w-3.5 text-marketplace" />
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
+                );
+              })}
             </div>
           </motion.section>
         )}
