@@ -31,9 +31,9 @@ serve(async (req) => {
   }
 
   try {
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+    if (!GEMINI_API_KEY) {
+      throw new Error("GEMINI_API_KEY is not configured");
     }
 
     const { cartItems, availableInventory } = await req.json() as {
@@ -88,52 +88,35 @@ ${cartItems.map(item => `- ${item.name} (${item.category})`).join('\n')}
 Available products to suggest from:
 ${availableProducts.map(item => `- ID: ${item.id} | ${item.name} (${item.category})`).join('\n')}
 
-Based on the cart contents, suggest 2-3 complementary products from the available list. Return ONLY products from the available list above.`;
+Based on the cart contents, suggest 2-3 complementary products from the available list. Return ONLY products from the available list above.
 
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+Return a JSON object with this exact structure:
+{
+  "suggestions": [
+    {
+      "product_id": "the ID of the suggested product",
+      "product_name": "Name of the suggested product",
+      "reason": "Brief reason for suggestion (max 10 words)",
+      "confidence": 0.8
+    }
+  ]
+}`;
+
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${LOVABLE_API_KEY}`,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt }
-        ],
-        tools: [
+        contents: [
           {
-            type: "function",
-            function: {
-              name: "suggest_upsells",
-              description: "Return complementary product suggestions for the customer's cart",
-              parameters: {
-                type: "object",
-                properties: {
-                  suggestions: {
-                    type: "array",
-                    items: {
-                      type: "object",
-                      properties: {
-                        product_id: { type: "string", description: "The ID of the suggested product" },
-                        product_name: { type: "string", description: "Name of the suggested product" },
-                        reason: { type: "string", description: "Brief reason for suggestion (max 10 words)" },
-                        confidence: { type: "number", description: "Confidence score between 0 and 1" }
-                      },
-                      required: ["product_id", "product_name", "reason", "confidence"],
-                      additionalProperties: false
-                    },
-                    maxItems: 3
-                  }
-                },
-                required: ["suggestions"],
-                additionalProperties: false
-              }
-            }
+            role: 'user',
+            parts: [{ text: `${systemPrompt}\n\n${userPrompt}` }]
           }
         ],
-        tool_choice: { type: "function", function: { name: "suggest_upsells" } }
+        generationConfig: {
+          responseMimeType: 'application/json',
+        },
       }),
     });
 
@@ -144,14 +127,8 @@ Based on the cart contents, suggest 2-3 complementary products from the availabl
           { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: "Payment required", suggestions: [] }),
-          { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
       const errorText = await response.text();
-      console.error("AI gateway error:", response.status, errorText);
+      console.error("Gemini API error:", response.status, errorText);
       return new Response(
         JSON.stringify({ error: "AI service error", suggestions: [] }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -159,17 +136,16 @@ Based on the cart contents, suggest 2-3 complementary products from the availabl
     }
 
     const data = await response.json();
+    const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
     
-    // Extract tool call result
-    const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
-    if (!toolCall || toolCall.function.name !== "suggest_upsells") {
+    if (!content) {
       return new Response(
         JSON.stringify({ suggestions: [] }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
-    const result = JSON.parse(toolCall.function.arguments);
+    const result = JSON.parse(content);
     
     // Validate suggestions against available inventory
     const validSuggestions: UpsellSuggestion[] = (result.suggestions || [])

@@ -82,9 +82,9 @@ serve(async (req) => {
       );
     }
 
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    if (!LOVABLE_API_KEY) {
-      console.error('LOVABLE_API_KEY not configured');
+    const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
+    if (!GEMINI_API_KEY) {
+      console.error('GEMINI_API_KEY not configured');
       return new Response(
         JSON.stringify({ error: 'AI service not configured' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -98,18 +98,7 @@ serve(async (req) => {
       .map(([field, keywords]) => `${field}: Look for "${keywords.join('", "')}"`)
       .join('\n');
 
-    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        model: 'google/gemini-2.5-flash',
-        messages: [
-          {
-            role: 'system',
-            content: `You are an expert at extracting product information from pharmaceutical invoices and receipts, especially Nigerian supplier invoices.
+    const systemPrompt = `You are an expert at extracting product information from pharmaceutical invoices and receipts, especially Nigerian supplier invoices.
 
 KEYWORD DICTIONARY - Look for these terms ANYWHERE on the page:
 ${keywordHints}
@@ -160,41 +149,63 @@ Return ONLY a valid JSON object with this structure:
 }
 
 If you cannot identify any products, return: {"items": [], "error": "Could not extract products from image"}
-Do not include any explanation, just the JSON.`
-          },
+Do not include any explanation, just the JSON.`;
+
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        contents: [
           {
             role: 'user',
-            content: [
+            parts: [
+              { text: `${systemPrompt}\n\nExtract all medication/product details from this invoice image. Use keyword-based extraction to find batch numbers, expiry dates, and prices. Look for table rows and extract each product. Return only valid JSON.` },
               {
-                type: 'text',
-                text: 'Extract all medication/product details from this invoice image. Use keyword-based extraction to find batch numbers, expiry dates, and prices. Look for table rows and extract each product. Return only valid JSON.'
-              },
-              {
-                type: 'image_url',
-                image_url: {
-                  url: imageUrl
+                inlineData: {
+                  mimeType: 'image/jpeg',
+                  data: '' // Will need to fetch image and convert to base64
                 }
               }
             ]
           }
         ],
+        generationConfig: {
+          responseMimeType: 'application/json',
+        },
       }),
     });
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('AI API error:', response.status, errorText);
+    // For URL-based images, use the fileData approach with Gemini
+    const responseWithUrl = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        contents: [
+          {
+            role: 'user',
+            parts: [
+              { text: `${systemPrompt}\n\nExtract all medication/product details from this invoice image. Use keyword-based extraction to find batch numbers, expiry dates, and prices. Look for table rows and extract each product. Return only valid JSON.\n\nImage URL: ${imageUrl}` }
+            ]
+          }
+        ],
+        generationConfig: {
+          responseMimeType: 'application/json',
+        },
+      }),
+    });
+
+    if (!responseWithUrl.ok) {
+      const errorText = await responseWithUrl.text();
+      console.error('Gemini API error:', responseWithUrl.status, errorText);
       
-      if (response.status === 429) {
+      if (responseWithUrl.status === 429) {
         return new Response(
           JSON.stringify({ error: 'Rate limit exceeded. Please try again in a moment.' }),
           { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-        );
-      }
-      if (response.status === 402) {
-        return new Response(
-          JSON.stringify({ error: 'AI credits depleted. Please add more credits.' }),
-          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
       
@@ -204,8 +215,8 @@ Do not include any explanation, just the JSON.`
       );
     }
 
-    const aiResponse = await response.json();
-    const content = aiResponse.choices?.[0]?.message?.content || '';
+    const aiResponse = await responseWithUrl.json();
+    const content = aiResponse.candidates?.[0]?.content?.parts?.[0]?.text || '';
 
     console.log('AI response received, parsing...');
 
