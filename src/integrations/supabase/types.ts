@@ -711,7 +711,11 @@ export type Database = {
           is_gifted: boolean
           license_number: string | null
           logo_url: string | null
+          marketplace_city: string | null
           marketplace_contact_phone: string | null
+          marketplace_lat: number | null
+          marketplace_lon: number | null
+          marketplace_zone: string | null
           max_users: number
           name: string
           owner_id: string
@@ -749,7 +753,11 @@ export type Database = {
           is_gifted?: boolean
           license_number?: string | null
           logo_url?: string | null
+          marketplace_city?: string | null
           marketplace_contact_phone?: string | null
+          marketplace_lat?: number | null
+          marketplace_lon?: number | null
+          marketplace_zone?: string | null
           max_users?: number
           name: string
           owner_id: string
@@ -787,7 +795,11 @@ export type Database = {
           is_gifted?: boolean
           license_number?: string | null
           logo_url?: string | null
+          marketplace_city?: string | null
           marketplace_contact_phone?: string | null
+          marketplace_lat?: number | null
+          marketplace_lon?: number | null
+          marketplace_zone?: string | null
           max_users?: number
           name?: string
           owner_id?: string
