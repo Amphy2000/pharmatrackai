@@ -16,6 +16,7 @@ import { ProfitProtectorCalculator } from '@/components/landing/ProfitProtectorC
 import { FeatureDemo } from '@/components/landing/FeatureDemo';
 import { VideoShowcase } from '@/components/landing/VideoShowcase';
 import { CompetitorComparison } from '@/components/landing/CompetitorComparison';
+import { LandingMarketplaceProof } from '@/components/landing/LandingMarketplaceProof';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 // Animation variants
@@ -634,6 +635,16 @@ const Landing = () => {
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
               The ONLY pharmacy system in Nigeria with a <span className="text-marketplace font-semibold">public marketplace</span> where patients search for drugs by distance and order via WhatsApp.
             </p>
+          </motion.div>
+
+          {/* Live Marketplace Activity - The PROOF */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="mb-16"
+          >
+            <LandingMarketplaceProof />
           </motion.div>
 
           <div className="grid lg:grid-cols-2 gap-8 max-w-6xl mx-auto items-center">
