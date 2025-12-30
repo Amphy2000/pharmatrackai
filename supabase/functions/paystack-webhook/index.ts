@@ -20,6 +20,13 @@ const PLAN_CONFIG = {
   enterprise: { setupFee: 0, monthlyFee: 0, isHybrid: false },
 };
 
+// Featured product pricing in kobo
+const FEATURED_PRICING = {
+  7: 100000,   // ₦1,000
+  14: 150000,  // ₦1,500
+  30: 250000,  // ₦2,500
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -82,6 +89,33 @@ serve(async (req) => {
         
         console.log(`Charge success: email=${customerEmail}, amount=${amount}, reference=${reference}`);
         console.log("Metadata:", JSON.stringify(metadata));
+        
+        // Check if this is a featured product payment
+        if (metadata.type === "featured_product") {
+          const pharmacyId = metadata.pharmacy_id;
+          const medicationId = metadata.medication_id;
+          const duration = metadata.duration;
+          
+          console.log(`Featured product payment for pharmacy ${pharmacyId}, medication ${medicationId}, duration: ${duration}`);
+          
+          if (pharmacyId && medicationId && duration) {
+            // Calculate expiry date
+            const featuredUntil = new Date(Date.now() + duration * 24 * 60 * 60 * 1000).toISOString();
+            
+            // Update medication to featured
+            await supabase
+              .from("medications")
+              .update({
+                is_featured: true,
+                featured_until: featuredUntil,
+              })
+              .eq("id", medicationId)
+              .eq("pharmacy_id", pharmacyId);
+
+            console.log(`Medication ${medicationId} featured until ${featuredUntil}`);
+          }
+          break;
+        }
         
         // Check if this is a branch upgrade transaction
         if (metadata.transaction_type === "branch_upgrade") {
