@@ -62,16 +62,7 @@ export const FeatureDurationSelect = ({
         .eq('id', medicationId);
 
       if (error) {
-        if (error.message.includes('Maximum of 3 featured products')) {
-          toast({
-            title: 'Featured Slots Full',
-            description: 'Maximum of 3 featured products allowed. Please remove one first.',
-            variant: 'destructive',
-          });
-        } else {
-          throw error;
-        }
-        return;
+        throw error;
       }
 
       toast({

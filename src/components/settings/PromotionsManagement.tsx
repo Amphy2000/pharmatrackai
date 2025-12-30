@@ -1,10 +1,9 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Star, Clock, Plus, MessageCircle, AlertTriangle, Trash2, RefreshCw } from 'lucide-react';
+import { Star, Clock, AlertTriangle, Trash2, RefreshCw } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import { supabase } from '@/integrations/supabase/client';
 import { usePharmacy } from '@/hooks/usePharmacy';
 import { useToast } from '@/hooks/use-toast';
@@ -28,9 +27,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-
-const MAX_FEATURED_SLOTS = 3;
-const ADMIN_WHATSAPP = '2349169153129';
 
 const RENEWAL_OPTIONS = [
   { value: '7', label: '7 Days (Weekly Boost)' },
@@ -121,13 +117,6 @@ export const PromotionsManagement = () => {
     },
   });
 
-  const handleRequestMoreSlots = () => {
-    const message = encodeURIComponent(
-      `Hello! I would like to purchase more featured slots for ${pharmacy?.name}. Currently using ${featuredItems.length}/${MAX_FEATURED_SLOTS} slots.`
-    );
-    window.open(`https://wa.me/${ADMIN_WHATSAPP}?text=${message}`, '_blank');
-  };
-
   const handleQuickRenew = (medicationId: string) => {
     renewFeaturedMutation.mutate({ 
       medicationId, 
@@ -141,7 +130,6 @@ export const PromotionsManagement = () => {
   };
 
   const slotsUsed = featuredItems.length;
-  const slotsPercentage = (slotsUsed / MAX_FEATURED_SLOTS) * 100;
 
   return (
     <div className="space-y-6">
@@ -152,41 +140,24 @@ export const PromotionsManagement = () => {
             <div>
               <CardTitle className="flex items-center gap-2">
                 <Star className="h-5 w-5 text-marketplace fill-marketplace" />
-                Featured Slots
+                Featured Products
               </CardTitle>
               <CardDescription>
                 Promote your products in the marketplace spotlight
               </CardDescription>
             </div>
             <Badge 
-              variant={slotsUsed >= MAX_FEATURED_SLOTS ? "destructive" : "secondary"}
+              variant="secondary"
               className="text-lg px-4 py-2"
             >
-              {slotsUsed} / {MAX_FEATURED_SLOTS}
+              {slotsUsed} Active
             </Badge>
           </div>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            <Progress value={slotsPercentage} className="h-3" />
-            
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-muted-foreground">
-                {slotsUsed >= MAX_FEATURED_SLOTS 
-                  ? "All slots used. Remove an item or request more slots."
-                  : `${MAX_FEATURED_SLOTS - slotsUsed} slot${MAX_FEATURED_SLOTS - slotsUsed !== 1 ? 's' : ''} available`
-                }
-              </p>
-              <Button
-                onClick={handleRequestMoreSlots}
-                variant="outline"
-                className="gap-2 border-marketplace/30 hover:bg-marketplace/10"
-              >
-                <MessageCircle className="h-4 w-4" />
-                Request More Slots
-              </Button>
-            </div>
-          </div>
+          <p className="text-sm text-muted-foreground">
+            Feature as many products as you want! Each featured product appears in the spotlight section and gets more visibility.
+          </p>
         </CardContent>
       </Card>
 
@@ -373,7 +344,7 @@ export const PromotionsManagement = () => {
             </li>
             <li className="flex items-start gap-2">
               <span className="font-bold text-foreground">2.</span>
-              Maximum {MAX_FEATURED_SLOTS} products can be featured at once
+              Feature as many products as you want - no limits!
             </li>
             <li className="flex items-start gap-2">
               <span className="font-bold text-foreground">3.</span>
@@ -382,10 +353,6 @@ export const PromotionsManagement = () => {
             <li className="flex items-start gap-2">
               <span className="font-bold text-foreground">4.</span>
               You'll receive SMS reminders 2 days before promotions expire
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="font-bold text-foreground">5.</span>
-              Contact admin via WhatsApp to purchase additional slots
             </li>
           </ul>
         </CardContent>

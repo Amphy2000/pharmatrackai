@@ -389,7 +389,7 @@ const MarketplaceInsights = () => {
               </CardContent>
             </Card>
 
-            <div className="grid md:grid-cols-2 gap-8">
+            <div className="grid md:grid-cols-2 gap-8 items-start">
               {/* Top Searched Drugs (Out of Stock) */}
               <Card>
                 <CardHeader>
