@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { Star, ChevronLeft, ChevronRight, MapPin, Store, MessageCircle, Clock, Navigation, Loader2, Sparkles, Zap, ExternalLink, Globe } from 'lucide-react';
+import { Star, ChevronLeft, ChevronRight, MapPin, Store, MessageCircle, Clock, Navigation, Loader2, Sparkles, Zap, ExternalLink, Globe, Phone } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -28,9 +28,10 @@ interface FeaturedMedication {
 
 interface SpotlightSectionProps {
   onOrder: (medication: FeaturedMedication) => void;
+  onShowOnMap?: (medication: FeaturedMedication) => void;
 }
 
-export const SpotlightSection = ({ onOrder }: SpotlightSectionProps) => {
+export const SpotlightSection = ({ onOrder, onShowOnMap }: SpotlightSectionProps) => {
   const [featured, setFeatured] = useState<FeaturedMedication[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [activeIndex, setActiveIndex] = useState(0);
@@ -232,6 +233,22 @@ export const SpotlightSection = ({ onOrder }: SpotlightSectionProps) => {
 
                   {/* Product Info */}
                   <h3 className="font-bold text-sm mb-1 line-clamp-1">{medication.name}</h3>
+                  
+                  {/* Price Display */}
+                  <div className="mb-2">
+                    {medication.selling_price !== null && medication.selling_price > 0 ? (
+                      <div className="flex items-baseline gap-1">
+                        <span className="text-base font-bold text-marketplace">₦{medication.selling_price.toLocaleString()}</span>
+                        <span className="text-[9px] text-muted-foreground">/{medication.dispensing_unit}</span>
+                      </div>
+                    ) : (
+                      <Badge variant="outline" className="bg-amber-50 dark:bg-amber-900/20 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-700/50 text-[10px] px-1.5 py-0.5">
+                        <Phone className="h-2.5 w-2.5 mr-0.5" />
+                        Price on Request
+                      </Badge>
+                    )}
+                  </div>
+                  
                   <div className="flex items-center gap-1.5 mb-2">
                     <Badge variant="secondary" className="text-[9px] px-1.5 py-0">{medication.category}</Badge>
                     <Badge variant="outline" className="bg-success/10 text-success border-success/30 text-[9px] px-1.5 py-0">
@@ -265,14 +282,26 @@ export const SpotlightSection = ({ onOrder }: SpotlightSectionProps) => {
                     )}
                   </div>
 
-                  {/* CTA */}
-                  <Button
-                    onClick={() => onOrder(medication)}
-                    className="w-full bg-[#25D366] hover:bg-[#20BD5A] text-white h-8 text-xs font-semibold rounded-lg"
-                  >
-                    <MessageCircle className="h-3.5 w-3.5 mr-1" />
-                    Order via WhatsApp
-                  </Button>
+                  {/* CTAs */}
+                  <div className="flex items-center gap-2">
+                    <Button
+                      onClick={() => onOrder(medication)}
+                      className="flex-1 bg-[#25D366] hover:bg-[#20BD5A] text-white h-8 text-xs font-semibold rounded-lg"
+                    >
+                      <MessageCircle className="h-3.5 w-3.5 mr-1" />
+                      {medication.selling_price !== null && medication.selling_price > 0 ? 'Order Now' : 'Ask Price'}
+                    </Button>
+                    {onShowOnMap && (
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => onShowOnMap(medication)}
+                        className="h-8 w-8 rounded-lg border-marketplace/30 hover:bg-marketplace/10 hover:border-marketplace shrink-0"
+                      >
+                        <MapPin className="h-3.5 w-3.5 text-marketplace" />
+                      </Button>
+                    )}
+                  </div>
                 </CardContent>
               </Card>
             </motion.div>
