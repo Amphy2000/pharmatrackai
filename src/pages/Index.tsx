@@ -15,6 +15,7 @@ import { NAFDACCompliancePanel } from '@/components/dashboard/NAFDACCompliancePa
 import { SalesAnalytics } from '@/components/dashboard/SalesAnalytics';
 import { ShiftClock } from '@/components/dashboard/ShiftClock';
 import { StaffPerformancePanel } from '@/components/dashboard/StaffPerformancePanel';
+import PharmacyAnalyticsPanel from '@/components/dashboard/PharmacyAnalyticsPanel';
 import { MedicationsTable } from '@/components/inventory/MedicationsTable';
 import { AddMedicationModal } from '@/components/inventory/AddMedicationModal';
 import { CSVImportModal } from '@/components/inventory/CSVImportModal';
@@ -246,6 +247,13 @@ const Index = () => {
         {!isLoading && isOwnerOrManager && (
           <section className="mb-8 sm:mb-10 animate-slide-up" style={{ animationDelay: '125ms' }}>
             <SalesAnalytics />
+          </section>
+        )}
+
+        {/* Marketplace Analytics - Only visible to owners/managers */}
+        {!isLoading && isOwnerOrManager && (
+          <section className="mb-8 sm:mb-10 animate-slide-up" style={{ animationDelay: '140ms' }}>
+            <PharmacyAnalyticsPanel />
           </section>
         )}
 

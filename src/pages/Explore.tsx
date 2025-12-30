@@ -14,6 +14,10 @@ import { RequestDrugButton } from "@/components/explore/RequestDrugButton";
 import { ExploreFlyer } from "@/components/explore/ExploreFlyer";
 import { PharmacyMapModal } from "@/components/explore/PharmacyMapModal";
 import { LocationPickerModal } from "@/components/explore/LocationPickerModal";
+import { TrendingSection } from "@/components/explore/TrendingSection";
+import { LiveActivityTicker } from "@/components/explore/LiveActivityTicker";
+import { VerifiedBadge } from "@/components/explore/VerifiedBadge";
+import { EmptyState } from "@/components/explore/EmptyState";
 import { motion, AnimatePresence } from "framer-motion";
 import { useGeolocation, calculateDistance, getApproximateCoordinates, getGoogleMapsLink, getFallbackLocationName } from "@/hooks/useGeolocation";
 import { useLocationOverride } from "@/hooks/useLocationOverride";
@@ -490,12 +494,12 @@ const Explore = () => {
             {/* Top Row */}
             <div className="flex items-start justify-between gap-2 mb-2">
               <div className="flex-1 min-w-0">
-                {medication.is_featured && (
-                  <Badge className="bg-gradient-to-r from-marketplace to-primary text-white gap-1 text-[9px] px-1.5 py-0 mb-1.5 rounded-full">
-                    <Star className="h-2 w-2 fill-current" />
-                    Spotlight
-                  </Badge>
-                )}
+              {medication.is_featured && (
+                <Badge className="bg-gradient-to-r from-marketplace to-primary text-white gap-1 text-[9px] px-1.5 py-0 mb-1.5 rounded-full">
+                  <Star className="h-2 w-2 fill-current" />
+                  Spotlight
+                </Badge>
+              )}
                 <h3 className="font-semibold text-sm text-foreground line-clamp-2 group-hover:text-marketplace transition-colors">
                   {medication.name}
                 </h3>
@@ -833,6 +837,20 @@ const Explore = () => {
         {/* Category Chips */}
         <CategoryChips onCategorySelect={handleCategorySelect} selectedCategory={selectedCategory} />
 
+        {/* Live Activity Ticker */}
+        <LiveActivityTicker />
+
+        {/* Trending Section */}
+        {!hasSearched && (
+          <TrendingSection
+            neighborhood={activeNeighborhood}
+            onTrendingClick={(term) => {
+              setSearchQuery(term);
+              handleSearch(term);
+            }}
+          />
+        )}
+
         {/* Trust Badges */}
         <motion.div
           initial={{ opacity: 0 }}
@@ -1019,18 +1037,25 @@ const Explore = () => {
               ))}
             </div>
           ) : hasSearched ? (
-            <div className="text-center py-12 bg-muted/30 rounded-2xl border border-dashed border-muted-foreground/20">
-              <Package className="h-12 w-12 mx-auto text-muted-foreground/40 mb-3" />
-              <p className="text-sm font-medium text-muted-foreground mb-2">No medications found</p>
-              <p className="text-xs text-muted-foreground/60 mb-4">Try a different search term or location</p>
-              <RequestDrugButton searchQuery={searchQuery} />
-            </div>
+            <EmptyState
+              type="no-results"
+              searchQuery={searchQuery}
+              onSuggestionClick={(term) => {
+                setSearchQuery(term);
+                handleSearch(term);
+              }}
+              onNeighborhoodClick={(n) => {
+                selectNeighborhood(n);
+              }}
+            />
           ) : (
-            <div className="text-center py-12 bg-muted/30 rounded-2xl border border-dashed border-muted-foreground/20">
-              <Search className="h-12 w-12 mx-auto text-muted-foreground/40 mb-3" />
-              <p className="text-sm font-medium text-muted-foreground">Search for medications</p>
-              <p className="text-xs text-muted-foreground/60">Type a medication name above to get started</p>
-            </div>
+            <EmptyState
+              type="initial"
+              onSuggestionClick={(term) => {
+                setSearchQuery(term);
+                handleSearch(term);
+              }}
+            />
           )}
         </motion.section>
 
@@ -1070,6 +1095,86 @@ const Explore = () => {
         isDetecting={isDetecting || geoLoading}
         onSubmitCustomLocation={handleCustomLocationSubmit}
       />
+
+      {/* Premium Footer */}
+      <footer className="mt-16 py-12 border-t border-border/40 bg-gradient-to-b from-transparent to-muted/30">
+        <div className="container mx-auto px-4 sm:px-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
+            <motion.div 
+              initial={{ opacity: 0 }} 
+              whileInView={{ opacity: 1 }} 
+              className="md:col-span-1"
+            >
+              <Link to="/" className="flex items-center gap-2 mb-4">
+                <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center">
+                  <Package className="h-4 w-4 text-primary-foreground" />
+                </div>
+                <span className="font-display font-bold text-lg">PharmaTrack</span>
+              </Link>
+              <p className="text-sm text-muted-foreground">
+                Find medicines near you instantly. Nigeria's trusted pharmacy marketplace.
+              </p>
+            </motion.div>
+            
+            {/* Quick Links */}
+            <div className="md:col-span-1">
+              <h4 className="font-semibold mb-4">Quick Links</h4>
+              <div className="flex flex-col gap-2 text-sm text-muted-foreground">
+                <Link to="/" className="hover:text-primary transition-colors">Home</Link>
+                <Link to="/auth" className="hover:text-primary transition-colors">Pharmacy Login</Link>
+                <button 
+                  onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
+                  className="text-left hover:text-primary transition-colors"
+                >
+                  Search Medicines
+                </button>
+              </div>
+            </div>
+
+            {/* Contact Section */}
+            <div className="md:col-span-1">
+              <h4 className="font-semibold mb-4">Contact Us</h4>
+              <div className="flex flex-col gap-3 text-sm text-muted-foreground">
+                <a href="mailto:pharmatrackai@gmail.com" className="flex items-center gap-2 hover:text-primary transition-colors">
+                  <Store className="h-4 w-4" />
+                  <span>pharmatrackai@gmail.com</span>
+                </a>
+                <a href="tel:+2349169153129" className="flex items-center gap-2 hover:text-primary transition-colors">
+                  <Phone className="h-4 w-4" />
+                  <span>+234 916 915 3129</span>
+                </a>
+                <a href="https://wa.link/jsn5d9" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 hover:text-success transition-colors">
+                  <MessageCircle className="h-4 w-4" />
+                  <span>Chat on WhatsApp</span>
+                </a>
+              </div>
+            </div>
+
+            {/* Trust Badges */}
+            <div className="md:col-span-1">
+              <h4 className="font-semibold mb-4">Trust & Safety</h4>
+              <div className="flex flex-col gap-2 text-sm text-muted-foreground">
+                <div className="flex items-center gap-2">
+                  <Shield className="h-4 w-4 text-success" />
+                  <span>Verified Pharmacies</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <CheckCircle className="h-4 w-4 text-success" />
+                  <span>Real-time Stock</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Zap className="h-4 w-4 text-success" />
+                  <span>Instant Contact</span>
+                </div>
+              </div>
+            </div>
+          </div>
+          
+          <div className="text-center pt-8 border-t border-border/40 text-sm text-muted-foreground">
+            © {new Date().getFullYear()} PharmaTrack AI. All rights reserved.
+          </div>
+        </div>
+      </footer>
     </div>
   );
 };
