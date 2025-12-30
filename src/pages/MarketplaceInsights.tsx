@@ -16,7 +16,8 @@ import {
   Users,
   Rocket,
   Loader2,
-  EyeOff
+  EyeOff,
+  Check
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -433,9 +434,9 @@ const MarketplaceInsights = () => {
               </CardContent>
             </Card>
 
-            <div className="grid md:grid-cols-2 gap-8 items-stretch">
+            <div className="grid md:grid-cols-2 gap-8">
               {/* Top Searched Drugs (Out of Stock) */}
-              <Card className="flex flex-col">
+              <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <AlertTriangle className="h-5 w-5 text-warning" />
@@ -445,9 +446,9 @@ const MarketplaceInsights = () => {
                     People are searching for these drugs but you don't have them in stock
                   </p>
                 </CardHeader>
-                <CardContent className="flex-1 flex flex-col">
+                <CardContent>
                   {outOfStockSearches && outOfStockSearches.length > 0 ? (
-                    <div className="space-y-3 flex-1">
+                    <div className="space-y-3 max-h-80 overflow-auto">
                       {outOfStockSearches.map((item, index) => (
                         <div 
                           key={index}
@@ -461,26 +462,28 @@ const MarketplaceInsights = () => {
                       ))}
                     </div>
                   ) : (
-                    <div className="flex-1 flex items-center justify-center">
-                      <p className="text-center text-muted-foreground py-8">
-                        No missed opportunities found. Great job!
-                      </p>
+                    <div className="text-center py-8">
+                      <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-success/10 mb-4">
+                        <Check className="h-6 w-6 text-success" />
+                      </div>
+                      <p className="text-muted-foreground">No missed opportunities found.</p>
+                      <p className="text-sm text-muted-foreground mt-1">You're stocking what people need!</p>
                     </div>
                   )}
                 </CardContent>
               </Card>
 
               {/* Recent WhatsApp Leads */}
-              <Card className="flex flex-col">
+              <Card>
                 <CardHeader>
                   <CardTitle className="flex items-center gap-2">
                     <MessageCircle className="h-5 w-5 text-[#25D366]" />
                     Recent WhatsApp Leads
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="flex-1 flex flex-col">
+                <CardContent>
                   {leadsData && leadsData.length > 0 ? (
-                    <div className="flex-1 overflow-auto">
+                    <div className="max-h-80 overflow-auto">
                       <Table>
                         <TableHeader>
                           <TableRow>
@@ -503,10 +506,12 @@ const MarketplaceInsights = () => {
                       </Table>
                     </div>
                   ) : (
-                    <div className="flex-1 flex items-center justify-center">
-                      <p className="text-center text-muted-foreground py-8">
-                        No WhatsApp leads yet. List products to get started!
-                      </p>
+                    <div className="text-center py-8">
+                      <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-muted mb-4">
+                        <MessageCircle className="h-6 w-6 text-muted-foreground" />
+                      </div>
+                      <p className="text-muted-foreground">No WhatsApp leads yet.</p>
+                      <p className="text-sm text-muted-foreground mt-1">List products to start receiving orders!</p>
                     </div>
                   )}
                 </CardContent>

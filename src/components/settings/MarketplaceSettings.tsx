@@ -5,13 +5,13 @@ import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Globe, Zap, Package, Info, Save, Loader2, Phone, MessageCircle } from 'lucide-react';
+import { Globe, Zap, Package, Info, Save, Loader2, Phone, MessageCircle, MapPin, Check } from 'lucide-react';
 import { usePharmacy } from '@/hooks/usePharmacy';
 import { useMedications } from '@/hooks/useMedications';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-
+import { AddressAutocomplete } from '@/components/common/AddressAutocomplete';
 export const MarketplaceSettings = () => {
   const { pharmacy, updatePharmacySettings } = usePharmacy();
   const { medications, updateMedication } = useMedications();
@@ -20,13 +20,24 @@ export const MarketplaceSettings = () => {
   const [isSaving, setIsSaving] = useState(false);
   const [marketplaceContactPhone, setMarketplaceContactPhone] = useState('');
   const [isSavingContact, setIsSavingContact] = useState(false);
+  const [pharmacyAddress, setPharmacyAddress] = useState('');
+  const [isSavingAddress, setIsSavingAddress] = useState(false);
+  const [geocodeData, setGeocodeData] = useState<{
+    latitude: number;
+    longitude: number;
+    formatted_address: string;
+    city?: string;
+    state?: string;
+    country?: string;
+  } | null>(null);
 
-  // Load marketplace contact phone
+  // Load marketplace contact phone and address
   useEffect(() => {
     if (pharmacy) {
       // TypeScript doesn't know about the new column yet, so we cast
       const phoneValue = (pharmacy as any).marketplace_contact_phone || '';
       setMarketplaceContactPhone(phoneValue);
+      setPharmacyAddress(pharmacy.address || '');
     }
   }, [pharmacy]);
 
@@ -154,6 +165,26 @@ export const MarketplaceSettings = () => {
     }
   };
 
+  const handleSaveAddress = async () => {
+    if (!pharmacy?.id) return;
+    
+    setIsSavingAddress(true);
+    try {
+      const { error } = await supabase
+        .from('pharmacies')
+        .update({ address: pharmacyAddress || null })
+        .eq('id', pharmacy.id);
+
+      if (error) throw error;
+      toast.success('Pharmacy address saved - marketplace location updated');
+    } catch (error) {
+      console.error('Error saving address:', error);
+      toast.error('Failed to save address');
+    } finally {
+      setIsSavingAddress(false);
+    }
+  };
+
   return (
     <Card className="glass-card">
       <CardHeader>
@@ -166,7 +197,66 @@ export const MarketplaceSettings = () => {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
-        {/* Marketplace Contact Phone - NEW */}
+        {/* Marketplace Location Address */}
+        <div className="p-4 border rounded-lg space-y-4">
+          <div className="flex items-start gap-3">
+            <div className="p-2 rounded-lg bg-blue-500/10">
+              <MapPin className="h-5 w-5 text-blue-600" />
+            </div>
+            <div className="flex-1 space-y-1">
+              <Label htmlFor="pharmacy-address" className="font-medium flex items-center gap-2">
+                Pharmacy Location
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <Info className="h-4 w-4 text-muted-foreground" />
+                    </TooltipTrigger>
+                    <TooltipContent className="max-w-xs">
+                      <p>This address determines where your pharmacy appears in location-based searches. Customers can filter by location to find pharmacies near them.</p>
+                      <p className="mt-2 text-xs opacity-80">Tip: Use a complete address with city and state for better visibility.</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </Label>
+              <p className="text-sm text-muted-foreground">
+                Your pharmacy's address for marketplace location filtering
+              </p>
+            </div>
+          </div>
+          
+          <div className="space-y-3">
+            <AddressAutocomplete
+              value={pharmacyAddress}
+              onChange={(newAddress, geoData) => {
+                setPharmacyAddress(newAddress);
+                if (geoData) {
+                  setGeocodeData(geoData);
+                }
+              }}
+              placeholder="Start typing your pharmacy address..."
+            />
+            {geocodeData && (
+              <p className="text-xs text-muted-foreground flex items-center gap-1">
+                <Check className="h-3 w-3 text-green-500" />
+                Location verified: {geocodeData.city}, {geocodeData.state}
+              </p>
+            )}
+            <Button
+              onClick={handleSaveAddress}
+              disabled={isSavingAddress}
+              className="gap-2"
+            >
+              {isSavingAddress ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Save className="h-4 w-4" />
+              )}
+              Save Location
+            </Button>
+          </div>
+        </div>
+
+        {/* Marketplace Contact Phone */}
         <div className="p-4 border rounded-lg space-y-4">
           <div className="flex items-start gap-3">
             <div className="p-2 rounded-lg bg-green-500/10">
