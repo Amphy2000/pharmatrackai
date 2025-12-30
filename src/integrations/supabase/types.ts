@@ -707,6 +707,7 @@ export type Database = {
           default_margin_percent: number | null
           email: string
           enable_logo_on_print: boolean | null
+          hide_marketplace_prices: boolean | null
           id: string
           is_gifted: boolean
           license_number: string | null
@@ -749,6 +750,7 @@ export type Database = {
           default_margin_percent?: number | null
           email: string
           enable_logo_on_print?: boolean | null
+          hide_marketplace_prices?: boolean | null
           id?: string
           is_gifted?: boolean
           license_number?: string | null
@@ -791,6 +793,7 @@ export type Database = {
           default_margin_percent?: number | null
           email?: string
           enable_logo_on_print?: boolean | null
+          hide_marketplace_prices?: boolean | null
           id?: string
           is_gifted?: boolean
           license_number?: string | null
