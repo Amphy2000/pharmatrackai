@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Star, Clock, AlertTriangle, Trash2, RefreshCw } from 'lucide-react';
+import { Star, Clock, AlertTriangle, Trash2, CreditCard } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -8,7 +8,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { usePharmacy } from '@/hooks/usePharmacy';
 import { useToast } from '@/hooks/use-toast';
 import { useCurrency } from '@/contexts/CurrencyContext';
-import { differenceInDays, addDays, format } from 'date-fns';
+import { differenceInDays } from 'date-fns';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -20,27 +20,14 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from '@/components/ui/alert-dialog';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-
-const RENEWAL_OPTIONS = [
-  { value: '7', label: '7 Days (Weekly Boost)' },
-  { value: '14', label: '14 Days (Stock Clearer)' },
-  { value: '30', label: '30 Days (Store Anchor)' },
-];
+import { FeatureDurationSelect } from '@/components/inventory/FeatureDurationSelect';
 
 export const PromotionsManagement = () => {
   const { pharmacy } = usePharmacy();
   const { toast } = useToast();
   const { formatPrice } = useCurrency();
   const queryClient = useQueryClient();
-  const [renewingId, setRenewingId] = useState<string | null>(null);
-  const [renewDays, setRenewDays] = useState<string>('7');
+  const [renewingItem, setRenewingItem] = useState<{ id: string; name: string } | null>(null);
 
   // Fetch featured medications for this pharmacy
   const { data: featuredItems = [], isLoading } = useQuery({
@@ -88,42 +75,6 @@ export const PromotionsManagement = () => {
     },
   });
 
-  // Renew/extend featured mutation
-  const renewFeaturedMutation = useMutation({
-    mutationFn: async ({ medicationId, days }: { medicationId: string; days: number }) => {
-      const newExpiryDate = addDays(new Date(), days);
-      const { error } = await supabase
-        .from('medications')
-        .update({ featured_until: newExpiryDate.toISOString() })
-        .eq('id', medicationId);
-      
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['featured-medications'] });
-      setRenewingId(null);
-      toast({
-        title: "Promotion Extended!",
-        description: `Your promotion has been extended by ${renewDays} days.`,
-      });
-    },
-    onError: (error) => {
-      console.error('Error renewing featured:', error);
-      toast({
-        title: "Error",
-        description: "Failed to extend promotion. Please try again.",
-        variant: "destructive",
-      });
-    },
-  });
-
-  const handleQuickRenew = (medicationId: string) => {
-    renewFeaturedMutation.mutate({ 
-      medicationId, 
-      days: parseInt(renewDays) 
-    });
-  };
-
   const getDaysRemaining = (featuredUntil: string | null): number | null => {
     if (!featuredUntil) return null;
     return differenceInDays(new Date(featuredUntil), new Date());
@@ -156,7 +107,7 @@ export const PromotionsManagement = () => {
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">
-            Feature as many products as you want! Each featured product appears in the spotlight section and gets more visibility.
+            Feature products to boost visibility. Payment via Paystack is required for each feature period.
           </p>
         </CardContent>
       </Card>
@@ -181,7 +132,7 @@ export const PromotionsManagement = () => {
               <Star className="h-12 w-12 text-muted-foreground/30 mx-auto mb-4" />
               <h3 className="font-semibold mb-2">No Featured Products</h3>
               <p className="text-sm text-muted-foreground mb-4">
-                Go to Inventory and toggle "Featured" on products you want to promote
+                Go to Inventory and click the Star icon on products you want to promote
               </p>
               <Button variant="outline" asChild>
                 <a href="/inventory">Go to Inventory</a>
@@ -193,7 +144,6 @@ export const PromotionsManagement = () => {
                 const daysLeft = getDaysRemaining(item.featured_until);
                 const isExpiringSoon = daysLeft !== null && daysLeft <= 3;
                 const isExpired = daysLeft !== null && daysLeft < 0;
-                const showRenewPanel = renewingId === item.id;
 
                 return (
                   <div
@@ -217,19 +167,17 @@ export const PromotionsManagement = () => {
                         </p>
                       </div>
 
-                      <div className="flex items-center gap-4">
-                        {/* Enhanced Countdown Timer with One-Click Renew */}
+                      <div className="flex items-center gap-3">
+                        {/* Countdown Timer */}
                         {daysLeft !== null && (
                           <div 
-                            className={`flex flex-col items-center p-2 rounded-lg cursor-pointer transition-all hover:scale-105 ${
+                            className={`flex flex-col items-center p-2 rounded-lg ${
                               isExpired 
                                 ? 'bg-destructive/10 text-destructive' 
                                 : isExpiringSoon 
                                   ? 'bg-warning/10 text-warning' 
                                   : 'bg-primary/10 text-primary'
                             }`}
-                            onClick={() => setRenewingId(showRenewPanel ? null : item.id)}
-                            title="Click to renew"
                           >
                             <div className="flex items-center gap-1">
                               {isExpiringSoon && <AlertTriangle className="h-4 w-4" />}
@@ -246,20 +194,26 @@ export const PromotionsManagement = () => {
                                   : 'days left'
                               }
                             </p>
-                            <RefreshCw className="h-3 w-3 mt-1 opacity-60" />
                           </div>
                         )}
                         {daysLeft === null && (
-                          <div 
-                            className="flex flex-col items-center p-2 rounded-lg bg-muted text-muted-foreground cursor-pointer"
-                            onClick={() => setRenewingId(showRenewPanel ? null : item.id)}
-                            title="Click to set expiry"
-                          >
+                          <div className="flex flex-col items-center p-2 rounded-lg bg-muted text-muted-foreground">
                             <Clock className="h-4 w-4" />
                             <p className="text-xs mt-1">∞</p>
                             <p className="text-xs">No expiry</p>
                           </div>
                         )}
+
+                        {/* Extend Button - Opens Paystack Payment */}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="gap-2"
+                          onClick={() => setRenewingItem({ id: item.id, name: item.name })}
+                        >
+                          <CreditCard className="h-4 w-4" />
+                          Extend
+                        </Button>
 
                         {/* Remove Button */}
                         <AlertDialog>
@@ -272,7 +226,7 @@ export const PromotionsManagement = () => {
                             <AlertDialogHeader>
                               <AlertDialogTitle>Remove from Featured?</AlertDialogTitle>
                               <AlertDialogDescription>
-                                This will remove "{item.name}" from the marketplace spotlight. You can re-add it later.
+                                This will remove "{item.name}" from the marketplace spotlight. You can re-add it later by paying for a new feature period.
                               </AlertDialogDescription>
                             </AlertDialogHeader>
                             <AlertDialogFooter>
@@ -288,41 +242,6 @@ export const PromotionsManagement = () => {
                         </AlertDialog>
                       </div>
                     </div>
-
-                    {/* Inline Renewal Panel */}
-                    {showRenewPanel && (
-                      <div className="mt-4 pt-4 border-t border-border/50 flex items-center gap-3">
-                        <span className="text-sm font-medium">Extend by:</span>
-                        <Select value={renewDays} onValueChange={setRenewDays}>
-                          <SelectTrigger className="w-52">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {RENEWAL_OPTIONS.map((opt) => (
-                              <SelectItem key={opt.value} value={opt.value}>
-                                {opt.label}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <Button
-                          size="sm"
-                          onClick={() => handleQuickRenew(item.id)}
-                          disabled={renewFeaturedMutation.isPending}
-                          className="gap-2"
-                        >
-                          <RefreshCw className={`h-4 w-4 ${renewFeaturedMutation.isPending ? 'animate-spin' : ''}`} />
-                          Renew Now
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => setRenewingId(null)}
-                        >
-                          Cancel
-                        </Button>
-                      </div>
-                    )}
                   </div>
                 );
               })}
@@ -344,11 +263,11 @@ export const PromotionsManagement = () => {
             </li>
             <li className="flex items-start gap-2">
               <span className="font-bold text-foreground">2.</span>
-              Feature as many products as you want - no limits!
+              Pay via Paystack to feature a product for 7, 14, or 30 days
             </li>
             <li className="flex items-start gap-2">
               <span className="font-bold text-foreground">3.</span>
-              Click on the countdown timer to quickly renew your promotion
+              Featured products get 3x more visibility on average
             </li>
             <li className="flex items-start gap-2">
               <span className="font-bold text-foreground">4.</span>
@@ -357,6 +276,18 @@ export const PromotionsManagement = () => {
           </ul>
         </CardContent>
       </Card>
+
+      {/* Paystack Payment Dialog for Extending */}
+      {renewingItem && (
+        <FeatureDurationSelect
+          medicationId={renewingItem.id}
+          medicationName={renewingItem.name}
+          open={!!renewingItem}
+          onOpenChange={(open) => {
+            if (!open) setRenewingItem(null);
+          }}
+        />
+      )}
     </div>
   );
 };
