@@ -117,15 +117,15 @@ export const LiveActivityTicker = () => {
     <motion.div
       initial={{ opacity: 0, y: -10 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-gradient-to-r from-primary/10 via-marketplace/10 to-primary/10 border border-primary/20 rounded-xl px-3 py-2 overflow-hidden"
+      className="bg-gradient-to-r from-primary/10 via-marketplace/10 to-primary/10 border border-primary/20 rounded-xl px-2 sm:px-3 py-2 overflow-hidden"
     >
-      <div className="flex items-center gap-2">
-        <div className="flex items-center gap-1.5 shrink-0">
+      <div className="flex items-center gap-1.5 sm:gap-2">
+        <div className="flex items-center gap-1 sm:gap-1.5 shrink-0">
           <div className="relative">
             <div className="h-2 w-2 rounded-full bg-green-500" />
             <div className="absolute inset-0 h-2 w-2 rounded-full bg-green-500 animate-ping" />
           </div>
-          <span className="text-[10px] font-semibold text-green-600 uppercase tracking-wider">
+          <span className="text-[9px] sm:text-[10px] font-semibold text-green-600 uppercase tracking-wider">
             Live
           </span>
         </div>
@@ -140,14 +140,14 @@ export const LiveActivityTicker = () => {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
               transition={{ duration: 0.3 }}
-              className="flex items-center gap-2"
+              className="flex items-center gap-1 sm:gap-2"
             >
-              <span className="text-primary">{getIcon(currentActivity.icon)}</span>
-              <p className="text-xs text-foreground truncate">
+              <span className="text-primary shrink-0">{getIcon(currentActivity.icon)}</span>
+              <p className="text-[10px] sm:text-xs text-foreground line-clamp-1">
                 {currentActivity.message}
               </p>
-              <span className="text-[10px] text-muted-foreground shrink-0 flex items-center gap-0.5">
-                <Clock className="h-2.5 w-2.5" />
+              <span className="text-[9px] sm:text-[10px] text-muted-foreground shrink-0 flex items-center gap-0.5">
+                <Clock className="h-2 w-2 sm:h-2.5 sm:w-2.5" />
                 {currentActivity.time}
               </span>
             </motion.div>

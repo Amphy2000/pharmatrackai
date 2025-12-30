@@ -105,24 +105,24 @@ export const TrendingSection = ({
     >
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <div className="h-8 w-8 rounded-xl bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center shadow-lg shadow-orange-500/20">
-            <Flame className="h-4 w-4 text-white" />
+          <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-xl bg-gradient-to-br from-orange-500 to-red-500 flex items-center justify-center shadow-lg shadow-orange-500/20">
+            <Flame className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-white" />
           </div>
           <div>
-            <h2 className="text-sm font-bold text-foreground flex items-center gap-1">
+            <h2 className="text-xs sm:text-sm font-bold text-foreground flex items-center gap-1">
               Trending
               {neighborhood && (
                 <span className="text-primary"> in {neighborhood}</span>
               )}
             </h2>
-            <p className="text-[10px] text-muted-foreground">
+            <p className="text-[9px] sm:text-[10px] text-muted-foreground">
               Popular searches right now
             </p>
           </div>
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-1.5 sm:gap-2">
         <AnimatePresence>
           {trending.map((item, index) => (
             <motion.div
@@ -136,13 +136,13 @@ export const TrendingSection = ({
                 variant="outline"
                 size="sm"
                 onClick={() => onTrendingClick(item.name)}
-                className="h-8 px-3 rounded-full bg-gradient-to-r from-orange-500/10 to-red-500/10 border-orange-500/20 hover:border-orange-500/40 hover:bg-orange-500/20 transition-all group"
+                className="h-7 sm:h-8 px-2 sm:px-3 rounded-full bg-gradient-to-r from-orange-500/10 to-red-500/10 border-orange-500/20 hover:border-orange-500/40 hover:bg-orange-500/20 transition-all group"
               >
-                <TrendingUp className="h-3 w-3 mr-1.5 text-orange-500 group-hover:scale-110 transition-transform" />
-                <span className="text-xs capitalize font-medium">{item.name}</span>
+                <TrendingUp className="h-3 w-3 mr-1 sm:mr-1.5 text-orange-500 group-hover:scale-110 transition-transform" />
+                <span className="text-[10px] sm:text-xs capitalize font-medium">{item.name}</span>
                 <Badge
                   variant="secondary"
-                  className="ml-1.5 h-4 px-1.5 text-[9px] bg-orange-500/20 text-orange-700 dark:text-orange-300"
+                  className="ml-1 sm:ml-1.5 h-4 px-1 sm:px-1.5 text-[8px] sm:text-[9px] bg-orange-500/20 text-orange-700 dark:text-orange-300"
                 >
                   {item.count}
                 </Badge>
