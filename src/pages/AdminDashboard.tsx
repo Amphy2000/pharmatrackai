@@ -54,6 +54,7 @@ import {
   Trash2,
   Gift,
   Store,
+  ClipboardCheck,
 } from 'lucide-react';
 import { DeletePharmacyDialog } from '@/components/admin/DeletePharmacyDialog';
 import { format } from 'date-fns';
@@ -61,6 +62,7 @@ import { FeatureRequestsPanel } from '@/components/admin/FeatureRequestsPanel';
 import { PlatformMetricsGrid } from '@/components/admin/PlatformMetricsGrid';
 import { ReferralAnalyticsPanel } from '@/components/admin/ReferralAnalyticsPanel';
 import { FeaturedSlotsPanel } from '@/components/admin/FeaturedSlotsPanel';
+import { SystemTestChecklist } from '@/components/settings/SystemTestChecklist';
 
 interface PharmacyWithMetrics {
   id: string;
@@ -420,6 +422,10 @@ const AdminDashboard = () => {
               <Users className="h-4 w-4" />
               Referrals
             </TabsTrigger>
+            <TabsTrigger value="testing" className="gap-2">
+              <ClipboardCheck className="h-4 w-4" />
+              System Tests
+            </TabsTrigger>
             <TabsTrigger value="features" className="gap-2" disabled={!selectedPharmacy}>
               <Settings className="h-4 w-4" />
               Custom Features
@@ -428,6 +434,10 @@ const AdminDashboard = () => {
 
           <TabsContent value="spotlight">
             <FeaturedSlotsPanel />
+          </TabsContent>
+
+          <TabsContent value="testing">
+            <SystemTestChecklist />
           </TabsContent>
 
           <TabsContent value="pharmacies" className="space-y-4">
