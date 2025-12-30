@@ -574,15 +574,15 @@ const Explore = () => {
   // Filter Sheet Component
   const FiltersSheet = () => (
     <Sheet open={filtersOpen} onOpenChange={setFiltersOpen}>
-      <SheetContent side="bottom" className="h-[70vh] rounded-t-3xl">
-        <SheetHeader className="mb-6">
+      <SheetContent side="bottom" className="max-h-[85vh] rounded-t-3xl flex flex-col">
+        <SheetHeader className="mb-4 shrink-0">
           <SheetTitle className="flex items-center gap-2">
             <SlidersHorizontal className="h-5 w-5" />
             Filter & Sort
           </SheetTitle>
         </SheetHeader>
         
-        <div className="space-y-6">
+        <div className="flex-1 overflow-y-auto space-y-5 pb-4">
           {/* Sort By */}
           <div>
             <label className="text-sm font-medium mb-3 block">Sort by</label>
@@ -641,7 +641,10 @@ const Explore = () => {
               />
             </div>
           )}
+        </div>
 
+        {/* Sticky Apply Button */}
+        <div className="shrink-0 pt-4 border-t">
           <Button 
             onClick={() => {
               if (hasSearched) {
