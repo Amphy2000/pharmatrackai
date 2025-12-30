@@ -1,5 +1,6 @@
 import jsPDF from 'jspdf';
 import { format } from 'date-fns';
+import { ensureNotoSansFonts } from './pdf/notoSansFonts';
 
 type CurrencyCode = 'USD' | 'NGN' | 'GBP';
 
@@ -34,9 +35,17 @@ const CURRENCY_SYMBOLS: Record<CurrencyCode, string> = {
   GBP: '£',
 };
 
+const CURRENCY_LOCALES: Record<CurrencyCode, string> = {
+  USD: 'en-US',
+  NGN: 'en-NG',
+  GBP: 'en-GB',
+};
+
 const formatCurrency = (amount: number, currency: CurrencyCode = 'NGN'): string => {
   const symbol = CURRENCY_SYMBOLS[currency];
-  return `${symbol}${amount.toLocaleString('en', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  const locale = CURRENCY_LOCALES[currency];
+  const digits = currency === 'NGN' ? 0 : 2;
+  return `${symbol}${amount.toLocaleString(locale, { minimumFractionDigits: digits, maximumFractionDigits: digits })}`;
 };
 
 // Helper function to load image as base64
@@ -71,10 +80,12 @@ export const generatePurchaseOrder = async ({
   date,
   currency = 'NGN',
 }: PurchaseOrderData): Promise<jsPDF> => {
-  // 58mm thermal receipt paper (most common POS width, safer for all printers)
+  // 58mm thermal receipt paper (common POS width).
+  // Many printers have ~48mm printable width, so we keep generous side margins.
   const receiptWidth = 58;
-  const margin = 2;
-  const contentWidth = receiptWidth - (margin * 2);
+  const printableWidth = 48;
+  const margin = (receiptWidth - printableWidth) / 2;
+  const contentWidth = receiptWidth - margin * 2;
   
   // Calculate total height needed (dynamic based on content)
   let totalHeight = 0;
@@ -88,6 +99,9 @@ export const generatePurchaseOrder = async ({
     format: [receiptWidth, totalHeight],
     orientation: 'portrait',
   });
+
+  await ensureNotoSansFonts(doc);
+  doc.setFont('NotoSans', 'normal');
 
   let y = 6;
 
@@ -104,11 +118,13 @@ export const generatePurchaseOrder = async ({
     doc.text(text, receiptWidth - margin - textWidth, yPos);
   };
 
-  // Helper for dashed line (fits within 54mm printable width)
+  // Helper for dashed line (auto-fit within printable width)
   const drawDashedLine = (yPos: number) => {
     doc.setFontSize(6);
     doc.setTextColor(100);
-    doc.text('-'.repeat(32), margin, yPos);
+    const dashWidth = doc.getTextWidth('-');
+    const dashCount = Math.max(1, Math.floor(contentWidth / Math.max(dashWidth, 0.1)));
+    doc.text('-'.repeat(dashCount), margin, yPos);
     doc.setTextColor(0);
   };
 
@@ -134,7 +150,7 @@ export const generatePurchaseOrder = async ({
     }
 
     // Header - Pharmacy name (truncate if needed)
-    doc.setFont('helvetica', 'bold');
+    doc.setFont('NotoSans', 'bold');
     doc.setFontSize(10);
     let displayName = pharmacyName.toUpperCase();
     while (doc.getTextWidth(displayName) > contentWidth && displayName.length > 0) {
@@ -145,7 +161,7 @@ export const generatePurchaseOrder = async ({
     y += 4;
     
     if (pharmacyPhone) {
-      doc.setFont('helvetica', 'normal');
+      doc.setFont('NotoSans', 'normal');
       centerText(pharmacyPhone, y, 7);
       y += 3;
     }
@@ -155,12 +171,12 @@ export const generatePurchaseOrder = async ({
     y += 5;
 
     // Title
-    doc.setFont('helvetica', 'bold');
+    doc.setFont('NotoSans', 'bold');
     centerText('PURCHASE ORDER', y, 9);
     y += 4;
     
     // Order number and date on separate lines for clarity
-    doc.setFont('helvetica', 'normal');
+    doc.setFont('NotoSans', 'normal');
     doc.setFontSize(7);
     doc.text(`Order: ${orderNumber}-${orderIndex + 1}`, margin, y);
     y += 3;
@@ -171,11 +187,11 @@ export const generatePurchaseOrder = async ({
     y += 5;
 
     // Supplier info
-    doc.setFont('helvetica', 'bold');
+    doc.setFont('NotoSans', 'bold');
     doc.setFontSize(7);
     doc.text('SUPPLIER:', margin, y);
     y += 3;
-    doc.setFont('helvetica', 'normal');
+    doc.setFont('NotoSans', 'normal');
     doc.setFontSize(8);
     
     // Truncate supplier name if needed
@@ -204,30 +220,33 @@ export const generatePurchaseOrder = async ({
     y += 4;
 
     // Items header - simplified layout
-    doc.setFont('helvetica', 'bold');
+    // Column positions tuned for ~48mm printable width.
+    const colItem = margin;
+    const colQty = margin + 29;
+
+    doc.setFont('NotoSans', 'bold');
     doc.setFontSize(7);
-    doc.text('ITEM', margin, y);
-    doc.text('QTY', margin + 30, y);
+    doc.text('ITEM', colItem, y);
+    doc.text('QTY', colQty, y);
     rightAlignText('PRICE', y);
     y += 4;
 
     // Items
-    doc.setFont('helvetica', 'normal');
+    doc.setFont('NotoSans', 'normal');
     doc.setFontSize(7);
     
     order.items.forEach((item) => {
-      // Item name (truncate to fit 28mm max)
+      // Item name (truncate to fit column)
       let itemName = item.medicationName;
-      const maxItemWidth = 28;
-      while (doc.getTextWidth(itemName) > maxItemWidth && itemName.length > 0) {
+      const maxItemWidth = colQty - colItem - 2;
+      while (doc.getTextWidth(itemName + '..') > maxItemWidth && itemName.length > 0) {
         itemName = itemName.slice(0, -1);
       }
       if (itemName !== item.medicationName) itemName += '..';
       
-      doc.text(itemName, margin, y);
-      doc.text(`x${item.quantity}`, margin + 30, y);
+      doc.text(itemName, colItem, y);
+      doc.text(`x${item.quantity}`, colQty, y);
       
-      // Format price to be compact
       const priceText = formatCurrency(item.totalPrice, currency);
       rightAlignText(priceText, y);
       y += 4;
@@ -238,7 +257,7 @@ export const generatePurchaseOrder = async ({
     y += 4;
 
     // Total
-    doc.setFont('helvetica', 'bold');
+    doc.setFont('NotoSans', 'bold');
     doc.setFontSize(9);
     doc.text('TOTAL:', margin, y);
     rightAlignText(formatCurrency(order.totalAmount, currency), y);
@@ -248,7 +267,7 @@ export const generatePurchaseOrder = async ({
     y += 4;
 
     // Footer notes
-    doc.setFont('helvetica', 'normal');
+    doc.setFont('NotoSans', 'normal');
     doc.setFontSize(6);
     doc.setTextColor(80);
     centerText('Please supply items listed above', y);
