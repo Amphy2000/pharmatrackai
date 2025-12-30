@@ -5,13 +5,14 @@ import { Switch } from '@/components/ui/switch';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { Globe, Zap, Package, Info, Save, Loader2, Phone, MessageCircle, MapPin, Check } from 'lucide-react';
+import { Globe, Zap, Package, Info, Save, Loader2, Phone, MessageCircle, MapPin, Check, Navigation } from 'lucide-react';
 import { usePharmacy } from '@/hooks/usePharmacy';
 import { useMedications } from '@/hooks/useMedications';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { AddressAutocomplete } from '@/components/common/AddressAutocomplete';
+import { detectMarketplaceZone } from '@/utils/zoneDetector';
 export const MarketplaceSettings = () => {
   const { pharmacy, updatePharmacySettings } = usePharmacy();
   const { medications, updateMedication } = useMedications();
@@ -30,14 +31,24 @@ export const MarketplaceSettings = () => {
     state?: string;
     country?: string;
   } | null>(null);
+  const [detectedZone, setDetectedZone] = useState<{
+    zone: string;
+    city: string;
+    confidence: 'high' | 'medium' | 'low';
+  } | null>(null);
 
-  // Load marketplace contact phone and address
+  // Load marketplace contact phone, address, and zone
   useEffect(() => {
     if (pharmacy) {
       // TypeScript doesn't know about the new column yet, so we cast
       const phoneValue = (pharmacy as any).marketplace_contact_phone || '';
+      const zoneValue = (pharmacy as any).marketplace_zone || '';
+      const cityValue = (pharmacy as any).marketplace_city || '';
       setMarketplaceContactPhone(phoneValue);
       setPharmacyAddress(pharmacy.address || '');
+      if (zoneValue) {
+        setDetectedZone({ zone: zoneValue, city: cityValue, confidence: 'high' });
+      }
     }
   }, [pharmacy]);
 
@@ -170,13 +181,41 @@ export const MarketplaceSettings = () => {
     
     setIsSavingAddress(true);
     try {
+      // Detect zone from address/coordinates
+      const zoneResult = detectMarketplaceZone({
+        latitude: geocodeData?.latitude,
+        longitude: geocodeData?.longitude,
+        address: pharmacyAddress,
+        city: geocodeData?.city,
+        state: geocodeData?.state,
+      });
+
+      const updateData: Record<string, any> = { 
+        address: pharmacyAddress || null,
+        marketplace_zone: zoneResult.zone,
+        marketplace_city: zoneResult.city,
+      };
+
+      // Also save coordinates if available
+      if (geocodeData?.latitude && geocodeData?.longitude) {
+        updateData.marketplace_lat = geocodeData.latitude;
+        updateData.marketplace_lon = geocodeData.longitude;
+      }
+
       const { error } = await supabase
         .from('pharmacies')
-        .update({ address: pharmacyAddress || null })
+        .update(updateData)
         .eq('id', pharmacy.id);
 
       if (error) throw error;
-      toast.success('Pharmacy address saved - marketplace location updated');
+      
+      setDetectedZone({
+        zone: zoneResult.zone,
+        city: zoneResult.city,
+        confidence: zoneResult.confidence,
+      });
+      
+      toast.success(`Location saved! Your pharmacy will appear in "${zoneResult.zone}" on the marketplace`);
     } catch (error) {
       console.error('Error saving address:', error);
       toast.error('Failed to save address');
@@ -241,6 +280,28 @@ export const MarketplaceSettings = () => {
                 Location verified: {geocodeData.city}, {geocodeData.state}
               </p>
             )}
+            
+            {/* Detected Zone Display */}
+            {detectedZone && (
+              <div className="p-3 bg-primary/5 border border-primary/20 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <Navigation className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-medium">Marketplace Zone:</span>
+                  <Badge variant="secondary" className="bg-primary/10 text-primary">
+                    {detectedZone.zone}
+                  </Badge>
+                  {detectedZone.confidence === 'high' && (
+                    <Badge variant="outline" className="text-xs bg-green-500/10 text-green-600 border-green-500/20">
+                      Verified
+                    </Badge>
+                  )}
+                </div>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Customers filtering by "{detectedZone.zone}" will see your products
+                </p>
+              </div>
+            )}
+            
             <Button
               onClick={handleSaveAddress}
               disabled={isSavingAddress}
