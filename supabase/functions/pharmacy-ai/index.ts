@@ -6,6 +6,9 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
+// In-memory cache for context caching (pharmacy_id -> { cacheId, expiresAt, dataHash })
+const contextCache = new Map<string, { cacheId: string; expiresAt: number; dataHash: string }>();
+
 // Expert-level prompts for each action
 const PROMPTS = {
   drug_interaction: `Act as a Senior Clinical Pharmacist with 20+ years of experience in drug safety. 
@@ -173,12 +176,100 @@ Return a JSON object:
 }`
 };
 
-// Retry mechanism for handling 429 rate limits
+// Generate a simple hash for inventory data to detect changes
+function hashInventoryData(medications: any[]): string {
+  if (!medications?.length) return "empty";
+  const summary = medications.map(m => `${m.id}:${m.current_stock}:${m.expiry_date}`).join("|");
+  let hash = 0;
+  for (let i = 0; i < summary.length; i++) {
+    const char = summary.charCodeAt(i);
+    hash = ((hash << 5) - hash) + char;
+    hash = hash & hash;
+  }
+  return hash.toString(36);
+}
+
+// Create or get cached content for a pharmacy
+async function getOrCreateCachedContent(
+  pharmacyId: string,
+  medications: any[],
+  apiKey: string
+): Promise<string | null> {
+  const now = Date.now();
+  const currentHash = hashInventoryData(medications);
+  
+  // Check if we have a valid cache
+  const cached = contextCache.get(pharmacyId);
+  if (cached && cached.expiresAt > now && cached.dataHash === currentHash) {
+    console.log(`Using existing cache for pharmacy ${pharmacyId}`);
+    return cached.cacheId;
+  }
+  
+  // Cache expired or data changed - create new cache
+  console.log(`Creating new context cache for pharmacy ${pharmacyId}`);
+  
+  try {
+    // Create cached content using Gemini API
+    const inventorySummary = JSON.stringify(
+      medications.slice(0, 200).map(m => ({
+        id: m.id,
+        name: m.name,
+        category: m.category,
+        stock: m.current_stock,
+        expiry: m.expiry_date,
+        price: m.selling_price || m.unit_price,
+        reorder_level: m.reorder_level
+      }))
+    );
+    
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/cachedContents?key=${apiKey}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          model: "models/gemini-2.0-flash",
+          displayName: `pharmacy-inventory-${pharmacyId}`,
+          contents: [{
+            role: "user",
+            parts: [{ text: `PHARMACY INVENTORY DATA:\n${inventorySummary}` }]
+          }],
+          ttl: "3600s" // 1 hour TTL
+        }),
+      }
+    );
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Failed to create cached content:", response.status, errorText);
+      return null;
+    }
+    
+    const data = await response.json();
+    const cacheId = data.name; // e.g., "cachedContents/abc123"
+    
+    if (cacheId) {
+      contextCache.set(pharmacyId, {
+        cacheId,
+        expiresAt: now + (55 * 60 * 1000), // 55 minutes (5 min buffer before TTL)
+        dataHash: currentHash
+      });
+      console.log(`Created cache ${cacheId} for pharmacy ${pharmacyId}`);
+    }
+    
+    return cacheId;
+  } catch (error) {
+    console.error("Error creating cached content:", error);
+    return null;
+  }
+}
+
+// Retry mechanism for handling 429 rate limits with longer delays
 async function fetchWithRetry(
   url: string,
   options: RequestInit,
   maxRetries = 3,
-  initialDelay = 1000
+  initialDelay = 3000 // 3 seconds base delay
 ): Promise<Response> {
   let lastError: Error | null = null;
 
@@ -188,11 +279,10 @@ async function fetchWithRetry(
 
       if (response.status === 429) {
         if (attempt >= maxRetries) {
-          // Make sure the message contains "Rate limit" so our main handler can return HTTP 429.
           throw new Error("Rate limit exceeded");
         }
 
-        const delay = initialDelay * Math.pow(2, attempt); // Exponential backoff
+        const delay = initialDelay * Math.pow(2, attempt); // Exponential backoff: 3s, 6s, 12s
         console.log(
           `Rate limited (429). Attempt ${attempt + 1}/${maxRetries + 1}. Waiting ${delay}ms...`
         );
@@ -215,11 +305,31 @@ async function fetchWithRetry(
   throw lastError || new Error("All retry attempts failed");
 }
 
-// Call Gemini API with the appropriate prompt
-async function callGeminiAPI(systemPrompt: string, userContent: string): Promise<any> {
+// Call Gemini API with the appropriate prompt (optionally using cached content)
+async function callGeminiAPI(
+  systemPrompt: string, 
+  userContent: string, 
+  cacheId?: string | null
+): Promise<any> {
   const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
   if (!GEMINI_API_KEY) {
     throw new Error("GEMINI_API_KEY is not configured");
+  }
+
+  const requestBody: any = {
+    contents: [{
+      role: 'user',
+      parts: [{ text: `${systemPrompt}\n\n${userContent}` }]
+    }],
+    generationConfig: {
+      responseMimeType: 'application/json',
+    },
+  };
+  
+  // If we have a cache ID, reference it
+  if (cacheId) {
+    requestBody.cachedContent = cacheId;
+    console.log(`Using cached content: ${cacheId}`);
   }
 
   const response = await fetchWithRetry(
@@ -227,15 +337,7 @@ async function callGeminiAPI(systemPrompt: string, userContent: string): Promise
     {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{
-          role: 'user',
-          parts: [{ text: `${systemPrompt}\n\n${userContent}` }]
-        }],
-        generationConfig: {
-          responseMimeType: 'application/json',
-        },
-      }),
+      body: JSON.stringify(requestBody),
     }
   );
 
@@ -304,8 +406,19 @@ Suggest complementary products that would genuinely help this customer.`;
   return await callGeminiAPI(PROMPTS.smart_upsell, userContent);
 }
 
-async function handleBusinessInsights(payload: any): Promise<any> {
+async function handleBusinessInsights(
+  payload: any, 
+  pharmacyId: string | null
+): Promise<any> {
   const { medications, sales, currency = "NGN" } = payload;
+  
+  const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+  let cacheId: string | null = null;
+  
+  // Try to use context caching for business insights
+  if (pharmacyId && medications?.length && GEMINI_API_KEY) {
+    cacheId = await getOrCreateCachedContent(pharmacyId, medications, GEMINI_API_KEY);
+  }
   
   // Calculate key metrics
   const now = new Date();
@@ -327,7 +440,25 @@ async function handleBusinessInsights(payload: any): Promise<any> {
   const outOfStock = medications?.filter((m: any) => 
     m.current_stock === 0).length || 0;
 
-  const userContent = `
+  // If using cache, we send a lighter prompt (inventory data is already cached)
+  const userContent = cacheId 
+    ? `
+ANALYZE THE CACHED INVENTORY DATA
+Currency: ${currency}
+
+CURRENT METRICS:
+- Total Inventory Value: ${currency} ${totalValue.toLocaleString()}
+- Total Products: ${medications?.length || 0}
+- Expired Products: ${expiredCount}
+- Expiring in 30 Days: ${expiringIn30Days}
+- Low Stock Items: ${lowStock}
+- Out of Stock: ${outOfStock}
+
+RECENT SALES TRENDS:
+${getSalesSummary(sales)}
+
+Provide actionable insights to maximize profit and reduce waste.`
+    : `
 PHARMACY INVENTORY ANALYSIS REQUEST
 Currency: ${currency}
 
@@ -350,7 +481,7 @@ ${getAttentionItems(medications)}
 
 Provide actionable insights to maximize profit and reduce waste.`;
 
-  return await callGeminiAPI(PROMPTS.business_insights, userContent);
+  return await callGeminiAPI(PROMPTS.business_insights, userContent, cacheId);
 }
 
 async function handleAISearch(payload: any): Promise<any> {
@@ -526,7 +657,7 @@ serve(async (req) => {
 
       case 'generate_insights':
       case 'business_analysis':
-        result = await handleBusinessInsights(payload);
+        result = await handleBusinessInsights(payload, pharmacy_id);
         break;
 
       case 'ai_search':
@@ -549,12 +680,14 @@ serve(async (req) => {
     console.error("pharmacy-ai error:", error);
     
     const errorMessage = error instanceof Error ? error.message : "Unknown error";
-    const status = errorMessage.includes("Rate limit") ? 429 : 500;
+    const isRateLimit = errorMessage.includes("Rate limit");
+    const status = isRateLimit ? 429 : 500;
     
     return new Response(
       JSON.stringify({ 
-        error: error instanceof Error ? error.message : "Unknown error",
-        action_failed: true
+        error: isRateLimit ? "System cooling down. Please retry in a few seconds." : errorMessage,
+        action_failed: true,
+        retry_after: isRateLimit ? 3 : undefined
       }),
       { 
         status, 

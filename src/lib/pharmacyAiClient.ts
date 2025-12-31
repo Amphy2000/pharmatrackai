@@ -72,6 +72,9 @@ export async function callPharmacyAi<T>(params: {
   }
 
   if (!res.ok) {
+    // Check for retry_after hint from server
+    const retryAfter = json?.retry_after;
+    
     const msg =
       json?.error ||
       json?.message ||
@@ -79,7 +82,9 @@ export async function callPharmacyAi<T>(params: {
       bodyText ||
       `Request failed (${res.status})`;
 
-    throw new PharmacyAiError(msg, { status: res.status, bodyText });
+    const error = new PharmacyAiError(msg, { status: res.status, bodyText });
+    (error as any).retryAfter = retryAfter;
+    throw error;
   }
 
   return (json ?? ({} as any)) as T;

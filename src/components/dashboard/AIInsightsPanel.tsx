@@ -1,11 +1,12 @@
-import { useState, useEffect } from 'react';
-import { Sparkles, TrendingUp, AlertTriangle, Lightbulb, Loader2, Brain, Zap, Target, DollarSign, Clock, Package, ArrowRight, AlertCircle } from 'lucide-react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { Sparkles, TrendingUp, AlertTriangle, Lightbulb, Loader2, Brain, Zap, Target, DollarSign, Clock, Package, ArrowRight, AlertCircle, RefreshCw } from 'lucide-react';
 import { Medication } from '@/types/medication';
 import { cn } from '@/lib/utils';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { useBranchContext } from '@/contexts/BranchContext';
 import { usePharmacy } from '@/hooks/usePharmacy';
 import { callPharmacyAiWithFallback, PharmacyAiError } from '@/lib/pharmacyAiClient';
+import { Button } from '@/components/ui/button';
 
 interface AIInsightsPanelProps {
   medications: Medication[];
@@ -23,10 +24,18 @@ interface Insight {
   category?: 'urgent' | 'expiry' | 'reorder' | 'profit' | 'demand' | 'savings';
 }
 
+// Session storage key for tracking if insights were fetched this session
+const SESSION_INSIGHTS_KEY = 'ai_insights_fetched';
+const SESSION_INSIGHTS_DATA_KEY = 'ai_insights_data';
+const COOLDOWN_KEY = 'ai_insights_cooldown_until';
+
 export const AIInsightsPanel = ({ medications, branchName }: AIInsightsPanelProps) => {
   const [insights, setInsights] = useState<Insight[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isRateLimited, setIsRateLimited] = useState(false);
+  const [cooldownRemaining, setCooldownRemaining] = useState(0);
+  const [isManualRefresh, setIsManualRefresh] = useState(false);
+  const hasFetchedRef = useRef(false);
   const { formatPrice, currency } = useCurrency();
   const { currentBranchName } = useBranchContext();
   const { pharmacyId } = usePharmacy();
@@ -48,7 +57,7 @@ export const AIInsightsPanel = ({ medications, branchName }: AIInsightsPanelProp
     }
   };
 
-  const generateFallbackInsights = (meds: Medication[]): Insight[] => {
+  const generateFallbackInsights = useCallback((meds: Medication[]): Insight[] => {
     const fallbackInsights: Insight[] = [];
     const today = new Date();
     const thirtyDaysFromNow = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000);
@@ -147,70 +156,146 @@ export const AIInsightsPanel = ({ medications, branchName }: AIInsightsPanelProp
     });
 
     return fallbackInsights.slice(0, 6);
-  };
+  }, [formatPrice]);
 
-  useEffect(() => {
-    const generateInsights = async () => {
-      if (medications.length === 0) {
-        setInsights([]);
-        setIsLoading(false);
+  const fetchInsights = useCallback(async (forceRefresh = false) => {
+    if (medications.length === 0) {
+      setInsights([]);
+      setIsLoading(false);
+      return;
+    }
+
+    // Check cooldown
+    const cooldownUntil = sessionStorage.getItem(COOLDOWN_KEY);
+    if (cooldownUntil && Date.now() < parseInt(cooldownUntil)) {
+      const remaining = Math.ceil((parseInt(cooldownUntil) - Date.now()) / 1000);
+      setCooldownRemaining(remaining);
+      setIsRateLimited(true);
+      setIsLoading(false);
+      
+      // Use cached data if available
+      const cachedData = sessionStorage.getItem(SESSION_INSIGHTS_DATA_KEY);
+      if (cachedData) {
+        try {
+          setInsights(JSON.parse(cachedData));
+        } catch {
+          setInsights(generateFallbackInsights(medications));
+        }
+      } else {
+        setInsights(generateFallbackInsights(medications));
+      }
+      return;
+    }
+
+    // Check if we already fetched this session (unless manual refresh)
+    if (!forceRefresh && sessionStorage.getItem(SESSION_INSIGHTS_KEY) === pharmacyId) {
+      const cachedData = sessionStorage.getItem(SESSION_INSIGHTS_DATA_KEY);
+      if (cachedData) {
+        try {
+          setInsights(JSON.parse(cachedData));
+          setIsLoading(false);
+          return;
+        } catch {
+          // Continue to fetch if parsing fails
+        }
+      }
+    }
+
+    setIsLoading(true);
+    setIsRateLimited(false);
+    setCooldownRemaining(0);
+
+    try {
+      const data = await callPharmacyAiWithFallback<any>({
+        actions: ['business_analysis', 'generate_insights'],
+        payload: {
+          medications,
+          currency,
+          currencySymbol,
+        },
+        pharmacy_id: pharmacyId,
+      });
+
+      if (data?.rateLimited) {
+        setIsRateLimited(true);
+        const fallback = generateFallbackInsights(medications);
+        setInsights(fallback);
+        // Set cooldown for 3 seconds
+        sessionStorage.setItem(COOLDOWN_KEY, (Date.now() + 3000).toString());
+        setCooldownRemaining(3);
         return;
       }
 
-      setIsLoading(true);
-      setIsRateLimited(false);
+      const mappedInsights: Insight[] = (data.insights || []).map((insight: {
+        id: string;
+        type: string;
+        message: string;
+        action?: string;
+        impact?: string;
+        category?: string;
+      }, index: number) => ({
+        id: insight.id || `insight-${index}`,
+        type: insight.type as 'warning' | 'suggestion' | 'info',
+        message: insight.message,
+        action: insight.action,
+        impact: insight.impact,
+        category: insight.category as Insight['category'],
+        icon: getIconForCategory(insight.category || insight.type),
+        priority: insight.type === 'warning' ? 'high' : insight.type === 'suggestion' ? 'medium' : 'low',
+      }));
 
-      try {
-        const data = await callPharmacyAiWithFallback<any>({
-          actions: ['business_analysis', 'generate_insights'],
-          payload: {
-            medications,
-            currency,
-            currencySymbol,
-          },
-          pharmacy_id: pharmacyId,
-        });
-
-        if (data?.rateLimited) {
-          setIsRateLimited(true);
-          const fallback = generateFallbackInsights(medications);
-          setInsights(fallback);
-          return;
-        }
-
-        const mappedInsights: Insight[] = (data.insights || []).map((insight: {
-          id: string;
-          type: string;
-          message: string;
-          action?: string;
-          impact?: string;
-          category?: string;
-        }, index: number) => ({
-          id: insight.id || `insight-${index}`,
-          type: insight.type as 'warning' | 'suggestion' | 'info',
-          message: insight.message,
-          action: insight.action,
-          impact: insight.impact,
-          category: insight.category as Insight['category'],
-          icon: getIconForCategory(insight.category || insight.type),
-          priority: insight.type === 'warning' ? 'high' : insight.type === 'suggestion' ? 'medium' : 'low',
-        }));
-
-        setInsights(mappedInsights.slice(0, 6));
-      } catch (error) {
-        if (error instanceof PharmacyAiError && error.status === 429) {
-          setIsRateLimited(true);
-        }
-        console.error('Failed to generate AI insights:', error);
-        const fallback = generateFallbackInsights(medications);
-        setInsights(fallback);
-      } finally {
-        setIsLoading(false);
+      const finalInsights = mappedInsights.slice(0, 6);
+      setInsights(finalInsights);
+      
+      // Cache in session storage
+      sessionStorage.setItem(SESSION_INSIGHTS_KEY, pharmacyId || '');
+      sessionStorage.setItem(SESSION_INSIGHTS_DATA_KEY, JSON.stringify(finalInsights));
+    } catch (error) {
+      if (error instanceof PharmacyAiError && error.status === 429) {
+        setIsRateLimited(true);
+        // Set cooldown for 3 seconds on 429
+        sessionStorage.setItem(COOLDOWN_KEY, (Date.now() + 3000).toString());
+        setCooldownRemaining(3);
       }
-    };
+      console.error('Failed to generate AI insights:', error);
+      const fallback = generateFallbackInsights(medications);
+      setInsights(fallback);
+    } finally {
+      setIsLoading(false);
+      setIsManualRefresh(false);
+    }
+  }, [medications, pharmacyId, currency, currencySymbol, generateFallbackInsights]);
 
-    generateInsights();
-  }, [medications, pharmacyId, currency, currencySymbol]);
+  // Cooldown countdown timer
+  useEffect(() => {
+    if (cooldownRemaining <= 0) return;
+    
+    const timer = setInterval(() => {
+      setCooldownRemaining(prev => {
+        if (prev <= 1) {
+          clearInterval(timer);
+          setIsRateLimited(false);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    
+    return () => clearInterval(timer);
+  }, [cooldownRemaining]);
+
+  // Initial fetch - only once per session
+  useEffect(() => {
+    if (hasFetchedRef.current) return;
+    hasFetchedRef.current = true;
+    fetchInsights(false);
+  }, [fetchInsights]);
+
+  const handleManualRefresh = () => {
+    if (cooldownRemaining > 0) return;
+    setIsManualRefresh(true);
+    fetchInsights(true);
+  };
 
   const typeStyles = {
     warning: {
@@ -259,29 +344,43 @@ export const AIInsightsPanel = ({ medications, branchName }: AIInsightsPanelProp
                 {isRateLimited ? (
                   <span className="px-2 py-0.5 text-xs font-medium bg-warning/20 text-warning rounded-full flex items-center gap-1">
                     <AlertCircle className="h-3 w-3" />
-                    CACHED
+                    {cooldownRemaining > 0 ? `Cooling ${cooldownRemaining}s` : 'CACHED'}
                   </span>
                 ) : (
                   <span className="px-2 py-0.5 text-xs font-medium bg-secondary/20 text-secondary rounded-full">LIVE</span>
                 )}
               </h2>
               <p className="text-sm text-muted-foreground">
-                {isRateLimited
-                  ? 'Using cached insights (AI rate-limited — retry in ~30s)'
+                {isRateLimited && cooldownRemaining > 0
+                  ? 'System cooling down...'
+                  : isRateLimited
+                  ? 'Using cached insights'
                   : `Actionable recommendations for ${displayBranchName}`}
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <Target className="h-4 w-4 text-success" />
-            <span>{insights.length} insights</span>
+          <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={handleManualRefresh}
+              disabled={isLoading || cooldownRemaining > 0}
+              className="gap-2"
+            >
+              <RefreshCw className={cn("h-4 w-4", (isLoading || isManualRefresh) && "animate-spin")} />
+              Refresh
+            </Button>
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Target className="h-4 w-4 text-success" />
+              <span>{insights.length} insights</span>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Content */}
       <div className="p-6">
-        {isLoading ? (
+        {isLoading && !isManualRefresh ? (
           <div className="flex flex-col items-center justify-center py-12">
             <div className="relative">
               <div className="absolute inset-0 rounded-full bg-gradient-premium opacity-20 blur-xl animate-pulse" />
