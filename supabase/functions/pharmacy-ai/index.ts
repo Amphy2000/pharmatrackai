@@ -175,37 +175,44 @@ Return a JSON object:
 
 // Retry mechanism for handling 429 rate limits
 async function fetchWithRetry(
-  url: string, 
-  options: RequestInit, 
+  url: string,
+  options: RequestInit,
   maxRetries = 3,
   initialDelay = 1000
 ): Promise<Response> {
   let lastError: Error | null = null;
-  
+
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
       const response = await fetch(url, options);
-      
+
       if (response.status === 429) {
+        if (attempt >= maxRetries) {
+          // Make sure the message contains "Rate limit" so our main handler can return HTTP 429.
+          throw new Error("Rate limit exceeded");
+        }
+
         const delay = initialDelay * Math.pow(2, attempt); // Exponential backoff
-        console.log(`Rate limited (429). Attempt ${attempt + 1}/${maxRetries + 1}. Waiting ${delay}ms...`);
-        await new Promise(resolve => setTimeout(resolve, delay));
+        console.log(
+          `Rate limited (429). Attempt ${attempt + 1}/${maxRetries + 1}. Waiting ${delay}ms...`
+        );
+        await new Promise((resolve) => setTimeout(resolve, delay));
         continue;
       }
-      
+
       return response;
     } catch (error) {
       lastError = error as Error;
       console.error(`Fetch attempt ${attempt + 1} failed:`, error);
-      
+
       if (attempt < maxRetries) {
         const delay = initialDelay * Math.pow(2, attempt);
-        await new Promise(resolve => setTimeout(resolve, delay));
+        await new Promise((resolve) => setTimeout(resolve, delay));
       }
     }
   }
-  
-  throw lastError || new Error('All retry attempts failed');
+
+  throw lastError || new Error("All retry attempts failed");
 }
 
 // Call Gemini API with the appropriate prompt
