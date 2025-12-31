@@ -3,12 +3,9 @@ import { AlertTriangle, AlertCircle, Info, X, Shield } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { supabase } from '@/integrations/supabase/client';
 import type { Medication } from '@/types/medication';
 import { usePharmacy } from '@/hooks/usePharmacy';
-
-// Consolidated AI endpoint on external Supabase project
-const PHARMACY_AI_URL = 'https://sdejkpweecasdzsixxbd.supabase.co/functions/v1/pharmacy-ai';
+import { callPharmacyAiWithFallback, PharmacyAiError } from '@/lib/pharmacyAiClient';
 
 interface DrugInteraction {
   drugs: string[];
@@ -72,45 +69,17 @@ export const DrugInteractionWarning = ({ cartItems }: DrugInteractionWarningProp
       setDismissed(false);
 
       try {
-        // Get auth token if available
-        const { data: sessionData } = await supabase.auth.getSession();
-        const token = sessionData?.session?.access_token;
-
-        const headers: Record<string, string> = {
-          'Content-Type': 'application/json',
-        };
-        
-        if (token) {
-          headers['Authorization'] = `Bearer ${token}`;
-        }
-
-        const response = await fetch(PHARMACY_AI_URL, {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({
-            action: 'check_drug_interactions',
-            payload: {
-              medications: cartItems.map(item => ({
-                name: item.medication.name,
-                category: item.medication.category,
-              })),
-            },
-            pharmacy_id: pharmacyId,
-          }),
+        const data = await callPharmacyAiWithFallback<{ interactions?: DrugInteraction[]; error?: string }>({
+          actions: ['interaction_check', 'check_drug_interactions'],
+          payload: {
+            medications: cartItems.map(item => ({
+              name: item.medication.name,
+              category: item.medication.category,
+            })),
+          },
+          pharmacy_id: pharmacyId,
         });
 
-        if (response.status === 429) {
-          setError('AI busy, please try again');
-          setInteractions([]);
-          return;
-        }
-
-        if (!response.ok) {
-          throw new Error(`Request failed with status ${response.status}`);
-        }
-
-        const data = await response.json();
-        
         if (data?.error) {
           setError(data.error);
           setInteractions([]);
@@ -118,9 +87,14 @@ export const DrugInteractionWarning = ({ cartItems }: DrugInteractionWarningProp
           setInteractions(data?.interactions || []);
         }
       } catch (err) {
-        console.error('Failed to check drug interactions:', err);
-        setError('Could not check drug interactions');
-        setInteractions([]);
+        if (err instanceof PharmacyAiError && err.status === 429) {
+          setError('AI busy, please try again');
+          setInteractions([]);
+        } else {
+          console.error('Failed to check drug interactions:', err);
+          setError(err instanceof Error ? err.message : 'Could not check drug interactions');
+          setInteractions([]);
+        }
       } finally {
         setIsLoading(false);
       }

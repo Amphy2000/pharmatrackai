@@ -1,10 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { CartItem, Medication } from '@/types/medication';
 import { usePharmacy } from '@/hooks/usePharmacy';
-
-// Consolidated AI endpoint on external Supabase project
-const PHARMACY_AI_URL = 'https://sdejkpweecasdzsixxbd.supabase.co/functions/v1/pharmacy-ai';
+import { callPharmacyAiWithFallback, PharmacyAiError } from '@/lib/pharmacyAiClient';
 
 interface UpsellSuggestion {
   product_id: string;
@@ -54,51 +51,23 @@ export const useSmartUpsell = ({
     setError(null);
 
     try {
-      // Get auth token if available
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData?.session?.access_token;
-
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-      };
-      
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-
-      const response = await fetch(PHARMACY_AI_URL, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          action: 'smart_upsell',
-          payload: {
-            cartItems: cartItems.map(item => ({
-              name: item.medication.name,
-              category: item.medication.category,
-            })),
-            availableInventory: availableMedications.map(med => ({
-              id: med.id,
-              name: med.name,
-              category: med.category,
-              selling_price: med.selling_price || med.unit_price,
-              current_stock: med.current_stock,
-            })),
-          },
-          pharmacy_id: pharmacyId,
-        }),
+      const data = await callPharmacyAiWithFallback<{ suggestions?: UpsellSuggestion[] }>({
+        actions: ['upsell_suggestion', 'smart_upsell'],
+        payload: {
+          cartItems: cartItems.map(item => ({
+            name: item.medication.name,
+            category: item.medication.category,
+          })),
+          availableInventory: availableMedications.map(med => ({
+            id: med.id,
+            name: med.name,
+            category: med.category,
+            selling_price: med.selling_price || med.unit_price,
+            current_stock: med.current_stock,
+          })),
+        },
+        pharmacy_id: pharmacyId,
       });
-
-      if (response.status === 429) {
-        setError('AI busy, please try again');
-        setSuggestions([]);
-        return;
-      }
-
-      if (!response.ok) {
-        throw new Error(`Request failed with status ${response.status}`);
-      }
-
-      const data = await response.json();
 
       // Enrich suggestions with full medication data
       const enrichedSuggestions: UpsellSuggestion[] = (data?.suggestions || [])
@@ -111,6 +80,12 @@ export const useSmartUpsell = ({
       setSuggestions(enrichedSuggestions);
       lastCartHashRef.current = currentHash;
     } catch (err) {
+      if (err instanceof PharmacyAiError && err.status === 429) {
+        setError('AI busy, please try again');
+        setSuggestions([]);
+        return;
+      }
+
       console.error('Smart upsell error:', err);
       setError(err instanceof Error ? err.message : 'Failed to get suggestions');
       setSuggestions([]);

@@ -6,8 +6,8 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Progress } from '@/components/ui/progress';
 import { Checkbox } from '@/components/ui/checkbox';
-import { 
-  Camera, FileImage, Upload, Check, X, Loader2, AlertCircle, 
+import {
+  Camera, FileImage, Upload, Check, X, Loader2, AlertCircle,
   Plus, Minus, Trash2, Calendar, ChevronDown, ChevronUp,
   Edit3, Save, RefreshCw, Eye
 } from 'lucide-react';
@@ -19,9 +19,7 @@ import { useCurrency } from '@/contexts/CurrencyContext';
 import { format, addYears } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Medication } from '@/types/medication';
-
-// Consolidated AI endpoint on external Supabase project
-const PHARMACY_AI_URL = 'https://sdejkpweecasdzsixxbd.supabase.co/functions/v1/pharmacy-ai';
+import { callPharmacyAiWithFallback, PharmacyAiError } from '@/lib/pharmacyAiClient';
 
 interface MultiImageInvoiceScannerProps {
   open: boolean;
@@ -127,16 +125,9 @@ export const MultiImageInvoiceScanner = ({ open, onOpenChange }: MultiImageInvoi
     const totalImages = uploadedImages.length;
 
     try {
-      // Get auth token if available
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData?.session?.access_token;
-
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-      };
-      
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
+      if (!pharmacy?.id) {
+        setError('No pharmacy selected. Please reload and try again.');
+        return;
       }
 
       for (let i = 0; i < uploadedImages.length; i++) {
@@ -144,71 +135,65 @@ export const MultiImageInvoiceScanner = ({ open, onOpenChange }: MultiImageInvoi
         setProcessingProgress(((i) / totalImages) * 100);
 
         const image = uploadedImages[i];
-        
-        const response = await fetch(PHARMACY_AI_URL, {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({
-            action: 'scan_invoice',
-            payload: { 
+
+        try {
+          const data = await callPharmacyAiWithFallback<any>({
+            actions: ['scan_invoice', 'invoice_scan'],
+            payload: {
               imageUrl: image.preview,
               isMultiPage: true,
               pageNumber: i + 1,
-              totalPages: totalImages
+              totalPages: totalImages,
             },
-            pharmacy_id: pharmacy?.id,
-          }),
-        });
-
-        if (response.status === 429) {
-          console.error(`Rate limited on page ${i + 1}`);
-          continue;
-        }
-
-        if (!response.ok) {
-          console.error(`Error processing page ${i + 1}:`, response.status);
-          continue;
-        }
-
-        const data = await response.json();
-
-        if (data.items && Array.isArray(data.items)) {
-          const processedItems: ExtractedItem[] = data.items.map((item: any) => {
-            const matched = medications.find(
-              (med) =>
-                med.name.toLowerCase().includes(item.productName.toLowerCase()) ||
-                item.productName.toLowerCase().includes(med.name.toLowerCase()) ||
-                (item.batchNumber && med.batch_number === item.batchNumber)
-            );
-
-            const suggestedSellingPrice = item.unitPrice 
-              ? calculateSellingPrice(item.unitPrice) 
-              : null;
-
-            return {
-              id: generateId(),
-              productName: item.productName,
-              quantity: item.quantity || 1,
-              unitPrice: item.unitPrice || null,
-              suggestedSellingPrice,
-              batchNumber: item.batchNumber || null,
-              expiryDate: item.expiryDate || null,
-              matched: matched || null,
-              isNew: !matched,
-              isEditing: false,
-              hasError: false,
-            };
+            pharmacy_id: pharmacy.id,
           });
 
-          allItems.push(...processedItems);
+          if (data.items && Array.isArray(data.items)) {
+            const processedItems: ExtractedItem[] = data.items.map((item: any) => {
+              const matched = medications.find(
+                (med) =>
+                  med.name.toLowerCase().includes(item.productName.toLowerCase()) ||
+                  item.productName.toLowerCase().includes(med.name.toLowerCase()) ||
+                  (item.batchNumber && med.batch_number === item.batchNumber)
+              );
+
+              const suggestedSellingPrice = item.unitPrice
+                ? calculateSellingPrice(item.unitPrice)
+                : null;
+
+              return {
+                id: generateId(),
+                productName: item.productName,
+                quantity: item.quantity || 1,
+                unitPrice: item.unitPrice || null,
+                suggestedSellingPrice,
+                batchNumber: item.batchNumber || null,
+                expiryDate: item.expiryDate || null,
+                matched: matched || null,
+                isNew: !matched,
+                isEditing: false,
+                hasError: false,
+              };
+            });
+
+            allItems.push(...processedItems);
+          }
+
+          // Mark image as processed
+          setUploadedImages(prev => prev.map(img =>
+            img.id === image.id ? { ...img, processed: true } : img
+          ));
+
+          setProcessingProgress(((i + 1) / totalImages) * 100);
+        } catch (err) {
+          if (err instanceof PharmacyAiError && err.status === 429) {
+            console.error(`Rate limited on page ${i + 1}`);
+            continue;
+          }
+
+          console.error(`Error processing page ${i + 1}:`, err);
+          continue;
         }
-
-        // Mark image as processed
-        setUploadedImages(prev => prev.map(img => 
-          img.id === image.id ? { ...img, processed: true } : img
-        ));
-
-        setProcessingProgress(((i + 1) / totalImages) * 100);
       }
 
       // Deduplicate items by product name (combine quantities for same products)

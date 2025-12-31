@@ -2,13 +2,10 @@ import { useState, useEffect } from 'react';
 import { Sparkles, TrendingUp, AlertTriangle, Lightbulb, Loader2, Brain, Zap, Target, DollarSign, Clock, Package, ArrowRight, AlertCircle } from 'lucide-react';
 import { Medication } from '@/types/medication';
 import { cn } from '@/lib/utils';
-import { supabase } from '@/integrations/supabase/client';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { useBranchContext } from '@/contexts/BranchContext';
 import { usePharmacy } from '@/hooks/usePharmacy';
-
-// Consolidated AI endpoint on external Supabase project
-const PHARMACY_AI_URL = 'https://sdejkpweecasdzsixxbd.supabase.co/functions/v1/pharmacy-ai';
+import { callPharmacyAiWithFallback, PharmacyAiError } from '@/lib/pharmacyAiClient';
 
 interface AIInsightsPanelProps {
   medications: Medication[];

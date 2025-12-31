@@ -2,13 +2,10 @@ import { useState, useCallback } from 'react';
 import { Search, Sparkles, Loader2, X, AlertCircle } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { usePharmacy } from '@/hooks/usePharmacy';
-
-// External Supabase project URL - consolidated AI endpoint
-const PHARMACY_AI_URL = 'https://sdejkpweecasdzsixxbd.supabase.co/functions/v1/pharmacy-ai';
+import { callPharmacyAi, PharmacyAiError } from '@/lib/pharmacyAiClient';
 
 interface AISearchBarProps {
   onSearch: (query: string) => void;
@@ -27,31 +24,15 @@ export const AISearchBar = ({ onSearch, placeholder = "Search medications..." }:
 
     setIsAIProcessing(true);
     setIsRateLimited(false);
-    
+
     try {
-      // Get auth token if available
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData?.session?.access_token;
-
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-      };
-      
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-
-      const response = await fetch(PHARMACY_AI_URL, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ 
-          action: 'ai_search',
-          payload: { query: query.trim() },
-          pharmacy_id: pharmacyId 
-        }),
+      const data = await callPharmacyAi<{ searchTerms?: string; rateLimited?: boolean }>({
+        action: 'ai_search',
+        payload: { query: query.trim() },
+        pharmacy_id: pharmacyId,
       });
 
-      if (response.status === 429) {
+      if (data?.rateLimited) {
         setIsRateLimited(true);
         toast({
           title: 'System Busy',
@@ -62,24 +43,7 @@ export const AISearchBar = ({ onSearch, placeholder = "Search medications..." }:
         return;
       }
 
-      if (!response.ok) {
-        throw new Error(`Request failed with status ${response.status}`);
-      }
-
-      const data = await response.json();
-
-      if (data.rateLimited) {
-        setIsRateLimited(true);
-        toast({
-          title: 'System Busy',
-          description: 'AI is processing many requests. Please wait a few seconds and try again.',
-          variant: 'default',
-        });
-        onSearch(query);
-        return;
-      }
-
-      if (data.searchTerms) {
+      if (data?.searchTerms) {
         onSearch(data.searchTerms);
         toast({
           title: 'AI Search',
@@ -89,6 +53,17 @@ export const AISearchBar = ({ onSearch, placeholder = "Search medications..." }:
         onSearch(query);
       }
     } catch (error) {
+      if (error instanceof PharmacyAiError && error.status === 429) {
+        setIsRateLimited(true);
+        toast({
+          title: 'System Busy',
+          description: 'AI is processing many requests. Please wait a few seconds and try again.',
+          variant: 'default',
+        });
+        onSearch(query);
+        return;
+      }
+
       console.error('AI search failed:', error);
       onSearch(query);
       toast({

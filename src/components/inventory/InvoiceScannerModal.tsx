@@ -8,13 +8,10 @@ import { Camera, FileImage, Upload, Check, X, Loader2, AlertCircle, Plus, Minus,
 import { useMedications } from '@/hooks/useMedications';
 import { usePharmacy } from '@/hooks/usePharmacy';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import type { Medication } from '@/types/medication';
 import sampleInvoiceImage from '@/assets/sample-invoice.png';
-
-// Consolidated AI endpoint on external Supabase project
-const PHARMACY_AI_URL = 'https://sdejkpweecasdzsixxbd.supabase.co/functions/v1/pharmacy-ai';
+import { callPharmacyAiWithFallback, PharmacyAiError } from '@/lib/pharmacyAiClient';
 
 // Mock invoice data for demo mode - realistic Nigerian pharmacy items
 const DEMO_INVOICE_ITEMS = [
@@ -206,40 +203,24 @@ export const InvoiceScannerModal = ({ open, onOpenChange }: InvoiceScannerModalP
     setError(null);
 
     try {
-      // Get auth token if available
-      const { data: sessionData } = await supabase.auth.getSession();
-      const token = sessionData?.session?.access_token;
-
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-      };
-      
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
+      if (!pharmacy?.id) {
+        setError('No pharmacy selected. Please reload and try again.');
+        return;
       }
 
-      const response = await fetch(PHARMACY_AI_URL, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({
-          action: 'scan_invoice',
-          payload: { imageUrl },
-          pharmacy_id: pharmacy?.id,
-        }),
+      const data = await callPharmacyAiWithFallback<any>({
+        actions: ['scan_invoice', 'invoice_scan'],
+        payload: { imageUrl },
+        pharmacy_id: pharmacy.id,
       });
 
-      if (response.status === 429) {
+      // Graceful backpressure handling
+      if (data?.rateLimited) {
         setError('AI is busy. Please wait and try again.');
         return;
       }
 
-      if (!response.ok) {
-        throw new Error(`Request failed with status ${response.status}`);
-      }
-
-      const data = await response.json();
-
-      if (data.error) {
+      if (data?.error) {
         setError(data.error);
         return;
       }
@@ -254,8 +235,8 @@ export const InvoiceScannerModal = ({ open, onOpenChange }: InvoiceScannerModalP
         );
 
         // Calculate suggested selling price if cost price is available
-        const suggestedSellingPrice = item.unitPrice 
-          ? calculateSellingPrice(item.unitPrice) 
+        const suggestedSellingPrice = item.unitPrice
+          ? calculateSellingPrice(item.unitPrice)
           : undefined;
 
         return {
@@ -274,8 +255,13 @@ export const InvoiceScannerModal = ({ open, onOpenChange }: InvoiceScannerModalP
         description: `Found ${items.length} items, ${items.filter(i => i.matched).length} matched. Auto-margin: ${defaultMargin}%`,
       });
     } catch (err) {
+      if (err instanceof PharmacyAiError && err.status === 429) {
+        setError('AI is busy. Please wait and try again.');
+        return;
+      }
+
       console.error('Error processing invoice:', err);
-      setError('Failed to process invoice. Please try again.');
+      setError(err instanceof Error ? err.message : 'Failed to process invoice. Please try again.');
     } finally {
       setIsProcessing(false);
     }
