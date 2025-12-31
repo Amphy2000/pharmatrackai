@@ -19,6 +19,7 @@ import { Crown, Check, Zap, Calendar, CreditCard, Loader2, RefreshCw, Key, XCirc
 import { format } from 'date-fns';
 import { Separator } from '@/components/ui/separator';
 import { BranchPricingCalculator } from '@/components/subscription/BranchPricingCalculator';
+import { describeFunctionsInvokeError } from '@/utils/functionsError';
 
 const plans = [
   {
@@ -162,9 +163,11 @@ export const SubscriptionManagement = () => {
       });
 
       if (response.error) {
-        const msg = response.error.message || 'Failed to initialize payment.';
+        const detailed = await describeFunctionsInvokeError(response.error);
+
         // If backend still says session expired/unauthorized, force re-login.
-        if (msg.toLowerCase().includes('unauthorized') || msg.toLowerCase().includes('session expired')) {
+        const msg = detailed.toLowerCase();
+        if (msg.includes('unauthorized') || msg.includes('session expired') || msg.includes('session_not_found')) {
           await supabase.auth.signOut();
           toast({
             title: 'Session expired',
@@ -174,7 +177,8 @@ export const SubscriptionManagement = () => {
           navigate('/auth');
           return;
         }
-        throw new Error(msg);
+
+        throw new Error(detailed);
       }
 
       const { authorization_url } = response.data || {};
