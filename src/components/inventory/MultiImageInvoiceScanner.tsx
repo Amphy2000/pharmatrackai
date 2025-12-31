@@ -141,6 +141,7 @@ export const MultiImageInvoiceScanner = ({ open, onOpenChange }: MultiImageInvoi
             actions: ['scan_invoice', 'invoice_scan'],
             payload: {
               imageUrl: image.preview,
+              imageBase64: image.preview,
               isMultiPage: true,
               pageNumber: i + 1,
               totalPages: totalImages,
@@ -149,26 +150,34 @@ export const MultiImageInvoiceScanner = ({ open, onOpenChange }: MultiImageInvoi
           });
 
           if (data.items && Array.isArray(data.items)) {
-            const processedItems: ExtractedItem[] = data.items.map((item: any) => {
-              const matched = medications.find(
-                (med) =>
-                  med.name.toLowerCase().includes(item.productName.toLowerCase()) ||
-                  item.productName.toLowerCase().includes(med.name.toLowerCase()) ||
-                  (item.batchNumber && med.batch_number === item.batchNumber)
-              );
+            const processedItems: ExtractedItem[] = data.items.map((raw: any) => {
+              const productName = String(raw?.productName ?? raw?.name ?? raw?.product_name ?? '').trim();
+              const batchNumber = (raw?.batchNumber ?? raw?.batch_number ?? null) as string | null;
+              const expiryDate = (raw?.expiryDate ?? raw?.expiry_date ?? null) as string | null;
 
-              const suggestedSellingPrice = item.unitPrice
-                ? calculateSellingPrice(item.unitPrice)
+              const matched = medications.find((med) => {
+                const medName = med.name.toLowerCase();
+                const name = productName.toLowerCase();
+                return (
+                  (name && (medName.includes(name) || name.includes(medName))) ||
+                  (batchNumber && med.batch_number === batchNumber)
+                );
+              });
+
+              const unitPriceRaw = raw?.unitPrice ?? raw?.unit_price ?? raw?.cost_price ?? null;
+              const unitPrice = typeof unitPriceRaw === 'number' ? unitPriceRaw : Number(unitPriceRaw);
+              const suggestedSellingPrice = Number.isFinite(unitPrice)
+                ? calculateSellingPrice(unitPrice)
                 : null;
 
               return {
                 id: generateId(),
-                productName: item.productName,
-                quantity: item.quantity || 1,
-                unitPrice: item.unitPrice || null,
+                productName,
+                quantity: Number(raw?.quantity ?? 1) || 1,
+                unitPrice: Number.isFinite(unitPrice) ? unitPrice : null,
                 suggestedSellingPrice,
-                batchNumber: item.batchNumber || null,
-                expiryDate: item.expiryDate || null,
+                batchNumber,
+                expiryDate,
                 matched: matched || null,
                 isNew: !matched,
                 isEditing: false,

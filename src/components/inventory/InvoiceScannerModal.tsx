@@ -210,7 +210,7 @@ export const InvoiceScannerModal = ({ open, onOpenChange }: InvoiceScannerModalP
 
       const data = await callPharmacyAiWithFallback<any>({
         actions: ['scan_invoice', 'invoice_scan'],
-        payload: { imageUrl },
+        payload: { imageUrl, imageBase64: imageUrl },
         pharmacy_id: pharmacy.id,
       });
 
@@ -225,24 +225,34 @@ export const InvoiceScannerModal = ({ open, onOpenChange }: InvoiceScannerModalP
         return;
       }
 
-      // Match extracted items to existing medications and calculate suggested prices
-      const items: ExtractedItem[] = (data.items || []).map((item: any) => {
-        const matched = medications.find(
-          (med) =>
-            med.name.toLowerCase().includes(item.productName.toLowerCase()) ||
-            item.productName.toLowerCase().includes(med.name.toLowerCase()) ||
-            med.batch_number === item.batchNumber
-        );
+      const rawItems = (data?.items ?? data?.result?.items ?? []) as any[];
 
-        // Calculate suggested selling price if cost price is available
-        const suggestedSellingPrice = item.unitPrice
-          ? calculateSellingPrice(item.unitPrice)
-          : undefined;
+      // Match extracted items to existing medications and calculate suggested prices
+      const items: ExtractedItem[] = rawItems.map((raw: any) => {
+        const productName = String(raw?.productName ?? raw?.name ?? raw?.product_name ?? '').trim();
+        const batchNumber = (raw?.batchNumber ?? raw?.batch_number ?? null) as string | null;
+
+        const matched = medications.find((med) => {
+          const medName = med.name.toLowerCase();
+          const name = productName.toLowerCase();
+          return (
+            (name && (medName.includes(name) || name.includes(medName))) ||
+            (batchNumber && med.batch_number === batchNumber)
+          );
+        });
+
+        const unitPriceRaw = raw?.unitPrice ?? raw?.unit_price ?? raw?.cost_price ?? null;
+        const unitPrice = typeof unitPriceRaw === 'number' ? unitPriceRaw : Number(unitPriceRaw);
+        const suggestedSellingPrice = Number.isFinite(unitPrice) ? calculateSellingPrice(unitPrice) : undefined;
 
         return {
-          ...item,
+          productName,
+          quantity: Number(raw?.quantity ?? 0) || 0,
+          unitPrice: Number.isFinite(unitPrice) ? unitPrice : undefined,
+          batchNumber: (batchNumber ?? undefined) as any,
+          expiryDate: (raw?.expiryDate ?? raw?.expiry_date ?? undefined) as any,
+          manufacturingDate: (raw?.manufacturingDate ?? raw?.manufacturing_date ?? null) as any,
           suggestedSellingPrice,
-          manufacturingDate: item.manufacturingDate || null,
           matched,
           isNew: !matched,
         };
