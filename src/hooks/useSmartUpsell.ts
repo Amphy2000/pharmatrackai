@@ -4,6 +4,7 @@ import { usePharmacy } from '@/hooks/usePharmacy';
 import { callPharmacyAiWithFallback } from '@/lib/pharmacyAiClient';
 import { getPharmacyAiUiError } from '@/utils/pharmacyAiUiError';
 
+interface UpsellSuggestion {
   product_id: string;
   product_name: string;
   reason: string;
