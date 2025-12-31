@@ -87,37 +87,74 @@ const Landing = () => {
     }).format(revenue * 12 * 0.05);
   };
 
-  // NGN Pricing (Disruptive 3-Tier Model)
+  // State for annual billing toggle
+  const [isAnnualBilling, setIsAnnualBilling] = useState(false);
+  
+  // Annual discount rate (40% off)
+  const ANNUAL_DISCOUNT = 0.4;
+
+  // NGN Pricing (4-Tier Model with Lite tier)
   const ngnPricing = {
+    lite: {
+      name: 'Lite',
+      tagline: 'Essential POS',
+      setup: '₦0',
+      monthly: '₦7,500',
+      monthlyPrice: 7500,
+      annual: `₦${Math.round(7500 * 12 * (1 - ANNUAL_DISCOUNT)).toLocaleString()}`,
+      annualPrice: Math.round(7500 * 12 * (1 - ANNUAL_DISCOUNT)),
+      setupLabel: 'No Setup Fee',
+      target: 'New pharmacies starting digital',
+      features: ['Basic POS System', 'Cloud Backups', '2 User Accounts', 'Unlimited SKUs', 'Expiry Tracking', 'Basic Reports', 'Email Support'],
+      notIncluded: ['AI Features', 'Multi-Branch', 'Staff Clock-in'],
+      highlight: false,
+      isNew: true
+    },
     starter: {
       name: 'Switch & Save',
       tagline: 'Lifetime License Feel',
       setup: '₦150,000',
       monthly: '₦10,000',
+      monthlyPrice: 10000,
+      annual: `₦${Math.round(10000 * 12 * (1 - ANNUAL_DISCOUNT)).toLocaleString()}`,
+      annualPrice: Math.round(10000 * 12 * (1 - ANNUAL_DISCOUNT)),
       setupLabel: 'One-time Setup',
-      target: 'Single-branch pharmacies looking for stability',
-      features: ['Lifetime License Feel', 'Cloud Backups', '1 User Account', 'Unlimited SKUs', 'Basic POS System', 'Expiry Tracking', 'Email Support'],
-      highlight: false
+      target: 'Pharmacies wanting ownership',
+      features: ['Everything in Lite', 'Lifetime License Feel', '5 User Accounts', 'Advanced Reports', 'Priority Email Support'],
+      notIncluded: ['AI Features', 'Multi-Branch'],
+      highlight: false,
+      isNew: false
     },
     pro: {
       name: 'AI Powerhouse',
       tagline: 'Stop Drug Waste with AI',
       setup: '₦0',
       monthly: '₦35,000',
+      monthlyPrice: 35000,
+      annual: `₦${Math.round(35000 * 12 * (1 - ANNUAL_DISCOUNT)).toLocaleString()}`,
+      annualPrice: Math.round(35000 * 12 * (1 - ANNUAL_DISCOUNT)),
       setupLabel: 'Zero Setup Fee',
-      target: 'Fast-growing pharmacies using AI to stop waste',
-      features: ['₦0 Setup Fee', 'Automated Expiry Discounting', 'Demand Forecasting AI', 'Unlimited Users', 'Multi-Branch Ready', 'Staff Clock-in Tracking', 'NAFDAC Compliance Reports', 'Controlled Drugs Register', 'Manufacturing Date Tracking', 'Priority Support'],
-      highlight: true
+      target: 'Fast-growing pharmacies using AI',
+      features: ['Everything in Starter', 'AI Invoice Scanner', 'Automated Expiry Discounting', 'Demand Forecasting AI', 'Unlimited Users', 'Multi-Branch Ready', 'Staff Clock-in Tracking', 'NAFDAC Compliance Reports', 'Controlled Drugs Register', 'Priority WhatsApp Support'],
+      notIncluded: [],
+      highlight: true,
+      isNew: false,
+      savings: 'Save ₦1.2M+/year in waste'
     },
     enterprise: {
       name: 'Enterprise',
       tagline: 'Global Standard',
       setup: 'Custom',
-      monthly: '₦1,000,000+',
+      monthly: 'Custom',
+      monthlyPrice: 0,
+      annual: 'Custom',
+      annualPrice: 0,
       setupLabel: 'Custom Quote',
-      target: 'Hospital chains & international clients',
+      target: 'Hospital chains & large networks',
       features: ['Everything in Pro', 'White-label Options', 'Custom API Access', 'Dedicated Account Manager', '24/7 Priority Support', 'Custom Integrations', 'SLA Guarantee', 'On-site Training'],
-      highlight: false
+      notIncluded: [],
+      highlight: false,
+      isNew: false
     }
   };
 
@@ -1317,8 +1354,20 @@ const Landing = () => {
               Investment in <span className="text-gradient">Your Success</span>
             </h2>
             <p className="text-lg text-muted-foreground max-w-xl mx-auto mb-8">
-              {isInternational ? 'Simple, transparent pricing for global businesses' : 'Pricing designed to win you over from old inventory apps'}
+              {isInternational ? 'Simple, transparent pricing for global businesses' : 'Start small with Lite, or unlock AI power with Pro'}
             </p>
+            
+            {/* Billing Period Toggle */}
+            {!isInternational && (
+              <div className="flex flex-col items-center gap-4 mb-8">
+                <div className="inline-flex items-center gap-4 px-6 py-3 rounded-full bg-muted/50 border border-border/50">
+                  <span className={`text-sm ${!isAnnualBilling ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>Monthly</span>
+                  <Switch checked={isAnnualBilling} onCheckedChange={setIsAnnualBilling} />
+                  <span className={`text-sm ${isAnnualBilling ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>Annual</span>
+                  {isAnnualBilling && <Badge className="bg-success text-success-foreground">Save 40%</Badge>}
+                </div>
+              </div>
+            )}
             
             {/* Currency Toggle */}
             <div className="inline-flex items-center gap-4 px-6 py-3 rounded-full bg-muted/50 border border-border/50">
@@ -1328,8 +1377,8 @@ const Landing = () => {
             </div>
           </motion.div>
 
-          {/* NGN Pricing */}
-          {!isInternational && <div className="grid md:grid-cols-3 gap-6 max-w-6xl mx-auto">
+          {/* NGN Pricing - 4 Tier Grid */}
+          {!isInternational && <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 max-w-7xl mx-auto">
               {Object.entries(ngnPricing).map(([key, plan], index) => <motion.div key={key} initial={{
             opacity: 0,
             y: 30
@@ -1343,53 +1392,84 @@ const Landing = () => {
           }} whileHover={{
             y: -8
           }}>
-                  <Card className={`h-full glass-card overflow-hidden ${plan.highlight ? 'border-primary/50 shadow-glow-primary relative' : 'border-border/50'}`}>
+                  <Card className={`h-full glass-card overflow-hidden ${plan.highlight ? 'border-primary/50 shadow-glow-primary relative' : 'border-border/50'} ${plan.isNew ? 'border-success/50' : ''}`}>
                     {plan.highlight && <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-primary"></div>}
-                    <CardContent className="p-6 sm:p-8">
-                      {plan.highlight && <Badge className="absolute top-4 right-4 bg-gradient-primary text-primary-foreground">Most Popular</Badge>}
-                      <h3 className="text-xl font-display font-bold mb-1">{plan.name}</h3>
-                      <p className="text-sm text-muted-foreground mb-4">{plan.tagline}</p>
-                      <p className="text-xs text-muted-foreground mb-2">{plan.target}</p>
+                    {plan.isNew && <div className="absolute top-0 left-0 right-0 h-1 bg-success"></div>}
+                    <CardContent className="p-5 sm:p-6">
+                      <div className="flex items-center gap-2 mb-1">
+                        {plan.highlight && <Badge className="bg-gradient-primary text-primary-foreground text-xs">Most Popular</Badge>}
+                        {plan.isNew && <Badge className="bg-success text-success-foreground text-xs">New</Badge>}
+                      </div>
+                      <h3 className="text-lg font-display font-bold mb-1">{plan.name}</h3>
+                      <p className="text-xs text-muted-foreground mb-3">{plan.tagline}</p>
                       
-                      <div className="my-6 py-4 border-t border-b border-border/30">
-                        <div className="flex items-baseline gap-2 mb-2">
-                          <span className="text-sm text-muted-foreground">{plan.setupLabel}:</span>
-                          <span className={`text-2xl font-display font-bold ${plan.setup === '₦0' ? 'text-success' : ''}`}>{plan.setup}</span>
-                        </div>
+                      <div className="my-4 py-3 border-t border-b border-border/30">
+                        {plan.setup !== '₦0' && plan.setup !== 'Custom' && (
+                          <div className="flex items-baseline gap-2 mb-2">
+                            <span className="text-xs text-muted-foreground">{plan.setupLabel}:</span>
+                            <span className="text-lg font-display font-bold">{plan.setup}</span>
+                          </div>
+                        )}
                         <div className="flex items-baseline gap-1">
-                          <span className={`text-3xl font-display font-bold ${plan.highlight ? 'text-gradient' : ''}`}>{plan.monthly}</span>
-                          <span className="text-sm text-muted-foreground">/month</span>
+                          {isAnnualBilling && plan.annualPrice > 0 ? (
+                            <>
+                              <span className={`text-2xl font-display font-bold ${plan.highlight ? 'text-gradient' : ''}`}>
+                                ₦{Math.round(plan.annualPrice / 12).toLocaleString()}
+                              </span>
+                              <span className="text-xs text-muted-foreground">/month</span>
+                            </>
+                          ) : (
+                            <>
+                              <span className={`text-2xl font-display font-bold ${plan.highlight ? 'text-gradient' : ''}`}>{plan.monthly}</span>
+                              <span className="text-xs text-muted-foreground">/month</span>
+                            </>
+                          )}
                         </div>
+                        {isAnnualBilling && plan.annualPrice > 0 && (
+                          <p className="text-xs text-success mt-1">
+                            {plan.annual}/year (save ₦{((plan.monthlyPrice * 12) - plan.annualPrice).toLocaleString()})
+                          </p>
+                        )}
+                        {'savings' in plan && plan.savings && (
+                          <p className="text-xs text-primary font-medium mt-2">{plan.savings}</p>
+                        )}
                       </div>
 
-                      <Link to="/auth?tab=signup">
+                      <Link to={key === 'enterprise' ? '#' : '/auth?tab=signup'}>
                         <motion.div whileHover={{
                     scale: 1.02
                   }} whileTap={{
                     scale: 0.98
                   }}>
-                          <Button className={`w-full mb-6 ${plan.highlight ? 'bg-gradient-primary hover:opacity-90 shadow-glow-primary' : ''}`} variant={plan.highlight ? 'default' : 'outline'}>
+                          <Button size="sm" className={`w-full mb-4 ${plan.highlight ? 'bg-gradient-primary hover:opacity-90 shadow-glow-primary' : ''}`} variant={plan.highlight ? 'default' : 'outline'}>
                             {key === 'enterprise' ? 'Contact Sales' : 'Start Free Trial'}
                           </Button>
                         </motion.div>
                       </Link>
                       
-                      <ul className="space-y-3">
-                        {plan.features.map((feature, i) => <motion.li key={i} initial={{
-                    opacity: 0,
-                    x: -10
-                  }} whileInView={{
-                    opacity: 1,
-                    x: 0
-                  }} viewport={{
-                    once: true
-                  }} transition={{
-                    delay: 0.3 + i * 0.05
-                  }} className="flex items-center gap-2 text-sm">
-                            <Check className={`h-4 w-4 shrink-0 ${plan.highlight ? 'text-primary' : 'text-success'}`} />
-                            <span className={plan.highlight ? '' : 'text-muted-foreground'}>{feature}</span>
-                          </motion.li>)}
+                      <ul className="space-y-2">
+                        {plan.features.slice(0, 6).map((feature, i) => <li key={i} className="flex items-start gap-2 text-xs">
+                              <Check className={`h-3 w-3 shrink-0 mt-0.5 ${plan.highlight ? 'text-primary' : 'text-success'}`} />
+                              <span className={plan.highlight ? '' : 'text-muted-foreground'}>{feature}</span>
+                            </li>)}
+                        {plan.features.length > 6 && (
+                          <li className="text-xs text-muted-foreground">+{plan.features.length - 6} more features</li>
+                        )}
                       </ul>
+                      
+                      {plan.notIncluded && plan.notIncluded.length > 0 && (
+                        <div className="mt-3 pt-3 border-t border-border/30">
+                          <p className="text-xs text-muted-foreground mb-1">Not included:</p>
+                          <ul className="space-y-1">
+                            {plan.notIncluded.map((item, i) => (
+                              <li key={i} className="flex items-center gap-2 text-xs text-muted-foreground">
+                                <X className="h-3 w-3 shrink-0 text-destructive/50" />
+                                {item}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      )}
                     </CardContent>
                   </Card>
                 </motion.div>)}

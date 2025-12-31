@@ -7,20 +7,32 @@ const corsHeaders = {
 };
 
 // Plan pricing in kobo (1 Naira = 100 kobo)
+// Annual discount: 40% off
+const ANNUAL_DISCOUNT = 0.4;
+
 const PLAN_CONFIG = {
+  lite: { 
+    setupFee: 0,
+    monthlyFee: 750000,   // ₦7,500/month
+    annualFee: Math.round(750000 * 12 * (1 - ANNUAL_DISCOUNT)),  // ₦54,000/year
+    isHybrid: false,
+  },
   starter: { 
     setupFee: 15000000,   // ₦150,000 one-time setup
     monthlyFee: 1000000,  // ₦10,000/month maintenance
+    annualFee: Math.round(1000000 * 12 * (1 - ANNUAL_DISCOUNT)),  // ₦72,000/year
     isHybrid: true,
   },
   pro: { 
     setupFee: 0,
     monthlyFee: 3500000,  // ₦35,000/month
+    annualFee: Math.round(3500000 * 12 * (1 - ANNUAL_DISCOUNT)),  // ₦252,000/year
     isHybrid: false,
   },
   enterprise: { 
-    setupFee: 100000000,  // ₦1,000,000+ (contact sales)
+    setupFee: 0,
     monthlyFee: 0,
+    annualFee: 0,
     isHybrid: false,
   },
 };
@@ -71,9 +83,10 @@ serve(async (req) => {
     
     console.log("Authenticated user:", user.id);
 
-    const { plan, callback_url } = await req.json();
-    console.log("Payment request for plan:", plan);
+    const { plan, callback_url, billing_period } = await req.json();
+    console.log("Payment request for plan:", plan, "billing:", billing_period || 'monthly');
 
+    const isAnnual = billing_period === 'annual';
     const planConfig = PLAN_CONFIG[plan as keyof typeof PLAN_CONFIG];
     if (!plan || !planConfig) {
       throw new Error("Invalid plan selected");
@@ -102,8 +115,16 @@ serve(async (req) => {
 
     console.log("Pharmacy found:", staff.pharmacy_id, pharmacyName);
 
-    // Determine amount based on plan type
-    const chargeAmount = planConfig.isHybrid ? planConfig.setupFee : planConfig.monthlyFee;
+    // Determine amount based on plan type and billing period
+    let chargeAmount: number;
+    if (planConfig.isHybrid) {
+      // Hybrid plans charge setup fee first, then monthly/annual maintenance
+      chargeAmount = planConfig.setupFee;
+    } else if (isAnnual && planConfig.annualFee > 0) {
+      chargeAmount = planConfig.annualFee;
+    } else {
+      chargeAmount = planConfig.monthlyFee;
+    }
 
     if (chargeAmount === 0) {
       throw new Error("Enterprise plan requires contacting sales");

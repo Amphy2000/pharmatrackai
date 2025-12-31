@@ -21,7 +21,27 @@ import { Separator } from '@/components/ui/separator';
 import { BranchPricingCalculator } from '@/components/subscription/BranchPricingCalculator';
 import { describeFunctionsInvokeError } from '@/utils/functionsError';
 
+// Annual discount rate (40% off)
+const ANNUAL_DISCOUNT = 0.4;
+
 const plans = [
+  {
+    id: 'lite',
+    name: 'Lite',
+    tagline: 'Essential POS',
+    setup: '₦0',
+    setupPrice: 0,
+    monthly: '₦7,500',
+    monthlyPrice: 7500,
+    annual: `₦${Math.round(7500 * 12 * (1 - ANNUAL_DISCOUNT)).toLocaleString()}`,
+    annualPrice: Math.round(7500 * 12 * (1 - ANNUAL_DISCOUNT)),
+    setupLabel: 'No Setup Fee',
+    target: 'New pharmacies starting digital',
+    features: ['Basic POS System', 'Cloud Backups', '2 User Accounts', 'Unlimited SKUs', 'Expiry Tracking', 'Basic Reports'],
+    popular: false,
+    buttonText: 'Get Started',
+    isNew: true,
+  },
   {
     id: 'starter',
     name: 'Switch & Save',
@@ -30,13 +50,14 @@ const plans = [
     setupPrice: 150000,
     monthly: '₦10,000',
     monthlyPrice: 10000,
-    annual: '₦100,000',
-    annualPrice: 100000,
+    annual: `₦${Math.round(10000 * 12 * (1 - ANNUAL_DISCOUNT)).toLocaleString()}`,
+    annualPrice: Math.round(10000 * 12 * (1 - ANNUAL_DISCOUNT)),
     setupLabel: 'One-time Setup',
-    target: 'Single-branch pharmacies looking for stability',
-    features: ['Lifetime License Feel', 'Cloud Backups', '1 User Account', 'Unlimited SKUs', 'Basic POS System', 'Expiry Tracking'],
+    target: 'Pharmacies wanting ownership feel',
+    features: ['Everything in Lite', 'Lifetime License Feel', '5 User Accounts', 'Advanced Reports', 'Priority Email Support'],
     popular: false,
     buttonText: 'Get Started',
+    isNew: false,
   },
   {
     id: 'pro',
@@ -46,13 +67,15 @@ const plans = [
     setupPrice: 0,
     monthly: '₦35,000',
     monthlyPrice: 35000,
-    annual: '₦350,000',
-    annualPrice: 350000,
+    annual: `₦${Math.round(35000 * 12 * (1 - ANNUAL_DISCOUNT)).toLocaleString()}`,
+    annualPrice: Math.round(35000 * 12 * (1 - ANNUAL_DISCOUNT)),
     setupLabel: 'Zero Setup Fee',
-    target: 'Fast-growing pharmacies using AI to stop waste',
-    features: ['NO Setup Fee', 'Automated Expiry Discounting', 'Demand Forecasting AI', 'Unlimited Users', 'Multi-Branch Ready', 'Staff Clock-in Tracking'],
+    target: 'Fast-growing pharmacies using AI',
+    features: ['Everything in Starter', 'AI Invoice Scanner', 'Demand Forecasting AI', 'Unlimited Users', 'Multi-Branch Ready', 'Staff Clock-in', 'NAFDAC Reports'],
     popular: true,
     buttonText: 'Subscribe',
+    isNew: false,
+    savings: 'Save ₦1.2M+/year in waste',
   },
   {
     id: 'enterprise',
@@ -60,15 +83,16 @@ const plans = [
     tagline: 'Global Standard',
     setup: 'Custom',
     setupPrice: 0,
-    monthly: '₦1,000,000+',
-    monthlyPrice: 1000000,
+    monthly: 'Custom',
+    monthlyPrice: 0,
     annual: 'Custom',
     annualPrice: 0,
     setupLabel: 'Custom Quote',
-    target: 'Hospital chains & international clients',
-    features: ['Everything in Pro', 'White-label Options', 'Custom API Access', 'Dedicated Account Manager', '24/7 Priority Support', 'Custom Integrations'],
+    target: 'Hospital chains & large networks',
+    features: ['Everything in Pro', 'White-label Options', 'Custom API Access', 'Dedicated Account Manager', '24/7 Priority Support'],
     popular: false,
     buttonText: 'Contact Sales',
+    isNew: false,
   },
 ];
 
@@ -598,13 +622,13 @@ export const SubscriptionManagement = () => {
               />
               <Label htmlFor="billing-toggle" className={`text-sm ${isAnnual ? 'text-primary font-medium' : 'text-muted-foreground'}`}>
                 Annual
-                <Badge variant="secondary" className="ml-2 text-xs">Save 17%</Badge>
+                <Badge variant="secondary" className="ml-2 text-xs bg-success text-success-foreground">Save 40%</Badge>
               </Label>
             </div>
           </div>
         </CardHeader>
         <CardContent>
-          <div className="grid md:grid-cols-3 gap-6">
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
             {plans.map((planOption) => {
               const isCurrentPlan = planOption.id === currentPlan && !isTrial && !isExpired;
               
@@ -616,9 +640,17 @@ export const SubscriptionManagement = () => {
                   {planOption.popular && (
                     <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-primary to-primary/50" />
                   )}
+                  {planOption.isNew && (
+                    <div className="absolute top-0 left-0 right-0 h-1 bg-success" />
+                  )}
                   {planOption.popular && (
                     <Badge className="absolute -top-0 right-4 rounded-t-none text-xs bg-primary">
                       Most Popular
+                    </Badge>
+                  )}
+                  {planOption.isNew && !planOption.popular && (
+                    <Badge className="absolute -top-0 right-4 rounded-t-none text-xs bg-success">
+                      New
                     </Badge>
                   )}
                   <CardHeader className="pt-8 pb-4">
@@ -629,16 +661,24 @@ export const SubscriptionManagement = () => {
                     <div className="mt-4 space-y-1">
                       {planOption.setupPrice > 0 && !isAnnual && (
                         <div className="flex items-baseline gap-1">
-                          <span className="text-3xl font-bold">{planOption.setup}</span>
-                          <span className="text-sm text-muted-foreground">{planOption.setupLabel}</span>
+                          <span className="text-2xl font-bold">{planOption.setup}</span>
+                          <span className="text-xs text-muted-foreground">{planOption.setupLabel}</span>
                         </div>
                       )}
                       <div className="flex items-baseline gap-1">
-                        <span className={`${planOption.setupPrice > 0 && !isAnnual ? 'text-lg' : 'text-3xl font-bold'}`}>
-                          {isAnnual ? planOption.annual : planOption.monthly}
+                        <span className={`${planOption.setupPrice > 0 && !isAnnual ? 'text-base' : 'text-2xl font-bold'}`}>
+                          {isAnnual ? `₦${Math.round(planOption.annualPrice / 12).toLocaleString()}` : planOption.monthly}
                         </span>
-                        <span className="text-sm text-muted-foreground">/{isAnnual ? 'year' : 'month'}</span>
+                        <span className="text-xs text-muted-foreground">/month</span>
                       </div>
+                      {isAnnual && planOption.annualPrice > 0 && (
+                        <p className="text-xs text-success">
+                          {planOption.annual}/year (save ₦{((planOption.monthlyPrice * 12) - planOption.annualPrice).toLocaleString()})
+                        </p>
+                      )}
+                      {planOption.savings && (
+                        <p className="text-xs text-primary font-medium">{planOption.savings}</p>
+                      )}
                     </div>
                     <p className="text-xs text-muted-foreground mt-2">{planOption.target}</p>
                   </CardHeader>

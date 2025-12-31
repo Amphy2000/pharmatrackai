@@ -20,17 +20,37 @@ export interface PlanLimits {
 
 // Feature sets aligned with Landing page and SubscriptionManagement
 const PLAN_FEATURES = {
-  starter: {
-    maxUsers: 1,
+  lite: {
+    maxUsers: 2,
     maxBranches: 1,
     features: [
-      'Lifetime License Feel',
-      'Cloud Backups',
-      '1 User Account',
-      'Unlimited SKUs',
       'Basic POS System',
+      'Cloud Backups',
+      '2 User Accounts',
+      'Unlimited SKUs',
       'Expiry Tracking',
+      'Basic Reports',
       'Email Support'
+    ],
+    hasAIFeatures: false,
+    hasMultiBranch: false,
+    hasUnlimitedUsers: false,
+    hasNAFDACReports: false,
+    hasControlledDrugsRegister: false,
+    hasDemandForecasting: false,
+    hasExpiryDiscounting: false,
+    hasStaffClockIn: false,
+    hasPrioritySupport: false,
+  },
+  starter: {
+    maxUsers: 5,
+    maxBranches: 1,
+    features: [
+      'Everything in Lite',
+      'Lifetime License Feel',
+      '5 User Accounts',
+      'Advanced Reports',
+      'Priority Email Support'
     ],
     hasAIFeatures: false,
     hasMultiBranch: false,
@@ -46,7 +66,8 @@ const PLAN_FEATURES = {
     maxUsers: 999,
     maxBranches: 10,
     features: [
-      '₦0 Setup Fee',
+      'Everything in Starter',
+      'AI Invoice Scanner',
       'Automated Expiry Discounting',
       'Demand Forecasting AI',
       'Unlimited Users',
@@ -54,8 +75,7 @@ const PLAN_FEATURES = {
       'Staff Clock-in Tracking',
       'NAFDAC Compliance Reports',
       'Controlled Drugs Register',
-      'Manufacturing Date Tracking',
-      'Priority Support'
+      'Priority WhatsApp Support'
     ],
     hasAIFeatures: true,
     hasMultiBranch: true,
