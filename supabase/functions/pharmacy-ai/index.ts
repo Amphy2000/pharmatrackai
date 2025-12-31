@@ -361,16 +361,29 @@ Interpret this pharmacy search query and extract the search parameters.`;
 }
 
 async function handleScanInvoice(payload: any): Promise<any> {
-  const { imageBase64 } = payload;
+  // Accept both imageBase64 and imageUrl (they may be the same data-uri)
+  const imageData = payload?.imageBase64 || payload?.imageUrl;
   
-  if (!imageBase64) {
-    throw new Error("No invoice image provided");
+  if (!imageData) {
+    throw new Error("No invoice image provided. Send imageBase64 or imageUrl.");
   }
 
   const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
   if (!GEMINI_API_KEY) {
     throw new Error("GEMINI_API_KEY is not configured");
   }
+
+  // Extract base64 content (strip data-uri prefix if present)
+  const base64Content = imageData.replace(/^data:image\/\w+;base64,/, '');
+
+  // Detect mime type from data-uri or default to jpeg
+  let mimeType = "image/jpeg";
+  const mimeMatch = imageData.match(/^data:(image\/\w+);base64,/);
+  if (mimeMatch) {
+    mimeType = mimeMatch[1];
+  }
+
+  console.log(`Processing invoice image, mimeType: ${mimeType}, size: ${base64Content.length} chars`);
 
   // For invoice scanning, we use vision capabilities
   const response = await fetchWithRetry(
@@ -385,8 +398,8 @@ async function handleScanInvoice(payload: any): Promise<any> {
             { text: PROMPTS.scan_invoice },
             { 
               inlineData: { 
-                mimeType: "image/jpeg", 
-                data: imageBase64.replace(/^data:image\/\w+;base64,/, '') 
+                mimeType, 
+                data: base64Content 
               } 
             }
           ]
@@ -411,7 +424,16 @@ async function handleScanInvoice(payload: any): Promise<any> {
     throw new Error("Could not parse invoice");
   }
 
-  return JSON.parse(content);
+  const parsed = JSON.parse(content);
+  
+  // Normalize response shape - ensure items array exists at top level
+  if (parsed.result?.items && !parsed.items) {
+    parsed.items = parsed.result.items;
+  }
+  
+  console.log(`Extracted ${parsed.items?.length || 0} items from invoice`);
+  
+  return parsed;
 }
 
 // Helper functions for business insights

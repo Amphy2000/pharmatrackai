@@ -195,12 +195,18 @@ export const MultiImageInvoiceScanner = ({ open, onOpenChange }: MultiImageInvoi
 
           setProcessingProgress(((i + 1) / totalImages) * 100);
         } catch (err) {
-          if (err instanceof PharmacyAiError && err.status === 429) {
-            console.error(`Rate limited on page ${i + 1}`);
-            continue;
-          }
-
           console.error(`Error processing page ${i + 1}:`, err);
+          
+          if (err instanceof PharmacyAiError) {
+            if (err.status === 429) {
+              console.warn(`Rate limited on page ${i + 1}, skipping`);
+            } else if (err.status === 401 || err.status === 403) {
+              setError('Authentication error. Check VITE_EXTERNAL_SUPABASE_PUBLISHABLE_KEY in Vercel.');
+              break;
+            } else {
+              console.error(`AI error on page ${i + 1}: ${err.message}`);
+            }
+          }
           continue;
         }
       }
