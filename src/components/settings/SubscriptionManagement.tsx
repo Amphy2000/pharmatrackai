@@ -125,6 +125,23 @@ export const SubscriptionManagement = () => {
     enabled: !!pharmacy?.id,
   });
 
+  const getFunctionsHttpStatus = (err: unknown): number | null => {
+    const anyErr = err as any;
+    return (anyErr?.context?.status ?? anyErr?.status ?? null) as number | null;
+  };
+
+  const isAuthLikeFunctionsError = (err: unknown, detailed: string): boolean => {
+    const status = getFunctionsHttpStatus(err);
+    const msg = detailed.toLowerCase();
+    return (
+      status === 401 ||
+      msg.includes('unauthorized') ||
+      msg.includes('invalid jwt') ||
+      msg.includes('session_not_found') ||
+      msg.includes('jwt')
+    );
+  };
+
   const handleUpgrade = async (planId: string) => {
     setIsProcessing(planId);
     try {
@@ -162,21 +179,21 @@ export const SubscriptionManagement = () => {
       if (response.error) {
         const detailed = await describeFunctionsInvokeError(response.error);
 
-        // If backend still says session expired/unauthorized, force re-login.
-        const msg = detailed.toLowerCase();
-        if (
-          msg.includes('unauthorized') ||
-          msg.includes('session expired') ||
-          msg.includes('session_not_found') ||
-          msg.includes('invalid jwt')
-        ) {
-          await supabase.auth.signOut();
+        // Avoid force-logging users out for backend/config issues.
+        // Only treat as auth-like when it's a real 401 / JWT failure.
+        if (isAuthLikeFunctionsError(response.error, detailed)) {
+          // Try a silent refresh first.
+          const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
+          if (!refreshError && refreshed?.session) {
+            throw new Error('Please try again — your session was refreshed.');
+          }
+
           toast({
-            title: 'Session expired',
-            description: 'Please sign in again to upgrade.',
+            title: 'Authentication issue',
+            description:
+              'Your login session could not be verified for payments. This usually happens when the app is pointing to a different backend than the payment function. Please ensure both use the same backend keys, then try again.',
             variant: 'destructive',
           });
-          navigate('/auth');
           return;
         }
 
