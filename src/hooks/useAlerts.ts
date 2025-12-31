@@ -3,6 +3,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { usePharmacy } from '@/hooks/usePharmacy';
 import { toast } from 'sonner';
 
+// External Supabase URL for edge functions
+const EXTERNAL_FUNCTIONS_URL = 'https://sdejkpweecasdzsixxbd.supabase.co/functions/v1';
+
 type AlertType = 'low_stock' | 'expiring' | 'expired' | 'custom' | 'daily_summary';
 type AlertChannel = 'sms' | 'whatsapp';
 
@@ -64,14 +67,26 @@ export const useAlerts = () => {
 
     setIsSending(true);
     try {
-      const { data, error } = await supabase.functions.invoke('termii-alert', {
-        body: {
+      // Get auth token for the request
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+
+      const fetchResponse = await fetch(`${EXTERNAL_FUNCTIONS_URL}/termii-alert`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
           pharmacyId: pharmacy.id,
           ...params,
           recipientPhone,
           channel,
-        },
+        }),
       });
+
+      const data = await fetchResponse.json();
+      const error = !fetchResponse.ok ? { message: data?.error || 'Request failed' } : null;
 
       if (error) {
         console.error('Termii alert error:', error);
