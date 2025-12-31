@@ -6,6 +6,7 @@ import { useBranchInventory } from '@/hooks/useBranchInventory';
 import { useSales } from '@/hooks/useSales';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePharmacy } from '@/hooks/usePharmacy';
+import { useUserProfile } from '@/hooks/useUserProfile';
 import { useShifts } from '@/hooks/useShifts';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useCurrency } from '@/contexts/CurrencyContext';
@@ -83,6 +84,7 @@ const Dashboard = () => {
   const navigate = useNavigate();
   const { user, isLoading: authLoading } = useAuth();
   const { pharmacy, isLoading: pharmacyLoading } = usePharmacy();
+  const { displayName } = useUserProfile();
   const { medications, isLoading: medsLoading, getMetrics } = useMedications();
   const { medications: branchMedications, getMetrics: getBranchMetrics } = useBranchInventory();
   const { sales } = useSales();
@@ -237,7 +239,7 @@ const Dashboard = () => {
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
             <div>
               <h1 className="text-2xl sm:text-4xl font-bold font-display tracking-tight mb-2">
-                Welcome back, <span className="text-gradient">{user.user_metadata?.full_name || user.email?.split('@')[0]}</span>
+                Welcome back, <span className="text-gradient">{displayName}</span>
               </h1>
               <p className="text-sm sm:text-base text-muted-foreground">
                 Here's what's happening at <span className="text-foreground font-medium">{pharmacy.name}</span> today.

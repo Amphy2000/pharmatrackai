@@ -51,6 +51,7 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { useNotifications } from '@/hooks/useNotifications';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePlatformAdmin } from '@/hooks/usePlatformAdmin';
+import { useUserProfile } from '@/hooks/useUserProfile';
 import { BranchSwitcher } from '@/components/header/BranchSwitcher';
 import { useBranchContext } from '@/contexts/BranchContext';
 import { OfflineIndicator } from '@/components/header/OfflineIndicator';
@@ -64,6 +65,7 @@ export const Header = forwardRef<HTMLDivElement>((_, ref) => {
   const { notifications, unreadCount, markAsRead, markAllAsRead } = useNotifications();
   const { isAdmin } = usePlatformAdmin();
   const { currentBranchId, setCurrentBranchId } = useBranchContext();
+  const { displayName } = useUserProfile();
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [pharmacySwitchOpen, setPharmacySwitchOpen] = useState(false);
   
@@ -379,7 +381,7 @@ export const Header = forwardRef<HTMLDivElement>((_, ref) => {
                     <User className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary-foreground" />
                   </div>
                   <div className="hidden md:block text-left">
-                    <p className="text-sm font-medium leading-none">User</p>
+                    <p className="text-sm font-medium leading-none">{displayName}</p>
                     <p className="text-xs text-muted-foreground">{roleLabel}</p>
                   </div>
                   <ChevronDown className="h-4 w-4 text-muted-foreground hidden sm:block" />
