@@ -15,21 +15,29 @@ export const PHARMACY_AI_URL =
   'https://sdejkpweecasdzsixxbd.supabase.co/functions/v1/pharmacy-ai';
 
 const EXTERNAL_PUBLISHABLE_KEY =
-  import.meta.env.VITE_EXTERNAL_SUPABASE_PUBLISHABLE_KEY ??
-  import.meta.env.VITE_EXTERNAL_SUPABASE_ANON_KEY ??
-  '';
+  import.meta.env.VITE_EXTERNAL_SUPABASE_PUBLISHABLE_KEY ?? '';
 
 export function isPharmacyAiConfigured() {
   return Boolean(EXTERNAL_PUBLISHABLE_KEY);
 }
 
+function getConfigWarning() {
+  if (!EXTERNAL_PUBLISHABLE_KEY) {
+    console.warn(
+      '[pharmacy-ai] VITE_EXTERNAL_SUPABASE_PUBLISHABLE_KEY is not set. AI calls may fail with 401.'
+    );
+  }
+}
+
 function buildHeaders() {
+  getConfigWarning();
+
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };
 
-  // For a public Edge Function (verify_jwt=false), Supabase still expects an API key
-  // (anon/publishable key) via `apikey` and `Authorization`.
+  // For Edge Functions (even with verify_jwt=false), Supabase expects both
+  // `apikey` and `Authorization` headers set to the anon/publishable key.
   if (EXTERNAL_PUBLISHABLE_KEY) {
     headers['apikey'] = EXTERNAL_PUBLISHABLE_KEY;
     headers['Authorization'] = `Bearer ${EXTERNAL_PUBLISHABLE_KEY}`;
