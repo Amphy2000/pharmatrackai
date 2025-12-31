@@ -5,6 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import type { Medication } from '@/types/medication';
+import { usePharmacy } from '@/hooks/usePharmacy';
+
+// Consolidated AI endpoint on external Supabase project
+const PHARMACY_AI_URL = 'https://sdejkpweecasdzsixxbd.supabase.co/functions/v1/pharmacy-ai';
 
 interface DrugInteraction {
   drugs: string[];
@@ -53,6 +57,7 @@ export const DrugInteractionWarning = ({ cartItems }: DrugInteractionWarningProp
   const [isLoading, setIsLoading] = useState(false);
   const [dismissed, setDismissed] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { pharmacyId } = usePharmacy();
 
   useEffect(() => {
     const checkInteractions = async () => {
@@ -67,16 +72,44 @@ export const DrugInteractionWarning = ({ cartItems }: DrugInteractionWarningProp
       setDismissed(false);
 
       try {
-        const { data, error: fnError } = await supabase.functions.invoke('check-drug-interactions', {
-          body: {
-            medications: cartItems.map(item => ({
-              name: item.medication.name,
-              category: item.medication.category,
-            })),
-          },
+        // Get auth token if available
+        const { data: sessionData } = await supabase.auth.getSession();
+        const token = sessionData?.session?.access_token;
+
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/json',
+        };
+        
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+
+        const response = await fetch(PHARMACY_AI_URL, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            action: 'check_drug_interactions',
+            payload: {
+              medications: cartItems.map(item => ({
+                name: item.medication.name,
+                category: item.medication.category,
+              })),
+            },
+            pharmacy_id: pharmacyId,
+          }),
         });
 
-        if (fnError) throw fnError;
+        if (response.status === 429) {
+          setError('AI busy, please try again');
+          setInteractions([]);
+          return;
+        }
+
+        if (!response.ok) {
+          throw new Error(`Request failed with status ${response.status}`);
+        }
+
+        const data = await response.json();
         
         if (data?.error) {
           setError(data.error);
@@ -96,7 +129,7 @@ export const DrugInteractionWarning = ({ cartItems }: DrugInteractionWarningProp
     // Debounce the check
     const timeout = setTimeout(checkInteractions, 500);
     return () => clearTimeout(timeout);
-  }, [cartItems]);
+  }, [cartItems, pharmacyId]);
 
   if (dismissed || (interactions.length === 0 && !isLoading && !error)) {
     return null;

@@ -20,6 +20,9 @@ import { format, addYears } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Medication } from '@/types/medication';
 
+// Consolidated AI endpoint on external Supabase project
+const PHARMACY_AI_URL = 'https://sdejkpweecasdzsixxbd.supabase.co/functions/v1/pharmacy-ai';
+
 interface MultiImageInvoiceScannerProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -124,25 +127,50 @@ export const MultiImageInvoiceScanner = ({ open, onOpenChange }: MultiImageInvoi
     const totalImages = uploadedImages.length;
 
     try {
+      // Get auth token if available
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       for (let i = 0; i < uploadedImages.length; i++) {
         setCurrentProcessingPage(i + 1);
         setProcessingProgress(((i) / totalImages) * 100);
 
         const image = uploadedImages[i];
         
-        const { data, error: fnError } = await supabase.functions.invoke('scan-invoice', {
-          body: { 
-            imageUrl: image.preview,
-            isMultiPage: true,
-            pageNumber: i + 1,
-            totalPages: totalImages
-          },
+        const response = await fetch(PHARMACY_AI_URL, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({
+            action: 'scan_invoice',
+            payload: { 
+              imageUrl: image.preview,
+              isMultiPage: true,
+              pageNumber: i + 1,
+              totalPages: totalImages
+            },
+            pharmacy_id: pharmacy?.id,
+          }),
         });
 
-        if (fnError) {
-          console.error(`Error processing page ${i + 1}:`, fnError);
+        if (response.status === 429) {
+          console.error(`Rate limited on page ${i + 1}`);
           continue;
         }
+
+        if (!response.ok) {
+          console.error(`Error processing page ${i + 1}:`, response.status);
+          continue;
+        }
+
+        const data = await response.json();
 
         if (data.items && Array.isArray(data.items)) {
           const processedItems: ExtractedItem[] = data.items.map((item: any) => {

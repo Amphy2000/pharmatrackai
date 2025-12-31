@@ -1,6 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { CartItem, Medication } from '@/types/medication';
+import { usePharmacy } from '@/hooks/usePharmacy';
+
+// Consolidated AI endpoint on external Supabase project
+const PHARMACY_AI_URL = 'https://sdejkpweecasdzsixxbd.supabase.co/functions/v1/pharmacy-ai';
 
 interface UpsellSuggestion {
   product_id: string;
@@ -28,6 +32,7 @@ export const useSmartUpsell = ({
   const [error, setError] = useState<string | null>(null);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
   const lastCartHashRef = useRef<string>('');
+  const { pharmacyId } = usePharmacy();
 
   // Create a hash of cart items to detect changes
   const getCartHash = useCallback((items: CartItem[]) => {
@@ -49,25 +54,51 @@ export const useSmartUpsell = ({
     setError(null);
 
     try {
-      const { data, error: invokeError } = await supabase.functions.invoke('smart-upsell', {
-        body: {
-          cartItems: cartItems.map(item => ({
-            name: item.medication.name,
-            category: item.medication.category,
-          })),
-          availableInventory: availableMedications.map(med => ({
-            id: med.id,
-            name: med.name,
-            category: med.category,
-            selling_price: med.selling_price || med.unit_price,
-            current_stock: med.current_stock,
-          })),
-        },
+      // Get auth token if available
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const response = await fetch(PHARMACY_AI_URL, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          action: 'smart_upsell',
+          payload: {
+            cartItems: cartItems.map(item => ({
+              name: item.medication.name,
+              category: item.medication.category,
+            })),
+            availableInventory: availableMedications.map(med => ({
+              id: med.id,
+              name: med.name,
+              category: med.category,
+              selling_price: med.selling_price || med.unit_price,
+              current_stock: med.current_stock,
+            })),
+          },
+          pharmacy_id: pharmacyId,
+        }),
       });
 
-      if (invokeError) {
-        throw invokeError;
+      if (response.status === 429) {
+        setError('AI busy, please try again');
+        setSuggestions([]);
+        return;
       }
+
+      if (!response.ok) {
+        throw new Error(`Request failed with status ${response.status}`);
+      }
+
+      const data = await response.json();
 
       // Enrich suggestions with full medication data
       const enrichedSuggestions: UpsellSuggestion[] = (data?.suggestions || [])
@@ -86,7 +117,7 @@ export const useSmartUpsell = ({
     } finally {
       setIsLoading(false);
     }
-  }, [cartItems, availableMedications, getCartHash]);
+  }, [cartItems, availableMedications, getCartHash, pharmacyId]);
 
   // Debounced fetch when cart changes
   useEffect(() => {
