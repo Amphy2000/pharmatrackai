@@ -5,9 +5,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import type { Medication } from '@/types/medication';
 import { usePharmacy } from '@/hooks/usePharmacy';
-import { callPharmacyAiWithFallback, PharmacyAiError } from '@/lib/pharmacyAiClient';
+import { callPharmacyAiWithFallback } from '@/lib/pharmacyAiClient';
+import { getPharmacyAiUiError } from '@/utils/pharmacyAiUiError';
 
-interface DrugInteraction {
   drugs: string[];
   severity: 'low' | 'moderate' | 'high' | 'severe';
   description: string;
@@ -87,14 +87,10 @@ export const DrugInteractionWarning = ({ cartItems }: DrugInteractionWarningProp
           setInteractions(data?.interactions || []);
         }
       } catch (err) {
-        if (err instanceof PharmacyAiError && err.status === 429) {
-          setError('AI busy, please try again');
-          setInteractions([]);
-        } else {
-          console.error('Failed to check drug interactions:', err);
-          setError(err instanceof Error ? err.message : 'Could not check drug interactions');
-          setInteractions([]);
-        }
+        const { message, status, debug } = getPharmacyAiUiError(err);
+        if (status) console.warn('[drug-interactions] pharmacy-ai error', { status, debug });
+        setError(message);
+        setInteractions([]);
       } finally {
         setIsLoading(false);
       }

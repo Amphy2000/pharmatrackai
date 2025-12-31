@@ -20,6 +20,8 @@ import { format, addYears } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Medication } from '@/types/medication';
 import { callPharmacyAiWithFallback, PharmacyAiError } from '@/lib/pharmacyAiClient';
+import { getPharmacyAiUiError } from '@/utils/pharmacyAiUiError';
+
 
 interface MultiImageInvoiceScannerProps {
   open: boolean;
@@ -137,17 +139,43 @@ export const MultiImageInvoiceScanner = ({ open, onOpenChange }: MultiImageInvoi
         const image = uploadedImages[i];
 
         try {
-          const data = await callPharmacyAiWithFallback<any>({
-            actions: ['scan_invoice', 'invoice_scan'],
-            payload: {
-              imageUrl: image.preview,
-              imageBase64: image.preview,
-              isMultiPage: true,
-              pageNumber: i + 1,
-              totalPages: totalImages,
-            },
-            pharmacy_id: pharmacy.id,
-          });
+          const maxAttempts = 3;
+          let lastErr: unknown = null;
+          let data: any = null;
+
+          for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+            try {
+              data = await callPharmacyAiWithFallback<any>({
+                actions: ['scan_invoice', 'invoice_scan'],
+                payload: {
+                  imageUrl: image.preview,
+                  imageBase64: image.preview,
+                  isMultiPage: true,
+                  pageNumber: i + 1,
+                  totalPages: totalImages,
+                },
+                pharmacy_id: pharmacy.id,
+              });
+              break;
+            } catch (err) {
+              lastErr = err;
+              if (err instanceof PharmacyAiError && err.status === 429 && attempt < maxAttempts) {
+                // Client-side backoff (the backend may also be retrying)
+                await new Promise((r) => setTimeout(r, 1200 * attempt));
+                continue;
+              }
+              throw err;
+            }
+          }
+
+          if (!data) {
+            throw lastErr ?? new Error('AI request failed');
+          }
+
+          if (data?.rateLimited) {
+            // Some backends respond with 200 + { rateLimited: true } instead of HTTP 429
+            throw new PharmacyAiError('Rate limited', { status: 429, bodyText: JSON.stringify(data) });
+          }
 
           if (data.items && Array.isArray(data.items)) {
             const processedItems: ExtractedItem[] = data.items.map((raw: any) => {
@@ -196,17 +224,16 @@ export const MultiImageInvoiceScanner = ({ open, onOpenChange }: MultiImageInvoi
           setProcessingProgress(((i + 1) / totalImages) * 100);
         } catch (err) {
           console.error(`Error processing page ${i + 1}:`, err);
-          
-          if (err instanceof PharmacyAiError) {
-            if (err.status === 429) {
-              console.warn(`Rate limited on page ${i + 1}, skipping`);
-            } else if (err.status === 401 || err.status === 403) {
-              setError('Authentication error. Check VITE_EXTERNAL_SUPABASE_PUBLISHABLE_KEY in Vercel.');
-              break;
-            } else {
-              console.error(`AI error on page ${i + 1}: ${err.message}`);
-            }
+
+          const { message, status, debug } = getPharmacyAiUiError(err);
+          if (status) console.warn('[multi-invoice-scan] pharmacy-ai error', { status, debug, page: i + 1 });
+
+          if (status === 401 || status === 403) {
+            setError(message);
+            break;
           }
+
+          // For rate-limit and other per-page errors, continue scanning the next page
           continue;
         }
       }
