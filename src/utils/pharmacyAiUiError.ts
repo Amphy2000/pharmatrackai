@@ -6,8 +6,7 @@ function looksLikeQuotaIssue(text: string) {
     t.includes('resource_exhausted') ||
     t.includes('quota') ||
     t.includes('insufficient') ||
-    t.includes('billing') ||
-    t.includes('rate limit')
+    t.includes('billing')
   );
 }
 
