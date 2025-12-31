@@ -88,9 +88,9 @@ export const FeatureDurationSelect = ({
 
       const selectedOption = DURATION_OPTIONS.find(o => o.value === duration);
 
-      // Open Paystack inline popup
+      // Open Paystack inline popup - key is returned from the edge function
       const handler = (window as any).PaystackPop.setup({
-        key: paymentData.key || import.meta.env.VITE_PAYSTACK_PUBLIC_KEY,
+        key: paymentData.key,
         email: paymentData.email,
         amount: selectedOption!.price * 100, // Convert to kobo
         ref: paymentData.reference,

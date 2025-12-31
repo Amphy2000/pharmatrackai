@@ -112,13 +112,18 @@ serve(async (req) => {
 
     console.log("Payment initialized:", result.data.reference);
 
+    const paystackPublicKey = Deno.env.get("PAYSTACK_PUBLIC_KEY");
+    if (!paystackPublicKey) {
+      throw new Error("PAYSTACK_PUBLIC_KEY not configured");
+    }
+
     return new Response(JSON.stringify({
       authorization_url: result.data.authorization_url,
       access_code: result.data.access_code,
       reference: result.data.reference,
       amount: priceKobo / 100,
       email: pharmacyEmail,
-      key: Deno.env.get("PAYSTACK_PUBLIC_KEY") || "pk_live_YOUR_KEY", // This should be configured
+      key: paystackPublicKey,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
