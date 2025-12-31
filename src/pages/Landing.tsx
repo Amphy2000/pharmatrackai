@@ -93,7 +93,7 @@ const Landing = () => {
   // Annual discount rate (40% off)
   const ANNUAL_DISCOUNT = 0.4;
 
-  // NGN Pricing (4-Tier Model with Lite tier)
+  // NGN Pricing (3-Tier Model)
   const ngnPricing = {
     lite: {
       name: 'Lite',
@@ -110,21 +110,6 @@ const Landing = () => {
       highlight: false,
       isNew: true
     },
-    starter: {
-      name: 'Switch & Save',
-      tagline: 'Lifetime License Feel',
-      setup: '₦150,000',
-      monthly: '₦10,000',
-      monthlyPrice: 10000,
-      annual: `₦${Math.round(10000 * 12 * (1 - ANNUAL_DISCOUNT)).toLocaleString()}`,
-      annualPrice: Math.round(10000 * 12 * (1 - ANNUAL_DISCOUNT)),
-      setupLabel: 'One-time Setup',
-      target: 'Pharmacies wanting ownership',
-      features: ['Everything in Lite', 'Lifetime License Feel', '5 User Accounts', 'Advanced Reports', 'Priority Email Support'],
-      notIncluded: ['AI Features', 'Multi-Branch'],
-      highlight: false,
-      isNew: false
-    },
     pro: {
       name: 'AI Powerhouse',
       tagline: 'Stop Drug Waste with AI',
@@ -135,7 +120,7 @@ const Landing = () => {
       annualPrice: Math.round(35000 * 12 * (1 - ANNUAL_DISCOUNT)),
       setupLabel: 'Zero Setup Fee',
       target: 'Fast-growing pharmacies using AI',
-      features: ['Everything in Starter', 'AI Invoice Scanner', 'Automated Expiry Discounting', 'Demand Forecasting AI', 'Unlimited Users', 'Multi-Branch Ready', 'Staff Clock-in Tracking', 'NAFDAC Compliance Reports', 'Controlled Drugs Register', 'Priority WhatsApp Support'],
+      features: ['Everything in Lite', 'AI Invoice Scanner', 'Automated Expiry Discounting', 'Demand Forecasting AI', 'Unlimited Users', 'Multi-Branch Ready', 'Staff Clock-in Tracking', 'NAFDAC Compliance Reports', 'Controlled Drugs Register', 'Priority WhatsApp Support'],
       notIncluded: [],
       highlight: true,
       isNew: false,
@@ -1377,8 +1362,8 @@ const Landing = () => {
             </div>
           </motion.div>
 
-          {/* NGN Pricing - 4 Tier Grid */}
-          {!isInternational && <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4 max-w-7xl mx-auto">
+          {/* NGN Pricing - 3 Tier Grid */}
+          {!isInternational && <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
               {Object.entries(ngnPricing).map(([key, plan], index) => <motion.div key={key} initial={{
             opacity: 0,
             y: 30

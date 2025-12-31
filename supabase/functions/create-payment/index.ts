@@ -10,6 +10,7 @@ const corsHeaders = {
 // Annual discount: 40% off
 const ANNUAL_DISCOUNT = 0.4;
 
+// 3-tier pricing model: Lite, Pro, Enterprise
 const PLAN_CONFIG = {
   lite: { 
     setupFee: 0,
@@ -17,11 +18,12 @@ const PLAN_CONFIG = {
     annualFee: Math.round(750000 * 12 * (1 - ANNUAL_DISCOUNT)),  // ₦54,000/year
     isHybrid: false,
   },
+  // Legacy starter plan - maps to lite for existing subscribers
   starter: { 
-    setupFee: 15000000,   // ₦150,000 one-time setup
-    monthlyFee: 1000000,  // ₦10,000/month maintenance
-    annualFee: Math.round(1000000 * 12 * (1 - ANNUAL_DISCOUNT)),  // ₦72,000/year
-    isHybrid: true,
+    setupFee: 0,
+    monthlyFee: 750000,   // Treated as lite now
+    annualFee: Math.round(750000 * 12 * (1 - ANNUAL_DISCOUNT)),
+    isHybrid: false,
   },
   pro: { 
     setupFee: 0,

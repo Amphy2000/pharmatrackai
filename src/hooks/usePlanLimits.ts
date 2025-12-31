@@ -18,7 +18,7 @@ export interface PlanLimits {
   hasPrioritySupport: boolean;
 }
 
-// Feature sets aligned with Landing page and SubscriptionManagement
+// Feature sets aligned with Landing page and SubscriptionManagement (3-tier model)
 const PLAN_FEATURES = {
   lite: {
     maxUsers: 2,
@@ -42,15 +42,18 @@ const PLAN_FEATURES = {
     hasStaffClockIn: false,
     hasPrioritySupport: false,
   },
+  // Keep starter as fallback for existing subscribers, maps to lite features
   starter: {
-    maxUsers: 5,
+    maxUsers: 2,
     maxBranches: 1,
     features: [
-      'Everything in Lite',
-      'Lifetime License Feel',
-      '5 User Accounts',
-      'Advanced Reports',
-      'Priority Email Support'
+      'Basic POS System',
+      'Cloud Backups',
+      '2 User Accounts',
+      'Unlimited SKUs',
+      'Expiry Tracking',
+      'Basic Reports',
+      'Email Support'
     ],
     hasAIFeatures: false,
     hasMultiBranch: false,
@@ -66,7 +69,7 @@ const PLAN_FEATURES = {
     maxUsers: 999,
     maxBranches: 10,
     features: [
-      'Everything in Starter',
+      'Everything in Lite',
       'AI Invoice Scanner',
       'Automated Expiry Discounting',
       'Demand Forecasting AI',
@@ -116,14 +119,29 @@ export const usePlanLimits = () => {
   const { pharmacy, isLoading } = usePharmacy();
 
   const limits = useMemo((): PlanLimits => {
-    const plan = pharmacy?.subscription_plan || 'starter';
-    const planConfig = PLAN_FEATURES[plan as keyof typeof PLAN_FEATURES] || PLAN_FEATURES.starter;
+    const plan = pharmacy?.subscription_plan || 'lite';
+    const planConfig = PLAN_FEATURES[plan as keyof typeof PLAN_FEATURES] || PLAN_FEATURES.lite;
+
+    // Map plan IDs to display names
+    const getPlanName = (planId: string) => {
+      switch (planId) {
+        case 'lite':
+        case 'starter': // Legacy fallback
+          return 'Lite';
+        case 'pro':
+          return 'AI Powerhouse';
+        case 'enterprise':
+          return 'Enterprise';
+        default:
+          return 'Lite';
+      }
+    };
 
     return {
       maxUsers: planConfig.maxUsers,
       maxBranches: planConfig.maxBranches,
-      canAddBranches: plan !== 'starter',
-      planName: plan === 'starter' ? 'Switch & Save' : plan === 'pro' ? 'AI Powerhouse' : 'Enterprise',
+      canAddBranches: plan === 'pro' || plan === 'enterprise',
+      planName: getPlanName(plan),
       features: planConfig.features,
       hasAIFeatures: planConfig.hasAIFeatures,
       hasMultiBranch: planConfig.hasMultiBranch,
@@ -140,6 +158,6 @@ export const usePlanLimits = () => {
   return {
     ...limits,
     isLoading,
-    plan: pharmacy?.subscription_plan || 'starter',
+    plan: pharmacy?.subscription_plan || 'lite',
   };
 };
