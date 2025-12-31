@@ -143,6 +143,32 @@ export const SubscriptionManagement = () => {
     );
   };
 
+
+  const extractAuthorizationUrl = (payload: unknown): string | undefined => {
+    if (!payload) return undefined;
+
+    let obj: any = payload;
+
+    // Some function deployments return JSON as a string if Content-Type isn't application/json
+    if (typeof obj === 'string') {
+      try {
+        obj = JSON.parse(obj);
+      } catch {
+        return undefined;
+      }
+    }
+
+    // Support multiple shapes:
+    // - { authorization_url }
+    // - { data: { authorization_url } } (Paystack raw shape)
+    // - { data: { data: { authorization_url } } }
+    return (
+      obj?.authorization_url ??
+      obj?.data?.authorization_url ??
+      obj?.data?.data?.authorization_url
+    );
+  };
+
   const handleUpgrade = async (planId: string) => {
     setIsProcessing(planId);
     try {
@@ -216,10 +242,12 @@ export const SubscriptionManagement = () => {
         }
       }
 
-      const { authorization_url } = response.data || {};
-      if (authorization_url) {
-        window.location.href = authorization_url;
+
+      const authorizationUrl = extractAuthorizationUrl(response.data);
+      if (authorizationUrl) {
+        window.location.href = authorizationUrl;
       } else {
+        console.error('create-payment unexpected response:', response.data);
         throw new Error('No payment URL received');
       }
     } catch (error: any) {
@@ -344,10 +372,12 @@ export const SubscriptionManagement = () => {
         throw new Error(response.error.message);
       }
 
-      const { authorization_url } = response.data || {};
-      if (authorization_url) {
-        window.location.href = authorization_url;
+
+      const authorizationUrl = extractAuthorizationUrl(response.data);
+      if (authorizationUrl) {
+        window.location.href = authorizationUrl;
       } else {
+        console.error('upgrade-branches unexpected response:', response.data);
         throw new Error('No payment URL received');
       }
     } catch (error: any) {
