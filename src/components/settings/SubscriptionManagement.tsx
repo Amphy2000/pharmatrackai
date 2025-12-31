@@ -153,9 +153,6 @@ export const SubscriptionManagement = () => {
       }
 
       const response = await supabase.functions.invoke('create-payment', {
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
         body: {
           plan: planId,
           callback_url: `${window.location.origin}/settings?tab=subscription`,
@@ -167,7 +164,12 @@ export const SubscriptionManagement = () => {
 
         // If backend still says session expired/unauthorized, force re-login.
         const msg = detailed.toLowerCase();
-        if (msg.includes('unauthorized') || msg.includes('session expired') || msg.includes('session_not_found')) {
+        if (
+          msg.includes('unauthorized') ||
+          msg.includes('session expired') ||
+          msg.includes('session_not_found') ||
+          msg.includes('invalid jwt')
+        ) {
           await supabase.auth.signOut();
           toast({
             title: 'Session expired',
@@ -290,9 +292,6 @@ export const SubscriptionManagement = () => {
       }
 
       const response = await supabase.functions.invoke('upgrade-branches', {
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
         body: {
           new_branch_limit: newLimit,
           callback_url: `${window.location.origin}/settings?tab=subscription`,
