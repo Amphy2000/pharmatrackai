@@ -1,10 +1,14 @@
 import { useState, useEffect } from 'react';
-import { Sparkles, TrendingUp, AlertTriangle, Lightbulb, Loader2, Brain, Zap, Target, DollarSign, Clock, Package, ArrowRight } from 'lucide-react';
+import { Sparkles, TrendingUp, AlertTriangle, Lightbulb, Loader2, Brain, Zap, Target, DollarSign, Clock, Package, ArrowRight, AlertCircle } from 'lucide-react';
 import { Medication } from '@/types/medication';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { useBranchContext } from '@/contexts/BranchContext';
+import { usePharmacy } from '@/hooks/usePharmacy';
+
+// External Supabase project URL
+const EXTERNAL_SUPABASE_URL = 'https://sdejkpweecasdzsixxbd.supabase.co';
 
 interface AIInsightsPanelProps {
   medications: Medication[];
@@ -25,8 +29,10 @@ interface Insight {
 export const AIInsightsPanel = ({ medications, branchName }: AIInsightsPanelProps) => {
   const [insights, setInsights] = useState<Insight[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRateLimited, setIsRateLimited] = useState(false);
   const { formatPrice, currency } = useCurrency();
   const { currentBranchName } = useBranchContext();
+  const { pharmacyId } = usePharmacy();
   const currencySymbol = currency === 'NGN' ? '₦' : '$';
   
   const displayBranchName = branchName || currentBranchName || 'Your Branch';
@@ -40,13 +46,52 @@ export const AIInsightsPanel = ({ medications, branchName }: AIInsightsPanelProp
       }
 
       setIsLoading(true);
+      setIsRateLimited(false);
       
       try {
-        const { data, error } = await supabase.functions.invoke('generate-insights', {
-          body: { medications, currency, currencySymbol }
+        // Get auth token if available
+        const { data: sessionData } = await supabase.auth.getSession();
+        const token = sessionData?.session?.access_token;
+
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/json',
+        };
+        
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+
+        const response = await fetch(`${EXTERNAL_SUPABASE_URL}/functions/v1/generate-insights`, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify({ 
+            medications, 
+            currency, 
+            currencySymbol,
+            pharmacy_id: pharmacyId 
+          }),
         });
 
-        if (error) throw error;
+        if (response.status === 429) {
+          setIsRateLimited(true);
+          console.log('Rate limited, using fallback insights');
+          const fallbackInsights = generateFallbackInsights(medications);
+          setInsights(fallbackInsights);
+          return;
+        }
+
+        if (!response.ok) {
+          throw new Error(`Request failed with status ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        if (data.rateLimited) {
+          setIsRateLimited(true);
+          const fallbackInsights = generateFallbackInsights(medications);
+          setInsights(fallbackInsights);
+          return;
+        }
 
         const mappedInsights: Insight[] = (data.insights || []).map((insight: { 
           id: string; 
@@ -77,8 +122,7 @@ export const AIInsightsPanel = ({ medications, branchName }: AIInsightsPanelProp
     };
 
     generateInsights();
-  }, [medications]);
-
+  }, [medications, pharmacyId]);
   const getIconForCategory = (category: string) => {
     switch (category) {
       case 'urgent': return AlertTriangle;
@@ -247,9 +291,20 @@ export const AIInsightsPanel = ({ medications, branchName }: AIInsightsPanelProp
             <div>
               <h2 className="text-xl font-bold font-display flex items-center gap-2">
                 AI Business Insights
-                <span className="px-2 py-0.5 text-xs font-medium bg-secondary/20 text-secondary rounded-full">LIVE</span>
+                {isRateLimited ? (
+                  <span className="px-2 py-0.5 text-xs font-medium bg-warning/20 text-warning rounded-full flex items-center gap-1">
+                    <AlertCircle className="h-3 w-3" />
+                    CACHED
+                  </span>
+                ) : (
+                  <span className="px-2 py-0.5 text-xs font-medium bg-secondary/20 text-secondary rounded-full">LIVE</span>
+                )}
               </h2>
-              <p className="text-sm text-muted-foreground">Actionable recommendations for {displayBranchName}</p>
+              <p className="text-sm text-muted-foreground">
+                {isRateLimited 
+                  ? 'Using cached insights (AI busy, try again later)' 
+                  : `Actionable recommendations for ${displayBranchName}`}
+              </p>
             </div>
           </div>
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
