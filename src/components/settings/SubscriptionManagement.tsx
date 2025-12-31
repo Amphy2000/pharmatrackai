@@ -175,12 +175,16 @@ export const SubscriptionManagement = () => {
         callback_url: `${window.location.origin}/settings?tab=subscription`,
       };
 
-      const invokeCreatePayment = () =>
+      const invokeCreatePayment = (accessToken: string) =>
         supabase.functions.invoke('create-payment', {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+          },
           body: paymentBody,
         });
 
-      let response = await invokeCreatePayment();
+      let accessToken = session.access_token;
+      let response = await invokeCreatePayment(accessToken);
 
       if (response.error) {
         const detailed = await describeFunctionsInvokeError(response.error);
@@ -192,7 +196,8 @@ export const SubscriptionManagement = () => {
 
           // If refresh succeeded, retry the payment call once with the fresh token.
           if (!refreshError && refreshed?.session) {
-            response = await invokeCreatePayment();
+            accessToken = refreshed.session.access_token;
+            response = await invokeCreatePayment(accessToken);
             if (response.error) {
               const detailedRetry = await describeFunctionsInvokeError(response.error);
               throw new Error(detailedRetry);
@@ -239,6 +244,9 @@ export const SubscriptionManagement = () => {
       }
 
       const response = await supabase.functions.invoke('manage-subscription', {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
         body: { action: 'toggle_auto_renew' },
       });
 
@@ -282,6 +290,9 @@ export const SubscriptionManagement = () => {
         : CANCELLATION_REASONS.find(r => r.value === cancelReason)?.label || cancelReason;
 
       const response = await supabase.functions.invoke('manage-subscription', {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
         body: { 
           action: 'cancel',
           cancellation_reason: fullReason,
@@ -320,6 +331,9 @@ export const SubscriptionManagement = () => {
       }
 
       const response = await supabase.functions.invoke('upgrade-branches', {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
         body: {
           new_branch_limit: newLimit,
           callback_url: `${window.location.origin}/settings?tab=subscription`,
