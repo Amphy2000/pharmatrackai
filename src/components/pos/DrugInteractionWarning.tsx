@@ -8,6 +8,7 @@ import { usePharmacy } from '@/hooks/usePharmacy';
 import { callPharmacyAiWithFallback } from '@/lib/pharmacyAiClient';
 import { getPharmacyAiUiError } from '@/utils/pharmacyAiUiError';
 
+interface DrugInteraction {
   drugs: string[];
   severity: 'low' | 'moderate' | 'high' | 'severe';
   description: string;
