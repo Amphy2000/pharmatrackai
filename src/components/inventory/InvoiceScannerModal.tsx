@@ -265,12 +265,19 @@ export const InvoiceScannerModal = ({ open, onOpenChange }: InvoiceScannerModalP
         description: `Found ${items.length} items, ${items.filter(i => i.matched).length} matched. Auto-margin: ${defaultMargin}%`,
       });
     } catch (err) {
-      if (err instanceof PharmacyAiError && err.status === 429) {
-        setError('AI is busy. Please wait and try again.');
+      console.error('Error processing invoice:', err);
+      
+      if (err instanceof PharmacyAiError) {
+        if (err.status === 429) {
+          setError('AI is busy (rate limited). Please wait 10 seconds and try again.');
+        } else if (err.status === 401 || err.status === 403) {
+          setError('Authentication error. Check VITE_EXTERNAL_SUPABASE_PUBLISHABLE_KEY in Vercel.');
+        } else {
+          setError(`AI error: ${err.message || `Status ${err.status}`}`);
+        }
         return;
       }
 
-      console.error('Error processing invoice:', err);
       setError(err instanceof Error ? err.message : 'Failed to process invoice. Please try again.');
     } finally {
       setIsProcessing(false);
