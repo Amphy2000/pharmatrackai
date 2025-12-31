@@ -34,6 +34,121 @@ export const AIInsightsPanel = ({ medications, branchName }: AIInsightsPanelProp
   
   const displayBranchName = branchName || currentBranchName || 'Your Branch';
 
+  const getIconForCategory = (category: string) => {
+    switch (category) {
+      case 'urgent': return AlertTriangle;
+      case 'expiry': return Clock;
+      case 'reorder': return Package;
+      case 'profit': return DollarSign;
+      case 'demand': return TrendingUp;
+      case 'savings': return Sparkles;
+      case 'warning': return AlertTriangle;
+      case 'suggestion': return TrendingUp;
+      default: return Lightbulb;
+    }
+  };
+
+  const generateFallbackInsights = (meds: Medication[]): Insight[] => {
+    const fallbackInsights: Insight[] = [];
+    const today = new Date();
+    const thirtyDaysFromNow = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+    const expired = meds.filter(m => new Date(m.expiry_date) < today);
+    const expiringSoon = meds.filter(m => {
+      const expiry = new Date(m.expiry_date);
+      return expiry >= today && expiry <= thirtyDaysFromNow;
+    });
+    const lowStock = meds.filter(m => m.current_stock <= m.reorder_level);
+    const outOfStock = meds.filter(m => m.current_stock === 0);
+
+    // Calculate values
+    const expiredValue = expired.reduce((sum, m) => sum + (m.current_stock * Number(m.unit_price)), 0);
+    const expiringValue = expiringSoon.reduce((sum, m) => sum + (m.current_stock * Number(m.unit_price)), 0);
+
+    if (expired.length > 0) {
+      fallbackInsights.push({
+        id: '1',
+        type: 'warning',
+        message: `${expired.length} medications expired with ${formatPrice(expiredValue)} at risk. Remove from shelves immediately to maintain compliance.`,
+        action: `Unshelve ${expired[0]?.name} and ${expired.length - 1} other expired items now`,
+        impact: formatPrice(expiredValue),
+        category: 'urgent',
+        icon: AlertTriangle,
+        priority: 'high',
+      });
+    }
+
+    if (expiringSoon.length > 0) {
+      const discountRate = 25;
+      const recoveryAmount = expiringValue * (1 - discountRate / 100);
+      fallbackInsights.push({
+        id: '2',
+        type: 'suggestion',
+        message: `${expiringSoon.length} items expiring within 30 days. Apply ${discountRate}% discount to recover ${formatPrice(recoveryAmount)} before expiry.`,
+        action: `Set ${discountRate}% discount on ${expiringSoon[0]?.name}`,
+        impact: formatPrice(recoveryAmount),
+        category: 'expiry',
+        icon: Clock,
+        priority: 'medium',
+      });
+    }
+
+    if (lowStock.length > 0) {
+      const restockCost = lowStock.reduce((sum, m) => sum + ((m.reorder_level - m.current_stock) * Number(m.unit_price)), 0);
+      fallbackInsights.push({
+        id: '3',
+        type: 'suggestion',
+        message: `${lowStock.length} items below reorder level. Prioritize ${lowStock[0]?.name} to prevent ${formatPrice(restockCost)} in lost sales.`,
+        action: `Reorder ${lowStock[0]?.name} (${lowStock[0]?.reorder_level - lowStock[0]?.current_stock} units needed)`,
+        impact: formatPrice(restockCost),
+        category: 'reorder',
+        icon: Package,
+        priority: 'medium',
+      });
+    }
+
+    if (outOfStock.length > 0) {
+      fallbackInsights.push({
+        id: '4',
+        type: 'warning',
+        message: `${outOfStock.length} products completely out of stock. Customers are walking away. Emergency restock needed for ${outOfStock[0]?.name}.`,
+        action: `Place emergency order for ${outOfStock[0]?.name}`,
+        impact: 'Lost customers',
+        category: 'urgent',
+        icon: AlertTriangle,
+        priority: 'high',
+      });
+    }
+
+    // Profit optimization
+    const totalValue = meds.reduce((sum, m) => sum + (m.current_stock * Number(m.unit_price)), 0);
+    fallbackInsights.push({
+      id: '5',
+      type: 'info',
+      message: `Total inventory value: ${formatPrice(totalValue)}. Review slow-moving items to free up capital for fast sellers.`,
+      action: 'Analyze slow-moving inventory',
+      impact: formatPrice(totalValue * 0.1),
+      category: 'profit',
+      icon: DollarSign,
+      priority: 'low',
+    });
+
+    // Demand forecast
+    const avgStock = meds.reduce((sum, m) => sum + m.current_stock, 0) / meds.length;
+    fallbackInsights.push({
+      id: '6',
+      type: 'info',
+      message: `Average ${Math.round(avgStock)} units per SKU. AI recommends increasing stock for top 20% fast-movers by 15% to capture more sales.`,
+      action: 'Identify and boost fast-moving inventory',
+      impact: '15% sales increase',
+      category: 'demand',
+      icon: TrendingUp,
+      priority: 'low',
+    });
+
+    return fallbackInsights.slice(0, 6);
+  };
+
   useEffect(() => {
     const generateInsights = async () => {
       if (medications.length === 0) {
@@ -44,58 +159,28 @@ export const AIInsightsPanel = ({ medications, branchName }: AIInsightsPanelProp
 
       setIsLoading(true);
       setIsRateLimited(false);
-      
+
       try {
-        // Get auth token if available
-        const { data: sessionData } = await supabase.auth.getSession();
-        const token = sessionData?.session?.access_token;
-
-        const headers: Record<string, string> = {
-          'Content-Type': 'application/json',
-        };
-        
-        if (token) {
-          headers['Authorization'] = `Bearer ${token}`;
-        }
-
-        const response = await fetch(PHARMACY_AI_URL, {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({ 
-            action: 'generate_insights',
-            payload: { 
-              medications, 
-              currency, 
-              currencySymbol 
-            },
-            pharmacy_id: pharmacyId 
-          }),
+        const data = await callPharmacyAiWithFallback<any>({
+          actions: ['business_analysis', 'generate_insights'],
+          payload: {
+            medications,
+            currency,
+            currencySymbol,
+          },
+          pharmacy_id: pharmacyId,
         });
 
-        if (response.status === 429) {
+        if (data?.rateLimited) {
           setIsRateLimited(true);
-          console.log('Rate limited, using fallback insights');
-          const fallbackInsights = generateFallbackInsights(medications);
-          setInsights(fallbackInsights);
+          const fallback = generateFallbackInsights(medications);
+          setInsights(fallback);
           return;
         }
 
-        if (!response.ok) {
-          throw new Error(`Request failed with status ${response.status}`);
-        }
-
-        const data = await response.json();
-
-        if (data.rateLimited) {
-          setIsRateLimited(true);
-          const fallbackInsights = generateFallbackInsights(medications);
-          setInsights(fallbackInsights);
-          return;
-        }
-
-        const mappedInsights: Insight[] = (data.insights || []).map((insight: { 
-          id: string; 
-          type: string; 
+        const mappedInsights: Insight[] = (data.insights || []).map((insight: {
+          id: string;
+          type: string;
           message: string;
           action?: string;
           impact?: string;
@@ -113,130 +198,19 @@ export const AIInsightsPanel = ({ medications, branchName }: AIInsightsPanelProp
 
         setInsights(mappedInsights.slice(0, 6));
       } catch (error) {
+        if (error instanceof PharmacyAiError && error.status === 429) {
+          setIsRateLimited(true);
+        }
         console.error('Failed to generate AI insights:', error);
-        const fallbackInsights = generateFallbackInsights(medications);
-        setInsights(fallbackInsights);
+        const fallback = generateFallbackInsights(medications);
+        setInsights(fallback);
       } finally {
         setIsLoading(false);
       }
     };
 
     generateInsights();
-  }, [medications, pharmacyId]);
-  const getIconForCategory = (category: string) => {
-    switch (category) {
-      case 'urgent': return AlertTriangle;
-      case 'expiry': return Clock;
-      case 'reorder': return Package;
-      case 'profit': return DollarSign;
-      case 'demand': return TrendingUp;
-      case 'savings': return Sparkles;
-      case 'warning': return AlertTriangle;
-      case 'suggestion': return TrendingUp;
-      default: return Lightbulb;
-    }
-  };
-
-  const generateFallbackInsights = (meds: Medication[]): Insight[] => {
-    const insights: Insight[] = [];
-    const today = new Date();
-    const thirtyDaysFromNow = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000);
-
-    const expired = meds.filter(m => new Date(m.expiry_date) < today);
-    const expiringSoon = meds.filter(m => {
-      const expiry = new Date(m.expiry_date);
-      return expiry >= today && expiry <= thirtyDaysFromNow;
-    });
-    const lowStock = meds.filter(m => m.current_stock <= m.reorder_level);
-    const outOfStock = meds.filter(m => m.current_stock === 0);
-
-    // Calculate values
-    const expiredValue = expired.reduce((sum, m) => sum + (m.current_stock * Number(m.unit_price)), 0);
-    const expiringValue = expiringSoon.reduce((sum, m) => sum + (m.current_stock * Number(m.unit_price)), 0);
-
-    if (expired.length > 0) {
-      insights.push({
-        id: '1',
-        type: 'warning',
-        message: `${expired.length} medications expired with ${formatPrice(expiredValue)} at risk. Remove from shelves immediately to maintain compliance.`,
-        action: `Unshelve ${expired[0]?.name} and ${expired.length - 1} other expired items now`,
-        impact: formatPrice(expiredValue),
-        category: 'urgent',
-        icon: AlertTriangle,
-        priority: 'high',
-      });
-    }
-
-    if (expiringSoon.length > 0) {
-      const discountRate = 25;
-      const recoveryAmount = expiringValue * (1 - discountRate / 100);
-      insights.push({
-        id: '2',
-        type: 'suggestion',
-        message: `${expiringSoon.length} items expiring within 30 days. Apply ${discountRate}% discount to recover ${formatPrice(recoveryAmount)} before expiry.`,
-        action: `Set ${discountRate}% discount on ${expiringSoon[0]?.name}`,
-        impact: formatPrice(recoveryAmount),
-        category: 'expiry',
-        icon: Clock,
-        priority: 'medium',
-      });
-    }
-
-    if (lowStock.length > 0) {
-      const restockCost = lowStock.reduce((sum, m) => sum + ((m.reorder_level - m.current_stock) * Number(m.unit_price)), 0);
-      insights.push({
-        id: '3',
-        type: 'suggestion',
-        message: `${lowStock.length} items below reorder level. Prioritize ${lowStock[0]?.name} to prevent ${formatPrice(restockCost)} in lost sales.`,
-        action: `Reorder ${lowStock[0]?.name} (${lowStock[0]?.reorder_level - lowStock[0]?.current_stock} units needed)`,
-        impact: formatPrice(restockCost),
-        category: 'reorder',
-        icon: Package,
-        priority: 'medium',
-      });
-    }
-
-    if (outOfStock.length > 0) {
-      insights.push({
-        id: '4',
-        type: 'warning',
-        message: `${outOfStock.length} products completely out of stock. Customers are walking away. Emergency restock needed for ${outOfStock[0]?.name}.`,
-        action: `Place emergency order for ${outOfStock[0]?.name}`,
-        impact: 'Lost customers',
-        category: 'urgent',
-        icon: AlertTriangle,
-        priority: 'high',
-      });
-    }
-
-    // Profit optimization
-    const totalValue = meds.reduce((sum, m) => sum + (m.current_stock * Number(m.unit_price)), 0);
-    insights.push({
-      id: '5',
-      type: 'info',
-      message: `Total inventory value: ${formatPrice(totalValue)}. Review slow-moving items to free up capital for fast sellers.`,
-      action: 'Analyze slow-moving inventory',
-      impact: formatPrice(totalValue * 0.1),
-      category: 'profit',
-      icon: DollarSign,
-      priority: 'low',
-    });
-
-    // Demand forecast
-    const avgStock = meds.reduce((sum, m) => sum + m.current_stock, 0) / meds.length;
-    insights.push({
-      id: '6',
-      type: 'info',
-      message: `Average ${Math.round(avgStock)} units per SKU. AI recommends increasing stock for top 20% fast-movers by 15% to capture more sales.`,
-      action: 'Identify and boost fast-moving inventory',
-      impact: '15% sales increase',
-      category: 'demand',
-      icon: TrendingUp,
-      priority: 'low',
-    });
-
-    return insights.slice(0, 6);
-  };
+  }, [medications, pharmacyId, currency, currencySymbol]);
 
   const typeStyles = {
     warning: {
@@ -263,15 +237,6 @@ export const AIInsightsPanel = ({ medications, branchName }: AIInsightsPanelProp
     high: 'bg-destructive/20 text-destructive border-destructive/30',
     medium: 'bg-warning/20 text-warning border-warning/30',
     low: 'bg-muted text-muted-foreground border-muted',
-  };
-
-  const categoryLabels = {
-    urgent: 'Urgent Action',
-    expiry: 'Expiry Alert',
-    reorder: 'Restock',
-    profit: 'Profit',
-    demand: 'Demand',
-    savings: 'Savings',
   };
 
   return (
