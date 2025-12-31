@@ -13,6 +13,9 @@ import { useBranches } from '@/hooks/useBranches';
 import { useToast } from '@/hooks/use-toast';
 import { PERMISSION_LABELS, ROLE_TEMPLATES, PermissionKey } from '@/hooks/usePermissions';
 
+// External Supabase URL for edge functions
+const EXTERNAL_FUNCTIONS_URL = 'https://sdejkpweecasdzsixxbd.supabase.co/functions/v1';
+
 interface AddStaffModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -78,19 +81,30 @@ export const AddStaffModal = ({ isOpen, onClose, onSuccess, mode = 'owner', forc
         throw new Error('You must be assigned to a branch to create staff accounts.');
       }
 
-      // Call edge function to create staff (avoids session switching)
-      const response = await supabase.functions.invoke('create-staff', {
-        body: {
+      // Get auth token for the request
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+
+      // Call external edge function to create staff
+      const fetchResponse = await fetch(`${EXTERNAL_FUNCTIONS_URL}/create-staff`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
           email: formData.email.trim(),
           password: formData.password,
           fullName: formData.fullName.trim(),
           phone: formData.phone?.trim() || null,
           role: effectiveRole,
           pharmacyId: pharmacy.id,
-          branchId: effectiveBranchId, // null means all branches
+          branchId: effectiveBranchId,
           permissions: effectiveRole === 'staff' ? selectedPermissions : [],
-        },
+        }),
       });
+
+      const response = { data: await fetchResponse.json(), error: !fetchResponse.ok ? { message: 'Request failed' } : null };
 
       const rawErrorMessage =
         (response.data as any)?.error ??

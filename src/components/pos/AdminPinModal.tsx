@@ -7,6 +7,9 @@ import { ShieldCheck, Lock, AlertTriangle, Loader2 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
+// External Supabase URL for edge functions
+const EXTERNAL_FUNCTIONS_URL = 'https://sdejkpweecasdzsixxbd.supabase.co/functions/v1';
+
 interface AdminPinModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -40,13 +43,25 @@ export const AdminPinModal = ({
     setError(null);
 
     try {
-      const { data, error: funcError } = await supabase.functions.invoke('verify-admin-pin', {
-        body: {
+      // Get auth token for the request
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+
+      const fetchResponse = await fetch(`${EXTERNAL_FUNCTIONS_URL}/verify-admin-pin`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        },
+        body: JSON.stringify({
           pharmacyId,
           pin,
           action: 'verify'
-        }
+        }),
       });
+
+      const data = await fetchResponse.json();
+      const funcError = !fetchResponse.ok ? { message: data?.error || 'Request failed' } : null;
 
       if (funcError) {
         console.error('PIN verification error:', funcError);

@@ -21,6 +21,9 @@ import {
   FileSpreadsheet
 } from 'lucide-react';
 
+// External Supabase URL for edge functions
+const EXTERNAL_FUNCTIONS_URL = 'https://sdejkpweecasdzsixxbd.supabase.co/functions/v1';
+
 type Step = 'country' | 'pharmacy' | 'import';
 
 const OnboardingWizard = () => {
@@ -130,12 +133,16 @@ const OnboardingWizard = () => {
       if (phone) {
         try {
           const ownerName = user.user_metadata?.full_name || pharmacyName;
-          await supabase.functions.invoke('send-welcome-sms', {
-            body: {
+          await fetch(`${EXTERNAL_FUNCTIONS_URL}/send-welcome-sms`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
               pharmacyId: pharmacy.id,
               ownerName,
               phone,
-            },
+            }),
           });
         } catch (smsError) {
           // Log but don't fail - SMS is not critical
