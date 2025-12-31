@@ -26,6 +26,7 @@ const PLAN_CONFIG = {
 };
 
 serve(async (req) => {
+  // Handle CORS preflight requests
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -33,7 +34,8 @@ serve(async (req) => {
   try {
     const paystackSecret = Deno.env.get("PAYSTACK_SECRET_KEY");
     if (!paystackSecret) {
-      throw new Error("PAYSTACK_SECRET_KEY not configured");
+      console.error("PAYSTACK_SECRET_KEY not configured");
+      throw new Error("Payment service not configured. Please contact support.");
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -42,7 +44,11 @@ serve(async (req) => {
     // Get auth header and extract JWT token
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
-      throw new Error("No authorization header");
+      console.error("No authorization header provided");
+      return new Response(JSON.stringify({ error: "Authorization required" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const token = authHeader.replace("Bearer ", "");
@@ -53,12 +59,11 @@ serve(async (req) => {
     // Verify user with the JWT token
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     if (authError || !user) {
-      const code = (authError as any)?.code || (authError as any)?.error_code || 'unauthorized';
-      console.error("Auth error:", authError);
-      const message = code === 'session_not_found'
-        ? 'Session expired. Please sign in again.'
-        : 'Unauthorized';
-      return new Response(JSON.stringify({ error: message, code }), {
+      console.error("Auth error:", authError?.message || "No user found");
+      return new Response(JSON.stringify({ 
+        error: "Session expired. Please sign in again.",
+        code: "session_expired"
+      }), {
         status: 401,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -67,6 +72,7 @@ serve(async (req) => {
     console.log("Authenticated user:", user.id);
 
     const { plan, callback_url } = await req.json();
+    console.log("Payment request for plan:", plan);
 
     const planConfig = PLAN_CONFIG[plan as keyof typeof PLAN_CONFIG];
     if (!plan || !planConfig) {
@@ -74,28 +80,36 @@ serve(async (req) => {
     }
 
     // Get pharmacy for this user
-    const { data: staff } = await supabase
+    const { data: staff, error: staffError } = await supabase
       .from("pharmacy_staff")
       .select("pharmacy_id, pharmacies(email, name)")
       .eq("user_id", user.id)
       .eq("is_active", true)
       .maybeSingle();
 
+    if (staffError) {
+      console.error("Staff lookup error:", staffError.message);
+      throw new Error("Could not verify pharmacy membership");
+    }
+
     if (!staff?.pharmacy_id) {
-      throw new Error("Pharmacy not found");
+      console.error("No pharmacy found for user:", user.id);
+      throw new Error("No pharmacy found for your account");
     }
 
     const pharmacyEmail = (staff.pharmacies as any)?.email || user.email;
     const pharmacyName = (staff.pharmacies as any)?.name || "Pharmacy";
 
+    console.log("Pharmacy found:", staff.pharmacy_id, pharmacyName);
+
     // Determine amount based on plan type
-    // For hybrid plans (starter): charge setup fee first, then set up recurring
-    // For subscription plans (pro): charge monthly fee
     const chargeAmount = planConfig.isHybrid ? planConfig.setupFee : planConfig.monthlyFee;
 
     if (chargeAmount === 0) {
       throw new Error("Enterprise plan requires contacting sales");
     }
+
+    console.log("Initializing Paystack transaction for amount:", chargeAmount);
 
     // Create Paystack transaction
     const response = await fetch("https://api.paystack.co/transaction/initialize", {
@@ -121,17 +135,25 @@ serve(async (req) => {
     const result = await response.json();
 
     if (!result.status) {
+      console.error("Paystack error:", result.message);
       throw new Error(result.message || "Failed to initialize payment");
     }
 
+    console.log("Paystack transaction initialized:", result.data.reference);
+
     // Create pending payment record
-    await supabase.from("subscription_payments").insert({
+    const { error: insertError } = await supabase.from("subscription_payments").insert({
       pharmacy_id: staff.pharmacy_id,
       amount: chargeAmount / 100, // Convert from kobo to naira
       plan: plan,
       status: "pending",
       paystack_reference: result.data.reference,
     });
+
+    if (insertError) {
+      console.error("Payment record insert error:", insertError.message);
+      // Don't fail the request, payment can still proceed
+    }
 
     return new Response(JSON.stringify({
       authorization_url: result.data.authorization_url,
@@ -142,7 +164,7 @@ serve(async (req) => {
     });
   } catch (error: unknown) {
     console.error("Payment error:", error);
-    const message = error instanceof Error ? error.message : "Unknown error";
+    const message = error instanceof Error ? error.message : "Unknown error occurred";
     return new Response(JSON.stringify({ error: message }), {
       status: 400,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
