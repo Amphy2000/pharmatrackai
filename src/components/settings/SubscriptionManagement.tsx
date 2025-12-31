@@ -158,14 +158,14 @@ export const SubscriptionManagement = () => {
       }
     }
 
-    // Support multiple shapes:
+    // Support multiple shapes from edge function response:
+    // - { url } (direct url property)
     // - { authorization_url }
     // - { data: { authorization_url } } (Paystack raw shape)
-    // - { data: { data: { authorization_url } } }
     return (
+      obj?.url ??
       obj?.authorization_url ??
-      obj?.data?.authorization_url ??
-      obj?.data?.data?.authorization_url
+      obj?.data?.authorization_url
     );
   };
 
@@ -198,6 +198,7 @@ export const SubscriptionManagement = () => {
 
       const paymentBody = {
         plan: planId,
+        pharmacy_id: pharmacy?.id,
         callback_url: `${window.location.origin}/settings?tab=subscription`,
       };
 
