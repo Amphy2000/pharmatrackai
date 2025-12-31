@@ -18,7 +18,8 @@ import {
   Check, 
   ArrowRight, 
   ArrowLeft,
-  FileSpreadsheet
+  FileSpreadsheet,
+  LogOut
 } from 'lucide-react';
 
 // External Supabase URL for edge functions
@@ -177,11 +178,16 @@ const OnboardingWizard = () => {
 
   const getLicenseLabel = () => {
     switch (country) {
-      case 'NG': return 'NAFDAC License Number';
-      case 'GB': return 'MHRA Registration Number';
+      case 'NG': return 'PCN License Number';
+      case 'GB': return 'GPhC Registration Number';
       case 'US': return 'State Pharmacy License';
       default: return 'License Number';
     }
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    navigate('/');
   };
 
   // Show loading while checking if user already has pharmacy
@@ -202,6 +208,19 @@ const OnboardingWizard = () => {
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
       <div className="w-full max-w-2xl">
+        {/* Header with Logout */}
+        <div className="flex justify-end mb-4">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={handleLogout}
+            className="text-muted-foreground hover:text-foreground"
+          >
+            <LogOut className="h-4 w-4 mr-2" />
+            Logout
+          </Button>
+        </div>
+
         {/* Progress Header */}
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
@@ -280,7 +299,7 @@ const OnboardingWizard = () => {
                 <div className="p-4 rounded-xl bg-muted/50 space-y-2">
                   <p className="font-medium">{flagEmoji} {countryName} Settings:</p>
                   <ul className="text-sm text-muted-foreground space-y-1">
-                    <li>• {country === 'NG' ? 'NAFDAC' : country === 'GB' ? 'MHRA' : 'FDA'} Compliance</li>
+                    <li>• {country === 'NG' ? 'PCN/NAFDAC' : country === 'GB' ? 'GPhC' : 'State Board'} Compliance</li>
                     <li>• {country === 'NG' ? 'Nigerian Naira (₦)' : country === 'GB' ? 'British Pound (£)' : 'US Dollar ($)'} pricing</li>
                     <li>• Paystack payment processing (auto-converts for international cards)</li>
                   </ul>

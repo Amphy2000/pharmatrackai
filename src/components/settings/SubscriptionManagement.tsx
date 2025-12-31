@@ -37,27 +37,10 @@ const plans = [
     annualPrice: Math.round(7500 * 12 * (1 - ANNUAL_DISCOUNT)),
     setupLabel: 'No Setup Fee',
     target: 'New pharmacies starting digital',
-    features: ['Basic POS System', 'Cloud Backups', '2 User Accounts', 'Unlimited SKUs', 'Expiry Tracking', 'Basic Reports'],
+    features: ['Basic POS System', 'Cloud Backups', '2 User Accounts', 'Unlimited SKUs', 'Expiry Tracking', 'Basic Reports', 'Email Support'],
     popular: false,
     buttonText: 'Get Started',
     isNew: true,
-  },
-  {
-    id: 'starter',
-    name: 'Switch & Save',
-    tagline: 'Lifetime License Feel',
-    setup: '₦150,000',
-    setupPrice: 150000,
-    monthly: '₦10,000',
-    monthlyPrice: 10000,
-    annual: `₦${Math.round(10000 * 12 * (1 - ANNUAL_DISCOUNT)).toLocaleString()}`,
-    annualPrice: Math.round(10000 * 12 * (1 - ANNUAL_DISCOUNT)),
-    setupLabel: 'One-time Setup',
-    target: 'Pharmacies wanting ownership feel',
-    features: ['Everything in Lite', 'Lifetime License Feel', '5 User Accounts', 'Advanced Reports', 'Priority Email Support'],
-    popular: false,
-    buttonText: 'Get Started',
-    isNew: false,
   },
   {
     id: 'pro',
@@ -71,7 +54,7 @@ const plans = [
     annualPrice: Math.round(35000 * 12 * (1 - ANNUAL_DISCOUNT)),
     setupLabel: 'Zero Setup Fee',
     target: 'Fast-growing pharmacies using AI',
-    features: ['Everything in Starter', 'AI Invoice Scanner', 'Demand Forecasting AI', 'Unlimited Users', 'Multi-Branch Ready', 'Staff Clock-in', 'NAFDAC Reports'],
+    features: ['Everything in Lite', 'AI Invoice Scanner', 'Demand Forecasting AI', 'Unlimited Users', 'Multi-Branch Ready', 'Staff Clock-in', 'NAFDAC Reports', 'Priority WhatsApp Support'],
     popular: true,
     buttonText: 'Subscribe',
     isNew: false,
@@ -628,7 +611,7 @@ export const SubscriptionManagement = () => {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <div className="grid md:grid-cols-3 gap-6">
             {plans.map((planOption) => {
               const isCurrentPlan = planOption.id === currentPlan && !isTrial && !isExpired;
               
