@@ -11,7 +11,9 @@ import { useToast } from '@/hooks/use-toast';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import type { Medication } from '@/types/medication';
 import sampleInvoiceImage from '@/assets/sample-invoice.png';
-import { callPharmacyAiWithFallback, PharmacyAiError } from '@/lib/pharmacyAiClient';
+import { callPharmacyAiWithFallback } from '@/lib/pharmacyAiClient';
+import { getPharmacyAiUiError } from '@/utils/pharmacyAiUiError';
+
 
 // Mock invoice data for demo mode - realistic Nigerian pharmacy items
 const DEMO_INVOICE_ITEMS = [
@@ -214,9 +216,9 @@ export const InvoiceScannerModal = ({ open, onOpenChange }: InvoiceScannerModalP
         pharmacy_id: pharmacy.id,
       });
 
-      // Graceful backpressure handling
+      // Some backends respond with 200 + { rateLimited: true } instead of HTTP 429
       if (data?.rateLimited) {
-        setError('AI is busy. Please wait and try again.');
+        setError('AI is busy (rate limited). Please wait ~30 seconds and retry.');
         return;
       }
 
@@ -266,19 +268,9 @@ export const InvoiceScannerModal = ({ open, onOpenChange }: InvoiceScannerModalP
       });
     } catch (err) {
       console.error('Error processing invoice:', err);
-      
-      if (err instanceof PharmacyAiError) {
-        if (err.status === 429) {
-          setError('AI is busy (rate limited). Please wait 10 seconds and try again.');
-        } else if (err.status === 401 || err.status === 403) {
-          setError('Authentication error. Check VITE_EXTERNAL_SUPABASE_PUBLISHABLE_KEY in Vercel.');
-        } else {
-          setError(`AI error: ${err.message || `Status ${err.status}`}`);
-        }
-        return;
-      }
-
-      setError(err instanceof Error ? err.message : 'Failed to process invoice. Please try again.');
+      const { message, status, debug } = getPharmacyAiUiError(err);
+      if (status) console.warn('[invoice-scan] pharmacy-ai error', { status, debug });
+      setError(message);
     } finally {
       setIsProcessing(false);
     }

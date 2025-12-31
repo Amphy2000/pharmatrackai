@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { CartItem, Medication } from '@/types/medication';
 import { usePharmacy } from '@/hooks/usePharmacy';
-import { callPharmacyAiWithFallback, PharmacyAiError } from '@/lib/pharmacyAiClient';
+import { callPharmacyAiWithFallback } from '@/lib/pharmacyAiClient';
+import { getPharmacyAiUiError } from '@/utils/pharmacyAiUiError';
 
-interface UpsellSuggestion {
   product_id: string;
   product_name: string;
   reason: string;
@@ -80,14 +80,9 @@ export const useSmartUpsell = ({
       setSuggestions(enrichedSuggestions);
       lastCartHashRef.current = currentHash;
     } catch (err) {
-      if (err instanceof PharmacyAiError && err.status === 429) {
-        setError('AI busy, please try again');
-        setSuggestions([]);
-        return;
-      }
-
-      console.error('Smart upsell error:', err);
-      setError(err instanceof Error ? err.message : 'Failed to get suggestions');
+      const { message, status, debug } = getPharmacyAiUiError(err);
+      if (status) console.warn('[smart-upsell] pharmacy-ai error', { status, debug });
+      setError(message);
       setSuggestions([]);
     } finally {
       setIsLoading(false);
