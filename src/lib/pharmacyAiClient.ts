@@ -12,10 +12,10 @@ export class PharmacyAiError extends Error {
 
 export const PHARMACY_AI_URL =
   import.meta.env.VITE_PHARMACY_AI_URL ??
-  'https://sdejkpweecasdzsixxbd.supabase.co/functions/v1/pharmacy-ai';
+  `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/pharmacy-ai`;
 
 const EXTERNAL_PUBLISHABLE_KEY =
-  import.meta.env.VITE_EXTERNAL_SUPABASE_PUBLISHABLE_KEY ?? '';
+  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? '';
 
 export function isPharmacyAiConfigured() {
   return Boolean(EXTERNAL_PUBLISHABLE_KEY);
@@ -24,7 +24,7 @@ export function isPharmacyAiConfigured() {
 function getConfigWarning() {
   if (!EXTERNAL_PUBLISHABLE_KEY) {
     console.warn(
-      '[pharmacy-ai] VITE_EXTERNAL_SUPABASE_PUBLISHABLE_KEY is not set. AI calls may fail with 401.'
+      '[pharmacy-ai] VITE_SUPABASE_PUBLISHABLE_KEY is not set. AI calls may fail.'
     );
   }
 }

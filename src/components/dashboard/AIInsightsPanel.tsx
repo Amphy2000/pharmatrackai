@@ -266,8 +266,8 @@ export const AIInsightsPanel = ({ medications, branchName }: AIInsightsPanelProp
                 )}
               </h2>
               <p className="text-sm text-muted-foreground">
-                {isRateLimited 
-                  ? 'Using cached insights (AI busy, try again later)' 
+                {isRateLimited
+                  ? 'Using cached insights (AI rate-limited — retry in ~30s)'
                   : `Actionable recommendations for ${displayBranchName}`}
               </p>
             </div>
