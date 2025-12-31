@@ -138,7 +138,8 @@ export const SubscriptionManagement = () => {
       msg.includes('unauthorized') ||
       msg.includes('invalid jwt') ||
       msg.includes('session_not_found') ||
-      msg.includes('jwt')
+      msg.includes('jwt expired') ||
+      msg.includes('token has expired')
     );
   };
 
@@ -169,12 +170,17 @@ export const SubscriptionManagement = () => {
         return;
       }
 
-      const response = await supabase.functions.invoke('create-payment', {
-        body: {
-          plan: planId,
-          callback_url: `${window.location.origin}/settings?tab=subscription`,
-        },
-      });
+      const paymentBody = {
+        plan: planId,
+        callback_url: `${window.location.origin}/settings?tab=subscription`,
+      };
+
+      const invokeCreatePayment = () =>
+        supabase.functions.invoke('create-payment', {
+          body: paymentBody,
+        });
+
+      let response = await invokeCreatePayment();
 
       if (response.error) {
         const detailed = await describeFunctionsInvokeError(response.error);
@@ -182,22 +188,27 @@ export const SubscriptionManagement = () => {
         // Avoid force-logging users out for backend/config issues.
         // Only treat as auth-like when it's a real 401 / JWT failure.
         if (isAuthLikeFunctionsError(response.error, detailed)) {
-          // Try a silent refresh first.
           const { data: refreshed, error: refreshError } = await supabase.auth.refreshSession();
+
+          // If refresh succeeded, retry the payment call once with the fresh token.
           if (!refreshError && refreshed?.session) {
-            throw new Error('Please try again — your session was refreshed.');
+            response = await invokeCreatePayment();
+            if (response.error) {
+              const detailedRetry = await describeFunctionsInvokeError(response.error);
+              throw new Error(detailedRetry);
+            }
+          } else {
+            toast({
+              title: 'Authentication issue',
+              description:
+                'Your login session could not be verified for payments. This usually happens when the app is pointing to a different backend than the payment function. Please ensure both use the same backend keys, then try again.',
+              variant: 'destructive',
+            });
+            return;
           }
-
-          toast({
-            title: 'Authentication issue',
-            description:
-              'Your login session could not be verified for payments. This usually happens when the app is pointing to a different backend than the payment function. Please ensure both use the same backend keys, then try again.',
-            variant: 'destructive',
-          });
-          return;
+        } else {
+          throw new Error(detailed);
         }
-
-        throw new Error(detailed);
       }
 
       const { authorization_url } = response.data || {};
