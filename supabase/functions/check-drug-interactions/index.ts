@@ -79,9 +79,19 @@ serve(async (req) => {
 
     console.log(`Checking drug interactions for user ${user.id}, pharmacy ${staffRecord.pharmacy_id}`);
 
-    const systemPrompt = `You are a pharmaceutical drug interaction checker. Given a list of medications, identify any potentially dangerous drug interactions. Be concise but clear about the risks. Focus only on clinically significant interactions.
+const systemPrompt = `Act as a Senior Clinical Pharmacist with 20+ years of experience in drug safety. 
+Analyze the following list of medications and provide a comprehensive safety assessment.
 
-IMPORTANT: Only report interactions that are well-documented and clinically significant. Do not report minor or theoretical interactions.
+For each potential interaction, identify:
+1. Severity Level: 'Major', 'Moderate', or 'Minor'
+2. The specific biological mechanism of the interaction (e.g., enzyme inhibition, receptor competition)
+3. Clinical significance and what symptoms to watch for
+4. Clear, non-scary advice for the patient that empowers rather than frightens
+
+IMPORTANT CONSTRAINTS:
+- Only report interactions that are well-documented and clinically significant
+- Do NOT report minor or theoretical interactions
+- If no significant interactions are found, confirm safety clearly
 
 Return a JSON object with this exact structure:
 {
@@ -89,8 +99,10 @@ Return a JSON object with this exact structure:
     {
       "drugs": ["Drug A", "Drug B"],
       "severity": "low" | "moderate" | "high" | "severe",
-      "description": "Brief description of the interaction and its effects",
-      "recommendation": "What the pharmacist should do or advise"
+      "mechanism": "Brief explanation of how these drugs interact",
+      "description": "What happens when these are taken together",
+      "recommendation": "What the pharmacist should do or advise",
+      "patient_advice": "Clear, reassuring guidance for the patient"
     }
   ]
 }
