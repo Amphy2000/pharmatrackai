@@ -7,8 +7,8 @@ import { useCurrency } from '@/contexts/CurrencyContext';
 import { useBranchContext } from '@/contexts/BranchContext';
 import { usePharmacy } from '@/hooks/usePharmacy';
 
-// External Supabase project URL
-const EXTERNAL_SUPABASE_URL = 'https://sdejkpweecasdzsixxbd.supabase.co';
+// Consolidated AI endpoint on external Supabase project
+const PHARMACY_AI_URL = 'https://sdejkpweecasdzsixxbd.supabase.co/functions/v1/pharmacy-ai';
 
 interface AIInsightsPanelProps {
   medications: Medication[];
@@ -61,13 +61,16 @@ export const AIInsightsPanel = ({ medications, branchName }: AIInsightsPanelProp
           headers['Authorization'] = `Bearer ${token}`;
         }
 
-        const response = await fetch(`${EXTERNAL_SUPABASE_URL}/functions/v1/generate-insights`, {
+        const response = await fetch(PHARMACY_AI_URL, {
           method: 'POST',
           headers,
           body: JSON.stringify({ 
-            medications, 
-            currency, 
-            currencySymbol,
+            action: 'generate_insights',
+            payload: { 
+              medications, 
+              currency, 
+              currencySymbol 
+            },
             pharmacy_id: pharmacyId 
           }),
         });

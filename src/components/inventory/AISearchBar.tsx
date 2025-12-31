@@ -7,8 +7,8 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { usePharmacy } from '@/hooks/usePharmacy';
 
-// External Supabase project URL
-const EXTERNAL_SUPABASE_URL = 'https://sdejkpweecasdzsixxbd.supabase.co';
+// External Supabase project URL - consolidated AI endpoint
+const PHARMACY_AI_URL = 'https://sdejkpweecasdzsixxbd.supabase.co/functions/v1/pharmacy-ai';
 
 interface AISearchBarProps {
   onSearch: (query: string) => void;
@@ -41,11 +41,12 @@ export const AISearchBar = ({ onSearch, placeholder = "Search medications..." }:
         headers['Authorization'] = `Bearer ${token}`;
       }
 
-      const response = await fetch(`${EXTERNAL_SUPABASE_URL}/functions/v1/ai-search`, {
+      const response = await fetch(PHARMACY_AI_URL, {
         method: 'POST',
         headers,
         body: JSON.stringify({ 
-          query: query.trim(),
+          action: 'ai_search',
+          payload: { query: query.trim() },
           pharmacy_id: pharmacyId 
         }),
       });
@@ -57,7 +58,6 @@ export const AISearchBar = ({ onSearch, placeholder = "Search medications..." }:
           description: 'AI is processing many requests. Please wait a few seconds and try again.',
           variant: 'default',
         });
-        // Fallback to regular search
         onSearch(query);
         return;
       }
@@ -79,7 +79,6 @@ export const AISearchBar = ({ onSearch, placeholder = "Search medications..." }:
         return;
       }
 
-      // The AI returns interpreted search terms
       if (data.searchTerms) {
         onSearch(data.searchTerms);
         toast({
@@ -91,7 +90,6 @@ export const AISearchBar = ({ onSearch, placeholder = "Search medications..." }:
       }
     } catch (error) {
       console.error('AI search failed:', error);
-      // Fallback to regular search
       onSearch(query);
       toast({
         title: 'Using regular search',

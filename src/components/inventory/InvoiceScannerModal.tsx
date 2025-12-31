@@ -13,6 +13,9 @@ import { useCurrency } from '@/contexts/CurrencyContext';
 import type { Medication } from '@/types/medication';
 import sampleInvoiceImage from '@/assets/sample-invoice.png';
 
+// Consolidated AI endpoint on external Supabase project
+const PHARMACY_AI_URL = 'https://sdejkpweecasdzsixxbd.supabase.co/functions/v1/pharmacy-ai';
+
 // Mock invoice data for demo mode - realistic Nigerian pharmacy items
 const DEMO_INVOICE_ITEMS = [
   {
@@ -203,11 +206,38 @@ export const InvoiceScannerModal = ({ open, onOpenChange }: InvoiceScannerModalP
     setError(null);
 
     try {
-      const { data, error: fnError } = await supabase.functions.invoke('scan-invoice', {
-        body: { imageUrl },
+      // Get auth token if available
+      const { data: sessionData } = await supabase.auth.getSession();
+      const token = sessionData?.session?.access_token;
+
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+      };
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
+      const response = await fetch(PHARMACY_AI_URL, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          action: 'scan_invoice',
+          payload: { imageUrl },
+          pharmacy_id: pharmacy?.id,
+        }),
       });
 
-      if (fnError) throw fnError;
+      if (response.status === 429) {
+        setError('AI is busy. Please wait and try again.');
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error(`Request failed with status ${response.status}`);
+      }
+
+      const data = await response.json();
 
       if (data.error) {
         setError(data.error);
