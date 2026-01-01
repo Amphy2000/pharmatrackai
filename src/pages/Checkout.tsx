@@ -473,8 +473,8 @@ const Checkout = () => {
       setPreviewOpen(true);
       setSaleComplete(true);
 
-      // Update local stock cache for offline mode
-      if (isOffline) {
+      // Update local stock cache for offline/queued sales (includes network timeout fallback)
+      if (result.isOffline) {
         currentItems.forEach(item => {
           updateLocalStock(item.medication.id, item.quantity);
         });
