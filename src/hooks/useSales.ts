@@ -8,6 +8,9 @@ import { useOfflineSync } from '@/hooks/useOfflineSync';
 import { useBranchContext } from '@/contexts/BranchContext';
 import { isBefore, parseISO } from 'date-fns';
 
+// Network timeout for sale operations (8 seconds)
+const SALE_TIMEOUT_MS = 8000;
+
 // Check if a medication batch is expired
 export const isExpiredBatch = (expiryDate: string): boolean => {
   return isBefore(parseISO(expiryDate), new Date());
@@ -65,6 +68,53 @@ const generateReceiptId = (): string => {
     result += chars.charAt(Math.floor(Math.random() * chars.length));
   }
   return result;
+};
+
+// Helper: wrap a promise with a timeout
+const withTimeout = <T>(promise: Promise<T>, ms: number, timeoutError: Error): Promise<T> => {
+  return Promise.race([
+    promise,
+    new Promise<T>((_, reject) => setTimeout(() => reject(timeoutError), ms))
+  ]);
+};
+
+// Helper: queue sale for offline sync and return result
+const queueOfflineSale = (
+  items: CartItem[],
+  receiptId: string,
+  params: CompleteSaleParams,
+  addPendingSale: (sale: any) => string
+) => {
+  const total = items.reduce((sum, item) => {
+    const price = item.medication.selling_price || item.medication.unit_price;
+    return sum + (price * item.quantity);
+  }, 0);
+
+  addPendingSale({
+    items: items.map(item => ({
+      medicationId: item.medication.id,
+      medicationName: item.medication.name,
+      quantity: item.quantity,
+      unitPrice: item.medication.selling_price || item.medication.unit_price,
+      totalPrice: (item.medication.selling_price || item.medication.unit_price) * item.quantity,
+    })),
+    total,
+    customerId: params.customerId,
+    customerName: params.customerName,
+    paymentMethod: params.paymentMethod,
+    shiftId: params.shiftId,
+    staffName: params.staffName,
+  });
+
+  return { 
+    results: items.map(item => ({ 
+      item, 
+      newStock: Math.max(0, item.medication.current_stock - item.quantity), 
+      receiptId 
+    })), 
+    receiptId,
+    isOffline: true,
+  };
 };
 
 export const useSales = () => {
@@ -152,166 +202,52 @@ export const useSales = () => {
       // Generate receipt ID early
       const receiptId = generateReceiptId();
 
-      // If offline, queue immediately and return
+      // If forceOffline flag is set OR navigator says offline, queue immediately
       if (forceOffline || !isOnline) {
-        const total = items.reduce((sum, item) => {
-          const price = item.medication.selling_price || item.medication.unit_price;
-          return sum + (price * item.quantity);
-        }, 0);
-
-        addPendingSale({
-          items: items.map(item => ({
-            medicationId: item.medication.id,
-            medicationName: item.medication.name,
-            quantity: item.quantity,
-            unitPrice: item.medication.selling_price || item.medication.unit_price,
-            totalPrice: (item.medication.selling_price || item.medication.unit_price) * item.quantity,
-          })),
-          total,
-          customerId,
-          customerName,
-          paymentMethod,
-          shiftId,
-          staffName,
-        });
-
-        return { 
-          results: items.map(item => ({ 
-            item, 
-            newStock: Math.max(0, item.medication.current_stock - item.quantity), 
-            receiptId 
-          })), 
-          receiptId,
-          isOffline: true,
-        };
+        console.log('[Sale] Offline mode detected, queuing sale locally');
+        return queueOfflineSale(items, receiptId, { items, customerName, customerId, shiftId, staffName, paymentMethod, prescriptionImages }, addPendingSale);
       }
 
-      // Get current user for sold_by
-      const { data: authData } = await supabase.auth.getUser();
-      const user = authData?.user;
-      
-      let totalSaleAmount = 0;
-      
-      // Results array
-      const results: { item: CartItem; newStock: number; receiptId: string }[] = [];
-
-      // Process items sequentially for reliability
-      for (let index = 0; index < items.length; index++) {
-        const item = items[index];
-        const price = item.medication.selling_price || item.medication.unit_price;
-        const totalPrice = price * item.quantity;
-        totalSaleAmount += totalPrice;
-
-        let currentStock = 0;
-
-        if (currentBranchId && !isMainBranch) {
-          const { data: branchInv, error: branchInvError } = await supabase
-            .from('branch_inventory')
-            .select('id, current_stock')
-            .eq('branch_id', currentBranchId)
-            .eq('medication_id', item.medication.id)
-            .maybeSingle();
-
-          if (branchInvError) throw branchInvError;
-          if (!branchInv) {
-            throw new Error('No stock record for this branch. Receive stock first.');
-          }
-
-          currentStock = branchInv.current_stock ?? 0;
-        } else {
-          const { data: medicationData, error: medicationError } = await supabase
-            .from('medications')
-            .select('current_stock')
-            .eq('id', item.medication.id)
-            .maybeSingle();
-
-          if (medicationError) throw medicationError;
-          currentStock = medicationData?.current_stock ?? item.medication.current_stock ?? 0;
+      // Attempt online sale with timeout fallback
+      try {
+        const onlineSaleResult = await withTimeout(
+          processOnlineSale({
+            items,
+            customerName,
+            customerId,
+            shiftId,
+            staffName,
+            paymentMethod,
+            prescriptionImages,
+            receiptId,
+            pharmacyId,
+            currentBranchId,
+            isMainBranch,
+          }),
+          SALE_TIMEOUT_MS,
+          new Error('NETWORK_TIMEOUT')
+        );
+        return onlineSaleResult;
+      } catch (error: any) {
+        // If network timeout or fetch failed, queue offline
+        if (error.message === 'NETWORK_TIMEOUT' || error.message?.includes('Failed to fetch') || error.message?.includes('NetworkError')) {
+          console.log('[Sale] Network timeout/failure, falling back to offline queue');
+          toast({
+            title: 'Slow Connection',
+            description: 'Sale saved offline due to poor network. Will sync automatically.',
+          });
+          return queueOfflineSale(items, receiptId, { items, customerName, customerId, shiftId, staffName, paymentMethod, prescriptionImages }, addPendingSale);
         }
-
-        const newStock = Math.max(0, currentStock - item.quantity);
-
-        // Generate unique receipt_id for each sale record
-        const itemReceiptId = items.length > 1 ? `${receiptId}-${index + 1}` : receiptId;
-
-        // Insert sale record WITH branch_id for isolation
-        const { data: saleData, error: saleError } = await supabase.from('sales').insert({
-          medication_id: item.medication.id,
-          quantity: item.quantity,
-          unit_price: price,
-          total_price: totalPrice,
-          customer_name: customerName || null,
-          customer_id: customerId || null,
-          pharmacy_id: pharmacyId,
-          branch_id: currentBranchId || null, // Add branch isolation
-          sold_by: user?.id || null,
-          sold_by_name: staffName || null,
-          receipt_id: itemReceiptId,
-          shift_id: shiftId || null,
-          payment_method: paymentMethod || null,
-          prescription_images: prescriptionImages && prescriptionImages.length > 0 ? prescriptionImages : null,
-        }).select('receipt_id').single();
-
-        if (saleError) {
-          console.error('Error inserting sale:', saleError);
-          throw saleError;
-        }
-
-        // Update main (HQ) stock only when selling from HQ
-        if (!currentBranchId || isMainBranch) {
-          await supabase
-            .from('medications')
-            .update({ current_stock: newStock })
-            .eq('id', item.medication.id);
-        }
-
-        // Update branch stock when selling from a non-HQ branch
-        if (currentBranchId && !isMainBranch) {
-          const { data: branchInv } = await supabase
-            .from('branch_inventory')
-            .select('id, current_stock')
-            .eq('branch_id', currentBranchId)
-            .eq('medication_id', item.medication.id)
-            .maybeSingle();
-
-          if (branchInv) {
-            await supabase
-              .from('branch_inventory')
-              .update({ current_stock: Math.max(0, branchInv.current_stock - item.quantity) })
-              .eq('id', branchInv.id);
-          }
-        }
-
-        results.push({ item, newStock, receiptId: saleData?.receipt_id || itemReceiptId });
+        // Re-throw other errors (validation, stock issues, etc.)
+        throw error;
       }
-
-      // Update shift stats if we have a shift
-      if (shiftId) {
-        const { data: currentShift } = await supabase
-          .from('staff_shifts')
-          .select('total_sales, total_transactions')
-          .eq('id', shiftId)
-          .single();
-
-        if (currentShift) {
-          await supabase
-            .from('staff_shifts')
-            .update({
-              total_sales: (currentShift.total_sales || 0) + totalSaleAmount,
-              total_transactions: (currentShift.total_transactions || 0) + 1,
-            })
-            .eq('id', shiftId);
-        }
-      }
-
-      return { results, receiptId, isOffline: false };
     },
-    onSuccess: async ({ results, receiptId, isOffline }) => {
-      // If offline, show a different message
-      if (isOffline) {
+    onSuccess: async ({ results, receiptId, isOffline: wasOffline }) => {
+      // If offline/queued, show confirmation toast
+      if (wasOffline) {
         toast({
-          title: 'Queued for Sync',
-          description: `Sale ${receiptId} saved offline. Will sync when online.`,
+          title: 'Sale Queued',
+          description: `Transaction ${receiptId} saved locally. Will sync when online.`,
         });
         return;
       }
@@ -352,3 +288,150 @@ export const useSales = () => {
 
   return { sales, isLoading, completeSale };
 };
+
+// Separated online sale processing for cleaner timeout handling
+async function processOnlineSale({
+  items,
+  customerName,
+  customerId,
+  shiftId,
+  staffName,
+  paymentMethod,
+  prescriptionImages,
+  receiptId,
+  pharmacyId,
+  currentBranchId,
+  isMainBranch,
+}: {
+  items: CartItem[];
+  customerName?: string;
+  customerId?: string;
+  shiftId?: string;
+  staffName?: string;
+  paymentMethod?: string;
+  prescriptionImages?: string[];
+  receiptId: string;
+  pharmacyId: string;
+  currentBranchId: string | null;
+  isMainBranch: boolean;
+}) {
+  // Get current user for sold_by
+  const { data: authData } = await supabase.auth.getUser();
+  const user = authData?.user;
+  
+  let totalSaleAmount = 0;
+  
+  // Results array
+  const results: { item: CartItem; newStock: number; receiptId: string }[] = [];
+
+  // Process items sequentially for reliability
+  for (let index = 0; index < items.length; index++) {
+    const item = items[index];
+    const price = item.medication.selling_price || item.medication.unit_price;
+    const totalPrice = price * item.quantity;
+    totalSaleAmount += totalPrice;
+
+    let currentStock = 0;
+
+    if (currentBranchId && !isMainBranch) {
+      const { data: branchInv, error: branchInvError } = await supabase
+        .from('branch_inventory')
+        .select('id, current_stock')
+        .eq('branch_id', currentBranchId)
+        .eq('medication_id', item.medication.id)
+        .maybeSingle();
+
+      if (branchInvError) throw branchInvError;
+      if (!branchInv) {
+        throw new Error('No stock record for this branch. Receive stock first.');
+      }
+
+      currentStock = branchInv.current_stock ?? 0;
+    } else {
+      const { data: medicationData, error: medicationError } = await supabase
+        .from('medications')
+        .select('current_stock')
+        .eq('id', item.medication.id)
+        .maybeSingle();
+
+      if (medicationError) throw medicationError;
+      currentStock = medicationData?.current_stock ?? item.medication.current_stock ?? 0;
+    }
+
+    const newStock = Math.max(0, currentStock - item.quantity);
+
+    // Generate unique receipt_id for each sale record
+    const itemReceiptId = items.length > 1 ? `${receiptId}-${index + 1}` : receiptId;
+
+    // Insert sale record WITH branch_id for isolation
+    const { data: saleData, error: saleError } = await supabase.from('sales').insert({
+      medication_id: item.medication.id,
+      quantity: item.quantity,
+      unit_price: price,
+      total_price: totalPrice,
+      customer_name: customerName || null,
+      customer_id: customerId || null,
+      pharmacy_id: pharmacyId,
+      branch_id: currentBranchId || null,
+      sold_by: user?.id || null,
+      sold_by_name: staffName || null,
+      receipt_id: itemReceiptId,
+      shift_id: shiftId || null,
+      payment_method: paymentMethod || null,
+      prescription_images: prescriptionImages && prescriptionImages.length > 0 ? prescriptionImages : null,
+    }).select('receipt_id').single();
+
+    if (saleError) {
+      console.error('Error inserting sale:', saleError);
+      throw saleError;
+    }
+
+    // Update main (HQ) stock only when selling from HQ
+    if (!currentBranchId || isMainBranch) {
+      await supabase
+        .from('medications')
+        .update({ current_stock: newStock })
+        .eq('id', item.medication.id);
+    }
+
+    // Update branch stock when selling from a non-HQ branch
+    if (currentBranchId && !isMainBranch) {
+      const { data: branchInv } = await supabase
+        .from('branch_inventory')
+        .select('id, current_stock')
+        .eq('branch_id', currentBranchId)
+        .eq('medication_id', item.medication.id)
+        .maybeSingle();
+
+      if (branchInv) {
+        await supabase
+          .from('branch_inventory')
+          .update({ current_stock: Math.max(0, branchInv.current_stock - item.quantity) })
+          .eq('id', branchInv.id);
+      }
+    }
+
+    results.push({ item, newStock, receiptId: saleData?.receipt_id || itemReceiptId });
+  }
+
+  // Update shift stats if we have a shift
+  if (shiftId) {
+    const { data: currentShift } = await supabase
+      .from('staff_shifts')
+      .select('total_sales, total_transactions')
+      .eq('id', shiftId)
+      .single();
+
+    if (currentShift) {
+      await supabase
+        .from('staff_shifts')
+        .update({
+          total_sales: (currentShift.total_sales || 0) + totalSaleAmount,
+          total_transactions: (currentShift.total_transactions || 0) + 1,
+        })
+        .eq('id', shiftId);
+    }
+  }
+
+  return { results, receiptId, isOffline: false };
+}
