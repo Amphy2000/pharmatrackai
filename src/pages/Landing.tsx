@@ -17,6 +17,10 @@ import { FeatureDemo } from '@/components/landing/FeatureDemo';
 import { VideoShowcase } from '@/components/landing/VideoShowcase';
 import { CompetitorComparison } from '@/components/landing/CompetitorComparison';
 import { LandingMarketplaceProof } from '@/components/landing/LandingMarketplaceProof';
+import { LandingSocialProofTicker } from '@/components/landing/LandingSocialProofTicker';
+import { WhyNotFreeAppsFAQ } from '@/components/landing/WhyNotFreeAppsFAQ';
+import { MoneyFlowAnimation } from '@/components/landing/MoneyFlowAnimation';
+import { CostOfInactionCalculator } from '@/components/landing/CostOfInactionCalculator';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 // Animation variants
@@ -418,6 +422,16 @@ const Landing = () => {
               <Check className="h-4 w-4 text-success" />No credit card required
             </p>
 
+            {/* Live Social Proof Ticker */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.8, duration: 0.5 }}
+              className="mt-8 flex justify-center"
+            >
+              <LandingSocialProofTicker />
+            </motion.div>
+
             {/* Trust Indicators */}
             <motion.div variants={fadeInUp} transition={{
             duration: 0.6,
@@ -462,6 +476,51 @@ const Landing = () => {
           duration: 0.6
         }} className="mt-16 max-w-4xl mx-auto">
             <ProfitProtectorCalculator isInternational={isInternational} />
+          </motion.div>
+        </div>
+      </section>
+
+      {/* ROI Animation Section */}
+      <section className="py-16 sm:py-24 relative overflow-hidden bg-muted/30">
+        <div className="absolute inset-0 bg-gradient-mesh opacity-20" />
+        <div className="container mx-auto px-4 sm:px-6 relative z-10">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            className="text-center mb-12"
+          >
+            <Badge variant="outline" className="mb-4 border-primary/30 text-primary">
+              <TrendingUp className="h-3 w-3 mr-1" />
+              See the Difference
+            </Badge>
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-display font-bold mb-4">
+              Watch Your Money{" "}
+              <span className="text-gradient-premium">Stop Disappearing</span>
+            </h2>
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+              Most pharmacies lose ₦100,000+ monthly to expired stock. See how PharmaTrack AI changes that.
+            </p>
+          </motion.div>
+
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.2 }}
+          >
+            <MoneyFlowAnimation />
+          </motion.div>
+
+          {/* Cost of Inaction Calculator */}
+          <motion.div
+            initial={{ opacity: 0, y: 40 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ delay: 0.3 }}
+            className="mt-16 max-w-4xl mx-auto"
+          >
+            <CostOfInactionCalculator isInternational={isInternational} />
           </motion.div>
         </div>
       </section>
@@ -1321,6 +1380,9 @@ const Landing = () => {
           </motion.div>
         </div>
       </section>
+
+      {/* Why Not Free Apps FAQ */}
+      <WhyNotFreeAppsFAQ />
 
       {/* Pricing Section */}
       <section id="pricing" className="py-20 sm:py-32 relative">
