@@ -221,7 +221,7 @@ export const generateHtmlReceipt = ({
   <div class="barcode-section" style="margin-top: 10px;">
     ${barcodeDataUrl ? `<img src="${barcodeDataUrl}" class="barcode-img" alt="Barcode">` : ''}
     ${shortCode ? `<div style="font-size: 12px; font-weight: bold; margin-top: 3px;">${shortCode}</div>` : ''}
-    <div style="font-size: 9px; color: #666; margin-top: 5px;">Official Transaction Record - PharmaTrack AI</div>
+    <div style="font-size: 9px; color: #666; margin-top: 5px;">Official Transaction Record - pharmatrack.com.ng</div>
   </div>
   `}
 
@@ -231,7 +231,7 @@ export const generateHtmlReceipt = ({
     <div>Thank you for your purchase!</div>
     <div>Get well soon. Visit us again!</div>
     ${staffName ? `<div style="margin-top: 5px;">Served by: ${staffName}</div>` : ''}
-    <div style="margin-top: 5px; color: #888;">Powered by PharmaTrack AI</div>
+    <div style="margin-top: 5px; color: #888;">Powered by pharmatrack.com.ng</div>
   </div>
 </body>
 </html>

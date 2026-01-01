@@ -345,7 +345,7 @@ export const generateReceipt = async ({
 
   doc.setFontSize(6);
   doc.setTextColor(120);
-  centerText('Powered by PharmaTrack AI', y);
+  centerText('Powered by pharmatrack.com.ng', y);
   doc.setTextColor(0);
 
   return doc;
