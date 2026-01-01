@@ -38,8 +38,8 @@ export const AlertSettings = () => {
   // Load saved settings from database
   useEffect(() => {
     if (pharmacy?.id) {
-      // Load from database
-      setSenderId((pharmacy as any)?.termii_sender_id || '');
+      // Load from database - default sender ID to PharmaTrack
+      setSenderId((pharmacy as any)?.termii_sender_id || 'PharmaTrack');
       setPhone((pharmacy as any)?.alert_recipient_phone || '');
       setUseWhatsApp((pharmacy as any)?.alert_channel === 'whatsapp');
       
@@ -132,7 +132,7 @@ export const AlertSettings = () => {
     }
 
     if (!senderId.trim()) {
-      toast.error('Please enter a Termii Sender ID');
+      toast.error('Please enter a Sender ID');
       return;
     }
 
@@ -151,7 +151,7 @@ export const AlertSettings = () => {
     setIsSavingSenderId(true);
     try {
       await updatePharmacySettings.mutateAsync({ termii_sender_id: cleanSenderId });
-      toast.success('Termii Sender ID saved!', {
+      toast.success('Sender ID saved!', {
         description: `Using "${cleanSenderId}" for all alerts`,
       });
     } catch (error) {
@@ -196,7 +196,7 @@ Stay profitable! 💰`,
     }
 
     if (!senderId) {
-      toast.error('Please configure your Termii Sender ID first');
+      toast.error('Please configure your Sender ID first');
       return;
     }
 
@@ -208,7 +208,7 @@ Stay profitable! 💰`,
         alertType: 'custom',
         message: `🔗 PharmaTrack Connection Test
 
-This is a test message to verify your Termii API Key and Sender ID are properly configured.
+This is a test message to verify your SMS integration is properly configured.
 
 ✅ API Key: Active
 ✅ Sender ID: ${senderId}
@@ -227,13 +227,13 @@ Your SMS integration is working correctly!`,
       } else {
         setConnectionTestResult('error');
         toast.error('Connection Test Failed', {
-          description: result.error || 'Check your Termii API key and Sender ID',
+          description: result.error || 'Check your API key and Sender ID',
         });
       }
     } catch (error) {
       setConnectionTestResult('error');
       toast.error('Connection Test Failed', {
-        description: 'Unable to reach Termii API',
+        description: 'Unable to reach SMS API',
       });
     } finally {
       setIsTestingConnection(false);
@@ -358,9 +358,6 @@ Your SMS integration is working correctly!`,
             <div>
               <CardTitle className="font-display text-xl flex items-center gap-2">
                 Smart Alert System
-                <Badge variant="secondary" className="bg-green-500/20 text-green-400 border-green-500/30">
-                  Powered by Termii
-                </Badge>
               </CardTitle>
               <CardDescription>Never miss critical inventory events - get instant SMS/WhatsApp alerts</CardDescription>
             </div>
@@ -399,78 +396,8 @@ Your SMS integration is working correctly!`,
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
-          {/* Termii Sender ID - CRITICAL */}
-          <div className="p-4 rounded-xl border-2 border-amber-500/50 bg-amber-500/5">
-            <Label htmlFor="senderId" className="flex items-center gap-2 mb-2">
-              <Zap className="h-4 w-4 text-amber-500" />
-              Termii Sender ID
-              <Badge variant="outline" className="text-amber-500 border-amber-500/50">Required</Badge>
-            </Label>
-            <div className="flex gap-2">
-              <Input
-                id="senderId"
-                type="text"
-                placeholder="e.g. PharmaTrak"
-                value={senderId}
-                onChange={(e) => setSenderId(e.target.value)}
-                className="flex-1"
-                maxLength={11}
-              />
-              <Button
-                onClick={handleSaveSenderId}
-                disabled={isSavingSenderId || !senderId.trim()}
-                className="gap-2"
-              >
-                {isSavingSenderId ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <Save className="h-4 w-4" />
-                )}
-                Save
-              </Button>
-            </div>
-            <p className="text-xs text-muted-foreground mt-2">
-              ⚠️ This must match your <strong>registered Sender ID</strong> in your Termii dashboard. 
-              Max 11 alphanumeric characters. <a href="https://accounts.termii.com/#/sms/sender-id-management" target="_blank" rel="noopener noreferrer" className="text-primary underline">Manage Sender IDs →</a>
-            </p>
-
-            {/* Test Connection Button */}
-            <div className="mt-4 pt-4 border-t border-amber-500/20">
-              <Button
-                onClick={handleTestConnection}
-                disabled={isTestingConnection || !phone || !senderId.trim()}
-                variant="outline"
-                className={`w-full gap-2 ${
-                  connectionTestResult === 'success' 
-                    ? 'border-green-500 text-green-600 bg-green-500/10' 
-                    : connectionTestResult === 'error'
-                      ? 'border-destructive text-destructive bg-destructive/10'
-                      : 'border-amber-500/50 text-amber-600'
-                }`}
-              >
-                {isTestingConnection ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : connectionTestResult === 'success' ? (
-                  <CheckCircle className="h-4 w-4" />
-                ) : connectionTestResult === 'error' ? (
-                  <AlertCircle className="h-4 w-4" />
-                ) : (
-                  <Zap className="h-4 w-4" />
-                )}
-                {isTestingConnection 
-                  ? 'Testing Connection...' 
-                  : connectionTestResult === 'success'
-                    ? 'Connection Verified ✓'
-                    : connectionTestResult === 'error'
-                      ? 'Test Failed - Retry'
-                      : 'Test Connection'
-                }
-              </Button>
-              <p className="text-xs text-muted-foreground text-center mt-2">
-                Sends a test SMS to verify your Termii API Key and Sender ID are active
-              </p>
-            </div>
-          </div>
+          {/* SMS Configuration - Hidden, using PharmaTrack as default */}
+          <input type="hidden" value={senderId} />
 
           {/* Phone Number Input */}
           <div className="space-y-2">
@@ -701,7 +628,7 @@ Your SMS integration is working correctly!`,
             <div>
               <p className="font-medium text-sm">How it works</p>
               <ul className="text-xs text-muted-foreground mt-2 space-y-1">
-                <li>• Messages are sent via Termii (Nigeria's #1 SMS provider)</li>
+                <li>• Messages are sent via SMS to your phone number</li>
                 <li>• WhatsApp messages require your number to be registered</li>
                 <li>• Automated alerts check your inventory daily at 8 AM</li>
                 <li>• You'll only receive alerts for enabled categories</li>

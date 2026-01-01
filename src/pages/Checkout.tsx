@@ -18,7 +18,8 @@ import {
   HelpCircle,
   User,
   Camera,
-  ChevronDown
+  ChevronDown,
+  WifiOff
 } from 'lucide-react';
 import { useBranchInventory } from '@/hooks/useBranchInventory';
 import { useCart } from '@/hooks/useCart';
@@ -67,7 +68,7 @@ import jsPDF from 'jspdf';
 import { FileText, Banknote, CreditCard as CreditCardIcon, Landmark } from 'lucide-react';
 
 const Checkout = () => {
-  const { medications: branchMedications, isLoading } = useBranchInventory();
+  const { medications: branchMedications, isLoading, isOffline, updateLocalStock } = useBranchInventory();
   
   // Map branch medications to match expected Medication type with current_stock from branch_stock
   // Filter to only show items with stock > 0 (for POS, we only want sellable items)
@@ -370,67 +371,69 @@ const Checkout = () => {
     const currentPaymentMethod = paymentMethod;
     
     try {
-      // SAFEGUARD 1: Verify stock availability before processing
-      // This catches cases where another user sold the item while it was in cart
-      const stockIssues: string[] = [];
-      const priceChanges: { name: string; oldPrice: number; newPrice: number }[] = [];
-      
-      for (const item of currentItems) {
-        const freshMed = branchMedications.find(m => m.id === item.medication.id);
-        if (!freshMed) {
-          stockIssues.push(`${item.medication.name} is no longer available`);
-          continue;
-        }
+      // Skip stock validation when offline - trust local cache
+      if (!isOffline) {
+        // SAFEGUARD 1: Verify stock availability before processing (online only)
+        const stockIssues: string[] = [];
+        const priceChanges: { name: string; oldPrice: number; newPrice: number }[] = [];
         
-        // Check stock
-        if (freshMed.branch_stock < item.quantity) {
-          if (freshMed.branch_stock === 0) {
-            stockIssues.push(`${item.medication.name} is now out of stock`);
-          } else {
-            stockIssues.push(`${item.medication.name}: only ${freshMed.branch_stock} left (you have ${item.quantity} in cart)`);
+        for (const item of currentItems) {
+          const freshMed = branchMedications.find(m => m.id === item.medication.id);
+          if (!freshMed) {
+            stockIssues.push(`${item.medication.name} is no longer available`);
+            continue;
+          }
+          
+          // Check stock
+          if (freshMed.branch_stock < item.quantity) {
+            if (freshMed.branch_stock === 0) {
+              stockIssues.push(`${item.medication.name} is now out of stock`);
+            } else {
+              stockIssues.push(`${item.medication.name}: only ${freshMed.branch_stock} left (you have ${item.quantity} in cart)`);
+            }
+          }
+          
+          // SAFEGUARD 2: Check for price changes since item was added to cart
+          const cartPrice = item.medication.selling_price || item.medication.unit_price;
+          const currentPrice = freshMed.selling_price || freshMed.unit_price;
+          if (cartPrice !== currentPrice) {
+            priceChanges.push({
+              name: item.medication.name,
+              oldPrice: cartPrice,
+              newPrice: currentPrice,
+            });
           }
         }
         
-        // SAFEGUARD 2: Check for price changes since item was added to cart
-        const cartPrice = item.medication.selling_price || item.medication.unit_price;
-        const currentPrice = freshMed.selling_price || freshMed.unit_price;
-        if (cartPrice !== currentPrice) {
-          priceChanges.push({
-            name: item.medication.name,
-            oldPrice: cartPrice,
-            newPrice: currentPrice,
+        // Show stock issues as error
+        if (stockIssues.length > 0) {
+          toast({
+            title: 'Stock Changed',
+            description: stockIssues.join('. ') + '. Please update your cart.',
+            variant: 'destructive',
+          });
+          setIsProcessing(false);
+          return;
+        }
+        
+        // Warn about price changes but allow proceeding
+        if (priceChanges.length > 0) {
+          const priceMsg = priceChanges.map(p => 
+            `${p.name}: ${formatPrice(p.oldPrice)} → ${formatPrice(p.newPrice)}`
+          ).join(', ');
+          toast({
+            title: 'Price Updated',
+            description: `Prices changed: ${priceMsg}. Sale will use current prices.`,
+          });
+          // Update cart items with fresh prices for accurate receipt
+          currentItems.forEach(item => {
+            const fresh = branchMedications.find(m => m.id === item.medication.id);
+            if (fresh) {
+              item.medication.selling_price = fresh.selling_price;
+              item.medication.unit_price = fresh.unit_price;
+            }
           });
         }
-      }
-      
-      // Show stock issues as error
-      if (stockIssues.length > 0) {
-        toast({
-          title: 'Stock Changed',
-          description: stockIssues.join('. ') + '. Please update your cart.',
-          variant: 'destructive',
-        });
-        setIsProcessing(false);
-        return;
-      }
-      
-      // Warn about price changes but allow proceeding
-      if (priceChanges.length > 0) {
-        const priceMsg = priceChanges.map(p => 
-          `${p.name}: ${formatPrice(p.oldPrice)} → ${formatPrice(p.newPrice)}`
-        ).join(', ');
-        toast({
-          title: 'Price Updated',
-          description: `Prices changed: ${priceMsg}. Sale will use current prices.`,
-        });
-        // Update cart items with fresh prices for accurate receipt
-        currentItems.forEach(item => {
-          const fresh = branchMedications.find(m => m.id === item.medication.id);
-          if (fresh) {
-            item.medication.selling_price = fresh.selling_price;
-            item.medication.unit_price = fresh.unit_price;
-          }
-        });
       }
       
       // Recalculate total with verified prices
@@ -468,6 +471,13 @@ const Checkout = () => {
       setPreviewReceipt(receipt);
       setPreviewOpen(true);
       setSaleComplete(true);
+
+      // Update local stock cache for offline mode
+      if (isOffline) {
+        currentItems.forEach(item => {
+          updateLocalStock(item.medication.id, item.quantity);
+        });
+      }
     } catch (error) {
       console.error('Sale failed:', error);
     } finally {
@@ -639,6 +649,14 @@ const Checkout = () => {
             </div>
 
             <div className="flex items-center gap-2 sm:gap-3">
+              {/* Offline Mode Indicator */}
+              {isOffline && (
+                <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-warning/10 border border-warning/30">
+                  <WifiOff className="h-3.5 w-3.5 text-warning" />
+                  <span className="text-xs font-medium text-warning hidden sm:inline">Offline Mode</span>
+                </div>
+              )}
+
               {/* Keyboard Shortcuts Button */}
               <Button
                 variant="ghost"
