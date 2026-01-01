@@ -34,6 +34,7 @@ interface CompleteSaleParams {
   staffName?: string;
   paymentMethod?: string;
   prescriptionImages?: string[];
+  forceOffline?: boolean;
 }
 
 interface SaleWithMedication {
@@ -143,7 +144,7 @@ export const useSales = () => {
   }, [pharmacyId, currentBranchId, queryClient]);
 
   const completeSale = useMutation({
-    mutationFn: async ({ items, customerName, customerId, shiftId, staffName, paymentMethod, prescriptionImages }: CompleteSaleParams) => {
+    mutationFn: async ({ items, customerName, customerId, shiftId, staffName, paymentMethod, prescriptionImages, forceOffline }: CompleteSaleParams) => {
       if (!pharmacyId) {
         throw new Error('No pharmacy associated with your account. Please complete onboarding first.');
       }
@@ -152,7 +153,7 @@ export const useSales = () => {
       const receiptId = generateReceiptId();
 
       // If offline, queue immediately and return
-      if (!isOnline) {
+      if (forceOffline || !isOnline) {
         const total = items.reduce((sum, item) => {
           const price = item.medication.selling_price || item.medication.unit_price;
           return sum + (price * item.quantity);

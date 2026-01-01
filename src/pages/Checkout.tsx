@@ -450,6 +450,7 @@ const Checkout = () => {
         staffName: userProfile?.full_name || undefined,
         paymentMethod: currentPaymentMethod || undefined,
         prescriptionImages: prescriptionImages.length > 0 ? prescriptionImages : undefined,
+        forceOffline: isOffline,
       });
 
       // Use the receipt ID from the sale result
