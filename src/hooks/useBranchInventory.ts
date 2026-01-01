@@ -1,9 +1,11 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { usePharmacy } from '@/hooks/usePharmacy';
 import { useBranchContext } from '@/contexts/BranchContext';
+
+const BRANCH_MEDICATIONS_CACHE_KEY = 'pharmatrack_branch_medications_cache';
 
 export interface BranchMedication {
   id: string;
@@ -34,14 +36,54 @@ export interface BranchMedication {
   branch_inventory_id: string | null;
 }
 
+// Cache medications for offline use
+const cacheBranchMedications = (branchId: string | null, medications: BranchMedication[]) => {
+  try {
+    const cacheKey = `${BRANCH_MEDICATIONS_CACHE_KEY}_${branchId || 'main'}`;
+    localStorage.setItem(cacheKey, JSON.stringify({
+      data: medications,
+      cachedAt: Date.now(),
+    }));
+  } catch (error) {
+    console.error('Failed to cache branch medications:', error);
+  }
+};
+
+const getCachedBranchMedications = (branchId: string | null): BranchMedication[] => {
+  try {
+    const cacheKey = `${BRANCH_MEDICATIONS_CACHE_KEY}_${branchId || 'main'}`;
+    const cached = localStorage.getItem(cacheKey);
+    if (!cached) return [];
+    const parsed = JSON.parse(cached);
+    return parsed.data || [];
+  } catch {
+    return [];
+  }
+};
+
 export const useBranchInventory = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   const { pharmacyId } = usePharmacy();
   const { currentBranchId, isMainBranch } = useBranchContext();
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
+
+  // Monitor online/offline status
+  useEffect(() => {
+    const handleOnline = () => setIsOffline(false);
+    const handleOffline = () => setIsOffline(true);
+
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
 
   // Fetch ALL medications with branch-specific stock (full catalog)
-  const { data: allMedications = [], isLoading } = useQuery({
+  const { data: onlineMedications = [], isLoading: isLoadingOnline, error } = useQuery({
     queryKey: ['branch-medications', pharmacyId, currentBranchId, isMainBranch],
     queryFn: async () => {
       if (!pharmacyId) return [];
@@ -88,8 +130,33 @@ export const useBranchInventory = () => {
         };
       }) as BranchMedication[];
     },
-    enabled: !!pharmacyId,
+    enabled: !!pharmacyId && !isOffline,
   });
+
+  // Cache medications when fetched online
+  useEffect(() => {
+    if (onlineMedications && onlineMedications.length > 0) {
+      cacheBranchMedications(currentBranchId, onlineMedications);
+    }
+  }, [onlineMedications, currentBranchId]);
+
+  // Get cached medications when offline
+  const cachedMedications = useMemo(() => {
+    if (isOffline || !onlineMedications || onlineMedications.length === 0) {
+      return getCachedBranchMedications(currentBranchId);
+    }
+    return [];
+  }, [isOffline, onlineMedications, currentBranchId]);
+
+  // Use online data when available, fall back to cache when offline
+  const allMedications = useMemo(() => {
+    if (!isOffline && onlineMedications && onlineMedications.length > 0) {
+      return onlineMedications;
+    }
+    return cachedMedications;
+  }, [isOffline, onlineMedications, cachedMedications]);
+
+  const isLoading = !isOffline && isLoadingOnline;
 
   // For non-main branches, only return medications that have been stocked (branch_stock > 0)
   // This ensures new branches start with a clean slate until stock is transferred
@@ -101,6 +168,19 @@ export const useBranchInventory = () => {
     // Non-main branches only see items they have stock for
     return allMedications.filter(m => m.branch_stock > 0);
   }, [allMedications, isMainBranch, currentBranchId]);
+
+  // Update local cache after offline sale
+  const updateLocalStock = (medicationId: string, quantitySold: number) => {
+    const cached = getCachedBranchMedications(currentBranchId);
+    const updated = cached.map(m => 
+      m.id === medicationId 
+        ? { ...m, branch_stock: Math.max(0, m.branch_stock - quantitySold) }
+        : m
+    );
+    cacheBranchMedications(currentBranchId, updated);
+    // Also update react-query cache
+    queryClient.setQueryData(['branch-medications', pharmacyId, currentBranchId, isMainBranch], updated);
+  };
 
   // Real-time subscription
   useEffect(() => {
@@ -309,11 +389,14 @@ export const useBranchInventory = () => {
     medications, // Only stocked items for non-main branches
     allCatalogMedications: allMedications, // Full catalog for inventory management
     isLoading,
+    isOffline,
     updateBranchStock,
     receiveStockToBranch,
     deductBranchStock,
     getMetrics,
     currentBranchId,
     isMainBranch,
+    updateLocalStock,
+    hasCachedData: cachedMedications.length > 0,
   };
 };
