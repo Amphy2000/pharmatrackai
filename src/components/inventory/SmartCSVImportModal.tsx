@@ -312,6 +312,16 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
     return categoryMap[key] || 'Other';
   };
 
+  // Smart reorder level calculation based on stock quantity
+  const calculateSmartReorderLevel = (stock: number): number => {
+    if (stock <= 5) return Math.max(1, Math.ceil(stock * 0.5)); // 50% of stock
+    if (stock <= 20) return Math.ceil(stock * 0.3); // 30% of stock
+    if (stock <= 50) return Math.ceil(stock * 0.25); // 25% of stock
+    if (stock <= 100) return Math.ceil(stock * 0.2); // 20% of stock
+    if (stock <= 500) return Math.ceil(stock * 0.15); // 15% of stock
+    return Math.ceil(stock * 0.1); // 10% for large stock
+  };
+
   // Build editable rows from CSV + mapping
   const buildEditableRows = useCallback((): EditableRow[] => {
     const twoYearsFromNow = new Date();
@@ -324,8 +334,16 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
       const costPrice = mapping.unit_price ? String(parsePrice(row[mapping.unit_price])) : '0';
       const sellingPrice = mapping.selling_price ? String(parsePrice(row[mapping.selling_price])) : '';
       const rawStock = mapping.current_stock ? row[mapping.current_stock] : '';
-      const stock = String(Math.max(0, parseInt(String(rawStock).replace(/[^0-9.-]/g, ''), 10) || 0));
-      const reorderLevel = mapping.reorder_level ? String(parseInt(String(row[mapping.reorder_level]).replace(/[^0-9.-]/g, ''), 10) || 10) : '10';
+      const stock = Math.max(0, parseInt(String(rawStock).replace(/[^0-9.-]/g, ''), 10) || 0);
+      
+      // Use mapped reorder level or calculate smart default
+      let reorderLevel: number;
+      if (mapping.reorder_level && row[mapping.reorder_level]) {
+        reorderLevel = parseInt(String(row[mapping.reorder_level]).replace(/[^0-9.-]/g, ''), 10) || calculateSmartReorderLevel(stock);
+      } else {
+        reorderLevel = calculateSmartReorderLevel(stock);
+      }
+      
       let expiryDate = mapping.expiry_date ? parseDate(row[mapping.expiry_date] ?? '') : null;
       if (!expiryDate) expiryDate = defaultExpiry;
       const rawBatch = mapping.batch_number ? row[mapping.batch_number] : '';
@@ -353,8 +371,8 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
         manufacturer,
         category,
         batch_number: batchNumber,
-        current_stock: stock,
-        reorder_level: reorderLevel,
+        current_stock: String(stock),
+        reorder_level: String(reorderLevel),
         expiry_date: expiryDate,
         unit_price: costPrice,
         selling_price: sellingPrice,
@@ -366,7 +384,21 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
     });
   }, [csvData, mapping, findBarcodeByName]);
 
-  // Apply bulk reorder level to all rows
+  // Apply smart reorder levels based on each product's stock
+  const applySmartReorderLevels = () => {
+    setEditableRows((prev) =>
+      prev.map((r) => {
+        const stock = parseInt(r.current_stock, 10) || 0;
+        return { ...r, reorder_level: String(calculateSmartReorderLevel(stock)) };
+      })
+    );
+    toast({
+      title: 'Smart Reorder Levels Applied',
+      description: `Calculated optimal reorder levels for ${editableRows.length} products based on stock.`,
+    });
+  };
+
+  // Apply fixed bulk reorder level to all rows
   const applyBulkReorderLevel = () => {
     const level = parseInt(bulkReorderLevel, 10);
     if (isNaN(level) || level < 0) return;
@@ -374,7 +406,7 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
       prev.map((r) => ({ ...r, reorder_level: String(level) }))
     );
     toast({
-      title: 'Reorder Level Applied',
+      title: 'Bulk Reorder Level Applied',
       description: `Set reorder level to ${level} for all ${editableRows.length} products.`,
     });
   };
@@ -623,7 +655,7 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
         {/* REVIEW & EDIT STEP */}
         {step === 'review' && (
           <div className="flex-1 flex flex-col overflow-hidden py-2 min-h-0">
-            <div className="flex flex-wrap items-center gap-3 mb-3">
+            <div className="flex flex-wrap items-center gap-2 mb-3">
               <Badge variant="secondary" className="gap-1">
                 <Edit3 className="h-3 w-3" />
                 Editable Preview
@@ -631,111 +663,120 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
               <Badge variant={validRowCount === editableRows.length ? 'default' : 'destructive'}>
                 {validRowCount} / {editableRows.length} valid
               </Badge>
-              
-              {/* Bulk Reorder Level */}
-              <div className="flex items-center gap-2 ml-auto">
-                <span className="text-xs text-muted-foreground">Bulk Reorder Level:</span>
-                <Input
-                  value={bulkReorderLevel}
-                  onChange={(e) => setBulkReorderLevel(e.target.value)}
-                  className="h-7 w-16 text-sm"
-                  type="number"
-                  min="0"
-                />
-                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={applyBulkReorderLevel}>
-                  Apply All
-                </Button>
+            </div>
+            
+            {/* Reorder Level Controls */}
+            <div className="flex flex-wrap items-center gap-2 mb-3 p-2 bg-muted/50 rounded-lg border">
+              <span className="text-xs font-medium text-muted-foreground">Reorder Levels:</span>
+              <Button size="sm" variant="default" className="h-7 text-xs gap-1" onClick={applySmartReorderLevels}>
+                <Sparkles className="h-3 w-3" />
+                Auto-Calculate (Smart)
+              </Button>
+              <span className="text-xs text-muted-foreground">or</span>
+              <Input
+                value={bulkReorderLevel}
+                onChange={(e) => setBulkReorderLevel(e.target.value)}
+                className="h-7 w-14 text-xs"
+                type="number"
+                min="0"
+                placeholder="10"
+              />
+              <Button size="sm" variant="outline" className="h-7 text-xs" onClick={applyBulkReorderLevel}>
+                Set All
+              </Button>
+            </div>
+
+            {/* Scrollable Table Container - Fixed Scrolling */}
+            <div className="flex-1 border rounded-lg overflow-hidden min-h-0">
+              <div className="h-full overflow-auto">
+                <div className="min-w-[950px]">
+                  {/* Header Row */}
+                  <div className="grid grid-cols-[32px_1fr_120px_70px_70px_80px_70px_100px_90px_32px] gap-1 p-2 bg-muted text-xs font-medium sticky top-0 z-10 border-b">
+                    <span>#</span>
+                    <span>Product Name *</span>
+                    <span>Manufacturer</span>
+                    <span>Stock *</span>
+                    <span>Cost *</span>
+                    <span>Sell Price</span>
+                    <span>Reorder</span>
+                    <span>Expiry</span>
+                    <span>Category</span>
+                    <span></span>
+                  </div>
+
+                  {/* Data Rows */}
+                  {editableRows.map((row, idx) => (
+                    <div
+                      key={row.id}
+                      className={`grid grid-cols-[32px_1fr_120px_70px_70px_80px_70px_100px_90px_32px] gap-1 p-1.5 border-b items-center text-sm ${!row.isValid ? 'bg-destructive/10' : idx % 2 === 0 ? 'bg-background' : 'bg-muted/20'}`}
+                    >
+                      <span className="text-muted-foreground text-xs">{idx + 1}</span>
+                      <Input
+                        value={row.name}
+                        onChange={(e) => updateEditableRow(row.id, 'name', e.target.value)}
+                        className={`h-7 text-xs ${!row.isValid ? 'border-destructive' : ''}`}
+                        placeholder="Product name"
+                      />
+                      <Input
+                        value={row.manufacturer}
+                        onChange={(e) => updateEditableRow(row.id, 'manufacturer', e.target.value)}
+                        className="h-7 text-xs"
+                        placeholder="Manufacturer"
+                      />
+                      <Input
+                        value={row.current_stock}
+                        onChange={(e) => updateEditableRow(row.id, 'current_stock', e.target.value)}
+                        className="h-7 text-xs"
+                        type="number"
+                      />
+                      <Input
+                        value={row.unit_price}
+                        onChange={(e) => updateEditableRow(row.id, 'unit_price', e.target.value)}
+                        className="h-7 text-xs"
+                        type="number"
+                      />
+                      <Input
+                        value={row.selling_price}
+                        onChange={(e) => updateEditableRow(row.id, 'selling_price', e.target.value)}
+                        className="h-7 text-xs"
+                        type="number"
+                        placeholder="—"
+                      />
+                      <Input
+                        value={row.reorder_level}
+                        onChange={(e) => updateEditableRow(row.id, 'reorder_level', e.target.value)}
+                        className="h-7 text-xs"
+                        type="number"
+                        min="0"
+                      />
+                      <Input
+                        value={row.expiry_date}
+                        onChange={(e) => updateEditableRow(row.id, 'expiry_date', e.target.value)}
+                        className="h-7 text-xs"
+                        type="date"
+                      />
+                      <Input
+                        value={row.category}
+                        onChange={(e) => updateEditableRow(row.id, 'category', e.target.value)}
+                        className="h-7 text-xs"
+                        placeholder="Category"
+                      />
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive flex-shrink-0" onClick={() => removeRow(row.id)}>
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  ))}
+
+                  {editableRows.length === 0 && (
+                    <div className="p-8 text-center text-muted-foreground">
+                      No products to import. Go back and check your column mappings.
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
 
-            <ScrollArea className="flex-1 border rounded-lg min-h-0 max-h-[45vh]">
-              <div className="min-w-[900px]">
-                {/* Header Row */}
-                <div className="grid grid-cols-[32px_minmax(140px,1.5fr)_minmax(100px,1fr)_70px_70px_80px_80px_90px_70px_32px] gap-1 p-2 bg-muted text-xs font-medium sticky top-0 z-10">
-                  <span>#</span>
-                  <span>Product Name *</span>
-                  <span>Manufacturer</span>
-                  <span>Stock *</span>
-                  <span>Cost *</span>
-                  <span>Sell Price</span>
-                  <span>Reorder Lvl</span>
-                  <span>Expiry</span>
-                  <span>Category</span>
-                  <span></span>
-                </div>
-
-                {/* Data Rows */}
-                {editableRows.map((row, idx) => (
-                  <div
-                    key={row.id}
-                    className={`grid grid-cols-[32px_minmax(140px,1.5fr)_minmax(100px,1fr)_70px_70px_80px_80px_90px_70px_32px] gap-1 p-1.5 border-b items-center text-sm ${!row.isValid ? 'bg-destructive/10' : idx % 2 === 0 ? 'bg-background' : 'bg-muted/20'}`}
-                  >
-                    <span className="text-muted-foreground text-xs">{idx + 1}</span>
-                    <Input
-                      value={row.name}
-                      onChange={(e) => updateEditableRow(row.id, 'name', e.target.value)}
-                      className={`h-7 text-xs ${!row.isValid ? 'border-destructive' : ''}`}
-                      placeholder="Product name"
-                    />
-                    <Input
-                      value={row.manufacturer}
-                      onChange={(e) => updateEditableRow(row.id, 'manufacturer', e.target.value)}
-                      className="h-7 text-xs"
-                      placeholder="Manufacturer"
-                    />
-                    <Input
-                      value={row.current_stock}
-                      onChange={(e) => updateEditableRow(row.id, 'current_stock', e.target.value)}
-                      className="h-7 text-xs"
-                      type="number"
-                    />
-                    <Input
-                      value={row.unit_price}
-                      onChange={(e) => updateEditableRow(row.id, 'unit_price', e.target.value)}
-                      className="h-7 text-xs"
-                      type="number"
-                    />
-                    <Input
-                      value={row.selling_price}
-                      onChange={(e) => updateEditableRow(row.id, 'selling_price', e.target.value)}
-                      className="h-7 text-xs"
-                      type="number"
-                      placeholder="—"
-                    />
-                    <Input
-                      value={row.reorder_level}
-                      onChange={(e) => updateEditableRow(row.id, 'reorder_level', e.target.value)}
-                      className="h-7 text-xs"
-                      type="number"
-                      min="0"
-                    />
-                    <Input
-                      value={row.expiry_date}
-                      onChange={(e) => updateEditableRow(row.id, 'expiry_date', e.target.value)}
-                      className="h-7 text-xs"
-                      type="date"
-                    />
-                    <Input
-                      value={row.category}
-                      onChange={(e) => updateEditableRow(row.id, 'category', e.target.value)}
-                      className="h-7 text-xs"
-                      placeholder="Category"
-                    />
-                    <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => removeRow(row.id)}>
-                      <X className="h-3 w-3" />
-                    </Button>
-                  </div>
-                ))}
-
-                {editableRows.length === 0 && (
-                  <div className="p-8 text-center text-muted-foreground">
-                    No products to import. Go back and check your column mappings.
-                  </div>
-                )}
-              </div>
-            </ScrollArea>
-
-            <DialogFooter className="mt-4 pt-2 border-t">
+            <DialogFooter className="mt-4 pt-2 border-t flex-shrink-0">
               <Button variant="outline" onClick={() => setStep('mapping')}>Back</Button>
               <Button onClick={handleImport} disabled={validRowCount === 0} className="gap-2 bg-gradient-primary hover:opacity-90">
                 <Upload className="h-4 w-4" />
