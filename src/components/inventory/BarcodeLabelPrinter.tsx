@@ -35,6 +35,16 @@ const LABEL_SIZES: Record<LabelSize, { width: number; height: number; fontSize: 
   large: { width: 70, height: 40, fontSize: 12 },
 };
 
+// HTML escape function to prevent XSS
+const escapeHtml = (unsafe: string): string => {
+  return unsafe
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+};
+
 export const BarcodeLabelPrinter = ({ medication, open, onOpenChange }: BarcodeLabelPrinterProps) => {
   const [labelCount, setLabelCount] = useState(1);
   const [labelSize, setLabelSize] = useState<LabelSize>('medium');
@@ -84,6 +94,10 @@ export const BarcodeLabelPrinter = ({ medication, open, onOpenChange }: BarcodeL
     const barcodeDataUrl = generateBarcodeDataUrl();
     const size = LABEL_SIZES[labelSize];
     
+    // Escape medication name to prevent XSS
+    const safeMedicationName = escapeHtml(medication.name);
+    const safePrice = escapeHtml(Number(medication.selling_price || medication.unit_price).toLocaleString());
+    
     const labelsHtml = Array(labelCount)
       .fill(0)
       .map(() => `
@@ -101,10 +115,10 @@ export const BarcodeLabelPrinter = ({ medication, open, onOpenChange }: BarcodeL
           box-sizing: border-box;
         ">
           <div style="font-size: ${size.fontSize}px; font-weight: bold; text-align: center; margin-bottom: 2px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-            ${medication.name}
+            ${safeMedicationName}
           </div>
           <img src="${barcodeDataUrl}" style="max-width: 100%; height: auto;" />
-          ${showPrice ? `<div style="font-size: ${size.fontSize}px; font-weight: bold; margin-top: 2px;">₦${Number(medication.selling_price || medication.unit_price).toLocaleString()}</div>` : ''}
+          ${showPrice ? `<div style="font-size: ${size.fontSize}px; font-weight: bold; margin-top: 2px;">₦${safePrice}</div>` : ''}
         </div>
       `)
       .join('');
@@ -113,7 +127,7 @@ export const BarcodeLabelPrinter = ({ medication, open, onOpenChange }: BarcodeL
       <!DOCTYPE html>
       <html>
         <head>
-          <title>Barcode Labels - ${medication.name}</title>
+          <title>Barcode Labels - ${safeMedicationName}</title>
           <style>
             @page {
               size: A4;
