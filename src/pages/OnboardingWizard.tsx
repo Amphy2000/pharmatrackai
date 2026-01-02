@@ -10,6 +10,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useToast } from '@/hooks/use-toast';
 import { Progress } from '@/components/ui/progress';
 import { AddressAutocomplete } from '@/components/common/AddressAutocomplete';
+import { SmartCSVImportModal } from '@/components/inventory/SmartCSVImportModal';
+import { Badge } from '@/components/ui/badge';
 import { 
   Building2, 
   Loader2, 
@@ -19,7 +21,9 @@ import {
   ArrowRight, 
   ArrowLeft,
   FileSpreadsheet,
-  LogOut
+  LogOut,
+  Sparkles,
+  CheckCircle2
 } from 'lucide-react';
 
 // External Supabase URL for edge functions
