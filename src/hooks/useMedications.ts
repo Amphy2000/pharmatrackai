@@ -3,23 +3,29 @@ import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Medication, MedicationFormData, DashboardMetrics } from '@/types/medication';
 import { useToast } from '@/hooks/use-toast';
+import { usePharmacy } from '@/hooks/usePharmacy';
 import { addDays, isAfter, isBefore, parseISO } from 'date-fns';
 
 export const useMedications = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
+  const { pharmacyId } = usePharmacy();
 
   const { data: medications = [], isLoading, error } = useQuery({
-    queryKey: ['medications'],
+    queryKey: ['medications', pharmacyId],
     queryFn: async () => {
+      if (!pharmacyId) return [];
+
       const { data, error } = await supabase
         .from('medications')
         .select('*')
+        .eq('pharmacy_id', pharmacyId)
         .order('name', { ascending: true });
 
       if (error) throw error;
       return data as Medication[];
     },
+    enabled: !!pharmacyId,
   });
 
   // Real-time subscription for medications updates
@@ -47,12 +53,19 @@ export const useMedications = () => {
 
   const addMedication = useMutation({
     mutationFn: async (newMedication: MedicationFormData & { metadata?: Record<string, any> }) => {
+      if (!pharmacyId) {
+        throw new Error('No pharmacy selected. Please select a pharmacy and try again.');
+      }
+
       const { data, error } = await supabase
         .from('medications')
-        .insert([{
-          ...newMedication,
-          metadata: newMedication.metadata || {},
-        }])
+        .insert([
+          {
+            ...newMedication,
+            pharmacy_id: pharmacyId,
+            metadata: newMedication.metadata || {},
+          },
+        ])
         .select()
         .single();
 
