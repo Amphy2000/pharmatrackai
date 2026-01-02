@@ -8,7 +8,9 @@ const faqs = [
   {
     id: "free-apps",
     question: "Why pay when free apps exist?",
-    answer: `Free apps are "free" because YOU are the product. Here's what you lose with free pharmacy apps:
+    answer: `Free apps are "free" because YOU are the product. Here's the ugly truth:
+
+• **They sell your data to Big Pharma** – Your inventory data, buying patterns, and customer information are sold to pharmaceutical companies for marketing. Nothing is truly free.
 
 • **No AI Intelligence**: Free apps just record data. PharmaTrack AI PREDICTS what will expire and suggests discounts BEFORE you lose money.
 
@@ -18,7 +20,7 @@ const faqs = [
 
 • **Hidden Costs**: Free apps charge for support, data export, and updates. You pay with frustration and lost time.
 
-**Bottom line**: If a free app costs you ₦1.2M in expired stock and a ₦35,000/month solution saves ₦840,000... the "free" app is actually costing you ₦420,000+ per year.`,
+**Bottom line**: With free apps, you're not the customer – you're the product being sold. If a free app costs you ₦1.2M in expired stock and exposes your business data, while a ₦35,000/month solution saves ₦840,000 AND keeps your data private... the "free" app is actually costing you everything.`,
     icon: AlertTriangle,
     iconColor: "text-warning",
   },
@@ -34,7 +36,7 @@ const faqs = [
 
 **We offer FREE data migration**: Send us your Excel file and we'll have your inventory live in 24 hours. Your staff will save 8 hours in their first week.
 
-The average pharmacy switching from Excel sees a **40% reduction in time** spent on inventory management.`,
+Pharmacies switching from Excel typically see a **40% reduction in time** spent on inventory management.`,
     icon: BookOpen,
     iconColor: "text-primary",
   },
@@ -50,9 +52,7 @@ The average pharmacy switching from Excel sees a **40% reduction in time** spent
 • **Free training videos** – Step-by-step guides in local languages
 • **WhatsApp support** – Get help in minutes, not days
 
-**Real story**: A 62-year-old pharmacist in Kaduna learned the system in 2 days. His quote: "It's easier than my Nokia phone."
-
-We've trained 500+ staff members. The average learning time is **under 3 days**.`,
+**Real example**: We built this so intuitive that the average learning time is **under 3 days** – even for staff who only use basic phones.`,
     icon: Users,
     iconColor: "text-success",
   },
@@ -67,13 +67,12 @@ We've trained 500+ staff members. The average learning time is **under 3 days**.
 • **Open format** – All exports work with any spreadsheet or other pharmacy software
 • **Nigerian company** – We're registered, based in Nigeria, with a physical office
 
-**Business stability**:
-• We've been operating for 2+ years
-• 500+ active pharmacies trust us
-• Revenue-positive and growing
-• Backed by pharmacy industry partners
+**Our commitment**:
+• We're actively growing and onboarding new pharmacies monthly
+• We're revenue-focused and building for the long term
+• Built by pharmacists who understand your business
 
-We're built by pharmacists for the long haul. But even if the worst happened, your data leaves with you – no hostage situations.`,
+We're in this for the long haul. But even if the worst happened, your data leaves with you – no hostage situations.`,
     icon: Shield,
     iconColor: "text-marketplace",
   },

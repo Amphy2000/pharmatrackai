@@ -73,7 +73,7 @@ const generateActivities = (): ActivityItem[] => {
   // Add milestone
   activities.push({
     id: `milestone-${Date.now()}`,
-    message: "Over 500 pharmacies now trust PharmaTrack",
+    message: "Join pharmacies already protecting their profits",
     icon: "milestone",
     time: "",
   });
