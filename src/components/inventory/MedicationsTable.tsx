@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { format, parseISO } from 'date-fns';
-import { Edit2, Trash2, MoreHorizontal, Package, ChevronDown, ChevronUp, Archive, ArchiveRestore, Filter, Link2Off, Hash, Loader2, Printer, Globe, GlobeLock, Star, StarOff } from 'lucide-react';
+import { Edit2, Trash2, MoreHorizontal, Package, ChevronDown, ChevronUp, Archive, ArchiveRestore, Filter, Link2Off, Hash, Loader2, Printer, Globe, GlobeLock, Star, StarOff, Check } from 'lucide-react';
 import { Medication } from '@/types/medication';
 import { BarcodeLabelPrinter } from './BarcodeLabelPrinter';
 import { FeatureDurationSelect } from './FeatureDurationSelect';
@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/table';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -53,11 +54,13 @@ interface MedicationsTableProps {
   medications: Medication[];
   searchQuery: string;
   onEdit: (medication: Medication) => void;
+  selectedIds?: Set<string>;
+  onToggleSelect?: (id: string) => void;
 }
 
 const ITEMS_PER_PAGE = 10;
 
-export const MedicationsTable = ({ medications, searchQuery, onEdit }: MedicationsTableProps) => {
+export const MedicationsTable = ({ medications, searchQuery, onEdit, selectedIds, onToggleSelect }: MedicationsTableProps) => {
   const { deleteMedication, updateMedication, isExpired, isLowStock, isExpiringSoon } = useMedications();
   const { formatPrice } = useCurrency();
   const { toast } = useToast();
@@ -193,6 +196,8 @@ export const MedicationsTable = ({ medications, searchQuery, onEdit }: Medicatio
   };
 
   const getRowClass = (medication: Medication) => {
+    const isSelected = selectedIds?.has(medication.id);
+    if (isSelected) return 'bg-primary/10 border-l-4 border-l-primary';
     if (medication.is_shelved === false) return 'bg-muted/30 opacity-70';
     if (isExpired(medication.expiry_date)) return 'row-expired';
     if (isLowStock(medication.current_stock, medication.reorder_level)) return 'row-low-stock';
@@ -297,6 +302,9 @@ export const MedicationsTable = ({ medications, searchQuery, onEdit }: Medicatio
                 <Table>
                   <TableHeader>
                     <TableRow className="bg-muted/50 hover:bg-muted/50">
+                      {onToggleSelect && (
+                        <TableHead className="w-[40px]"></TableHead>
+                      )}
                       <TableHead className="font-semibold">Name</TableHead>
                       <TableHead className="font-semibold">Category</TableHead>
                       <TableHead className="font-semibold">Batch No.</TableHead>
@@ -309,37 +317,50 @@ export const MedicationsTable = ({ medications, searchQuery, onEdit }: Medicatio
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {paginatedMedications.map((medication) => (
-                      <TableRow
-                        key={medication.id}
-                        className={cn('transition-colors', getRowClass(medication))}
-                      >
-                        <TableCell className="font-medium">
-                          <div className="flex items-center gap-2">
-                            {medication.name}
-                            {medication.is_shelved === false && (
-                              <Archive className="h-3 w-3 text-muted-foreground" />
-                            )}
-                            {!medication.barcode_id && (
-                              <Link2Off className="h-3 w-3 text-amber-500" />
-                            )}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant="outline" className="font-normal">
-                            {medication.category}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="font-mono text-sm">{medication.batch_number}</TableCell>
-                        <TableCell className="text-right tabular-nums">{medication.current_stock}</TableCell>
-                        <TableCell className="text-right tabular-nums text-muted-foreground">
-                          {medication.reorder_level}
-                        </TableCell>
-                        <TableCell>{format(parseISO(medication.expiry_date), 'MMM dd, yyyy')}</TableCell>
-                        <TableCell className="text-right tabular-nums">
-                          {formatPrice(Number(medication.unit_price))}
-                        </TableCell>
-                        <TableCell>{getStatusBadge(medication)}</TableCell>
+                    {paginatedMedications.map((medication) => {
+                      const isSelected = selectedIds?.has(medication.id);
+                      return (
+                        <TableRow
+                          key={medication.id}
+                          className={cn('transition-colors', getRowClass(medication))}
+                        >
+                          {onToggleSelect && (
+                            <TableCell className="pr-0">
+                              <Checkbox
+                                checked={isSelected}
+                                onCheckedChange={() => onToggleSelect(medication.id)}
+                              />
+                            </TableCell>
+                          )}
+                          <TableCell className="font-medium">
+                            <div className="flex items-center gap-2">
+                              {isSelected && (
+                                <Check className="h-3 w-3 text-primary shrink-0" />
+                              )}
+                              {medication.name}
+                              {medication.is_shelved === false && (
+                                <Archive className="h-3 w-3 text-muted-foreground" />
+                              )}
+                              {!medication.barcode_id && (
+                                <Link2Off className="h-3 w-3 text-amber-500" />
+                              )}
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="outline" className="font-normal">
+                              {medication.category}
+                            </Badge>
+                          </TableCell>
+                          <TableCell className="font-mono text-sm">{medication.batch_number}</TableCell>
+                          <TableCell className="text-right tabular-nums">{medication.current_stock}</TableCell>
+                          <TableCell className="text-right tabular-nums text-muted-foreground">
+                            {medication.reorder_level}
+                          </TableCell>
+                          <TableCell>{format(parseISO(medication.expiry_date), 'MMM dd, yyyy')}</TableCell>
+                          <TableCell className="text-right tabular-nums">
+                            {formatPrice(Number(medication.unit_price))}
+                          </TableCell>
+                          <TableCell>{getStatusBadge(medication)}</TableCell>
                         <TableCell>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild>
@@ -461,7 +482,8 @@ export const MedicationsTable = ({ medications, searchQuery, onEdit }: Medicatio
                           </DropdownMenu>
                         </TableCell>
                       </TableRow>
-                    ))}
+                      );
+                    })}
                   </TableBody>
                 </Table>
 

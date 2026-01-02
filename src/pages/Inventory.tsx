@@ -77,14 +77,30 @@ const Inventory = () => {
   const { plan } = usePlanLimits();
 
   const filteredMedications = useMemo(() => {
-    if (!searchQuery) return medications;
-    const query = searchQuery.toLowerCase();
-    return medications.filter(m =>
-      m.name.toLowerCase().includes(query) ||
-      m.category.toLowerCase().includes(query) ||
-      m.batch_number.toLowerCase().includes(query)
-    );
+    let result = medications;
+    
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      result = result.filter(m =>
+        m.name.toLowerCase().includes(query) ||
+        m.category.toLowerCase().includes(query) ||
+        m.batch_number.toLowerCase().includes(query)
+      );
+    }
+    
+    return result;
   }, [medications, searchQuery]);
+
+  // Sort medications to show selected items first
+  const sortedMedications = useMemo(() => {
+    if (selectedIds.size === 0) return filteredMedications;
+    
+    return [...filteredMedications].sort((a, b) => {
+      const aSelected = selectedIds.has(a.id) ? 0 : 1;
+      const bSelected = selectedIds.has(b.id) ? 0 : 1;
+      return aSelected - bSelected;
+    });
+  }, [filteredMedications, selectedIds]);
 
   const toggleSelect = (id: string) => {
     const newSet = new Set(selectedIds);
@@ -504,6 +520,11 @@ const Inventory = () => {
                 <Package className="h-5 w-5 text-primary" />
                 Product Inventory
                 <Badge variant="secondary">{filteredMedications.length} items</Badge>
+                {selectedIds.size > 0 && (
+                  <Badge variant="default" className="bg-primary text-primary-foreground">
+                    {selectedIds.size} selected
+                  </Badge>
+                )}
               </CardTitle>
               <div className="flex items-center gap-2">
                 {/* Search */}
@@ -627,13 +648,15 @@ const Inventory = () => {
           <CardContent>
             {viewMode === 'list' ? (
               <MedicationsTable
-                medications={filteredMedications}
+                medications={sortedMedications}
                 searchQuery=""
                 onEdit={handleEdit}
+                selectedIds={selectedIds}
+                onToggleSelect={toggleSelect}
               />
             ) : (
               <InventoryGrid
-                medications={filteredMedications}
+                medications={sortedMedications}
                 selectedIds={selectedIds}
                 onToggleSelect={toggleSelect}
                 onEdit={handleEdit}
