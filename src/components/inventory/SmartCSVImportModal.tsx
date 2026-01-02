@@ -1,6 +1,6 @@
 import { useState, useRef, useCallback, useMemo } from 'react';
 import Papa from 'papaparse';
-import { Upload, FileSpreadsheet, Check, AlertCircle, Loader2, Sparkles, ArrowRight, X, CheckCircle2, XCircle } from 'lucide-react';
+import { Upload, FileSpreadsheet, Check, AlertCircle, Loader2, Sparkles, ArrowRight, X, CheckCircle2, XCircle, Edit3, Eye } from 'lucide-react';
 import { useMedications } from '@/hooks/useMedications';
 import { useBarcodeLibrary } from '@/hooks/useBarcodeLibrary';
 import { MedicationFormData } from '@/types/medication';
@@ -23,6 +23,7 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { Input } from '@/components/ui/input';
 import { useToast } from '@/hooks/use-toast';
 
 interface SmartCSVImportModalProps {
@@ -96,7 +97,6 @@ const categoryMap: Record<string, MedicationFormData['category']> = {
   drops: 'Drops', drop: 'Drops', eye: 'Drops', ear: 'Drops',
   inhaler: 'Inhaler', inhalers: 'Inhaler', respiratory: 'Inhaler', spray: 'Inhaler',
   powder: 'Powder', powders: 'Powder', sachet: 'Powder', sachets: 'Powder',
-  // Common drug category names
   analgesic: 'Tablet', analgesics: 'Tablet', painkiller: 'Tablet', painkillers: 'Tablet',
   antibiotic: 'Capsule', antibiotics: 'Capsule',
   antimalarial: 'Tablet', 'anti-malarial': 'Tablet', antimalaria: 'Tablet',
@@ -107,13 +107,30 @@ const categoryMap: Record<string, MedicationFormData['category']> = {
   other: 'Other',
 };
 
+// Editable row type for review step
+interface EditableRow {
+  id: number;
+  name: string;
+  category: string;
+  batch_number: string;
+  current_stock: string;
+  reorder_level: string;
+  expiry_date: string;
+  unit_price: string;
+  selling_price: string;
+  barcode_id: string;
+  nafdac_reg_number: string;
+  isValid: boolean;
+  errorMsg?: string;
+}
+
 export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSVImportModalProps) => {
   const { addMedication } = useMedications();
   const { findBarcodeByName } = useBarcodeLibrary();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [step, setStep] = useState<'upload' | 'mapping' | 'preview' | 'importing' | 'complete'>('upload');
+  const [step, setStep] = useState<'upload' | 'mapping' | 'review' | 'importing' | 'complete'>('upload');
   const [csvData, setCsvData] = useState<Record<string, string>[]>([]);
   const [headers, setHeaders] = useState<string[]>([]);
   const [mapping, setMapping] = useState<ColumnMapping>({
@@ -121,20 +138,21 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
     reorder_level: '', expiry_date: '', unit_price: '', selling_price: '',
     barcode_id: '', nafdac_reg_number: '', manufacturer: '', supplier: '', location: '',
   });
+  const [editableRows, setEditableRows] = useState<EditableRow[]>([]);
   const [importProgress, setImportProgress] = useState(0);
   const [importedCount, setImportedCount] = useState(0);
   const [errors, setErrors] = useState<string[]>([]);
   const [isDragging, setIsDragging] = useState(false);
 
   // Auto-detect column mappings
-  const autoMapColumns = useCallback((headers: string[], sampleRow?: Record<string, string>): ColumnMapping => {
+  const autoMapColumns = useCallback((hdrs: string[], sampleRow?: Record<string, string>): ColumnMapping => {
     const result: ColumnMapping = {
       name: '', category: '', batch_number: '', current_stock: '',
       reorder_level: '', expiry_date: '', unit_price: '', selling_price: '',
       barcode_id: '', nafdac_reg_number: '', manufacturer: '', supplier: '', location: '',
     };
 
-    headers.forEach((header) => {
+    hdrs.forEach((header) => {
       const normalizedHeader = header.toLowerCase().replace(/[\s_-]+/g, '');
 
       (Object.keys(columnPatterns) as FieldKey[]).forEach((field) => {
@@ -150,24 +168,19 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
       });
     });
 
-    // Light heuristic: if we still didn't find a stock column, try to guess from the first row
-    if (!result.current_stock) {
-      const row = sampleRow ?? csvData[0];
-      if (row) {
-        const numericHeaders = headers.filter((h) => {
-          const v = row[h];
-          const n = Number(String(v ?? '').replace(/[₦$£€,%\s,]/g, ''));
-          return Number.isFinite(n);
-        });
-
-        // Prefer quantity-ish names first
-        const qtyCandidate = numericHeaders.find((h) => /qty|quant|stock|units?|onhand|balance|count/i.test(h));
-        if (qtyCandidate) result.current_stock = qtyCandidate;
-      }
+    // Light heuristic for stock column
+    if (!result.current_stock && sampleRow) {
+      const numericHeaders = hdrs.filter((h) => {
+        const v = sampleRow[h];
+        const n = Number(String(v ?? '').replace(/[₦$£€,%\s,]/g, ''));
+        return Number.isFinite(n);
+      });
+      const qtyCandidate = numericHeaders.find((h) => /qty|quant|stock|units?|onhand|balance|count/i.test(h));
+      if (qtyCandidate) result.current_stock = qtyCandidate;
     }
 
     return result;
-  }, [csvData]);
+  }, []);
 
   const handleFileSelect = useCallback((file: File) => {
     try {
@@ -177,21 +190,13 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
         file.type === 'application/vnd.ms-excel';
 
       if (!isCsv) {
-        toast({
-          title: 'Invalid file',
-          description: 'Please upload a CSV file.',
-          variant: 'destructive',
-        });
+        toast({ title: 'Invalid file', description: 'Please upload a CSV file.', variant: 'destructive' });
         return;
       }
 
       const maxSizeMb = 15;
       if (file.size > maxSizeMb * 1024 * 1024) {
-        toast({
-          title: 'File too large',
-          description: `Please upload a CSV smaller than ${maxSizeMb}MB.`,
-          variant: 'destructive',
-        });
+        toast({ title: 'File too large', description: `Please upload a CSV smaller than ${maxSizeMb}MB.`, variant: 'destructive' });
         return;
       }
 
@@ -202,16 +207,6 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
         transform: (value) => (value ?? '').toString().trim(),
         complete: (results) => {
           try {
-            if (results.errors?.length) {
-              const first = results.errors[0];
-              toast({
-                title: 'CSV parse warning',
-                description: `Row ${first.row ?? '—'}: ${first.message}`,
-                variant: 'destructive',
-              });
-              // Continue anyway; many CSVs still import fine.
-            }
-
             const raw = Array.isArray(results.data) ? results.data : [];
             const rows = raw
               .filter((r): r is Record<string, unknown> => !!r && typeof r === 'object')
@@ -233,11 +228,7 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
             const cleanedHeaders = Array.from(new Set(inferredHeaders)).filter(Boolean);
 
             if (rows.length === 0 || cleanedHeaders.length === 0) {
-              toast({
-                title: 'Empty File',
-                description: 'The CSV file appears to be empty or has no readable headers.',
-                variant: 'destructive',
-              });
+              toast({ title: 'Empty File', description: 'The CSV file appears to be empty or has no readable headers.', variant: 'destructive' });
               return;
             }
 
@@ -249,29 +240,17 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
             setStep('mapping');
           } catch (err) {
             console.error('CSV import: parse complete handler failed', err);
-            toast({
-              title: 'Import Error',
-              description: 'We could not read that CSV file. Please try another export format.',
-              variant: 'destructive',
-            });
+            toast({ title: 'Import Error', description: 'We could not read that CSV file. Please try another export format.', variant: 'destructive' });
           }
         },
         error: (error) => {
           console.error('CSV import: parse error', error);
-          toast({
-            title: 'Parse Error',
-            description: `Failed to parse CSV: ${error.message}`,
-            variant: 'destructive',
-          });
+          toast({ title: 'Parse Error', description: `Failed to parse CSV: ${error.message}`, variant: 'destructive' });
         },
       });
     } catch (err) {
       console.error('CSV import: file select failed', err);
-      toast({
-        title: 'Import Error',
-        description: 'Something went wrong while reading the file. Please try again.',
-        variant: 'destructive',
-      });
+      toast({ title: 'Import Error', description: 'Something went wrong while reading the file. Please try again.', variant: 'destructive' });
     }
   }, [autoMapColumns, toast]);
 
@@ -282,72 +261,38 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
     if (file && (file.name.endsWith('.csv') || file.type === 'text/csv')) {
       handleFileSelect(file);
     } else {
-      toast({
-        title: 'Invalid file',
-        description: 'Please upload a CSV file.',
-        variant: 'destructive',
-      });
+      toast({ title: 'Invalid file', description: 'Please upload a CSV file.', variant: 'destructive' });
     }
   }, [handleFileSelect, toast]);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    // allow re-uploading the same file
     e.target.value = '';
     if (file) handleFileSelect(file);
   };
 
   // Validate required fields
-  const missingFields = useMemo(() => {
-    return requiredFields.filter(f => !mapping[f]);
-  }, [mapping]);
+  const missingFields = useMemo(() => requiredFields.filter(f => !mapping[f]), [mapping]);
+  const mappedCount = useMemo(() => Object.values(mapping).filter(v => v).length, [mapping]);
 
-  const mappedCount = useMemo(() => {
-    return Object.values(mapping).filter(v => v).length;
-  }, [mapping]);
-
-  // Preview data with transformations
-  const previewData = useMemo(() => {
-    return csvData.slice(0, 5).map((row, idx) => ({
-      rowNum: idx + 2,
-      name: row[mapping.name] || '—',
-      stock: row[mapping.current_stock] || '0',
-      price: row[mapping.unit_price] || '—',
-      category: row[mapping.category] || 'Other',
-      expiry: row[mapping.expiry_date] || 'Not set',
-    }));
-  }, [csvData, mapping]);
-
-  // Parse various date formats
+  // Parse helpers
   const parseDate = (dateStr: string): string | null => {
     if (!dateStr || dateStr.trim() === '') return null;
-    
     const cleaned = dateStr.trim();
-    
-    // YYYY-MM-DD
     if (/^\d{4}-\d{2}-\d{2}$/.test(cleaned)) return cleaned;
-    
-    // DD/MM/YYYY or MM/DD/YYYY
     const slashMatch = cleaned.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{2,4})$/);
     if (slashMatch) {
       let [, first, second, year] = slashMatch;
       if (year.length === 2) year = `20${year}`;
-      // Assume DD/MM/YYYY for international format
       const day = parseInt(first) > 12 ? first : second;
       const month = parseInt(first) > 12 ? second : first;
       return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
     }
-    
-    // Try native parsing
     const date = new Date(cleaned);
-    if (!isNaN(date.getTime())) {
-      return date.toISOString().split('T')[0];
-    }
-    
+    if (!isNaN(date.getTime())) return date.toISOString().split('T')[0];
     return null;
   };
 
-  // Parse price values (handle currency symbols)
   const parsePrice = (value: string): number => {
     if (!value) return 0;
     const cleaned = value.toString().replace(/[₦$£€,\s]/g, '');
@@ -355,21 +300,86 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
     return isNaN(num) ? 0 : num;
   };
 
-  // Normalize category
   const normalizeCategory = (value: string): MedicationFormData['category'] => {
     if (!value) return 'Other';
     const key = value.toLowerCase().replace(/[\s\-_]/g, '');
     return categoryMap[key] || 'Other';
   };
 
+  // Build editable rows from CSV + mapping
+  const buildEditableRows = useCallback((): EditableRow[] => {
+    const twoYearsFromNow = new Date();
+    twoYearsFromNow.setFullYear(twoYearsFromNow.getFullYear() + 2);
+    const defaultExpiry = twoYearsFromNow.toISOString().split('T')[0];
+
+    return csvData.map((row, idx) => {
+      const rawName = mapping.name ? row[mapping.name] : '';
+      const productName = typeof rawName === 'string' ? rawName.trim() : '';
+      const costPrice = mapping.unit_price ? String(parsePrice(row[mapping.unit_price])) : '0';
+      const sellingPrice = mapping.selling_price ? String(parsePrice(row[mapping.selling_price])) : '';
+      const rawStock = mapping.current_stock ? row[mapping.current_stock] : '';
+      const stock = String(Math.max(0, parseInt(String(rawStock).replace(/[^0-9.-]/g, ''), 10) || 0));
+      const reorderLevel = mapping.reorder_level ? String(parseInt(String(row[mapping.reorder_level]).replace(/[^0-9.-]/g, ''), 10) || 10) : '10';
+      let expiryDate = mapping.expiry_date ? parseDate(row[mapping.expiry_date] ?? '') : null;
+      if (!expiryDate) expiryDate = defaultExpiry;
+      const rawBatch = mapping.batch_number ? row[mapping.batch_number] : '';
+      const batchNumber = typeof rawBatch === 'string' && rawBatch.trim() ? rawBatch.trim() : `BATCH-${Date.now()}-${idx}`;
+      const rawBarcode = mapping.barcode_id ? row[mapping.barcode_id] : '';
+      let barcodeId = typeof rawBarcode === 'string' && rawBarcode.trim() ? rawBarcode.trim() : '';
+      if (!barcodeId && productName) barcodeId = findBarcodeByName(productName) || '';
+      const rawNafdac = mapping.nafdac_reg_number ? row[mapping.nafdac_reg_number] : '';
+      const nafdacReg = typeof rawNafdac === 'string' && rawNafdac.trim() ? rawNafdac.trim() : '';
+      const rawCategory = mapping.category ? row[mapping.category] ?? '' : '';
+      const category = rawCategory || 'Other';
+
+      const isValid = !!productName;
+      return {
+        id: idx,
+        name: productName,
+        category,
+        batch_number: batchNumber,
+        current_stock: stock,
+        reorder_level: reorderLevel,
+        expiry_date: expiryDate,
+        unit_price: costPrice,
+        selling_price: sellingPrice,
+        barcode_id: barcodeId,
+        nafdac_reg_number: nafdacReg,
+        isValid,
+        errorMsg: isValid ? undefined : 'Product name is required',
+      };
+    });
+  }, [csvData, mapping, findBarcodeByName]);
+
+  const proceedToReview = () => {
+    const rows = buildEditableRows();
+    setEditableRows(rows);
+    setStep('review');
+  };
+
+  const updateEditableRow = (id: number, field: keyof EditableRow, value: string) => {
+    setEditableRows((prev) =>
+      prev.map((r) => {
+        if (r.id !== id) return r;
+        const updated = { ...r, [field]: value };
+        updated.isValid = !!updated.name.trim();
+        updated.errorMsg = updated.isValid ? undefined : 'Product name is required';
+        return updated;
+      })
+    );
+  };
+
+  const removeRow = (id: number) => {
+    setEditableRows((prev) => prev.filter((r) => r.id !== id));
+  };
+
+  const validRowCount = useMemo(() => editableRows.filter((r) => r.isValid).length, [editableRows]);
+
   const handleImport = async () => {
     try {
-      if (missingFields.length > 0) {
-        toast({
-          title: 'Missing Required Fields',
-          description: `Please map: ${missingFields.map(f => fieldLabels[f]).join(', ')}`,
-          variant: 'destructive',
-        });
+      const rowsToImport = editableRows.filter((r) => r.isValid);
+      if (rowsToImport.length === 0) {
+        toast({ title: 'No valid rows', description: 'Please fix or add product names before importing.', variant: 'destructive' });
         return;
       }
 
@@ -380,74 +390,29 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
 
       const importErrors: string[] = [];
       let successCount = 0;
-
-      const rows = Array.isArray(csvData) ? csvData : [];
-      const totalRows = rows.length;
+      const totalRows = rowsToImport.length;
 
       for (let i = 0; i < totalRows; i++) {
-        const row = rows[i];
-        if (!row || typeof row !== 'object') {
-          importErrors.push(`Row ${i + 2}: Invalid row data`);
-          continue;
-        }
-
+        const row = rowsToImport[i];
         try {
-          const rawName = mapping.name ? row[mapping.name] : undefined;
-          const productName = typeof rawName === 'string' ? rawName.trim() : '';
-          if (!productName) {
-            importErrors.push(`Row ${i + 2}: Product name is empty`);
-            continue;
-          }
-
-          // Parse values with smart defaults
-          const costPrice = parsePrice(mapping.unit_price ? row[mapping.unit_price] : '');
-          const sellingPrice = mapping.selling_price ? parsePrice(row[mapping.selling_price]) : undefined;
-          const rawStock = mapping.current_stock ? row[mapping.current_stock] : '';
-          const stock = Math.max(0, parseInt(String(rawStock).replace(/[^0-9.-]/g, ''), 10) || 0);
-          const reorderLevel = mapping.reorder_level ? parseInt(String(row[mapping.reorder_level]).replace(/[^0-9.-]/g, ''), 10) || 10 : 10;
-
-          // Parse expiry date or use default (2 years from now)
-          let expiryDate = mapping.expiry_date ? parseDate(row[mapping.expiry_date] ?? '') : null;
-          if (!expiryDate) {
-            const twoYearsFromNow = new Date();
-            twoYearsFromNow.setFullYear(twoYearsFromNow.getFullYear() + 2);
-            expiryDate = twoYearsFromNow.toISOString().split('T')[0];
-          }
-
-          // Generate batch number if not provided
-          const rawBatch = mapping.batch_number ? row[mapping.batch_number] : '';
-          const batchNumber = typeof rawBatch === 'string' && rawBatch.trim()
-            ? rawBatch.trim()
-            : `BATCH-${Date.now()}-${i}`;
-
-          // Try to find barcode from library
-          const rawBarcode = mapping.barcode_id ? row[mapping.barcode_id] : '';
-          let barcodeId = typeof rawBarcode === 'string' && rawBarcode.trim() ? rawBarcode.trim() : undefined;
-          if (!barcodeId && productName) {
-            barcodeId = findBarcodeByName(productName) || undefined;
-          }
-
-          const rawNafdac = mapping.nafdac_reg_number ? row[mapping.nafdac_reg_number] : '';
-          const nafdacReg = typeof rawNafdac === 'string' && rawNafdac.trim() ? rawNafdac.trim() : undefined;
-
           const medication: MedicationFormData = {
-            name: productName,
-            category: normalizeCategory(mapping.category ? row[mapping.category] ?? '' : ''),
-            batch_number: batchNumber,
-            current_stock: stock,
-            reorder_level: reorderLevel,
-            expiry_date: expiryDate,
-            unit_price: costPrice,
-            selling_price: sellingPrice,
-            barcode_id: barcodeId,
-            nafdac_reg_number: nafdacReg,
+            name: row.name,
+            category: normalizeCategory(row.category),
+            batch_number: row.batch_number,
+            current_stock: parseInt(row.current_stock, 10) || 0,
+            reorder_level: parseInt(row.reorder_level, 10) || 10,
+            expiry_date: row.expiry_date,
+            unit_price: parseFloat(row.unit_price) || 0,
+            selling_price: row.selling_price ? parseFloat(row.selling_price) : undefined,
+            barcode_id: row.barcode_id || undefined,
+            nafdac_reg_number: row.nafdac_reg_number || undefined,
           };
 
           await addMedication.mutateAsync(medication);
           successCount++;
         } catch (error) {
-          console.error(`CSV import row ${i + 2} error:`, error);
-          importErrors.push(`Row ${i + 2}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+          console.error(`CSV import row ${row.id + 2} error:`, error);
+          importErrors.push(`Row ${row.id + 2} (${row.name || 'No Name'}): ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
 
         setImportProgress(Math.round(((i + 1) / totalRows) * 100));
@@ -464,22 +429,14 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
           variant: importErrors.length === 0 ? 'default' : 'destructive',
         });
       } else {
-        toast({
-          title: 'Import Failed',
-          description: importErrors[0] || 'No products could be imported. Check column mappings.',
-          variant: 'destructive',
-        });
+        toast({ title: 'Import Failed', description: importErrors[0] || 'No products could be imported.', variant: 'destructive' });
       }
 
       onComplete?.(successCount);
     } catch (err) {
       console.error('CSV import fatal error:', err);
-      toast({
-        title: 'Import Error',
-        description: 'Something went wrong during import. Please try again.',
-        variant: 'destructive',
-      });
-      setStep('upload');
+      toast({ title: 'Import Error', description: 'Something went wrong during import. Please try again.', variant: 'destructive' });
+      setStep('review');
     }
   };
 
@@ -492,6 +449,7 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
       reorder_level: '', expiry_date: '', unit_price: '', selling_price: '',
       barcode_id: '', nafdac_reg_number: '', manufacturer: '', supplier: '', location: '',
     });
+    setEditableRows([]);
     setImportProgress(0);
     setImportedCount(0);
     setErrors([]);
@@ -499,17 +457,8 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
   };
 
   return (
-    <Dialog
-      open={open}
-      onOpenChange={(nextOpen) => {
-        if (!nextOpen) {
-          handleClose();
-          return;
-        }
-        onOpenChange(true);
-      }}
-    >
-      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
+    <Dialog open={open} onOpenChange={(nextOpen) => { if (!nextOpen) handleClose(); else onOpenChange(true); }}>
+      <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="font-display text-xl flex items-center gap-2">
             <FileSpreadsheet className="h-5 w-5 text-primary" />
@@ -520,29 +469,20 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
             </Badge>
           </DialogTitle>
           <DialogDescription>
-            {step === 'upload' && 'Upload any CSV file - we\'ll automatically detect your columns'}
+            {step === 'upload' && "Upload any CSV file - we'll automatically detect your columns"}
             {step === 'mapping' && `Found ${headers.length} columns. Review the auto-detected mappings below.`}
-            {step === 'preview' && 'Review the first few rows before importing'}
-            {step === 'importing' && `Importing ${csvData.length} products...`}
+            {step === 'review' && `Review & edit ${editableRows.length} products before importing.`}
+            {step === 'importing' && `Importing ${validRowCount} products...`}
             {step === 'complete' && `Import complete! ${importedCount} products added.`}
           </DialogDescription>
         </DialogHeader>
 
+        {/* UPLOAD STEP */}
         {step === 'upload' && (
           <div className="flex-1 flex flex-col py-4">
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".csv,text/csv"
-              onChange={handleInputChange}
-              className="hidden"
-            />
+            <input ref={fileInputRef} type="file" accept=".csv,text/csv" onChange={handleInputChange} className="hidden" />
             <div
-              className={`flex-1 min-h-[200px] border-2 border-dashed rounded-xl flex flex-col items-center justify-center gap-4 transition-all cursor-pointer ${
-                isDragging 
-                  ? 'border-primary bg-primary/10' 
-                  : 'border-border hover:border-primary/50 hover:bg-muted/30'
-              }`}
+              className={`flex-1 min-h-[200px] border-2 border-dashed rounded-xl flex flex-col items-center justify-center gap-4 transition-all cursor-pointer ${isDragging ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50 hover:bg-muted/30'}`}
               onClick={() => fileInputRef.current?.click()}
               onDragOver={(e) => { e.preventDefault(); setIsDragging(true); }}
               onDragLeave={() => setIsDragging(false)}
@@ -576,6 +516,7 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
           </div>
         )}
 
+        {/* MAPPING STEP */}
         {step === 'mapping' && (
           <div className="flex-1 flex flex-col overflow-hidden py-2">
             <div className="flex items-center gap-3 mb-4">
@@ -598,12 +539,7 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
                     </div>
                     <Select
                       value={mapping[field] || NOT_MAPPED_VALUE}
-                      onValueChange={(value) =>
-                        setMapping((prev) => ({
-                          ...prev,
-                          [field]: value === NOT_MAPPED_VALUE ? '' : value,
-                        }))
-                      }
+                      onValueChange={(value) => setMapping((prev) => ({ ...prev, [field]: value === NOT_MAPPED_VALUE ? '' : value }))}
                     >
                       <SelectTrigger className="flex-1">
                         <SelectValue placeholder="Select column" />
@@ -627,12 +563,7 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
                     </div>
                     <Select
                       value={mapping[field] || NOT_MAPPED_VALUE}
-                      onValueChange={(value) =>
-                        setMapping((prev) => ({
-                          ...prev,
-                          [field]: value === NOT_MAPPED_VALUE ? '' : value,
-                        }))
-                      }
+                      onValueChange={(value) => setMapping((prev) => ({ ...prev, [field]: value === NOT_MAPPED_VALUE ? '' : value }))}
                     >
                       <SelectTrigger className="flex-1">
                         <SelectValue placeholder="Select column (optional)" />
@@ -650,41 +581,110 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
               </div>
             </ScrollArea>
 
-            {/* Preview section */}
-            {missingFields.length === 0 && previewData.length > 0 && (
-              <div className="mt-4 p-3 rounded-lg border bg-muted/20">
-                <p className="text-xs font-medium text-muted-foreground mb-2">Preview (first 5 rows):</p>
-                <div className="text-xs space-y-1 max-h-24 overflow-y-auto">
-                  {previewData.map((row) => (
-                    <div key={row.rowNum} className="flex gap-4 text-muted-foreground">
-                      <span className="font-medium text-foreground truncate flex-1">{row.name}</span>
-                      <span>Stock: {row.stock}</span>
-                      <span>Price: {row.price}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
             <DialogFooter className="mt-4">
               <Button variant="outline" onClick={handleClose}>Cancel</Button>
-              <Button 
-                onClick={handleImport} 
-                disabled={missingFields.length > 0}
-                className="gap-2 bg-gradient-primary hover:opacity-90"
-              >
-                <Upload className="h-4 w-4" />
-                Import {csvData.length} Products
+              <Button onClick={proceedToReview} disabled={missingFields.length > 0} className="gap-2 bg-gradient-primary hover:opacity-90">
+                <Eye className="h-4 w-4" />
+                Review & Edit
                 <ArrowRight className="h-4 w-4" />
               </Button>
             </DialogFooter>
           </div>
         )}
 
+        {/* REVIEW & EDIT STEP */}
+        {step === 'review' && (
+          <div className="flex-1 flex flex-col overflow-hidden py-2">
+            <div className="flex items-center gap-3 mb-3">
+              <Badge variant="secondary" className="gap-1">
+                <Edit3 className="h-3 w-3" />
+                Editable Preview
+              </Badge>
+              <Badge variant={validRowCount === editableRows.length ? 'default' : 'destructive'}>
+                {validRowCount} / {editableRows.length} valid
+              </Badge>
+            </div>
+
+            <ScrollArea className="flex-1 border rounded-lg">
+              <div className="min-w-[700px]">
+                {/* Header Row */}
+                <div className="grid grid-cols-[40px_1fr_100px_100px_100px_100px_40px] gap-2 p-2 bg-muted text-xs font-medium sticky top-0">
+                  <span>#</span>
+                  <span>Product Name *</span>
+                  <span>Stock *</span>
+                  <span>Cost *</span>
+                  <span>Sell Price</span>
+                  <span>Expiry</span>
+                  <span></span>
+                </div>
+
+                {/* Data Rows */}
+                {editableRows.map((row, idx) => (
+                  <div
+                    key={row.id}
+                    className={`grid grid-cols-[40px_1fr_100px_100px_100px_100px_40px] gap-2 p-2 border-b items-center text-sm ${!row.isValid ? 'bg-destructive/10' : idx % 2 === 0 ? 'bg-background' : 'bg-muted/20'}`}
+                  >
+                    <span className="text-muted-foreground text-xs">{idx + 1}</span>
+                    <Input
+                      value={row.name}
+                      onChange={(e) => updateEditableRow(row.id, 'name', e.target.value)}
+                      className={`h-8 text-sm ${!row.isValid ? 'border-destructive' : ''}`}
+                      placeholder="Product name"
+                    />
+                    <Input
+                      value={row.current_stock}
+                      onChange={(e) => updateEditableRow(row.id, 'current_stock', e.target.value)}
+                      className="h-8 text-sm"
+                      type="number"
+                    />
+                    <Input
+                      value={row.unit_price}
+                      onChange={(e) => updateEditableRow(row.id, 'unit_price', e.target.value)}
+                      className="h-8 text-sm"
+                      type="number"
+                    />
+                    <Input
+                      value={row.selling_price}
+                      onChange={(e) => updateEditableRow(row.id, 'selling_price', e.target.value)}
+                      className="h-8 text-sm"
+                      type="number"
+                      placeholder="—"
+                    />
+                    <Input
+                      value={row.expiry_date}
+                      onChange={(e) => updateEditableRow(row.id, 'expiry_date', e.target.value)}
+                      className="h-8 text-sm"
+                      type="date"
+                    />
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => removeRow(row.id)}>
+                      <X className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+
+                {editableRows.length === 0 && (
+                  <div className="p-8 text-center text-muted-foreground">
+                    No products to import. Go back and check your column mappings.
+                  </div>
+                )}
+              </div>
+            </ScrollArea>
+
+            <DialogFooter className="mt-4">
+              <Button variant="outline" onClick={() => setStep('mapping')}>Back</Button>
+              <Button onClick={handleImport} disabled={validRowCount === 0} className="gap-2 bg-gradient-primary hover:opacity-90">
+                <Upload className="h-4 w-4" />
+                Import {validRowCount} Products
+                <ArrowRight className="h-4 w-4" />
+              </Button>
+            </DialogFooter>
+          </div>
+        )}
+
+        {/* IMPORTING STEP */}
         {step === 'importing' && (
           <div className="flex-1 flex flex-col items-center justify-center gap-6 py-8">
             <Loader2 className="h-12 w-12 text-primary animate-spin" />
-            
             <div className="w-full max-w-md">
               <div className="flex justify-between text-sm mb-2">
                 <span>Importing products...</span>
@@ -692,12 +692,13 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
               </div>
               <Progress value={importProgress} className="h-3" />
               <p className="text-sm text-muted-foreground text-center mt-2">
-                {importedCount} of {csvData.length} products imported
+                {importedCount} of {validRowCount} products imported
               </p>
             </div>
           </div>
         )}
 
+        {/* COMPLETE STEP */}
         {step === 'complete' && (
           <div className="flex-1 flex flex-col items-center justify-center gap-6 py-8">
             <div className={`p-4 rounded-full ${errors.length === 0 ? 'bg-success/20' : 'bg-warning/20'}`}>
