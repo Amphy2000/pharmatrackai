@@ -91,6 +91,8 @@ const OnboardingWizard = () => {
 
   // Import state
   const [importComplete, setImportComplete] = useState(false);
+  const [showImportModal, setShowImportModal] = useState(false);
+  const [importedCount, setImportedCount] = useState(0);
 
   const steps = [
     { id: 'country', label: 'Region', icon: Globe },
@@ -428,34 +430,64 @@ const OnboardingWizard = () => {
             <>
               <CardHeader className="text-center">
                 <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-secondary text-secondary-foreground">
-                  <Upload className="h-8 w-8" />
+                  {importComplete ? <CheckCircle2 className="h-8 w-8" /> : <Upload className="h-8 w-8" />}
                 </div>
-                <CardTitle className="text-2xl font-display">Import Your Stock</CardTitle>
+                <CardTitle className="text-2xl font-display">
+                  {importComplete ? 'Import Complete!' : 'Import Your Stock'}
+                </CardTitle>
                 <CardDescription>
-                  Upload your existing inventory from Excel or CSV
+                  {importComplete 
+                    ? `Successfully imported ${importedCount} products into your inventory`
+                    : 'Upload your existing inventory from Excel or CSV'
+                  }
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div 
-                  className="border-2 border-dashed border-border rounded-xl p-8 text-center hover:border-primary/50 transition-colors cursor-pointer"
-                  onClick={() => {
-                    // This would open the CSV import modal
-                    setImportComplete(true);
-                  }}
-                >
-                  <FileSpreadsheet className="h-12 w-12 mx-auto mb-4 text-muted-foreground" />
-                  <p className="font-medium mb-2">Drop your file here or click to browse</p>
-                  <p className="text-sm text-muted-foreground">
-                    Supports Excel (.xlsx) and CSV files
-                  </p>
-                </div>
+                {!importComplete ? (
+                  <>
+                    <div 
+                      className="border-2 border-dashed border-border rounded-xl p-8 text-center hover:border-primary/50 hover:bg-primary/5 transition-all cursor-pointer"
+                      onClick={() => setShowImportModal(true)}
+                    >
+                      <div className="mx-auto mb-4 p-3 rounded-full bg-primary/10 w-fit">
+                        <FileSpreadsheet className="h-10 w-10 text-primary" />
+                      </div>
+                      <p className="font-medium mb-2">Click to upload your CSV file</p>
+                      <p className="text-sm text-muted-foreground">
+                        We'll auto-detect your columns
+                      </p>
+                      <Badge variant="secondary" className="mt-3 gap-1">
+                        <Sparkles className="h-3 w-3" />
+                        Smart Import
+                      </Badge>
+                    </div>
 
-                <div className="p-4 rounded-xl bg-muted/50">
-                  <p className="text-sm font-medium mb-2">Required columns:</p>
-                  <p className="text-xs text-muted-foreground">
-                    Product Name, Quantity, Unit Price, Expiry Date, Batch Number
-                  </p>
-                </div>
+                    <div className="p-4 rounded-xl bg-muted/50">
+                      <p className="text-sm font-medium mb-2 flex items-center gap-2">
+                        <Sparkles className="h-4 w-4 text-primary" />
+                        Auto-detects any format:
+                      </p>
+                      <ul className="text-xs text-muted-foreground space-y-1 grid grid-cols-2 gap-x-4">
+                        <li>• Product Name / Drug Name</li>
+                        <li>• Quantity / Stock</li>
+                        <li>• Cost Price / Unit Price</li>
+                        <li>• Selling Price</li>
+                        <li>• Expiry Date (any format)</li>
+                        <li>• Batch / Lot Number</li>
+                      </ul>
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-center py-4">
+                    <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-success/10 text-success mb-4">
+                      <CheckCircle2 className="h-5 w-5" />
+                      <span className="font-medium">{importedCount} products imported</span>
+                    </div>
+                    <p className="text-sm text-muted-foreground">
+                      Your inventory is ready. You can always import more from Settings.
+                    </p>
+                  </div>
+                )}
 
                 <div className="flex gap-3">
                   <Button 
@@ -463,12 +495,11 @@ const OnboardingWizard = () => {
                     onClick={handleSkipImport}
                     className="flex-1"
                   >
-                    Skip for now
+                    {importComplete ? 'Import More Later' : 'Skip for now'}
                   </Button>
                   <Button 
                     className="flex-1 bg-gradient-primary text-primary-foreground"
                     onClick={handleComplete}
-                    disabled={!importComplete}
                   >
                     Go to Dashboard
                     <ArrowRight className="ml-2 h-4 w-4" />
@@ -478,6 +509,16 @@ const OnboardingWizard = () => {
             </>
           )}
         </Card>
+
+        {/* Smart CSV Import Modal */}
+        <SmartCSVImportModal
+          open={showImportModal}
+          onOpenChange={setShowImportModal}
+          onComplete={(count) => {
+            setImportedCount(count);
+            setImportComplete(count > 0);
+          }}
+        />
       </div>
     </div>
   );
