@@ -34,6 +34,7 @@ interface SmartCSVImportModalProps {
 
 interface ColumnMapping {
   name: string;
+  generic_name: string;
   category: string;
   batch_number: string;
   current_stock: string;
@@ -52,6 +53,7 @@ type FieldKey = keyof ColumnMapping;
 
 const fieldLabels: Record<FieldKey, string> = {
   name: 'Product Name',
+  generic_name: 'Generic Name',
   category: 'Category / Type',
   batch_number: 'Batch Number',
   current_stock: 'Quantity / Stock',
@@ -67,22 +69,23 @@ const fieldLabels: Record<FieldKey, string> = {
 };
 
 const requiredFields: FieldKey[] = ['name', 'current_stock', 'unit_price'];
-const optionalFields: FieldKey[] = ['category', 'batch_number', 'reorder_level', 'expiry_date', 'selling_price', 'barcode_id', 'nafdac_reg_number', 'manufacturer', 'supplier', 'location'];
+const optionalFields: FieldKey[] = ['generic_name', 'manufacturer', 'category', 'batch_number', 'reorder_level', 'expiry_date', 'selling_price', 'barcode_id', 'nafdac_reg_number', 'supplier', 'location'];
 const NOT_MAPPED_VALUE = '__lovable_not_mapped__';
 
 // Smart column name matching patterns
 const columnPatterns: Record<FieldKey, RegExp[]> = {
-  name: [/^(product|drug|medication|item|medicine)[\s_-]?name$/i, /^name$/i, /^product$/i, /^drug$/i, /^description$/i, /^item$/i],
+  name: [/^(product|drug|medication|item|medicine)[\s_-]?name$/i, /^name$/i, /^product$/i, /^drug$/i, /^description$/i, /^item$/i, /^brand[\s_-]?name$/i],
+  generic_name: [/^generic[\s_-]?name$/i, /^generic$/i, /^inn$/i, /^active[\s_-]?ingredient$/i, /^ingredient$/i],
   category: [/^(category|type|form|class|group)$/i, /^drug[\s_-]?(type|form|class)$/i, /^dosage[\s_-]?form$/i],
   batch_number: [/^batch[\s_-]?(number|no|#)?$/i, /^lot[\s_-]?(number|no|#)?$/i, /^batch$/i],
   current_stock: [/^(current[\s_-]?)?(stock|quantity|qty|units?)$/i, /^on[\s_-]?hand$/i, /^available$/i, /^count$/i, /^balance$/i],
-  reorder_level: [/^(reorder|minimum|min)[\s_-]?(level|qty|stock|point)?$/i, /^rop$/i],
+  reorder_level: [/^(reorder|minimum|min)[\s_-]?(level|qty|stock|point)?$/i, /^rop$/i, /^min[\s_-]?stock$/i, /^alert[\s_-]?level$/i],
   expiry_date: [/^expir(y|ation)?[\s_-]?date$/i, /^exp[\s_-]?date$/i, /^best[\s_-]?before$/i, /^exp$/i],
   unit_price: [/^(cost|purchase|buy|unit)[\s_-]?price$/i, /^cost$/i, /^cp$/i, /^purchase[\s_-]?price$/i, /^price$/i],
   selling_price: [/^(sell(ing)?|retail|sale)[\s_-]?price$/i, /^sp$/i, /^retail$/i, /^mrp$/i],
   barcode_id: [/^bar[\s_-]?code$/i, /^upc$/i, /^ean$/i, /^gtin$/i, /^sku$/i],
   nafdac_reg_number: [/^nafdac[\s_-]?(reg|registration)?[\s_-]?(no|number|#)?$/i, /^reg[\s_-]?(no|number|#)?$/i, /^registration$/i, /^fda[\s_-]?number$/i],
-  manufacturer: [/^manufacturer$/i, /^mfg$/i, /^brand$/i, /^company$/i, /^make$/i],
+  manufacturer: [/^manufacturer$/i, /^mfg$/i, /^brand$/i, /^company$/i, /^make$/i, /^made[\s_-]?by$/i],
   supplier: [/^supplier$/i, /^vendor$/i, /^distributor$/i],
   location: [/^(shelf|bin|rack)[\s_-]?location$/i, /^location$/i, /^shelf$/i, /^storage$/i],
 };
@@ -111,6 +114,8 @@ const categoryMap: Record<string, MedicationFormData['category']> = {
 interface EditableRow {
   id: number;
   name: string;
+  generic_name: string;
+  manufacturer: string;
   category: string;
   batch_number: string;
   current_stock: string;
@@ -134,7 +139,7 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
   const [csvData, setCsvData] = useState<Record<string, string>[]>([]);
   const [headers, setHeaders] = useState<string[]>([]);
   const [mapping, setMapping] = useState<ColumnMapping>({
-    name: '', category: '', batch_number: '', current_stock: '',
+    name: '', generic_name: '', category: '', batch_number: '', current_stock: '',
     reorder_level: '', expiry_date: '', unit_price: '', selling_price: '',
     barcode_id: '', nafdac_reg_number: '', manufacturer: '', supplier: '', location: '',
   });
@@ -143,11 +148,12 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
   const [importedCount, setImportedCount] = useState(0);
   const [errors, setErrors] = useState<string[]>([]);
   const [isDragging, setIsDragging] = useState(false);
+  const [bulkReorderLevel, setBulkReorderLevel] = useState('10');
 
   // Auto-detect column mappings
   const autoMapColumns = useCallback((hdrs: string[], sampleRow?: Record<string, string>): ColumnMapping => {
     const result: ColumnMapping = {
-      name: '', category: '', batch_number: '', current_stock: '',
+      name: '', generic_name: '', category: '', batch_number: '', current_stock: '',
       reorder_level: '', expiry_date: '', unit_price: '', selling_price: '',
       barcode_id: '', nafdac_reg_number: '', manufacturer: '', supplier: '', location: '',
     };
@@ -331,11 +337,20 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
       const nafdacReg = typeof rawNafdac === 'string' && rawNafdac.trim() ? rawNafdac.trim() : '';
       const rawCategory = mapping.category ? row[mapping.category] ?? '' : '';
       const category = rawCategory || 'Other';
+      
+      // Extract manufacturer if mapped
+      const rawManufacturer = mapping.manufacturer ? row[mapping.manufacturer] : '';
+      const manufacturer = typeof rawManufacturer === 'string' ? rawManufacturer.trim() : '';
+      
+      // Generic name - try to extract from product name if not mapped
+      const genericName = '';
 
       const isValid = !!productName;
       return {
         id: idx,
         name: productName,
+        generic_name: genericName,
+        manufacturer,
         category,
         batch_number: batchNumber,
         current_stock: stock,
@@ -350,6 +365,19 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
       };
     });
   }, [csvData, mapping, findBarcodeByName]);
+
+  // Apply bulk reorder level to all rows
+  const applyBulkReorderLevel = () => {
+    const level = parseInt(bulkReorderLevel, 10);
+    if (isNaN(level) || level < 0) return;
+    setEditableRows((prev) =>
+      prev.map((r) => ({ ...r, reorder_level: String(level) }))
+    );
+    toast({
+      title: 'Reorder Level Applied',
+      description: `Set reorder level to ${level} for all ${editableRows.length} products.`,
+    });
+  };
 
   const proceedToReview = () => {
     const rows = buildEditableRows();
@@ -445,7 +473,7 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
     setCsvData([]);
     setHeaders([]);
     setMapping({
-      name: '', category: '', batch_number: '', current_stock: '',
+      name: '', generic_name: '', category: '', batch_number: '', current_stock: '',
       reorder_level: '', expiry_date: '', unit_price: '', selling_price: '',
       barcode_id: '', nafdac_reg_number: '', manufacturer: '', supplier: '', location: '',
     });
@@ -594,8 +622,8 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
 
         {/* REVIEW & EDIT STEP */}
         {step === 'review' && (
-          <div className="flex-1 flex flex-col overflow-hidden py-2">
-            <div className="flex items-center gap-3 mb-3">
+          <div className="flex-1 flex flex-col overflow-hidden py-2 min-h-0">
+            <div className="flex flex-wrap items-center gap-3 mb-3">
               <Badge variant="secondary" className="gap-1">
                 <Edit3 className="h-3 w-3" />
                 Editable Preview
@@ -603,18 +631,36 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
               <Badge variant={validRowCount === editableRows.length ? 'default' : 'destructive'}>
                 {validRowCount} / {editableRows.length} valid
               </Badge>
+              
+              {/* Bulk Reorder Level */}
+              <div className="flex items-center gap-2 ml-auto">
+                <span className="text-xs text-muted-foreground">Bulk Reorder Level:</span>
+                <Input
+                  value={bulkReorderLevel}
+                  onChange={(e) => setBulkReorderLevel(e.target.value)}
+                  className="h-7 w-16 text-sm"
+                  type="number"
+                  min="0"
+                />
+                <Button size="sm" variant="outline" className="h-7 text-xs" onClick={applyBulkReorderLevel}>
+                  Apply All
+                </Button>
+              </div>
             </div>
 
-            <ScrollArea className="flex-1 border rounded-lg">
-              <div className="min-w-[700px]">
+            <ScrollArea className="flex-1 border rounded-lg min-h-0 max-h-[45vh]">
+              <div className="min-w-[900px]">
                 {/* Header Row */}
-                <div className="grid grid-cols-[40px_1fr_100px_100px_100px_100px_40px] gap-2 p-2 bg-muted text-xs font-medium sticky top-0">
+                <div className="grid grid-cols-[32px_minmax(140px,1.5fr)_minmax(100px,1fr)_70px_70px_80px_80px_90px_70px_32px] gap-1 p-2 bg-muted text-xs font-medium sticky top-0 z-10">
                   <span>#</span>
                   <span>Product Name *</span>
+                  <span>Manufacturer</span>
                   <span>Stock *</span>
                   <span>Cost *</span>
                   <span>Sell Price</span>
+                  <span>Reorder Lvl</span>
                   <span>Expiry</span>
+                  <span>Category</span>
                   <span></span>
                 </div>
 
@@ -622,42 +668,61 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
                 {editableRows.map((row, idx) => (
                   <div
                     key={row.id}
-                    className={`grid grid-cols-[40px_1fr_100px_100px_100px_100px_40px] gap-2 p-2 border-b items-center text-sm ${!row.isValid ? 'bg-destructive/10' : idx % 2 === 0 ? 'bg-background' : 'bg-muted/20'}`}
+                    className={`grid grid-cols-[32px_minmax(140px,1.5fr)_minmax(100px,1fr)_70px_70px_80px_80px_90px_70px_32px] gap-1 p-1.5 border-b items-center text-sm ${!row.isValid ? 'bg-destructive/10' : idx % 2 === 0 ? 'bg-background' : 'bg-muted/20'}`}
                   >
                     <span className="text-muted-foreground text-xs">{idx + 1}</span>
                     <Input
                       value={row.name}
                       onChange={(e) => updateEditableRow(row.id, 'name', e.target.value)}
-                      className={`h-8 text-sm ${!row.isValid ? 'border-destructive' : ''}`}
+                      className={`h-7 text-xs ${!row.isValid ? 'border-destructive' : ''}`}
                       placeholder="Product name"
+                    />
+                    <Input
+                      value={row.manufacturer}
+                      onChange={(e) => updateEditableRow(row.id, 'manufacturer', e.target.value)}
+                      className="h-7 text-xs"
+                      placeholder="Manufacturer"
                     />
                     <Input
                       value={row.current_stock}
                       onChange={(e) => updateEditableRow(row.id, 'current_stock', e.target.value)}
-                      className="h-8 text-sm"
+                      className="h-7 text-xs"
                       type="number"
                     />
                     <Input
                       value={row.unit_price}
                       onChange={(e) => updateEditableRow(row.id, 'unit_price', e.target.value)}
-                      className="h-8 text-sm"
+                      className="h-7 text-xs"
                       type="number"
                     />
                     <Input
                       value={row.selling_price}
                       onChange={(e) => updateEditableRow(row.id, 'selling_price', e.target.value)}
-                      className="h-8 text-sm"
+                      className="h-7 text-xs"
                       type="number"
                       placeholder="—"
                     />
                     <Input
+                      value={row.reorder_level}
+                      onChange={(e) => updateEditableRow(row.id, 'reorder_level', e.target.value)}
+                      className="h-7 text-xs"
+                      type="number"
+                      min="0"
+                    />
+                    <Input
                       value={row.expiry_date}
                       onChange={(e) => updateEditableRow(row.id, 'expiry_date', e.target.value)}
-                      className="h-8 text-sm"
+                      className="h-7 text-xs"
                       type="date"
                     />
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={() => removeRow(row.id)}>
-                      <X className="h-4 w-4" />
+                    <Input
+                      value={row.category}
+                      onChange={(e) => updateEditableRow(row.id, 'category', e.target.value)}
+                      className="h-7 text-xs"
+                      placeholder="Category"
+                    />
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => removeRow(row.id)}>
+                      <X className="h-3 w-3" />
                     </Button>
                   </div>
                 ))}
@@ -670,7 +735,7 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
               </div>
             </ScrollArea>
 
-            <DialogFooter className="mt-4">
+            <DialogFooter className="mt-4 pt-2 border-t">
               <Button variant="outline" onClick={() => setStep('mapping')}>Back</Button>
               <Button onClick={handleImport} disabled={validRowCount === 0} className="gap-2 bg-gradient-primary hover:opacity-90">
                 <Upload className="h-4 w-4" />
