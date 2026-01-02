@@ -11,7 +11,7 @@ import { StockCountModal } from '@/components/inventory/StockCountModal';
 import { InvoiceScannerModal } from '@/components/inventory/InvoiceScannerModal';
 import { MultiImageInvoiceScanner } from '@/components/inventory/MultiImageInvoiceScanner';
 import { AddMedicationModal } from '@/components/inventory/AddMedicationModal';
-import { StockCSVImportModal } from '@/components/inventory/StockCSVImportModal';
+import { SmartCSVImportModal } from '@/components/inventory/SmartCSVImportModal';
 import { BulkPriceUpdateModal } from '@/components/inventory/BulkPriceUpdateModal';
 import { MedicationsTable } from '@/components/inventory/MedicationsTable';
 import { InventoryGrid } from '@/components/inventory/InventoryGrid';
@@ -663,7 +663,7 @@ const Inventory = () => {
         onOpenChange={setShowMultiImageScanner}
       />
       
-      <StockCSVImportModal
+      <SmartCSVImportModal
         open={showCSVImportModal}
         onOpenChange={setShowCSVImportModal}
       />
