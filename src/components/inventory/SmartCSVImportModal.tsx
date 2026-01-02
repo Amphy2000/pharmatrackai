@@ -518,7 +518,7 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
 
   return (
     <Dialog open={open} onOpenChange={(nextOpen) => { if (!nextOpen) handleClose(); else onOpenChange(true); }}>
-      <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
+      <DialogContent className="sm:max-w-3xl h-[90dvh] min-h-0 overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="font-display text-xl flex items-center gap-2">
             <FileSpreadsheet className="h-5 w-5 text-primary" />
@@ -539,7 +539,7 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
 
         {/* UPLOAD STEP */}
         {step === 'upload' && (
-          <div className="flex-1 flex flex-col py-4">
+          <div className="flex-1 flex flex-col py-4 min-h-0">
             <input ref={fileInputRef} type="file" accept=".csv,text/csv" onChange={handleInputChange} className="hidden" />
             <div
               className={`flex-1 min-h-[200px] border-2 border-dashed rounded-xl flex flex-col items-center justify-center gap-4 transition-all cursor-pointer ${isDragging ? 'border-primary bg-primary/10' : 'border-border hover:border-primary/50 hover:bg-muted/30'}`}
@@ -578,7 +578,7 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
 
         {/* MAPPING STEP */}
         {step === 'mapping' && (
-          <div className="flex-1 flex flex-col overflow-hidden py-2">
+          <div className="flex-1 flex flex-col overflow-hidden py-2 min-h-0">
             <div className="flex items-center gap-3 mb-4">
               <Badge variant={missingFields.length === 0 ? 'default' : 'destructive'} className="gap-1">
                 {missingFields.length === 0 ? <CheckCircle2 className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
@@ -588,7 +588,7 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
               <Badge variant="outline">{csvData.length} rows</Badge>
             </div>
 
-            <ScrollArea className="flex-1 pr-4">
+            <ScrollArea className="flex-1 min-h-0 pr-4">
               <div className="space-y-3">
                 <div className="text-sm font-medium text-muted-foreground mb-2">Required Fields</div>
                 {requiredFields.map((field) => (
@@ -825,7 +825,7 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
             </div>
 
             {errors.length > 0 && (
-              <ScrollArea className="w-full max-h-32 border rounded-lg p-2">
+              <ScrollArea className="w-full max-h-32 border rounded-lg p-2 min-h-0">
                 <div className="space-y-1">
                   {errors.slice(0, 10).map((error, i) => (
                     <div key={i} className="flex items-center gap-2 text-sm text-destructive">
