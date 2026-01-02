@@ -67,6 +67,7 @@ const fieldLabels: Record<FieldKey, string> = {
 
 const requiredFields: FieldKey[] = ['name', 'current_stock', 'unit_price'];
 const optionalFields: FieldKey[] = ['category', 'batch_number', 'reorder_level', 'expiry_date', 'selling_price', 'barcode_id', 'nafdac_reg_number', 'manufacturer', 'supplier', 'location'];
+const NOT_MAPPED_VALUE = '__lovable_not_mapped__';
 
 // Smart column name matching patterns
 const columnPatterns: Record<FieldKey, RegExp[]> = {
@@ -596,14 +597,19 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
                       <span className="text-destructive">*</span>
                     </div>
                     <Select
-                      value={mapping[field]}
-                      onValueChange={(value) => setMapping(prev => ({ ...prev, [field]: value }))}
+                      value={mapping[field] || NOT_MAPPED_VALUE}
+                      onValueChange={(value) =>
+                        setMapping((prev) => ({
+                          ...prev,
+                          [field]: value === NOT_MAPPED_VALUE ? '' : value,
+                        }))
+                      }
                     >
                       <SelectTrigger className="flex-1">
                         <SelectValue placeholder="Select column" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">— Not mapped —</SelectItem>
+                        <SelectItem value={NOT_MAPPED_VALUE}>— Not mapped —</SelectItem>
                         {headers.map((header) => (
                           <SelectItem key={header} value={header}>{header}</SelectItem>
                         ))}
@@ -620,14 +626,19 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
                       <span className="text-sm">{fieldLabels[field]}</span>
                     </div>
                     <Select
-                      value={mapping[field]}
-                      onValueChange={(value) => setMapping(prev => ({ ...prev, [field]: value }))}
+                      value={mapping[field] || NOT_MAPPED_VALUE}
+                      onValueChange={(value) =>
+                        setMapping((prev) => ({
+                          ...prev,
+                          [field]: value === NOT_MAPPED_VALUE ? '' : value,
+                        }))
+                      }
                     >
                       <SelectTrigger className="flex-1">
                         <SelectValue placeholder="Select column (optional)" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">— Not mapped —</SelectItem>
+                        <SelectItem value={NOT_MAPPED_VALUE}>— Not mapped —</SelectItem>
                         {headers.map((header) => (
                           <SelectItem key={header} value={header}>{header}</SelectItem>
                         ))}

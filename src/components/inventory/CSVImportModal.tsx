@@ -46,6 +46,7 @@ interface ColumnMapping {
 const requiredFields = ['name', 'batch_number', 'current_stock', 'expiry_date', 'unit_price'] as const;
 const optionalFields = ['category', 'reorder_level', 'barcode_id', 'selling_price', 'nafdac_reg_number', 'active_ingredients'] as const;
 const allFields = [...requiredFields, ...optionalFields] as const;
+const NOT_MAPPED_VALUE = '__lovable_not_mapped__';
 
 // Expanded category mapping to handle common pharmacy categories
 const categoryMap: Record<string, MedicationFormData['category']> = {
@@ -453,16 +454,19 @@ export const CSVImportModal = ({ open, onOpenChange }: CSVImportModalProps) => {
                       )}
                     </div>
                     <Select
-                      value={mapping[field as keyof ColumnMapping]}
+                      value={mapping[field as keyof ColumnMapping] || NOT_MAPPED_VALUE}
                       onValueChange={(value) =>
-                        setMapping((prev) => ({ ...prev, [field]: value }))
+                        setMapping((prev) => ({
+                          ...prev,
+                          [field]: value === NOT_MAPPED_VALUE ? '' : value,
+                        }))
                       }
                     >
                       <SelectTrigger className="flex-1">
                         <SelectValue placeholder="Select column" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">-- Not mapped --</SelectItem>
+                        <SelectItem value={NOT_MAPPED_VALUE}>-- Not mapped --</SelectItem>
                         {headers.map((header) => (
                           <SelectItem key={header} value={header}>
                             {header}
