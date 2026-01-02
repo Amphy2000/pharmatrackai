@@ -34,6 +34,16 @@ const formatCurrency = (amount: number, currency: CurrencyCode = 'NGN'): string 
   return `${symbol}${amount.toLocaleString('en-NG', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`;
 };
 
+// HTML escape function to prevent XSS
+const escapeHtml = (unsafe: string): string => {
+  return unsafe
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+};
+
 export const generateShortCode = (): string => {
   const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
   let code = 'PH-';
@@ -87,17 +97,26 @@ export const generateHtmlReceipt = ({
   const barcodeValue = shortCode || barcode || receiptNumber;
   const barcodeDataUrl = generateBarcodeDataUrl(barcodeValue);
 
+  // Escape dynamic values to prevent XSS
+  const safePharmacyName = escapeHtml(pharmacyName);
+  const safePharmacyAddress = pharmacyAddress ? escapeHtml(pharmacyAddress) : '';
+  const safePharmacyPhone = pharmacyPhone ? escapeHtml(pharmacyPhone) : '';
+  const safeStaffName = staffName ? escapeHtml(staffName) : '';
+  const safeReceiptNumber = escapeHtml(receiptNumber);
+  const safeShortCode = shortCode ? escapeHtml(shortCode) : '';
+  
   const itemsHtml = items.map((item, index) => {
     const price = item.medication.selling_price || item.medication.unit_price;
     const itemTotal = price * item.quantity;
-    const unitLabel = item.medication.dispensing_unit && item.medication.dispensing_unit !== 'unit' 
-      ? ` (${item.medication.dispensing_unit})` 
+    const safeMedicationName = escapeHtml(item.medication.name);
+    const safeUnitLabel = item.medication.dispensing_unit && item.medication.dispensing_unit !== 'unit' 
+      ? ` (${escapeHtml(item.medication.dispensing_unit)})` 
       : '';
 
     return `
       <tr>
         <td style="padding: 4px 0; border-bottom: 1px dashed #ddd;">${index + 1}</td>
-        <td style="padding: 4px 0; border-bottom: 1px dashed #ddd;">${item.medication.name}${unitLabel}</td>
+        <td style="padding: 4px 0; border-bottom: 1px dashed #ddd;">${safeMedicationName}${safeUnitLabel}</td>
         <td style="padding: 4px 0; border-bottom: 1px dashed #ddd; text-align: center;">${item.quantity}</td>
         <td style="padding: 4px 0; border-bottom: 1px dashed #ddd; text-align: right;">${formatCurrency(price, currency)}</td>
         <td style="padding: 4px 0; border-bottom: 1px dashed #ddd; text-align: right;">${formatCurrency(itemTotal, currency)}</td>
@@ -116,7 +135,7 @@ export const generateHtmlReceipt = ({
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Receipt ${receiptNumber}</title>
+  <title>Receipt ${safeReceiptNumber}</title>
   <style>
     @media print {
       @page { margin: 0; size: 80mm auto; }
@@ -169,21 +188,21 @@ export const generateHtmlReceipt = ({
 <body>
   <div class="header">
     ${pharmacyLogoUrl ? `<img src="${pharmacyLogoUrl}" class="logo" alt="Logo">` : ''}
-    <div class="pharmacy-name">${pharmacyName.toUpperCase()}</div>
-    ${pharmacyAddress ? `<div style="font-size: 10px;">${pharmacyAddress}</div>` : ''}
-    ${pharmacyPhone ? `<div style="font-size: 10px;">Tel: ${pharmacyPhone}</div>` : ''}
+    <div class="pharmacy-name">${safePharmacyName.toUpperCase()}</div>
+    ${safePharmacyAddress ? `<div style="font-size: 10px;">${safePharmacyAddress}</div>` : ''}
+    ${safePharmacyPhone ? `<div style="font-size: 10px;">Tel: ${safePharmacyPhone}</div>` : ''}
   </div>
 
   <div class="divider"></div>
 
   <div style="display: flex; justify-content: space-between; font-size: 11px;">
-    <span>#${receiptNumber}</span>
+    <span>#${safeReceiptNumber}</span>
     <span>${format(date, 'dd/MM/yy HH:mm')}</span>
   </div>
 
   <div class="barcode-section">
     ${barcodeDataUrl ? `<img src="${barcodeDataUrl}" class="barcode-img" alt="Barcode">` : ''}
-    ${shortCode ? `<div class="short-code">${shortCode}</div>` : ''}
+    ${safeShortCode ? `<div class="short-code">${safeShortCode}</div>` : ''}
     <div class="status">${statusText}</div>
   </div>
 
@@ -220,7 +239,7 @@ export const generateHtmlReceipt = ({
   ` : `
   <div class="barcode-section" style="margin-top: 10px;">
     ${barcodeDataUrl ? `<img src="${barcodeDataUrl}" class="barcode-img" alt="Barcode">` : ''}
-    ${shortCode ? `<div style="font-size: 12px; font-weight: bold; margin-top: 3px;">${shortCode}</div>` : ''}
+    ${safeShortCode ? `<div style="font-size: 12px; font-weight: bold; margin-top: 3px;">${safeShortCode}</div>` : ''}
     <div style="font-size: 9px; color: #666; margin-top: 5px;">Official Transaction Record - pharmatrack.com.ng</div>
   </div>
   `}
@@ -230,7 +249,7 @@ export const generateHtmlReceipt = ({
   <div class="footer">
     <div>Thank you for your purchase!</div>
     <div>Get well soon. Visit us again!</div>
-    ${staffName ? `<div style="margin-top: 5px;">Served by: ${staffName}</div>` : ''}
+    ${safeStaffName ? `<div style="margin-top: 5px;">Served by: ${safeStaffName}</div>` : ''}
     <div style="margin-top: 5px; color: #888;">Powered by pharmatrack.com.ng</div>
   </div>
 </body>
