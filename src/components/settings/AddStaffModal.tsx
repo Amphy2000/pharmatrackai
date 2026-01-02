@@ -41,6 +41,7 @@ export const AddStaffModal = ({ isOpen, onClose, onSuccess, mode = 'owner', forc
 
   // Safe branches array
   const safeBranches = branches || [];
+  const ALL_BRANCHES_VALUE = '__lovable_all_branches__';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -299,14 +300,19 @@ export const AddStaffModal = ({ isOpen, onClose, onSuccess, mode = 'owner', forc
                     Assigned Branch
                   </Label>
                   <Select
-                    value={formData.branchId}
-                    onValueChange={(value) => setFormData(prev => ({ ...prev, branchId: value }))}
+                    value={formData.branchId || ALL_BRANCHES_VALUE}
+                    onValueChange={(value) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        branchId: value === ALL_BRANCHES_VALUE ? '' : value,
+                      }))
+                    }
                   >
                     <SelectTrigger className="mt-1.5">
                       <SelectValue placeholder="All Branches (Full Access)" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">All Branches (Full Access)</SelectItem>
+                      <SelectItem value={ALL_BRANCHES_VALUE}>All Branches (Full Access)</SelectItem>
                       {safeBranches.filter(b => b.is_active).map((branch) => (
                         <SelectItem key={branch.id} value={branch.id}>
                           {branch.name} {branch.is_main_branch ? '(Main)' : ''}
