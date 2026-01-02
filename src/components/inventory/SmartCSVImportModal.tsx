@@ -126,7 +126,7 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
   const [isDragging, setIsDragging] = useState(false);
 
   // Auto-detect column mappings
-  const autoMapColumns = useCallback((headers: string[]): ColumnMapping => {
+  const autoMapColumns = useCallback((headers: string[], sampleRow?: Record<string, string>): ColumnMapping => {
     const result: ColumnMapping = {
       name: '', category: '', batch_number: '', current_stock: '',
       reorder_level: '', expiry_date: '', unit_price: '', selling_price: '',
@@ -135,7 +135,7 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
 
     headers.forEach((header) => {
       const normalizedHeader = header.toLowerCase().replace(/[\s_-]+/g, '');
-      
+
       (Object.keys(columnPatterns) as FieldKey[]).forEach((field) => {
         if (!result[field]) {
           const patterns = columnPatterns[field];
@@ -149,13 +149,19 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
       });
     });
 
-    // Fallback: if no stock column found, look for any numeric-looking column
+    // Light heuristic: if we still didn't find a stock column, try to guess from the first row
     if (!result.current_stock) {
-      const numericHeaders = headers.filter(h => 
-        csvData.length > 0 && !isNaN(parseFloat(csvData[0][h]))
-      );
-      if (numericHeaders.length > 0 && !result.unit_price) {
-        // Don't auto-assign, but hint it
+      const row = sampleRow ?? csvData[0];
+      if (row) {
+        const numericHeaders = headers.filter((h) => {
+          const v = row[h];
+          const n = Number(String(v ?? '').replace(/[₦$£€,%\s,]/g, ''));
+          return Number.isFinite(n);
+        });
+
+        // Prefer quantity-ish names first
+        const qtyCandidate = numericHeaders.find((h) => /qty|quant|stock|units?|onhand|balance|count/i.test(h));
+        if (qtyCandidate) result.current_stock = qtyCandidate;
       }
     }
 
@@ -163,38 +169,109 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
   }, [csvData]);
 
   const handleFileSelect = useCallback((file: File) => {
-    Papa.parse(file, {
-      header: true,
-      skipEmptyLines: true,
-      transformHeader: (h) => h.trim(),
-      complete: (results) => {
-        if (results.data.length === 0) {
-          toast({
-            title: 'Empty File',
-            description: 'The CSV file appears to be empty.',
-            variant: 'destructive',
-          });
-          return;
-        }
+    try {
+      const isCsv =
+        file.name.toLowerCase().endsWith('.csv') ||
+        file.type === 'text/csv' ||
+        file.type === 'application/vnd.ms-excel';
 
-        const data = results.data as Record<string, string>[];
-        const headers = Object.keys(data[0]).filter(h => h);
-        
-        setCsvData(data);
-        setHeaders(headers);
-        
-        const autoMapping = autoMapColumns(headers);
-        setMapping(autoMapping);
-        setStep('mapping');
-      },
-      error: (error) => {
+      if (!isCsv) {
         toast({
-          title: 'Parse Error',
-          description: `Failed to parse CSV: ${error.message}`,
+          title: 'Invalid file',
+          description: 'Please upload a CSV file.',
           variant: 'destructive',
         });
-      },
-    });
+        return;
+      }
+
+      const maxSizeMb = 15;
+      if (file.size > maxSizeMb * 1024 * 1024) {
+        toast({
+          title: 'File too large',
+          description: `Please upload a CSV smaller than ${maxSizeMb}MB.`,
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      Papa.parse<Record<string, unknown>>(file, {
+        header: true,
+        skipEmptyLines: 'greedy',
+        transformHeader: (h) => (h ?? '').toString().trim(),
+        transform: (value) => (value ?? '').toString().trim(),
+        complete: (results) => {
+          try {
+            if (results.errors?.length) {
+              const first = results.errors[0];
+              toast({
+                title: 'CSV parse warning',
+                description: `Row ${first.row ?? '—'}: ${first.message}`,
+                variant: 'destructive',
+              });
+              // Continue anyway; many CSVs still import fine.
+            }
+
+            const raw = Array.isArray(results.data) ? results.data : [];
+            const rows = raw
+              .filter((r): r is Record<string, unknown> => !!r && typeof r === 'object')
+              .map((row) => {
+                const cleaned: Record<string, string> = {};
+                Object.entries(row).forEach(([k, v]) => {
+                  const key = String(k ?? '').trim();
+                  if (!key) return;
+                  cleaned[key] = String(v ?? '').trim();
+                });
+                return cleaned;
+              })
+              .filter((row) => Object.values(row).some((v) => String(v).trim() !== ''));
+
+            const inferredHeaders =
+              (results.meta?.fields?.filter(Boolean) as string[] | undefined)?.map((h) => h.trim()) ??
+              Object.keys(rows[0] ?? {});
+
+            const cleanedHeaders = Array.from(new Set(inferredHeaders)).filter(Boolean);
+
+            if (rows.length === 0 || cleanedHeaders.length === 0) {
+              toast({
+                title: 'Empty File',
+                description: 'The CSV file appears to be empty or has no readable headers.',
+                variant: 'destructive',
+              });
+              return;
+            }
+
+            setCsvData(rows);
+            setHeaders(cleanedHeaders);
+
+            const autoMapping = autoMapColumns(cleanedHeaders, rows[0]);
+            setMapping(autoMapping);
+            setStep('mapping');
+          } catch (err) {
+            console.error('CSV import: parse complete handler failed', err);
+            toast({
+              title: 'Import Error',
+              description: 'We could not read that CSV file. Please try another export format.',
+              variant: 'destructive',
+            });
+          }
+        },
+        error: (error) => {
+          console.error('CSV import: parse error', error);
+          toast({
+            title: 'Parse Error',
+            description: `Failed to parse CSV: ${error.message}`,
+            variant: 'destructive',
+          });
+        },
+      });
+    } catch (err) {
+      console.error('CSV import: file select failed', err);
+      toast({
+        title: 'Import Error',
+        description: 'Something went wrong while reading the file. Please try again.',
+        variant: 'destructive',
+      });
+    }
   }, [autoMapColumns, toast]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
@@ -214,6 +291,8 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    // allow re-uploading the same file
+    e.target.value = '';
     if (file) handleFileSelect(file);
   };
 
@@ -388,7 +467,16 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
+    <Dialog
+      open={open}
+      onOpenChange={(nextOpen) => {
+        if (!nextOpen) {
+          handleClose();
+          return;
+        }
+        onOpenChange(true);
+      }}
+    >
       <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="font-display text-xl flex items-center gap-2">
