@@ -362,93 +362,124 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
   };
 
   const handleImport = async () => {
-    if (missingFields.length > 0) {
-      toast({
-        title: 'Missing Required Fields',
-        description: `Please map: ${missingFields.map(f => fieldLabels[f]).join(', ')}`,
-        variant: 'destructive',
-      });
-      return;
-    }
+    try {
+      if (missingFields.length > 0) {
+        toast({
+          title: 'Missing Required Fields',
+          description: `Please map: ${missingFields.map(f => fieldLabels[f]).join(', ')}`,
+          variant: 'destructive',
+        });
+        return;
+      }
 
-    setStep('importing');
-    setImportProgress(0);
-    setImportedCount(0);
-    setErrors([]);
+      setStep('importing');
+      setImportProgress(0);
+      setImportedCount(0);
+      setErrors([]);
 
-    const importErrors: string[] = [];
-    let successCount = 0;
-    
-    for (let i = 0; i < csvData.length; i++) {
-      const row = csvData[i];
-      
-      try {
-        const productName = row[mapping.name]?.trim();
-        if (!productName) {
-          importErrors.push(`Row ${i + 2}: Product name is empty`);
+      const importErrors: string[] = [];
+      let successCount = 0;
+
+      const rows = Array.isArray(csvData) ? csvData : [];
+      const totalRows = rows.length;
+
+      for (let i = 0; i < totalRows; i++) {
+        const row = rows[i];
+        if (!row || typeof row !== 'object') {
+          importErrors.push(`Row ${i + 2}: Invalid row data`);
           continue;
         }
 
-        // Parse values with smart defaults
-        const costPrice = parsePrice(row[mapping.unit_price]);
-        const sellingPrice = mapping.selling_price ? parsePrice(row[mapping.selling_price]) : undefined;
-        const stock = parseInt(row[mapping.current_stock]) || 0;
-        const reorderLevel = mapping.reorder_level ? parseInt(row[mapping.reorder_level]) || 10 : 10;
-        
-        // Parse expiry date or use default (2 years from now)
-        let expiryDate = mapping.expiry_date ? parseDate(row[mapping.expiry_date]) : null;
-        if (!expiryDate) {
-          const twoYearsFromNow = new Date();
-          twoYearsFromNow.setFullYear(twoYearsFromNow.getFullYear() + 2);
-          expiryDate = twoYearsFromNow.toISOString().split('T')[0];
+        try {
+          const rawName = mapping.name ? row[mapping.name] : undefined;
+          const productName = typeof rawName === 'string' ? rawName.trim() : '';
+          if (!productName) {
+            importErrors.push(`Row ${i + 2}: Product name is empty`);
+            continue;
+          }
+
+          // Parse values with smart defaults
+          const costPrice = parsePrice(mapping.unit_price ? row[mapping.unit_price] : '');
+          const sellingPrice = mapping.selling_price ? parsePrice(row[mapping.selling_price]) : undefined;
+          const rawStock = mapping.current_stock ? row[mapping.current_stock] : '';
+          const stock = Math.max(0, parseInt(String(rawStock).replace(/[^0-9.-]/g, ''), 10) || 0);
+          const reorderLevel = mapping.reorder_level ? parseInt(String(row[mapping.reorder_level]).replace(/[^0-9.-]/g, ''), 10) || 10 : 10;
+
+          // Parse expiry date or use default (2 years from now)
+          let expiryDate = mapping.expiry_date ? parseDate(row[mapping.expiry_date] ?? '') : null;
+          if (!expiryDate) {
+            const twoYearsFromNow = new Date();
+            twoYearsFromNow.setFullYear(twoYearsFromNow.getFullYear() + 2);
+            expiryDate = twoYearsFromNow.toISOString().split('T')[0];
+          }
+
+          // Generate batch number if not provided
+          const rawBatch = mapping.batch_number ? row[mapping.batch_number] : '';
+          const batchNumber = typeof rawBatch === 'string' && rawBatch.trim()
+            ? rawBatch.trim()
+            : `BATCH-${Date.now()}-${i}`;
+
+          // Try to find barcode from library
+          const rawBarcode = mapping.barcode_id ? row[mapping.barcode_id] : '';
+          let barcodeId = typeof rawBarcode === 'string' && rawBarcode.trim() ? rawBarcode.trim() : undefined;
+          if (!barcodeId && productName) {
+            barcodeId = findBarcodeByName(productName) || undefined;
+          }
+
+          const rawNafdac = mapping.nafdac_reg_number ? row[mapping.nafdac_reg_number] : '';
+          const nafdacReg = typeof rawNafdac === 'string' && rawNafdac.trim() ? rawNafdac.trim() : undefined;
+
+          const medication: MedicationFormData = {
+            name: productName,
+            category: normalizeCategory(mapping.category ? row[mapping.category] ?? '' : ''),
+            batch_number: batchNumber,
+            current_stock: stock,
+            reorder_level: reorderLevel,
+            expiry_date: expiryDate,
+            unit_price: costPrice,
+            selling_price: sellingPrice,
+            barcode_id: barcodeId,
+            nafdac_reg_number: nafdacReg,
+          };
+
+          await addMedication.mutateAsync(medication);
+          successCount++;
+        } catch (error) {
+          console.error(`CSV import row ${i + 2} error:`, error);
+          importErrors.push(`Row ${i + 2}: ${error instanceof Error ? error.message : 'Unknown error'}`);
         }
 
-        // Generate batch number if not provided
-        const batchNumber = mapping.batch_number && row[mapping.batch_number]?.trim() 
-          ? row[mapping.batch_number].trim() 
-          : `BATCH-${Date.now()}-${i}`;
-
-        // Try to find barcode from library
-        let barcodeId = mapping.barcode_id ? row[mapping.barcode_id]?.trim() : undefined;
-        if (!barcodeId && productName) {
-          barcodeId = findBarcodeByName(productName) || undefined;
-        }
-
-        const medication: MedicationFormData = {
-          name: productName,
-          category: normalizeCategory(row[mapping.category]),
-          batch_number: batchNumber,
-          current_stock: stock,
-          reorder_level: reorderLevel,
-          expiry_date: expiryDate,
-          unit_price: costPrice,
-          selling_price: sellingPrice,
-          barcode_id: barcodeId,
-          nafdac_reg_number: mapping.nafdac_reg_number ? row[mapping.nafdac_reg_number]?.trim() : undefined,
-        };
-
-        await addMedication.mutateAsync(medication);
-        successCount++;
-      } catch (error) {
-        importErrors.push(`Row ${i + 2}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+        setImportProgress(Math.round(((i + 1) / totalRows) * 100));
+        setImportedCount(successCount);
       }
 
-      setImportProgress(Math.round(((i + 1) / csvData.length) * 100));
-      setImportedCount(successCount);
-    }
+      setErrors(importErrors);
+      setStep('complete');
 
-    setErrors(importErrors);
-    setStep('complete');
-    
-    if (successCount > 0) {
+      if (successCount > 0) {
+        toast({
+          title: importErrors.length === 0 ? 'Import Complete!' : 'Partial Import',
+          description: `Successfully imported ${successCount} of ${totalRows} products.`,
+          variant: importErrors.length === 0 ? 'default' : 'destructive',
+        });
+      } else {
+        toast({
+          title: 'Import Failed',
+          description: importErrors[0] || 'No products could be imported. Check column mappings.',
+          variant: 'destructive',
+        });
+      }
+
+      onComplete?.(successCount);
+    } catch (err) {
+      console.error('CSV import fatal error:', err);
       toast({
-        title: importErrors.length === 0 ? 'Import Complete!' : 'Partial Import',
-        description: `Successfully imported ${successCount} of ${csvData.length} products.`,
-        variant: importErrors.length === 0 ? 'default' : 'destructive',
+        title: 'Import Error',
+        description: 'Something went wrong during import. Please try again.',
+        variant: 'destructive',
       });
+      setStep('upload');
     }
-
-    onComplete?.(successCount);
   };
 
   const handleClose = () => {
