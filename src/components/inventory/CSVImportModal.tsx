@@ -37,13 +37,17 @@ interface ColumnMapping {
   reorder_level: string;
   expiry_date: string;
   unit_price: string;
+  selling_price: string;
   barcode_id: string;
+  nafdac_reg_number: string;
+  active_ingredients: string;
 }
 
-const requiredFields = ['name', 'category', 'batch_number', 'current_stock', 'expiry_date', 'unit_price'] as const;
-const optionalFields = ['reorder_level', 'barcode_id'] as const;
+const requiredFields = ['name', 'batch_number', 'current_stock', 'expiry_date', 'unit_price'] as const;
+const optionalFields = ['category', 'reorder_level', 'barcode_id', 'selling_price', 'nafdac_reg_number', 'active_ingredients'] as const;
 const allFields = [...requiredFields, ...optionalFields] as const;
 
+// Expanded category mapping to handle common pharmacy categories
 const categoryMap: Record<string, MedicationFormData['category']> = {
   tablet: 'Tablet',
   tablets: 'Tablet',
@@ -62,6 +66,36 @@ const categoryMap: Record<string, MedicationFormData['category']> = {
   powder: 'Powder',
   powders: 'Powder',
   other: 'Other',
+  // Common pharmacy category names that map to our categories
+  analgesics: 'Tablet',
+  analgesic: 'Tablet',
+  painkillers: 'Tablet',
+  painkiller: 'Tablet',
+  antibiotics: 'Capsule',
+  antibiotic: 'Capsule',
+  'anti-malarial': 'Tablet',
+  antimalarial: 'Tablet',
+  antimalaria: 'Tablet',
+  gastrointestinal: 'Syrup',
+  cardiovascular: 'Tablet',
+  respiratory: 'Inhaler',
+  supplements: 'Tablet',
+  supplement: 'Tablet',
+  vitamins: 'Tablet',
+  vitamin: 'Tablet',
+  'anti-diabetic': 'Tablet',
+  antidiabetic: 'Tablet',
+  diabetes: 'Tablet',
+  topical: 'Cream',
+  ointment: 'Cream',
+  ointments: 'Cream',
+  oral: 'Syrup',
+  suspension: 'Syrup',
+  solution: 'Drops',
+  gel: 'Cream',
+  gels: 'Cream',
+  iv: 'Injection',
+  infusion: 'Injection',
 };
 
 export const CSVImportModal = ({ open, onOpenChange }: CSVImportModalProps) => {
@@ -81,7 +115,10 @@ export const CSVImportModal = ({ open, onOpenChange }: CSVImportModalProps) => {
     reorder_level: '',
     expiry_date: '',
     unit_price: '',
+    selling_price: '',
     barcode_id: '',
+    nafdac_reg_number: '',
+    active_ingredients: '',
   });
   const [importProgress, setImportProgress] = useState(0);
   const [errors, setErrors] = useState<string[]>([]);
@@ -118,28 +155,69 @@ export const CSVImportModal = ({ open, onOpenChange }: CSVImportModalProps) => {
           reorder_level: '',
           expiry_date: '',
           unit_price: '',
+          selling_price: '',
           barcode_id: '',
+          nafdac_reg_number: '',
+          active_ingredients: '',
         };
 
         headers.forEach((header) => {
           const lowerHeader = header.toLowerCase().replace(/[_\s-]/g, '');
           
-          if (lowerHeader.includes('name') || lowerHeader.includes('product') || lowerHeader.includes('drug')) {
+          // Name matching - prioritize "product name" over generic "name"
+          if (lowerHeader.includes('productname') || lowerHeader.includes('drugname') || lowerHeader.includes('medicationname')) {
             autoMapping.name = header;
-          } else if (lowerHeader.includes('category') || lowerHeader.includes('type') || lowerHeader.includes('form')) {
+          } else if (!autoMapping.name && (lowerHeader.includes('name') || lowerHeader.includes('product') || lowerHeader.includes('drug'))) {
+            autoMapping.name = header;
+          }
+          
+          // Category matching
+          if (lowerHeader.includes('category') || lowerHeader.includes('type') || lowerHeader.includes('form') || lowerHeader.includes('class')) {
             autoMapping.category = header;
-          } else if (lowerHeader.includes('batch') || lowerHeader.includes('lot')) {
+          }
+          
+          // Batch matching
+          if (lowerHeader.includes('batch') || lowerHeader.includes('lot')) {
             autoMapping.batch_number = header;
-          } else if (lowerHeader.includes('stock') || lowerHeader.includes('quantity') || lowerHeader.includes('qty')) {
+          }
+          
+          // Stock/Quantity matching
+          if (lowerHeader.includes('stock') || lowerHeader === 'quantity' || lowerHeader === 'qty') {
             autoMapping.current_stock = header;
-          } else if (lowerHeader.includes('reorder') || lowerHeader.includes('minimum') || lowerHeader.includes('min')) {
+          }
+          
+          // Reorder level
+          if (lowerHeader.includes('reorder') || lowerHeader.includes('minimum') || lowerHeader.includes('minstock')) {
             autoMapping.reorder_level = header;
-          } else if (lowerHeader.includes('expir') || lowerHeader.includes('exp')) {
+          }
+          
+          // Expiry date matching
+          if (lowerHeader.includes('expir') || lowerHeader.includes('exp') || lowerHeader === 'expirydate') {
             autoMapping.expiry_date = header;
-          } else if (lowerHeader.includes('price') || lowerHeader.includes('cost') || lowerHeader.includes('amount')) {
+          }
+          
+          // Price matching - distinguish cost vs selling price
+          if (lowerHeader.includes('sellingprice') || lowerHeader.includes('retailprice') || lowerHeader.includes('saleprice')) {
+            autoMapping.selling_price = header;
+          } else if (lowerHeader.includes('costprice') || lowerHeader.includes('purchaseprice') || lowerHeader.includes('buyprice')) {
             autoMapping.unit_price = header;
-          } else if (lowerHeader.includes('barcode') || lowerHeader.includes('upc') || lowerHeader.includes('ean')) {
+          } else if (!autoMapping.unit_price && (lowerHeader.includes('price') || lowerHeader.includes('cost'))) {
+            autoMapping.unit_price = header;
+          }
+          
+          // Barcode matching
+          if (lowerHeader.includes('barcode') || lowerHeader.includes('upc') || lowerHeader.includes('ean') || lowerHeader.includes('gtin')) {
             autoMapping.barcode_id = header;
+          }
+          
+          // NAFDAC registration number
+          if (lowerHeader.includes('nafdac') || lowerHeader.includes('regno') || lowerHeader.includes('registration')) {
+            autoMapping.nafdac_reg_number = header;
+          }
+          
+          // Active ingredients / Generic name
+          if (lowerHeader.includes('generic') || lowerHeader.includes('ingredient') || lowerHeader.includes('active') || lowerHeader.includes('composition')) {
+            autoMapping.active_ingredients = header;
           }
         });
 
@@ -210,7 +288,7 @@ export const CSVImportModal = ({ open, onOpenChange }: CSVImportModalProps) => {
       const row = csvData[i];
       
       try {
-        const categoryValue = row[mapping.category]?.toLowerCase().trim();
+        const categoryValue = row[mapping.category]?.toLowerCase().trim() || '';
         const category = categoryMap[categoryValue] || 'Other';
         const productName = row[mapping.name]?.trim() || '';
         
@@ -221,6 +299,25 @@ export const CSVImportModal = ({ open, onOpenChange }: CSVImportModalProps) => {
           barcodeId = findBarcodeByName(productName) || undefined;
         }
 
+        // Parse unit price (cost price)
+        const unitPriceStr = row[mapping.unit_price] || '0';
+        const unitPrice = parseFloat(unitPriceStr.replace(/[^0-9.]/g, '')) || 0;
+        
+        // Parse selling price if available, otherwise default to unit price with markup
+        let sellingPrice: number | undefined;
+        if (mapping.selling_price && row[mapping.selling_price]) {
+          sellingPrice = parseFloat(row[mapping.selling_price].replace(/[^0-9.]/g, '')) || undefined;
+        }
+        
+        // Parse NAFDAC registration number
+        const nafdacRegNumber = mapping.nafdac_reg_number ? row[mapping.nafdac_reg_number]?.trim() : undefined;
+        
+        // Parse active ingredients / generic name (stored in metadata for now)
+        let activeIngredientsStr: string | undefined;
+        if (mapping.active_ingredients && row[mapping.active_ingredients]) {
+          activeIngredientsStr = row[mapping.active_ingredients].trim();
+        }
+
         const medication: MedicationFormData = {
           name: productName,
           category,
@@ -228,8 +325,10 @@ export const CSVImportModal = ({ open, onOpenChange }: CSVImportModalProps) => {
           current_stock: parseInt(row[mapping.current_stock]) || 0,
           reorder_level: mapping.reorder_level ? parseInt(row[mapping.reorder_level]) || 10 : 10,
           expiry_date: parseDate(row[mapping.expiry_date]),
-          unit_price: parseFloat(row[mapping.unit_price]?.replace(/[^0-9.]/g, '')) || 0,
+          unit_price: unitPrice,
+          selling_price: sellingPrice,
           barcode_id: barcodeId,
+          nafdac_reg_number: nafdacRegNumber,
         };
 
         if (!medication.name) {
@@ -273,7 +372,10 @@ export const CSVImportModal = ({ open, onOpenChange }: CSVImportModalProps) => {
       reorder_level: '',
       expiry_date: '',
       unit_price: '',
+      selling_price: '',
       barcode_id: '',
+      nafdac_reg_number: '',
+      active_ingredients: '',
     });
     setImportProgress(0);
     setErrors([]);
