@@ -1,6 +1,7 @@
-import { Minus, Plus, Trash2, ShoppingCart, Package } from 'lucide-react';
+import { Minus, Plus, Trash2, ShoppingCart, Package, Zap } from 'lucide-react';
 import { CartItem } from '@/types/medication';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { cn } from '@/lib/utils';
 
@@ -10,6 +11,7 @@ interface CartPanelProps {
   onDecrement: (id: string) => void;
   onRemove: (id: string) => void;
   total: number;
+  saleType?: 'retail' | 'wholesale';
 }
 
 export const CartPanel = ({
@@ -18,6 +20,7 @@ export const CartPanel = ({
   onDecrement,
   onRemove,
   total,
+  saleType = 'retail',
 }: CartPanelProps) => {
   const { formatPrice } = useCurrency();
 
@@ -38,9 +41,14 @@ export const CartPanel = ({
       {/* Scrollable items - fixed height with overflow scroll */}
       <div className="max-h-[280px] overflow-y-auto pr-1 space-y-1.5 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
         {items.map((item, index) => {
-          const price = item.medication.selling_price || item.medication.unit_price;
+          // For quick items, use the quickItemPrice; for regular items, use wholesale or retail price
+          const price = item.isQuickItem
+            ? (item.quickItemPrice || item.medication.unit_price)
+            : saleType === 'wholesale' && item.medication.wholesale_price
+              ? item.medication.wholesale_price
+              : (item.medication.selling_price || item.medication.unit_price);
           const itemTotal = price * item.quantity;
-          const isMaxStock = item.quantity >= item.medication.current_stock;
+          const isMaxStock = !item.isQuickItem && item.quantity >= item.medication.current_stock;
           const isLastItem = index === items.length - 1;
 
           return (
@@ -48,21 +56,43 @@ export const CartPanel = ({
               key={item.medication.id}
               className={cn(
                 'group relative p-2.5 rounded-xl transition-all duration-200',
-                'bg-gradient-to-r from-muted/40 to-transparent',
-                'border border-transparent hover:border-border/50',
-                isLastItem && 'ring-1 ring-primary/20 bg-primary/5'
+                item.isQuickItem
+                  ? 'bg-gradient-to-r from-amber-500/10 to-transparent border border-amber-500/20'
+                  : 'bg-gradient-to-r from-muted/40 to-transparent border border-transparent hover:border-border/50',
+                isLastItem && !item.isQuickItem && 'ring-1 ring-primary/20 bg-primary/5'
               )}
             >
               <div className="flex items-center gap-2.5">
                 {/* Product icon */}
-                <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-primary/15 to-primary/5 flex items-center justify-center flex-shrink-0">
-                  <Package className="h-4 w-4 text-primary" />
+                <div className={cn(
+                  'w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0',
+                  item.isQuickItem
+                    ? 'bg-gradient-to-br from-amber-500/20 to-amber-500/5'
+                    : 'bg-gradient-to-br from-primary/15 to-primary/5'
+                )}>
+                  {item.isQuickItem ? (
+                    <Zap className="h-4 w-4 text-amber-500" />
+                  ) : (
+                    <Package className="h-4 w-4 text-primary" />
+                  )}
                 </div>
 
                 {/* Product info */}
                 <div className="flex-1 min-w-0">
-                  <h4 className="font-medium text-xs leading-tight truncate">{item.medication.name}</h4>
-                  <p className="text-[10px] text-muted-foreground">{formatPrice(price)} ea.</p>
+                  <div className="flex items-center gap-1.5">
+                    <h4 className="font-medium text-xs leading-tight truncate">{item.medication.name}</h4>
+                    {item.isQuickItem && (
+                      <Badge variant="outline" className="h-4 px-1 text-[8px] border-amber-500/30 text-amber-600">
+                        Quick
+                      </Badge>
+                    )}
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <p className="text-[10px] text-muted-foreground">{formatPrice(price)} ea.</p>
+                    {saleType === 'wholesale' && item.medication.wholesale_price && !item.isQuickItem && (
+                      <Badge variant="secondary" className="h-3.5 px-1 text-[8px]">W</Badge>
+                    )}
+                  </div>
                 </div>
 
                 {/* Quantity controls */}
@@ -90,7 +120,10 @@ export const CartPanel = ({
 
                 {/* Item total */}
                 <div className="text-right min-w-[70px]">
-                  <p className="font-bold text-xs text-primary tabular-nums">{formatPrice(itemTotal)}</p>
+                  <p className={cn(
+                    'font-bold text-xs tabular-nums',
+                    item.isQuickItem ? 'text-amber-600' : 'text-primary'
+                  )}>{formatPrice(itemTotal)}</p>
                   {isMaxStock && <p className="text-[9px] text-amber-600 dark:text-amber-400">Max</p>}
                 </div>
 
@@ -114,6 +147,11 @@ export const CartPanel = ({
         <div className="flex justify-between items-center text-xs text-muted-foreground mb-2">
           <span>
             {items.length} {items.length === 1 ? 'item' : 'items'}
+            {items.some(i => i.isQuickItem) && (
+              <span className="text-amber-600 ml-1">
+                ({items.filter(i => i.isQuickItem).length} quick)
+              </span>
+            )}
           </span>
           <span className="tabular-nums">{formatPrice(total)}</span>
         </div>

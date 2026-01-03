@@ -1,6 +1,6 @@
-import { useState, useMemo, useCallback, useEffect } from 'react';
-import { Search, Plus, ScanBarcode, AlertTriangle, XCircle, Link2, WifiOff, RefreshCw } from 'lucide-react';
-import { Medication } from '@/types/medication';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
+import { Search, Plus, ScanBarcode, AlertTriangle, XCircle, Link2, WifiOff, RefreshCw, Zap } from 'lucide-react';
+import { Medication, CartItem } from '@/types/medication';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -17,16 +17,28 @@ interface ProductGridProps {
   medications: Medication[];
   onAddToCart: (medication: Medication) => void;
   isLoading: boolean;
+  onQuickItemClick?: () => void;
+  autoFocusSearch?: boolean;
 }
 
-export const ProductGrid = ({ medications, onAddToCart, isLoading }: ProductGridProps) => {
+export const ProductGrid = ({ medications, onAddToCart, isLoading, onQuickItemClick, autoFocusSearch = true }: ProductGridProps) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [scannerOpen, setScannerOpen] = useState(false);
   const [linkBarcodeOpen, setLinkBarcodeOpen] = useState(false);
   const [medicationToLink, setMedicationToLink] = useState<Medication | null>(null);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   const { formatPrice } = useCurrency();
   const { toast } = useToast();
   const { isOnline, cacheMedications, getCachedMeds } = useOffline();
+
+  // Auto-focus search input for keyboard-first experience
+  useEffect(() => {
+    if (autoFocusSearch && !isLoading) {
+      setTimeout(() => {
+        searchInputRef.current?.focus();
+      }, 300);
+    }
+  }, [autoFocusSearch, isLoading]);
 
   // Cache medications whenever they update (for offline use)
   useEffect(() => {
@@ -122,16 +134,28 @@ export const ProductGrid = ({ medications, onAddToCart, isLoading }: ProductGrid
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-3">
+      <div className="flex gap-2 sm:gap-3">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
+            ref={searchInputRef}
             placeholder="Search by name, ingredient, or barcode..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-10 h-12 rounded-xl bg-muted/30 border-border/50"
           />
         </div>
+        {onQuickItemClick && (
+          <Button
+            onClick={onQuickItemClick}
+            variant="outline"
+            className="h-12 gap-2 px-3 rounded-xl border-amber-500/40 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30"
+            title="Quick Item (Express Sale)"
+          >
+            <Zap className="h-5 w-5" />
+            <span className="hidden sm:inline">Quick</span>
+          </Button>
+        )}
         <Button
           onClick={() => setScannerOpen(true)}
           variant="outline"

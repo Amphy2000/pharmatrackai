@@ -363,6 +363,64 @@ export type Database = {
           },
         ]
       }
+      internal_transfers: {
+        Row: {
+          branch_id: string | null
+          created_at: string
+          id: string
+          medication_id: string
+          notes: string | null
+          performed_by: string | null
+          pharmacy_id: string
+          quantity: number
+          transfer_type: string
+        }
+        Insert: {
+          branch_id?: string | null
+          created_at?: string
+          id?: string
+          medication_id: string
+          notes?: string | null
+          performed_by?: string | null
+          pharmacy_id: string
+          quantity: number
+          transfer_type: string
+        }
+        Update: {
+          branch_id?: string | null
+          created_at?: string
+          id?: string
+          medication_id?: string
+          notes?: string | null
+          performed_by?: string | null
+          pharmacy_id?: string
+          quantity?: number
+          transfer_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "internal_transfers_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "internal_transfers_medication_id_fkey"
+            columns: ["medication_id"]
+            isOneToOne: false
+            referencedRelation: "medications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "internal_transfers_pharmacy_id_fkey"
+            columns: ["pharmacy_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       marketplace_searches: {
         Row: {
           id: string
@@ -491,9 +549,12 @@ export type Database = {
           pharmacy_id: string | null
           reorder_level: number
           selling_price: number | null
+          shelf_quantity: number
+          store_quantity: number
           supplier: string | null
           unit_price: number
           updated_at: string
+          wholesale_price: number | null
         }
         Insert: {
           active_ingredients?: string[] | null
@@ -520,9 +581,12 @@ export type Database = {
           pharmacy_id?: string | null
           reorder_level?: number
           selling_price?: number | null
+          shelf_quantity?: number
+          store_quantity?: number
           supplier?: string | null
           unit_price: number
           updated_at?: string
+          wholesale_price?: number | null
         }
         Update: {
           active_ingredients?: string[] | null
@@ -549,9 +613,12 @@ export type Database = {
           pharmacy_id?: string | null
           reorder_level?: number
           selling_price?: number | null
+          shelf_quantity?: number
+          store_quantity?: number
           supplier?: string | null
           unit_price?: number
           updated_at?: string
+          wholesale_price?: number | null
         }
         Relationships: [
           {
@@ -619,6 +686,85 @@ export type Database = {
           },
           {
             foreignKeyName: "notifications_pharmacy_id_fkey"
+            columns: ["pharmacy_id"]
+            isOneToOne: false
+            referencedRelation: "pharmacies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pending_quick_items: {
+        Row: {
+          branch_id: string | null
+          created_at: string
+          id: string
+          linked_medication_id: string | null
+          name: string
+          notes: string | null
+          pharmacy_id: string
+          quantity_sold: number
+          reviewed_at: string | null
+          reviewed_by: string | null
+          sale_id: string | null
+          selling_price: number
+          sold_by: string | null
+          sold_by_name: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          branch_id?: string | null
+          created_at?: string
+          id?: string
+          linked_medication_id?: string | null
+          name: string
+          notes?: string | null
+          pharmacy_id: string
+          quantity_sold?: number
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          sale_id?: string | null
+          selling_price: number
+          sold_by?: string | null
+          sold_by_name?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          branch_id?: string | null
+          created_at?: string
+          id?: string
+          linked_medication_id?: string | null
+          name?: string
+          notes?: string | null
+          pharmacy_id?: string
+          quantity_sold?: number
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          sale_id?: string | null
+          selling_price?: number
+          sold_by?: string | null
+          sold_by_name?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pending_quick_items_branch_id_fkey"
+            columns: ["branch_id"]
+            isOneToOne: false
+            referencedRelation: "branches"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pending_quick_items_linked_medication_id_fkey"
+            columns: ["linked_medication_id"]
+            isOneToOne: false
+            referencedRelation: "medications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pending_quick_items_pharmacy_id_fkey"
             columns: ["pharmacy_id"]
             isOneToOne: false
             referencedRelation: "pharmacies"
@@ -1380,6 +1526,7 @@ export type Database = {
           quantity: number
           receipt_id: string | null
           sale_date: string
+          sale_type: string | null
           shift_id: string | null
           sold_by: string | null
           sold_by_name: string | null
@@ -1399,6 +1546,7 @@ export type Database = {
           quantity: number
           receipt_id?: string | null
           sale_date?: string
+          sale_type?: string | null
           shift_id?: string | null
           sold_by?: string | null
           sold_by_name?: string | null
@@ -1418,6 +1566,7 @@ export type Database = {
           quantity?: number
           receipt_id?: string | null
           sale_date?: string
+          sale_type?: string | null
           shift_id?: string | null
           sold_by?: string | null
           sold_by_name?: string | null

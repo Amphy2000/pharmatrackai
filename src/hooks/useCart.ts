@@ -36,7 +36,7 @@ export const useCart = () => {
   const addItem = useCallback((medication: Medication, quantity: number = 1) => {
     setItems((current) => {
       const existingIndex = current.findIndex(
-        (item) => item.medication.id === medication.id
+        (item) => item.medication.id === medication.id && !item.isQuickItem
       );
 
       if (existingIndex >= 0) {
@@ -57,6 +57,33 @@ export const useCart = () => {
 
       return [...current, { medication, quantity }];
     });
+  }, []);
+
+  // Add a Quick Item (Express Sale - no inventory tracking)
+  const addQuickItem = useCallback((name: string, price: number, quantity: number = 1) => {
+    const quickMedication: Medication = {
+      id: `quick-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      name,
+      category: 'Other',
+      batch_number: 'QUICK',
+      current_stock: 9999, // Unlimited for quick items
+      reorder_level: 0,
+      expiry_date: new Date(Date.now() + 365 * 24 * 60 * 60 * 1000).toISOString(), // 1 year from now
+      unit_price: price,
+      selling_price: price,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    setItems((current) => [
+      ...current,
+      { 
+        medication: quickMedication, 
+        quantity,
+        isQuickItem: true,
+        quickItemPrice: price,
+      },
+    ]);
   }, []);
 
   const removeItem = useCallback((medicationId: string) => {
@@ -97,9 +124,16 @@ export const useCart = () => {
     setItems([]);
   }, []);
 
-  const getTotal = useCallback(() => {
+  const getTotal = useCallback((saleType: 'retail' | 'wholesale' = 'retail') => {
     return items.reduce((total, item) => {
-      const price = item.medication.selling_price || item.medication.unit_price;
+      // For quick items, always use the quickItemPrice
+      if (item.isQuickItem) {
+        return total + (item.quickItemPrice || item.medication.unit_price) * item.quantity;
+      }
+      // For regular items, use wholesale_price if sale type is wholesale and it exists
+      const price = saleType === 'wholesale' && item.medication.wholesale_price
+        ? item.medication.wholesale_price
+        : item.medication.selling_price || item.medication.unit_price;
       return total + price * item.quantity;
     }, 0);
   }, [items]);
@@ -114,9 +148,15 @@ export const useCart = () => {
     return items[items.length - 1].medication.id;
   }, [items]);
 
+  // Get quick items for pending review
+  const getQuickItems = useCallback(() => {
+    return items.filter(item => item.isQuickItem);
+  }, [items]);
+
   return {
     items,
     addItem,
+    addQuickItem,
     removeItem,
     updateQuantity,
     incrementQuantity,
@@ -125,5 +165,6 @@ export const useCart = () => {
     getTotal,
     getTotalItems,
     getLastItemId,
+    getQuickItems,
   };
 };
