@@ -3,7 +3,7 @@ import { Header } from '@/components/Header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Package, AlertTriangle, PackagePlus, ClipboardList, FileImage, Zap, Clock, FileSpreadsheet, TrendingDown, Calendar, Download, FileText, ChevronDown, Plus, DollarSign, LayoutGrid, List, Search, Trash2, CheckSquare, Building2 } from 'lucide-react';
+import { Package, AlertTriangle, PackagePlus, ClipboardList, FileImage, Zap, Clock, FileSpreadsheet, TrendingDown, Calendar, Download, FileText, ChevronDown, Plus, DollarSign, LayoutGrid, List, Search, Trash2, CheckSquare, Building2, ArrowRightLeft, RefreshCw } from 'lucide-react';
 import { useBranchInventory, BranchMedication } from '@/hooks/useBranchInventory';
 import { useMedications } from '@/hooks/useMedications';
 import { ReceiveStockModal } from '@/components/inventory/ReceiveStockModal';
@@ -17,6 +17,8 @@ import { MedicationsTable } from '@/components/inventory/MedicationsTable';
 import { InventoryGrid } from '@/components/inventory/InventoryGrid';
 import { BulkMarketplaceActions } from '@/components/inventory/BulkMarketplaceActions';
 import { CategoryMarketplaceToggle } from '@/components/inventory/CategoryMarketplaceToggle';
+import { QuickStockUpdateModal } from '@/components/inventory/QuickStockUpdateModal';
+import { InternalTransferModal } from '@/components/inventory/InternalTransferModal';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -63,6 +65,8 @@ const Inventory = () => {
   const [showCSVImportModal, setShowCSVImportModal] = useState(false);
   const [showAddMedicationModal, setShowAddMedicationModal] = useState(false);
   const [showBulkPriceModal, setShowBulkPriceModal] = useState(false);
+  const [showQuickStockModal, setShowQuickStockModal] = useState(false);
+  const [showTransferModal, setShowTransferModal] = useState(false);
   const [editingMedication, setEditingMedication] = useState<Medication | null>(null);
   const [detailMedication, setDetailMedication] = useState<Medication | null>(null);
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
@@ -302,15 +306,24 @@ const Inventory = () => {
               Fast inventory management tools to save time during stocking
             </p>
             <div className="flex flex-wrap gap-3">
-              <Button onClick={() => setShowReceiveStockModal(true)} variant="default" size="lg" className="gap-2 btn-glow">
+              <Button onClick={() => setShowQuickStockModal(true)} variant="default" size="lg" className="gap-2 btn-glow">
+                <RefreshCw className="h-5 w-5" />
+                Quick Stock Update
+                <Badge variant="secondary" className="ml-1 text-xs">Fast</Badge>
+              </Button>
+              <Button onClick={() => setShowTransferModal(true)} variant="secondary" size="lg" className="gap-2">
+                <ArrowRightLeft className="h-5 w-5" />
+                Transfer Stock
+                <Badge variant="outline" className="ml-1 text-xs">Shelf ↔ Store</Badge>
+              </Button>
+              <Button onClick={() => setShowReceiveStockModal(true)} variant="outline" size="lg" className="gap-2">
                 <PackagePlus className="h-5 w-5" />
                 Receive Stock
                 <Badge variant="secondary" className="ml-1 text-xs">Scan</Badge>
               </Button>
-              <Button onClick={() => setShowStockCountModal(true)} variant="secondary" size="lg" className="gap-2">
+              <Button onClick={() => setShowStockCountModal(true)} variant="outline" size="lg" className="gap-2">
                 <ClipboardList className="h-5 w-5" />
                 Stock Count
-                <Badge variant="outline" className="ml-1 text-xs">Quick</Badge>
               </Button>
               <Button onClick={() => setShowCSVImportModal(true)} variant="outline" size="lg" className="gap-2">
                 <FileSpreadsheet className="h-5 w-5" />
@@ -703,6 +716,31 @@ const Inventory = () => {
       <BulkPriceUpdateModal
         open={showBulkPriceModal}
         onOpenChange={setShowBulkPriceModal}
+      />
+
+      <QuickStockUpdateModal
+        open={showQuickStockModal}
+        onOpenChange={setShowQuickStockModal}
+        medications={medications.map(m => ({
+          id: m.id,
+          name: m.name,
+          shelf_quantity: m.shelf_quantity ?? m.current_stock,
+          store_quantity: m.store_quantity ?? 0,
+          current_stock: m.current_stock,
+          category: m.category
+        }))}
+      />
+
+      <InternalTransferModal
+        open={showTransferModal}
+        onOpenChange={setShowTransferModal}
+        medications={medications.map(m => ({
+          id: m.id,
+          name: m.name,
+          shelf_quantity: m.shelf_quantity ?? m.current_stock,
+          store_quantity: m.store_quantity ?? 0,
+          category: m.category
+        }))}
       />
 
       {/* Bulk Delete Dialog */}
