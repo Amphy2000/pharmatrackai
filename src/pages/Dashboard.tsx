@@ -42,6 +42,7 @@ import { BranchComparisonPanel } from '@/components/dashboard/BranchComparisonPa
 import { ConsolidatedReportsPanel } from '@/components/dashboard/ConsolidatedReportsPanel';
 import { OwnerBranchReportsPanel } from '@/components/dashboard/OwnerBranchReportsPanel';
 import { BranchLockedOverlay } from '@/components/branches/BranchLockedOverlay';
+import { PendingQuickItemsPanel } from '@/components/inventory/PendingQuickItemsPanel';
 import { startOfDay, endOfDay, parseISO } from 'date-fns';
 import { 
   Package, 
@@ -352,6 +353,15 @@ const Dashboard = () => {
             >
               <MarketplaceProofWidget />
             </motion.section>
+            {isOwnerOrManager && (
+              <motion.section 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.28 }}
+              >
+                <PendingQuickItemsPanel />
+              </motion.section>
+            )}
             {isOwnerOrManager && (
               <motion.section 
                 initial={{ opacity: 0, y: 20 }}

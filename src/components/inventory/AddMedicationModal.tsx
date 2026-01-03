@@ -59,6 +59,7 @@ const formSchema = z.object({
   manufacturing_date: z.date().optional(),
   unit_price: z.coerce.number().min(0, 'Price cannot be negative'),
   selling_price: z.coerce.number().min(0, 'Price cannot be negative').optional(),
+  wholesale_price: z.coerce.number().min(0, 'Price cannot be negative').optional(),
   dispensing_unit: z.string().optional(),
   is_controlled: z.boolean().optional(),
   nafdac_reg_number: z.string().max(50).optional(),
@@ -147,6 +148,7 @@ export const AddMedicationModal = ({
       reorder_level: 10,
       unit_price: 0,
       selling_price: undefined,
+      wholesale_price: undefined,
       dispensing_unit: 'unit',
       is_controlled: false,
       nafdac_reg_number: '',
@@ -168,6 +170,7 @@ export const AddMedicationModal = ({
         manufacturing_date: editingMedication.manufacturing_date ? new Date(editingMedication.manufacturing_date) : undefined,
         unit_price: Number(editingMedication.unit_price),
         selling_price: editingMedication.selling_price ? Number(editingMedication.selling_price) : undefined,
+        wholesale_price: editingMedication.wholesale_price ? Number(editingMedication.wholesale_price) : undefined,
         dispensing_unit: editingMedication.dispensing_unit || 'unit',
         is_controlled: editingMedication.is_controlled || false,
         nafdac_reg_number: editingMedication.nafdac_reg_number || '',
@@ -185,6 +188,7 @@ export const AddMedicationModal = ({
         reorder_level: smartDefaults.reorder_level,
         unit_price: 0,
         selling_price: undefined,
+        wholesale_price: undefined,
         dispensing_unit: smartDefaults.dispensing_unit,
         is_controlled: false,
         nafdac_reg_number: '',
@@ -245,7 +249,7 @@ export const AddMedicationModal = ({
       ? values.active_ingredients.split(',').map(i => i.trim()).filter(i => i.length > 0)
       : undefined;
 
-    const medicationData: MedicationFormData & { active_ingredients?: string[] } = {
+    const medicationData: MedicationFormData & { active_ingredients?: string[]; wholesale_price?: number } = {
       name: values.name,
       category: values.category as MedicationCategory,
       batch_number: values.batch_number,
@@ -254,6 +258,7 @@ export const AddMedicationModal = ({
       reorder_level: values.reorder_level,
       unit_price: values.unit_price,
       selling_price: values.selling_price || undefined,
+      wholesale_price: values.wholesale_price || undefined,
       expiry_date: format(values.expiry_date, 'yyyy-MM-dd'),
       manufacturing_date: values.manufacturing_date ? format(values.manufacturing_date, 'yyyy-MM-dd') : undefined,
       dispensing_unit: (values.dispensing_unit as DispensingUnit) || 'unit',
@@ -627,10 +632,10 @@ export const AddMedicationModal = ({
               )}
             />
 
-            {/* Markup-based Selling Price */}
+            {/* Pricing Section - Retail & Wholesale */}
             <div className="space-y-3 p-3 rounded-lg bg-muted/30 border">
               <div className="flex items-center justify-between">
-                <Label className="text-sm font-medium">Selling Price</Label>
+                <Label className="text-sm font-medium">Retail Selling Price</Label>
                 <div className="flex items-center gap-2">
                   <Label className="text-xs text-muted-foreground">Markup %</Label>
                   <Input
@@ -658,11 +663,58 @@ export const AddMedicationModal = ({
                         type="number" 
                         min="0" 
                         step="0.01" 
-                        placeholder="Or enter fixed selling price"
+                        placeholder="Retail price (to individual customers)"
                         {...field} 
                         value={field.value ?? ''}
                       />
                     </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+
+            {/* Wholesale Price */}
+            <div className="space-y-3 p-3 rounded-lg bg-emerald-500/5 border border-emerald-500/20">
+              <div className="flex items-center justify-between">
+                <Label className="text-sm font-medium text-emerald-700 dark:text-emerald-400">
+                  Wholesale Price (Optional)
+                </Label>
+                <div className="flex items-center gap-2">
+                  <Label className="text-xs text-muted-foreground">Markup %</Label>
+                  <Input
+                    type="number"
+                    min="0"
+                    step="1"
+                    placeholder="15"
+                    className="w-20 h-8 text-sm"
+                    onChange={(e) => {
+                      const markup = parseFloat(e.target.value) || 0;
+                      const costPrice = form.getValues('unit_price') || 0;
+                      const wholesalePrice = Math.round(costPrice * (1 + markup / 100));
+                      form.setValue('wholesale_price', wholesalePrice);
+                    }}
+                  />
+                </div>
+              </div>
+              <FormField
+                control={form.control}
+                name="wholesale_price"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormControl>
+                      <Input 
+                        type="number" 
+                        min="0" 
+                        step="0.01" 
+                        placeholder="Bulk/wholesale price (for resellers)"
+                        {...field} 
+                        value={field.value ?? ''}
+                      />
+                    </FormControl>
+                    <p className="text-xs text-muted-foreground">
+                      Lower price for bulk buyers. Toggle "Wholesale" at checkout to apply.
+                    </p>
                     <FormMessage />
                   </FormItem>
                 )}
