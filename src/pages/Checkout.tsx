@@ -33,6 +33,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { usePendingTransactions } from '@/hooks/usePendingTransactions';
 import { useBranchContext } from '@/contexts/BranchContext';
 import { usePlanLimits } from '@/hooks/usePlanLimits';
+import { useQuickItems } from '@/hooks/useQuickItems';
 import { supabase } from '@/integrations/supabase/client';
 import { ProductGrid } from '@/components/pos/ProductGrid';
 import { CartPanel } from '@/components/pos/CartPanel';
@@ -44,6 +45,8 @@ import { PrescriptionImageUpload } from '@/components/pos/PrescriptionImageUploa
 import { KeyboardShortcutsOverlay } from '@/components/pos/KeyboardShortcutsOverlay';
 import { ExpiredBatchWarningDialog } from '@/components/pos/ExpiredBatchWarningDialog';
 import { SmartUpsellPanel } from '@/components/pos/SmartUpsellPanel';
+import { QuickItemModal, QuickItem } from '@/components/pos/QuickItemModal';
+import { SaleTypeToggle, SaleType } from '@/components/pos/SaleTypeToggle';
 import { useSmartUpsell } from '@/hooks/useSmartUpsell';
 import { Customer } from '@/types/customer';
 import { Button } from '@/components/ui/button';
@@ -126,8 +129,10 @@ const Checkout = () => {
   
   const [customerName, setCustomerName] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
+  const [saleType, setSaleType] = useState<SaleType>('retail');
   const [checkoutOpen, setCheckoutOpen] = useState(false);
   const [heldPanelOpen, setHeldPanelOpen] = useState(false);
+  const [quickItemOpen, setQuickItemOpen] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [saleComplete, setSaleComplete] = useState(false);
   const [lastReceiptNumber, setLastReceiptNumber] = useState('');
@@ -145,6 +150,9 @@ const Checkout = () => {
     expiry: '',
     id: '',
   });
+
+  // Quick Items hook for Express Sale
+  const { createQuickItem } = useQuickItems();
 
   // Global barcode scanner - works without focusing search bar
   const isExpired = (expiryDate: string): boolean => {
@@ -490,12 +498,29 @@ const Checkout = () => {
     cart.clearCart();
     setCustomerName('');
     setPaymentMethod('cash');
+    setSaleType('retail');
     setSaleComplete(false);
     setCheckoutOpen(false);
     setPreviewOpen(false);
     setPreviewReceipt(null);
     setSelectedPatient(null);
     setPrescriptionImages([]);
+  };
+
+  // Handle Quick Item (Express Sale) - add to cart and save for manager review
+  const handleAddQuickItem = async (item: QuickItem) => {
+    // Add to cart immediately
+    cart.addQuickItem(item.name, item.price, item.quantity);
+    
+    // Save to pending_quick_items for manager review (async, don't block)
+    createQuickItem.mutate({
+      name: item.name,
+      sellingPrice: item.price,
+      quantitySold: item.quantity,
+      soldBy: user?.id,
+      soldByName: userProfile?.full_name || undefined,
+      branchId: currentBranchId || undefined,
+    });
   };
 
   const handlePrintLastReceipt = async () => {
@@ -711,6 +736,8 @@ const Checkout = () => {
                 medications={medications}
                 onAddToCart={cart.addItem}
                 isLoading={isLoading}
+                onQuickItemClick={() => setQuickItemOpen(true)}
+                autoFocusSearch={true}
               />
             </div>
           </div>
@@ -718,7 +745,7 @@ const Checkout = () => {
           {/* Cart Panel - taller than products, but NEVER grows with item count */}
           <div className="lg:col-span-1">
             <div className="bg-card/90 backdrop-blur-sm rounded-2xl p-4 border border-border/40 shadow-sm lg:sticky lg:top-20">
-              {/* Cart Header */}
+              {/* Cart Header with Sale Type Toggle */}
               <div className="flex items-center justify-between mb-3 pb-3 border-b border-border/30">
                 <div className="flex items-center gap-2">
                   <h2 className="text-sm font-bold font-display">Cart</h2>
@@ -741,12 +768,22 @@ const Checkout = () => {
                 )}
               </div>
 
+              {/* Sale Type Toggle (Retail/Wholesale) */}
+              {cart.items.length > 0 && (
+                <SaleTypeToggle
+                  saleType={saleType}
+                  onSaleTypeChange={setSaleType}
+                  className="mb-3"
+                />
+              )}
+
               <CartPanel
                 items={cart.items}
                 onIncrement={cart.incrementQuantity}
                 onDecrement={cart.decrementQuantity}
                 onRemove={cart.removeItem}
-                total={cart.getTotal()}
+                total={cart.getTotal(saleType)}
+                saleType={saleType}
               />
 
               {/* Smart Upsell Suggestions - AI-powered */}
@@ -998,6 +1035,13 @@ const Checkout = () => {
         receipt={previewReceipt}
         receiptNumber={lastReceiptNumber}
         onPrint={handlePreviewPrintComplete}
+      />
+
+      {/* Quick Item Modal (Express Sale) */}
+      <QuickItemModal
+        open={quickItemOpen}
+        onOpenChange={setQuickItemOpen}
+        onAddQuickItem={handleAddQuickItem}
       />
     </div>
   );

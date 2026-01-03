@@ -58,6 +58,9 @@ export interface Medication {
   manufacturing_date?: string;
   unit_price: number;
   selling_price?: number;
+  wholesale_price?: number;
+  shelf_quantity?: number;
+  store_quantity?: number;
   barcode_id?: string;
   pharmacy_id?: string;
   supplier?: string;
@@ -108,6 +111,8 @@ export interface AIInsight {
 export interface CartItem {
   medication: Medication;
   quantity: number;
+  isQuickItem?: boolean; // For Express Sale items
+  quickItemPrice?: number; // Price for quick items
 }
 
 export interface Sale {
