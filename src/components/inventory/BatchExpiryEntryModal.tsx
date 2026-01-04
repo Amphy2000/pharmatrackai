@@ -154,8 +154,8 @@ export const BatchExpiryEntryModal = ({ open, onOpenChange }: BatchExpiryEntryMo
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
-        <DialogHeader>
+      <DialogContent className="max-w-3xl h-[85dvh] flex flex-col">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2 text-xl">
             <Layers className="h-5 w-5 text-primary" />
             Batch Entry Mode
@@ -165,7 +165,7 @@ export const BatchExpiryEntryModal = ({ open, onOpenChange }: BatchExpiryEntryMo
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 overflow-hidden flex flex-col gap-4">
+        <div className="flex-1 min-h-0 overflow-hidden flex flex-col gap-4">
           {/* Shared Expiry Date Section */}
           <Card className="p-4 bg-primary/5 border-primary/20">
             <div className="flex items-start gap-4">
@@ -231,7 +231,7 @@ export const BatchExpiryEntryModal = ({ open, onOpenChange }: BatchExpiryEntryMo
             </Button>
           </div>
 
-          <ScrollArea className="flex-1">
+          <ScrollArea className="flex-1 min-h-0">
             <div className="space-y-2 pr-4">
               {/* Header */}
               <div className="grid grid-cols-12 gap-2 px-2 text-xs font-medium text-muted-foreground">
@@ -346,7 +346,7 @@ export const BatchExpiryEntryModal = ({ open, onOpenChange }: BatchExpiryEntryMo
           </div>
         </div>
 
-        <DialogFooter className="gap-2">
+        <DialogFooter className="flex-shrink-0 gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
