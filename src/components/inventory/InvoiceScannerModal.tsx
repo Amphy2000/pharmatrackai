@@ -109,6 +109,7 @@ interface ExtractedItem {
   quantity: number;
   unitPrice?: number;
   suggestedSellingPrice?: number;
+  suggestedWholesalePrice?: number;
   batchNumber?: string;
   expiryDate?: string;
   manufacturingDate?: string;
@@ -134,10 +135,16 @@ export const InvoiceScannerModal = ({ open, onOpenChange }: InvoiceScannerModalP
 
   // Get default margin from pharmacy settings
   const defaultMargin = (pharmacy as any)?.default_margin_percent || 20;
+  const defaultWholesaleMargin = 10; // Lower margin for wholesale
 
   // Calculate suggested selling price based on cost and margin
   const calculateSellingPrice = (costPrice: number): number => {
     return Math.round(costPrice * (1 + defaultMargin / 100));
+  };
+
+  // Calculate suggested wholesale price based on cost and margin
+  const calculateWholesalePrice = (costPrice: number): number => {
+    return Math.round(costPrice * (1 + defaultWholesaleMargin / 100));
   };
 
   // Handle file upload
@@ -178,10 +185,12 @@ export const InvoiceScannerModal = ({ open, onOpenChange }: InvoiceScannerModalP
       );
 
       const suggestedSellingPrice = calculateSellingPrice(item.unitPrice);
+      const suggestedWholesalePrice = calculateWholesalePrice(item.unitPrice);
 
       return {
         ...item,
         suggestedSellingPrice,
+        suggestedWholesalePrice,
         matched,
         isNew: !matched,
       };
@@ -246,6 +255,7 @@ export const InvoiceScannerModal = ({ open, onOpenChange }: InvoiceScannerModalP
         const unitPriceRaw = raw?.unitPrice ?? raw?.unit_price ?? raw?.cost_price ?? null;
         const unitPrice = typeof unitPriceRaw === 'number' ? unitPriceRaw : Number(unitPriceRaw);
         const suggestedSellingPrice = Number.isFinite(unitPrice) ? calculateSellingPrice(unitPrice) : undefined;
+        const suggestedWholesalePrice = Number.isFinite(unitPrice) ? calculateWholesalePrice(unitPrice) : undefined;
 
         return {
           productName,
@@ -255,6 +265,7 @@ export const InvoiceScannerModal = ({ open, onOpenChange }: InvoiceScannerModalP
           expiryDate: (raw?.expiryDate ?? raw?.expiry_date ?? undefined) as any,
           manufacturingDate: (raw?.manufacturingDate ?? raw?.manufacturing_date ?? null) as any,
           suggestedSellingPrice,
+          suggestedWholesalePrice,
           matched,
           isNew: !matched,
         };
@@ -290,6 +301,15 @@ export const InvoiceScannerModal = ({ open, onOpenChange }: InvoiceScannerModalP
     setExtractedItems(prev => {
       const newItems = [...prev];
       newItems[index] = { ...newItems[index], suggestedSellingPrice: price };
+      return newItems;
+    });
+  };
+
+  // Update suggested wholesale price
+  const updateWholesalePrice = (index: number, price: number) => {
+    setExtractedItems(prev => {
+      const newItems = [...prev];
+      newItems[index] = { ...newItems[index], suggestedWholesalePrice: price };
       return newItems;
     });
   };
@@ -350,6 +370,10 @@ export const InvoiceScannerModal = ({ open, onOpenChange }: InvoiceScannerModalP
           // Update selling price if suggested and different
           ...(item.suggestedSellingPrice && item.suggestedSellingPrice !== item.matched!.selling_price 
             ? { selling_price: item.suggestedSellingPrice } 
+            : {}),
+          // Update wholesale price if suggested and different
+          ...(item.suggestedWholesalePrice && item.suggestedWholesalePrice !== item.matched!.wholesale_price 
+            ? { wholesale_price: item.suggestedWholesalePrice } 
             : {}),
         })
       );

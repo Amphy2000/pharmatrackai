@@ -42,6 +42,7 @@ interface ColumnMapping {
   expiry_date: string;
   unit_price: string;
   selling_price: string;
+  wholesale_price: string;
   barcode_id: string;
   nafdac_reg_number: string;
   manufacturer: string;
@@ -60,7 +61,8 @@ const fieldLabels: Record<FieldKey, string> = {
   reorder_level: 'Reorder Level',
   expiry_date: 'Expiry Date',
   unit_price: 'Cost Price',
-  selling_price: 'Selling Price',
+  selling_price: 'Retail Selling Price',
+  wholesale_price: 'Wholesale Price',
   barcode_id: 'Barcode',
   nafdac_reg_number: 'NAFDAC No / Reg No',
   manufacturer: 'Manufacturer',
@@ -69,7 +71,7 @@ const fieldLabels: Record<FieldKey, string> = {
 };
 
 const requiredFields: FieldKey[] = ['name', 'current_stock', 'unit_price'];
-const optionalFields: FieldKey[] = ['generic_name', 'manufacturer', 'category', 'batch_number', 'reorder_level', 'expiry_date', 'selling_price', 'barcode_id', 'nafdac_reg_number', 'supplier', 'location'];
+const optionalFields: FieldKey[] = ['generic_name', 'manufacturer', 'category', 'batch_number', 'reorder_level', 'expiry_date', 'selling_price', 'wholesale_price', 'barcode_id', 'nafdac_reg_number', 'supplier', 'location'];
 const NOT_MAPPED_VALUE = '__lovable_not_mapped__';
 
 // Smart column name matching patterns
@@ -83,6 +85,7 @@ const columnPatterns: Record<FieldKey, RegExp[]> = {
   expiry_date: [/^expir(y|ation)?[\s_-]?date$/i, /^exp[\s_-]?date$/i, /^best[\s_-]?before$/i, /^exp$/i],
   unit_price: [/^(cost|purchase|buy|unit)[\s_-]?price$/i, /^cost$/i, /^cp$/i, /^purchase[\s_-]?price$/i, /^price$/i],
   selling_price: [/^(sell(ing)?|retail|sale)[\s_-]?price$/i, /^sp$/i, /^retail$/i, /^mrp$/i],
+  wholesale_price: [/^wholesale[\s_-]?price$/i, /^bulk[\s_-]?price$/i, /^trade[\s_-]?price$/i, /^wp$/i, /^distributor[\s_-]?price$/i],
   barcode_id: [/^bar[\s_-]?code$/i, /^upc$/i, /^ean$/i, /^gtin$/i, /^sku$/i],
   nafdac_reg_number: [/^nafdac[\s_-]?(reg|registration)?[\s_-]?(no|number|#)?$/i, /^reg[\s_-]?(no|number|#)?$/i, /^registration$/i, /^fda[\s_-]?number$/i],
   manufacturer: [/^manufacturer$/i, /^mfg$/i, /^brand$/i, /^company$/i, /^make$/i, /^made[\s_-]?by$/i],
@@ -123,6 +126,7 @@ interface EditableRow {
   expiry_date: string;
   unit_price: string;
   selling_price: string;
+  wholesale_price: string;
   barcode_id: string;
   nafdac_reg_number: string;
   isValid: boolean;
@@ -140,7 +144,7 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
   const [headers, setHeaders] = useState<string[]>([]);
   const [mapping, setMapping] = useState<ColumnMapping>({
     name: '', generic_name: '', category: '', batch_number: '', current_stock: '',
-    reorder_level: '', expiry_date: '', unit_price: '', selling_price: '',
+    reorder_level: '', expiry_date: '', unit_price: '', selling_price: '', wholesale_price: '',
     barcode_id: '', nafdac_reg_number: '', manufacturer: '', supplier: '', location: '',
   });
   const [editableRows, setEditableRows] = useState<EditableRow[]>([]);
@@ -154,7 +158,7 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
   const autoMapColumns = useCallback((hdrs: string[], sampleRow?: Record<string, string>): ColumnMapping => {
     const result: ColumnMapping = {
       name: '', generic_name: '', category: '', batch_number: '', current_stock: '',
-      reorder_level: '', expiry_date: '', unit_price: '', selling_price: '',
+      reorder_level: '', expiry_date: '', unit_price: '', selling_price: '', wholesale_price: '',
       barcode_id: '', nafdac_reg_number: '', manufacturer: '', supplier: '', location: '',
     };
 
@@ -332,6 +336,7 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
       const rawName = mapping.name ? row[mapping.name] : '';
       const productName = typeof rawName === 'string' ? rawName.trim() : '';
       const costPrice = mapping.unit_price ? String(parsePrice(row[mapping.unit_price])) : '0';
+      const wholesalePrice = mapping.wholesale_price ? String(parsePrice(row[mapping.wholesale_price])) : '';
       const sellingPrice = mapping.selling_price ? String(parsePrice(row[mapping.selling_price])) : '';
       const rawStock = mapping.current_stock ? row[mapping.current_stock] : '';
       const stock = Math.max(0, parseInt(String(rawStock).replace(/[^0-9.-]/g, ''), 10) || 0);
@@ -376,6 +381,7 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
         expiry_date: expiryDate,
         unit_price: costPrice,
         selling_price: sellingPrice,
+        wholesale_price: wholesalePrice,
         barcode_id: barcodeId,
         nafdac_reg_number: nafdacReg,
         isValid,
@@ -455,7 +461,7 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
       for (let i = 0; i < totalRows; i++) {
         const row = rowsToImport[i];
         try {
-          const medication: MedicationFormData = {
+          const medication: MedicationFormData & { wholesale_price?: number } = {
             name: row.name,
             category: normalizeCategory(row.category),
             batch_number: row.batch_number,
@@ -464,6 +470,7 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
             expiry_date: row.expiry_date,
             unit_price: parseFloat(row.unit_price) || 0,
             selling_price: row.selling_price ? parseFloat(row.selling_price) : undefined,
+            wholesale_price: row.wholesale_price ? parseFloat(row.wholesale_price) : undefined,
             barcode_id: row.barcode_id || undefined,
             nafdac_reg_number: row.nafdac_reg_number || undefined,
           };
@@ -506,7 +513,7 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
     setHeaders([]);
     setMapping({
       name: '', generic_name: '', category: '', batch_number: '', current_stock: '',
-      reorder_level: '', expiry_date: '', unit_price: '', selling_price: '',
+      reorder_level: '', expiry_date: '', unit_price: '', selling_price: '', wholesale_price: '',
       barcode_id: '', nafdac_reg_number: '', manufacturer: '', supplier: '', location: '',
     });
     setEditableRows([]);
