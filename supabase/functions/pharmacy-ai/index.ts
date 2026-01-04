@@ -137,19 +137,33 @@ Return a JSON object:
   "suggestions": ["alternative search terms if query is ambiguous"]
 }`,
 
-  scan_invoice: `Act as an expert pharmacy invoice data extraction system.
-Parse the invoice image and extract all medication/product rows.
+  scan_invoice: `You are an EXPERT pharmacy invoice data extraction AI with ADVANCED OCR capabilities.
+Your task is to extract ALL product/medication rows from this invoice image.
 
-Extract per line item (when available):
-- productName (required)
-- quantity (default 1 if unclear)
-- unitPrice (cost/purchase price)
-- sellingPrice (retail price)
-- wholesalePrice (wholesale price)
-- batchNumber
-- expiryDate
+CRITICAL CAPABILITIES:
+- You can read HANDWRITTEN text, even messy or rushed handwriting
+- You can interpret ABBREVIATED drug names (e.g., "Para" = Paracetamol, "Amox" = Amoxicillin)
+- You can read FADED, BLURRY, or low-quality text
+- You MUST attempt extraction even if quality is poor - give your BEST interpretation
+- Common supplier abbreviations: "qty" = quantity, "amt" = amount, "u/p" = unit price, "w/s" = wholesale
 
-Return ONLY valid JSON (no markdown) with this structure:
+EXTRACTION RULES:
+1. Extract EVERY visible line item, even if partially readable
+2. For unclear text, make your BEST GUESS based on context (common pharmacy products)
+3. If quantity is unclear, default to 1
+4. Look for price columns: Cost/Unit Price, Retail/Selling Price, Wholesale
+5. Nigerian invoices often have columns: Description, Qty, Rate, Amount
+
+Per line item extract:
+- productName (REQUIRED - your best interpretation of the product name)
+- quantity (number, default 1)
+- unitPrice (cost/purchase price per unit)
+- sellingPrice (retail price if shown)
+- wholesalePrice (wholesale price if shown)
+- batchNumber (if visible)
+- expiryDate (format as YYYY-MM-DD)
+
+Return ONLY valid JSON (no markdown):
 {
   "supplierName": string | null,
   "invoiceDate": "YYYY-MM-DD" | null,
@@ -169,8 +183,7 @@ Return ONLY valid JSON (no markdown) with this structure:
   "notes": string
 }
 
-If you cannot identify any products, return:
-{ "items": [], "confidence": "low", "notes": "Could not extract products from image" }`,
+IMPORTANT: Even for poor quality images, ALWAYS try to extract something. Only return empty items array if the image contains NO invoice/product data at all.`,
 
   scan_expiry: `Act as an expert product packaging analyzer for a pharmacy inventory system.
 Analyze the product packaging image and extract expiry/manufacturing information.
@@ -521,6 +534,9 @@ Interpret this pharmacy search query and extract the search parameters.`;
   return await callGeminiAPI(PROMPTS.ai_search, userContent);
 }
 
+// Configuration: Set to true to use Lovable AI Gateway, false to use direct Gemini API
+const USE_LOVABLE_AI_FOR_INVOICE = true;
+
 async function handleScanInvoice(payload: any): Promise<any> {
   // Accept both imageBase64 and imageUrl (they may be the same data-uri)
   const imageData = payload?.imageBase64 || payload?.imageUrl;
@@ -529,49 +545,100 @@ async function handleScanInvoice(payload: any): Promise<any> {
     throw new Error("No invoice image provided. Send imageBase64 or imageUrl.");
   }
 
-  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-  if (!LOVABLE_API_KEY) {
-    throw new Error("LOVABLE_API_KEY is not configured");
-  }
+  console.log(`Processing invoice scan, size: ${imageData.length} chars, using: ${USE_LOVABLE_AI_FOR_INVOICE ? 'Lovable AI' : 'Gemini API'}`);
 
-  console.log(`Processing invoice scan via Lovable AI, size: ${imageData.length} chars`);
+  let content: string | undefined;
 
-  // Use flash for better vision extraction quality
-  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${LOVABLE_API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: "google/gemini-2.5-flash",
-      messages: [
-        {
-          role: "user",
-          content: [
-            { type: "text", text: PROMPTS.scan_invoice },
-            { type: "image_url", image_url: { url: imageData } },
-          ],
-        },
-      ],
-    }),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error("Lovable AI Vision error:", response.status, errorText);
-
-    if (response.status === 429) {
-      throw new Error("Rate limit exceeded");
+  if (USE_LOVABLE_AI_FOR_INVOICE) {
+    // Use Lovable AI Gateway
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) {
+      throw new Error("LOVABLE_API_KEY is not configured");
     }
-    if (response.status === 402) {
-      throw new Error("Payment required");
-    }
-    throw new Error(`Invoice scanning failed: ${response.status}`);
-  }
 
-  const data = await response.json();
-  const content = data.choices?.[0]?.message?.content as string | undefined;
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash",
+        messages: [
+          {
+            role: "user",
+            content: [
+              { type: "text", text: PROMPTS.scan_invoice },
+              { type: "image_url", image_url: { url: imageData } },
+            ],
+          },
+        ],
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Lovable AI Vision error:", response.status, errorText);
+
+      if (response.status === 429) {
+        throw new Error("Rate limit exceeded");
+      }
+      if (response.status === 402) {
+        throw new Error("Payment required");
+      }
+      throw new Error(`Invoice scanning failed: ${response.status}`);
+    }
+
+    const data = await response.json();
+    content = data.choices?.[0]?.message?.content as string | undefined;
+  } else {
+    // Use direct Gemini API
+    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+    if (!GEMINI_API_KEY) {
+      throw new Error("GEMINI_API_KEY is not configured. Please add your Gemini API key.");
+    }
+
+    // Extract base64 and mime type from data URL
+    const match = imageData.match(/^data:([^;]+);base64,(.+)$/);
+    if (!match) {
+      throw new Error("Invalid image format. Expected base64 data URL.");
+    }
+    const [, mimeType, base64Data] = match;
+
+    const response = await fetchWithRetry(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{
+            role: "user",
+            parts: [
+              { text: PROMPTS.scan_invoice },
+              {
+                inline_data: {
+                  mime_type: mimeType,
+                  data: base64Data
+                }
+              }
+            ]
+          }],
+          generationConfig: {
+            responseMimeType: "application/json",
+          },
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Gemini API Vision error:", response.status, errorText);
+      throw new Error(`Invoice scanning failed: ${response.status}`);
+    }
+
+    const data = await response.json();
+    content = data.candidates?.[0]?.content?.parts?.[0]?.text as string | undefined;
+  }
 
   if (!content) {
     return { items: [], confidence: "low", notes: "No AI response content" };
