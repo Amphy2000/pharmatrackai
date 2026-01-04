@@ -1,10 +1,11 @@
 import { useState, useRef, useCallback, useMemo } from 'react';
 import Papa from 'papaparse';
-import { Upload, FileSpreadsheet, Check, AlertCircle, Loader2, Sparkles, ArrowRight, X, CheckCircle2, XCircle, Edit3, Eye, Layers, AlertTriangle } from 'lucide-react';
+import { Upload, FileSpreadsheet, Check, AlertCircle, Loader2, Sparkles, ArrowRight, X, CheckCircle2, XCircle, Edit3, Eye, Layers, AlertTriangle, Wand2, Settings2, Trash2, Calendar, Package } from 'lucide-react';
 import { useMedications } from '@/hooks/useMedications';
 import { useBarcodeLibrary } from '@/hooks/useBarcodeLibrary';
 import { MedicationFormData, Medication } from '@/types/medication';
 import { findExistingProductsByName } from '@/utils/fefoUtils';
+import { parseCompoundProductLine, isCompoundLine } from '@/utils/fuzzyFieldMatcher';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -25,7 +26,13 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import { useToast } from '@/hooks/use-toast';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover';
 
 interface SmartCSVImportModalProps {
   open: boolean;
@@ -71,8 +78,8 @@ const fieldLabels: Record<FieldKey, string> = {
   location: 'Shelf Location',
 };
 
-const requiredFields: FieldKey[] = ['name', 'current_stock', 'unit_price'];
-const optionalFields: FieldKey[] = ['generic_name', 'manufacturer', 'category', 'batch_number', 'reorder_level', 'expiry_date', 'selling_price', 'wholesale_price', 'barcode_id', 'nafdac_reg_number', 'supplier', 'location'];
+// No required fields anymore - everything is optional with smart defaults
+const allFields: FieldKey[] = ['name', 'current_stock', 'unit_price', 'generic_name', 'manufacturer', 'category', 'batch_number', 'reorder_level', 'expiry_date', 'selling_price', 'wholesale_price', 'barcode_id', 'nafdac_reg_number', 'supplier', 'location'];
 const NOT_MAPPED_VALUE = '__lovable_not_mapped__';
 
 // Smart column name matching patterns
@@ -131,9 +138,17 @@ interface EditableRow {
   barcode_id: string;
   nafdac_reg_number: string;
   isValid: boolean;
-  errorMsg?: string;
-  existingBatches?: Medication[]; // For duplicate detection
-  isNewBatch?: boolean; // True if adding new batch to existing product
+  warningMsg?: string;
+  existingBatches?: Medication[];
+  isNewBatch?: boolean;
+  isParsedFromCompound?: boolean;
+}
+
+// Smart defaults configuration
+interface SmartDefaults {
+  defaultExpiryMonths: number;
+  defaultStock: number;
+  defaultCostPrice: number;
 }
 
 export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSVImportModalProps) => {
@@ -156,6 +171,13 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
   const [errors, setErrors] = useState<string[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [bulkReorderLevel, setBulkReorderLevel] = useState('10');
+  const [smartDefaults, setSmartDefaults] = useState<SmartDefaults>({
+    defaultExpiryMonths: 24,
+    defaultStock: 1,
+    defaultCostPrice: 0,
+  });
+  const [bulkExpiry, setBulkExpiry] = useState('');
+  const [hasCompoundData, setHasCompoundData] = useState(false);
 
   // Auto-detect column mappings
   const autoMapColumns = useCallback((hdrs: string[], sampleRow?: Record<string, string>): ColumnMapping => {
@@ -192,7 +214,29 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
       if (qtyCandidate) result.current_stock = qtyCandidate;
     }
 
+    // If no name column found, try to use first text column
+    if (!result.name && hdrs.length > 0 && sampleRow) {
+      const textColumn = hdrs.find((h) => {
+        const v = sampleRow[h];
+        return v && v.length > 2 && isNaN(Number(v.replace(/[₦$£€,\s]/g, '')));
+      });
+      if (textColumn) result.name = textColumn;
+    }
+
     return result;
+  }, []);
+
+  // Check if data looks like single-column compound format
+  const detectCompoundData = useCallback((rows: Record<string, string>[], hdrs: string[]): boolean => {
+    if (hdrs.length > 3) return false; // Multi-column data
+    
+    const sampleRows = rows.slice(0, 5);
+    const compoundCount = sampleRows.filter(row => {
+      const values = Object.values(row).filter(v => v && v.trim());
+      return values.some(v => isCompoundLine(v));
+    }).length;
+    
+    return compoundCount >= sampleRows.length * 0.5;
   }, []);
 
   const handleFileSelect = useCallback((file: File) => {
@@ -250,7 +294,29 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
 
             const autoMapping = autoMapColumns(cleanedHeaders, rows[0]);
             setMapping(autoMapping);
-            setStep('mapping');
+            
+            // Detect if data is in compound format
+            const isCompound = detectCompoundData(rows, cleanedHeaders);
+            setHasCompoundData(isCompound);
+
+            // Calculate auto-mapping confidence
+            const mappedFieldsCount = Object.values(autoMapping).filter(v => v).length;
+            const confidence = mappedFieldsCount / 5; // Base confidence on key fields
+
+            // If high confidence OR single column (compound), skip to review
+            if (confidence >= 0.6 || isCompound) {
+              const editRows = buildEditableRowsFromData(rows, autoMapping, isCompound);
+              setEditableRows(editRows);
+              setStep('review');
+              toast({
+                title: isCompound ? 'Smart parsing detected' : 'Auto-mapped columns',
+                description: isCompound 
+                  ? `Extracted product data from ${rows.length} lines. Review below.`
+                  : `Found ${mappedFieldsCount} matching columns. Review your data below.`,
+              });
+            } else {
+              setStep('mapping');
+            }
           } catch (err) {
             console.error('CSV import: parse complete handler failed', err);
             toast({ title: 'Import Error', description: 'We could not read that CSV file. Please try another export format.', variant: 'destructive' });
@@ -265,7 +331,7 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
       console.error('CSV import: file select failed', err);
       toast({ title: 'Import Error', description: 'Something went wrong while reading the file. Please try again.', variant: 'destructive' });
     }
-  }, [autoMapColumns, toast]);
+  }, [autoMapColumns, detectCompoundData, toast]);
 
   const handleDrop = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -284,8 +350,7 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
     if (file) handleFileSelect(file);
   };
 
-  // Validate required fields
-  const missingFields = useMemo(() => requiredFields.filter(f => !mapping[f]), [mapping]);
+  // Count how many fields are mapped (for UI display only)
   const mappedCount = useMemo(() => Object.values(mapping).filter(v => v).length, [mapping]);
 
   // Parse helpers
@@ -300,6 +365,12 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
       const day = parseInt(first) > 12 ? first : second;
       const month = parseInt(first) > 12 ? second : first;
       return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+    }
+    // MM/YYYY format
+    const mmyyyyMatch = cleaned.match(/^(\d{1,2})[\/\-](\d{4})$/);
+    if (mmyyyyMatch) {
+      const [, month, year] = mmyyyyMatch;
+      return `${year}-${month.padStart(2, '0')}-01`;
     }
     const date = new Date(cleaned);
     if (!isNaN(date.getTime())) return date.toISOString().split('T')[0];
@@ -321,83 +392,140 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
 
   // Smart reorder level calculation based on stock quantity
   const calculateSmartReorderLevel = (stock: number): number => {
-    if (stock <= 5) return Math.max(1, Math.ceil(stock * 0.5)); // 50% of stock
-    if (stock <= 20) return Math.ceil(stock * 0.3); // 30% of stock
-    if (stock <= 50) return Math.ceil(stock * 0.25); // 25% of stock
-    if (stock <= 100) return Math.ceil(stock * 0.2); // 20% of stock
-    if (stock <= 500) return Math.ceil(stock * 0.15); // 15% of stock
-    return Math.ceil(stock * 0.1); // 10% for large stock
+    if (stock <= 5) return Math.max(1, Math.ceil(stock * 0.5));
+    if (stock <= 20) return Math.ceil(stock * 0.3);
+    if (stock <= 50) return Math.ceil(stock * 0.25);
+    if (stock <= 100) return Math.ceil(stock * 0.2);
+    if (stock <= 500) return Math.ceil(stock * 0.15);
+    return Math.ceil(stock * 0.1);
   };
 
-  // Build editable rows from CSV + mapping
-  const buildEditableRows = useCallback((): EditableRow[] => {
-    const twoYearsFromNow = new Date();
-    twoYearsFromNow.setFullYear(twoYearsFromNow.getFullYear() + 2);
-    const defaultExpiry = twoYearsFromNow.toISOString().split('T')[0];
+  // Get default expiry date based on settings
+  const getDefaultExpiry = useCallback((): string => {
+    const date = new Date();
+    date.setMonth(date.getMonth() + smartDefaults.defaultExpiryMonths);
+    return date.toISOString().split('T')[0];
+  }, [smartDefaults.defaultExpiryMonths]);
 
-    return csvData.map((row, idx) => {
-      const rawName = mapping.name ? row[mapping.name] : '';
-      const productName = typeof rawName === 'string' ? rawName.trim() : '';
-      const costPrice = mapping.unit_price ? String(parsePrice(row[mapping.unit_price])) : '0';
-      const wholesalePrice = mapping.wholesale_price ? String(parsePrice(row[mapping.wholesale_price])) : '';
-      const sellingPrice = mapping.selling_price ? String(parsePrice(row[mapping.selling_price])) : '';
-      const rawStock = mapping.current_stock ? row[mapping.current_stock] : '';
-      const stock = Math.max(0, parseInt(String(rawStock).replace(/[^0-9.-]/g, ''), 10) || 0);
+  // Build editable rows - handles both mapped columns and compound parsing
+  const buildEditableRowsFromData = useCallback((
+    data: Record<string, string>[],
+    currentMapping: ColumnMapping,
+    isCompound: boolean
+  ): EditableRow[] => {
+    const defaultExpiry = getDefaultExpiry();
+
+    return data.map((row, idx) => {
+      let productName = '';
+      let stock = smartDefaults.defaultStock;
+      let costPrice = smartDefaults.defaultCostPrice;
+      let expiryDate = defaultExpiry;
+      let batchNumber = `BATCH-${Date.now()}-${idx}`;
+      let category = 'Other';
+      let isParsedFromCompound = false;
+
+      // Try compound parsing first if detected
+      if (isCompound) {
+        const textValue = Object.values(row).find(v => v && v.trim()) || '';
+        if (isCompoundLine(textValue)) {
+          const parsed = parseCompoundProductLine(textValue);
+          productName = parsed.name;
+          if (parsed.quantity) stock = parsed.quantity;
+          if (parsed.price) costPrice = parsed.price;
+          if (parsed.expiry) expiryDate = parsed.expiry;
+          if (parsed.batchNumber) batchNumber = parsed.batchNumber;
+          if (parsed.category) category = parsed.category;
+          isParsedFromCompound = true;
+        } else {
+          productName = textValue;
+        }
+      }
       
-      // Use mapped reorder level or calculate smart default
+      // If not compound or parsing failed, use column mapping
+      if (!isParsedFromCompound) {
+        const rawName = currentMapping.name ? row[currentMapping.name] : '';
+        productName = typeof rawName === 'string' ? rawName.trim() : '';
+        
+        // If still no name, use first non-empty column
+        if (!productName) {
+          const firstValue = Object.values(row).find(v => v && v.trim());
+          productName = firstValue || '';
+        }
+        
+        costPrice = currentMapping.unit_price ? parsePrice(row[currentMapping.unit_price]) : smartDefaults.defaultCostPrice;
+        const rawStock = currentMapping.current_stock ? row[currentMapping.current_stock] : '';
+        stock = rawStock ? Math.max(0, parseInt(String(rawStock).replace(/[^0-9.-]/g, ''), 10) || smartDefaults.defaultStock) : smartDefaults.defaultStock;
+        
+        const rawExpiry = currentMapping.expiry_date ? row[currentMapping.expiry_date] : '';
+        expiryDate = parseDate(rawExpiry) || defaultExpiry;
+        
+        const rawBatch = currentMapping.batch_number ? row[currentMapping.batch_number] : '';
+        batchNumber = rawBatch && rawBatch.trim() ? rawBatch.trim() : batchNumber;
+        
+        const rawCategory = currentMapping.category ? row[currentMapping.category] ?? '' : '';
+        category = rawCategory || 'Other';
+      }
+
+      const wholesalePrice = currentMapping.wholesale_price ? String(parsePrice(row[currentMapping.wholesale_price])) : '';
+      const sellingPrice = currentMapping.selling_price ? String(parsePrice(row[currentMapping.selling_price])) : '';
+      
+      // Calculate reorder level
       let reorderLevel: number;
-      if (mapping.reorder_level && row[mapping.reorder_level]) {
-        reorderLevel = parseInt(String(row[mapping.reorder_level]).replace(/[^0-9.-]/g, ''), 10) || calculateSmartReorderLevel(stock);
+      if (currentMapping.reorder_level && row[currentMapping.reorder_level]) {
+        reorderLevel = parseInt(String(row[currentMapping.reorder_level]).replace(/[^0-9.-]/g, ''), 10) || calculateSmartReorderLevel(stock);
       } else {
         reorderLevel = calculateSmartReorderLevel(stock);
       }
-      
-      let expiryDate = mapping.expiry_date ? parseDate(row[mapping.expiry_date] ?? '') : null;
-      if (!expiryDate) expiryDate = defaultExpiry;
-      const rawBatch = mapping.batch_number ? row[mapping.batch_number] : '';
-      const batchNumber = typeof rawBatch === 'string' && rawBatch.trim() ? rawBatch.trim() : `BATCH-${Date.now()}-${idx}`;
-      const rawBarcode = mapping.barcode_id ? row[mapping.barcode_id] : '';
+
+      // Barcode lookup
+      const rawBarcode = currentMapping.barcode_id ? row[currentMapping.barcode_id] : '';
       let barcodeId = typeof rawBarcode === 'string' && rawBarcode.trim() ? rawBarcode.trim() : '';
       if (!barcodeId && productName) barcodeId = findBarcodeByName(productName) || '';
-      const rawNafdac = mapping.nafdac_reg_number ? row[mapping.nafdac_reg_number] : '';
+      
+      const rawNafdac = currentMapping.nafdac_reg_number ? row[currentMapping.nafdac_reg_number] : '';
       const nafdacReg = typeof rawNafdac === 'string' && rawNafdac.trim() ? rawNafdac.trim() : '';
-      const rawCategory = mapping.category ? row[mapping.category] ?? '' : '';
-      const category = rawCategory || 'Other';
       
-      // Extract manufacturer if mapped
-      const rawManufacturer = mapping.manufacturer ? row[mapping.manufacturer] : '';
+      const rawManufacturer = currentMapping.manufacturer ? row[currentMapping.manufacturer] : '';
       const manufacturer = typeof rawManufacturer === 'string' ? rawManufacturer.trim() : '';
-      
-      // Generic name - try to extract from product name if not mapped
-      const genericName = '';
 
-      // Check for existing products with same name (duplicate detection)
+      // Check for existing products
       const existingBatches = productName ? findExistingProductsByName(medications, productName) : [];
       const isNewBatch = existingBatches.length > 0;
 
+      // Determine validity and warnings
       const isValid = !!productName;
+      let warningMsg: string | undefined;
+      if (!productName) {
+        warningMsg = 'No product name - will be skipped';
+      } else if (costPrice === 0) {
+        warningMsg = 'No cost price set';
+      } else if (expiryDate === defaultExpiry && !isParsedFromCompound) {
+        warningMsg = 'Using default expiry date';
+      }
+
       return {
         id: idx,
         name: productName,
-        generic_name: genericName,
+        generic_name: '',
         manufacturer,
         category,
         batch_number: batchNumber,
         current_stock: String(stock),
         reorder_level: String(reorderLevel),
         expiry_date: expiryDate,
-        unit_price: costPrice,
+        unit_price: String(costPrice),
         selling_price: sellingPrice,
         wholesale_price: wholesalePrice,
         barcode_id: barcodeId,
         nafdac_reg_number: nafdacReg,
         isValid,
-        errorMsg: isValid ? undefined : 'Product name is required',
+        warningMsg,
         existingBatches,
         isNewBatch,
+        isParsedFromCompound,
       };
     });
-  }, [csvData, mapping, findBarcodeByName, medications]);
+  }, [findBarcodeByName, medications, getDefaultExpiry, smartDefaults]);
 
   // Apply smart reorder levels based on each product's stock
   const applySmartReorderLevels = () => {
@@ -409,7 +537,7 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
     );
     toast({
       title: 'Smart Reorder Levels Applied',
-      description: `Calculated optimal reorder levels for ${editableRows.length} products based on stock.`,
+      description: `Calculated optimal reorder levels for ${editableRows.length} products.`,
     });
   };
 
@@ -422,12 +550,41 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
     );
     toast({
       title: 'Bulk Reorder Level Applied',
-      description: `Set reorder level to ${level} for all ${editableRows.length} products.`,
+      description: `Set reorder level to ${level} for all products.`,
+    });
+  };
+
+  // Apply bulk expiry date
+  const applyBulkExpiry = () => {
+    if (!bulkExpiry) return;
+    setEditableRows((prev) =>
+      prev.map((r) => ({ ...r, expiry_date: bulkExpiry, warningMsg: undefined }))
+    );
+    toast({
+      title: 'Bulk Expiry Applied',
+      description: `Set expiry date to ${bulkExpiry} for all products.`,
+    });
+  };
+
+  // Set all empty stocks to 1
+  const applyDefaultStock = () => {
+    setEditableRows((prev) =>
+      prev.map((r) => {
+        const stock = parseInt(r.current_stock, 10) || 0;
+        if (stock === 0) {
+          return { ...r, current_stock: '1', reorder_level: '1' };
+        }
+        return r;
+      })
+    );
+    toast({
+      title: 'Default Stock Applied',
+      description: 'Set stock to 1 for items with zero quantity.',
     });
   };
 
   const proceedToReview = () => {
-    const rows = buildEditableRows();
+    const rows = buildEditableRowsFromData(csvData, mapping, hasCompoundData);
     setEditableRows(rows);
     setStep('review');
   };
@@ -438,7 +595,7 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
         if (r.id !== id) return r;
         const updated = { ...r, [field]: value };
         updated.isValid = !!updated.name.trim();
-        updated.errorMsg = updated.isValid ? undefined : 'Product name is required';
+        updated.warningMsg = updated.isValid ? undefined : 'No product name';
         return updated;
       })
     );
@@ -449,12 +606,13 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
   };
 
   const validRowCount = useMemo(() => editableRows.filter((r) => r.isValid).length, [editableRows]);
+  const warningRowCount = useMemo(() => editableRows.filter((r) => r.isValid && r.warningMsg).length, [editableRows]);
 
   const handleImport = async () => {
     try {
       const rowsToImport = editableRows.filter((r) => r.isValid);
       if (rowsToImport.length === 0) {
-        toast({ title: 'No valid rows', description: 'Please fix or add product names before importing.', variant: 'destructive' });
+        toast({ title: 'No valid rows', description: 'Add product names to import.', variant: 'destructive' });
         return;
       }
 
@@ -474,7 +632,7 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
             name: row.name,
             category: normalizeCategory(row.category),
             batch_number: row.batch_number,
-            current_stock: parseInt(row.current_stock, 10) || 0,
+            current_stock: parseInt(row.current_stock, 10) || 1,
             reorder_level: parseInt(row.reorder_level, 10) || 10,
             expiry_date: row.expiry_date,
             unit_price: parseFloat(row.unit_price) || 0,
@@ -511,7 +669,7 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
       onComplete?.(successCount);
     } catch (err) {
       console.error('CSV import fatal error:', err);
-      toast({ title: 'Import Error', description: 'Something went wrong during import. Please try again.', variant: 'destructive' });
+      toast({ title: 'Import Error', description: 'Something went wrong during import.', variant: 'destructive' });
       setStep('review');
     }
   };
@@ -529,27 +687,28 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
     setImportProgress(0);
     setImportedCount(0);
     setErrors([]);
+    setHasCompoundData(false);
     onOpenChange(false);
   };
 
   return (
     <Dialog open={open} onOpenChange={(nextOpen) => { if (!nextOpen) handleClose(); else onOpenChange(true); }}>
-      <DialogContent className="sm:max-w-3xl h-[90dvh] min-h-0 overflow-hidden flex flex-col">
+      <DialogContent className="sm:max-w-4xl h-[90dvh] min-h-0 overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="font-display text-xl flex items-center gap-2">
             <FileSpreadsheet className="h-5 w-5 text-primary" />
-            Import Products from CSV
+            Import Products
             <Badge variant="secondary" className="ml-2 gap-1">
               <Sparkles className="h-3 w-3" />
-              Smart Import
+              Zero-Friction
             </Badge>
           </DialogTitle>
           <DialogDescription>
-            {step === 'upload' && "Upload any CSV file - we'll automatically detect your columns"}
-            {step === 'mapping' && `Found ${headers.length} columns. Review the auto-detected mappings below.`}
-            {step === 'review' && `Review & edit ${editableRows.length} products before importing.`}
+            {step === 'upload' && "Upload any file - we'll figure out the rest"}
+            {step === 'mapping' && `Found ${headers.length} columns. Adjust mappings if needed.`}
+            {step === 'review' && `Review ${editableRows.length} products. Edit anything before importing.`}
             {step === 'importing' && `Importing ${validRowCount} products...`}
-            {step === 'complete' && `Import complete! ${importedCount} products added.`}
+            {step === 'complete' && `Done! ${importedCount} products added.`}
           </DialogDescription>
         </DialogHeader>
 
@@ -568,26 +727,79 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
                 <Upload className="h-8 w-8 text-primary" />
               </div>
               <div className="text-center">
-                <p className="font-medium">Drag & drop your CSV file here</p>
+                <p className="font-medium">Drop your CSV file here</p>
                 <p className="text-sm text-muted-foreground mt-1">or click to browse</p>
               </div>
             </div>
 
             <div className="mt-4 p-4 rounded-xl bg-muted/30 border border-border">
               <h4 className="font-medium mb-2 flex items-center gap-2">
-                <Sparkles className="h-4 w-4 text-primary" />
-                Smart Detection Supports:
+                <Wand2 className="h-4 w-4 text-primary" />
+                Works with ANY format:
               </h4>
-              <ul className="text-sm text-muted-foreground space-y-1 grid grid-cols-2 gap-x-4">
-                <li>• Product Name / Drug Name</li>
-                <li>• Quantity / Stock / Units</li>
-                <li>• Cost Price / Purchase Price</li>
-                <li>• Selling Price / Retail Price</li>
-                <li>• Expiry Date (any format)</li>
-                <li>• Batch Number / Lot Number</li>
-                <li>• Category / Drug Type</li>
-                <li>• Barcode / SKU / UPC</li>
+              <ul className="text-sm text-muted-foreground space-y-1">
+                <li>• <span className="font-medium">Multi-column:</span> Separate columns for name, price, quantity, etc.</li>
+                <li>• <span className="font-medium">Single-column:</span> "Paracetamol 500mg x100 @₦1500 exp 03/26"</li>
+                <li>• <span className="font-medium">Mixed formats:</span> We'll parse what we can, you edit the rest</li>
               </ul>
+            </div>
+
+            {/* Smart Defaults Settings */}
+            <div className="mt-3 p-3 rounded-lg border border-border bg-card">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-sm font-medium flex items-center gap-2">
+                  <Settings2 className="h-4 w-4" />
+                  Default Values
+                </span>
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <Label className="text-xs text-muted-foreground">Default Expiry</Label>
+                  <Select
+                    value={String(smartDefaults.defaultExpiryMonths)}
+                    onValueChange={(v) => setSmartDefaults(prev => ({ ...prev, defaultExpiryMonths: parseInt(v) }))}
+                  >
+                    <SelectTrigger className="h-8 text-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="12">1 year</SelectItem>
+                      <SelectItem value="24">2 years</SelectItem>
+                      <SelectItem value="36">3 years</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Default Stock</Label>
+                  <Select
+                    value={String(smartDefaults.defaultStock)}
+                    onValueChange={(v) => setSmartDefaults(prev => ({ ...prev, defaultStock: parseInt(v) }))}
+                  >
+                    <SelectTrigger className="h-8 text-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="0">0</SelectItem>
+                      <SelectItem value="1">1</SelectItem>
+                      <SelectItem value="10">10</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-xs text-muted-foreground">Default Price</Label>
+                  <Select
+                    value={String(smartDefaults.defaultCostPrice)}
+                    onValueChange={(v) => setSmartDefaults(prev => ({ ...prev, defaultCostPrice: parseInt(v) }))}
+                  >
+                    <SelectTrigger className="h-8 text-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="0">₦0</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
             </div>
           </div>
         )}
@@ -596,45 +808,22 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
         {step === 'mapping' && (
           <div className="flex-1 flex flex-col overflow-hidden py-2 min-h-0">
             <div className="flex items-center gap-3 mb-4">
-              <Badge variant={missingFields.length === 0 ? 'default' : 'destructive'} className="gap-1">
-                {missingFields.length === 0 ? <CheckCircle2 className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
-                {missingFields.length === 0 ? 'All required fields mapped' : `${missingFields.length} required fields missing`}
-              </Badge>
-              <Badge variant="secondary">{mappedCount} / {Object.keys(mapping).length} mapped</Badge>
+              <Badge variant="secondary">{mappedCount} columns mapped</Badge>
               <Badge variant="outline">{csvData.length} rows</Badge>
+              {hasCompoundData && (
+                <Badge variant="secondary" className="gap-1">
+                  <Wand2 className="h-3 w-3" />
+                  Smart parsing enabled
+                </Badge>
+              )}
             </div>
 
             <ScrollArea className="flex-1 min-h-0 pr-4">
               <div className="space-y-3">
-                <div className="text-sm font-medium text-muted-foreground mb-2">Required Fields</div>
-                {requiredFields.map((field) => (
+                <div className="text-sm font-medium text-muted-foreground mb-2">Map Your Columns (all optional)</div>
+                {allFields.map((field) => (
                   <div key={field} className="flex items-center gap-3">
-                    <div className="w-36 flex items-center gap-2">
-                      <span className="text-sm font-medium">{fieldLabels[field]}</span>
-                      <span className="text-destructive">*</span>
-                    </div>
-                    <Select
-                      value={mapping[field] || NOT_MAPPED_VALUE}
-                      onValueChange={(value) => setMapping((prev) => ({ ...prev, [field]: value === NOT_MAPPED_VALUE ? '' : value }))}
-                    >
-                      <SelectTrigger className="flex-1">
-                        <SelectValue placeholder="Select column" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value={NOT_MAPPED_VALUE}>— Not mapped —</SelectItem>
-                        {headers.map((header) => (
-                          <SelectItem key={header} value={header}>{header}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {mapping[field] && <Check className="h-4 w-4 text-success flex-shrink-0" />}
-                  </div>
-                ))}
-                
-                <div className="text-sm font-medium text-muted-foreground mt-4 mb-2">Optional Fields</div>
-                {optionalFields.map((field) => (
-                  <div key={field} className="flex items-center gap-3">
-                    <div className="w-36">
+                    <div className="w-40 flex items-center gap-2">
                       <span className="text-sm">{fieldLabels[field]}</span>
                     </div>
                     <Select
@@ -659,7 +848,7 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
 
             <DialogFooter className="mt-4">
               <Button variant="outline" onClick={handleClose}>Cancel</Button>
-              <Button onClick={proceedToReview} disabled={missingFields.length > 0} className="gap-2 bg-gradient-primary hover:opacity-90">
+              <Button onClick={proceedToReview} className="gap-2 bg-gradient-primary hover:opacity-90">
                 <Eye className="h-4 w-4" />
                 Review & Edit
                 <ArrowRight className="h-4 w-4" />
@@ -671,171 +860,186 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
         {/* REVIEW & EDIT STEP */}
         {step === 'review' && (
           <div className="flex-1 flex flex-col overflow-hidden py-2 min-h-0">
-            {/* Duplicate detection summary */}
-            {editableRows.some(r => r.isNewBatch) && (
-              <div className="flex items-center gap-2 p-2.5 mb-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50">
-                <AlertTriangle className="h-4 w-4 text-amber-600 flex-shrink-0" />
-                <div className="text-sm">
-                  <span className="font-medium text-amber-800 dark:text-amber-200">
-                    {editableRows.filter(r => r.isNewBatch).length} products already exist in inventory
-                  </span>
-                  <span className="text-amber-700 dark:text-amber-300">
-                    {' '}— These will be added as new batches (FEFO auto-deduct enabled)
-                  </span>
-                </div>
-              </div>
-            )}
-            
+            {/* Status badges and bulk actions */}
             <div className="flex flex-wrap items-center gap-2 mb-3">
               <Badge variant="secondary" className="gap-1">
                 <Edit3 className="h-3 w-3" />
-                Editable Preview
+                Click to edit
               </Badge>
-              <Badge variant={validRowCount === editableRows.length ? 'default' : 'destructive'}>
-                {validRowCount} / {editableRows.length} valid
+              <Badge variant={validRowCount === editableRows.length ? 'default' : 'outline'}>
+                {validRowCount} valid
               </Badge>
+              {warningRowCount > 0 && (
+                <Badge variant="outline" className="gap-1 text-amber-600 border-amber-500/50">
+                  <AlertTriangle className="h-3 w-3" />
+                  {warningRowCount} with warnings
+                </Badge>
+              )}
               {editableRows.some(r => r.isNewBatch) && (
-                <Badge variant="outline" className="gap-1 border-amber-500/50 text-amber-600">
+                <Badge variant="outline" className="gap-1 border-blue-500/50 text-blue-600">
                   <Layers className="h-3 w-3" />
-                  {editableRows.filter(r => r.isNewBatch).length} existing products
+                  {editableRows.filter(r => r.isNewBatch).length} existing
+                </Badge>
+              )}
+              {hasCompoundData && (
+                <Badge variant="secondary" className="gap-1">
+                  <Wand2 className="h-3 w-3" />
+                  AI parsed
                 </Badge>
               )}
             </div>
-            
-            {/* Reorder Level Controls */}
-            <div className="flex flex-wrap items-center gap-2 mb-3 p-2 bg-muted/50 rounded-lg border">
-              <span className="text-xs font-medium text-muted-foreground">Reorder Levels:</span>
-              <Button size="sm" variant="default" className="h-7 text-xs gap-1" onClick={applySmartReorderLevels}>
-                <Sparkles className="h-3 w-3" />
-                Auto-Calculate (Smart)
-              </Button>
-              <span className="text-xs text-muted-foreground">or</span>
-              <Input
-                value={bulkReorderLevel}
-                onChange={(e) => setBulkReorderLevel(e.target.value)}
-                className="h-7 w-14 text-xs"
-                type="number"
-                min="0"
-                placeholder="10"
-              />
-              <Button size="sm" variant="outline" className="h-7 text-xs" onClick={applyBulkReorderLevel}>
-                Set All
+
+            {/* Bulk Actions */}
+            <div className="flex flex-wrap items-center gap-2 mb-3 p-2 rounded-lg bg-muted/30 border border-border">
+              <span className="text-xs font-medium text-muted-foreground mr-2">Bulk:</span>
+              
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-7 text-xs gap-1">
+                    <Calendar className="h-3 w-3" />
+                    Set Expiry
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-3" align="start">
+                  <div className="space-y-2">
+                    <Label className="text-xs">Set expiry for all products</Label>
+                    <Input
+                      type="date"
+                      value={bulkExpiry}
+                      onChange={(e) => setBulkExpiry(e.target.value)}
+                      className="h-8"
+                    />
+                    <Button size="sm" onClick={applyBulkExpiry} disabled={!bulkExpiry} className="w-full">
+                      Apply
+                    </Button>
+                  </div>
+                </PopoverContent>
+              </Popover>
+
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" size="sm" className="h-7 text-xs gap-1">
+                    <Package className="h-3 w-3" />
+                    Set Reorder Level
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-3" align="start">
+                  <div className="space-y-2">
+                    <Label className="text-xs">Fixed reorder level</Label>
+                    <Input
+                      type="number"
+                      value={bulkReorderLevel}
+                      onChange={(e) => setBulkReorderLevel(e.target.value)}
+                      className="h-8 w-20"
+                      min={0}
+                    />
+                    <div className="flex gap-2">
+                      <Button size="sm" onClick={applyBulkReorderLevel} className="flex-1">
+                        Apply
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={applySmartReorderLevels}>
+                        Smart
+                      </Button>
+                    </div>
+                  </div>
+                </PopoverContent>
+              </Popover>
+
+              <Button variant="outline" size="sm" className="h-7 text-xs" onClick={applyDefaultStock}>
+                Set Zero Stock → 1
               </Button>
             </div>
 
-            {/* Scrollable Table Container - Fixed Scrolling */}
-            <div className="flex-1 border rounded-lg overflow-hidden min-h-0">
-              <div className="h-full overflow-auto">
-                <div className="min-w-[950px]">
-                  {/* Header Row */}
-                  <div className="grid grid-cols-[32px_1fr_100px_60px_65px_70px_70px_60px_90px_80px_32px] gap-1 p-2 bg-muted text-xs font-medium sticky top-0 z-10 border-b">
-                    <span>#</span>
-                    <span>Product Name *</span>
-                    <span>Manufacturer</span>
-                    <span>Stock *</span>
-                    <span>Cost *</span>
-                    <span>Retail</span>
-                    <span>Wholesale</span>
-                    <span>Reorder</span>
-                    <span>Expiry</span>
-                    <span>Category</span>
-                    <span></span>
-                  </div>
-
-                  {/* Data Rows */}
-                  {editableRows.map((row, idx) => (
-                    <div
-                      key={row.id}
-                      className={`grid grid-cols-[32px_1fr_100px_60px_65px_70px_70px_60px_90px_80px_32px] gap-1 p-1.5 border-b items-center text-sm ${!row.isValid ? 'bg-destructive/10' : row.isNewBatch ? 'bg-amber-50 dark:bg-amber-950/20' : idx % 2 === 0 ? 'bg-background' : 'bg-muted/20'}`}
-                    >
-                      <div className="flex items-center gap-1">
-                        <span className="text-muted-foreground text-xs">{idx + 1}</span>
-                        {row.isNewBatch && (
-                          <Badge variant="outline" className="h-4 px-1 text-[9px] gap-0.5 border-amber-500/50 text-amber-600 bg-amber-100/50 dark:bg-amber-900/30">
-                            <Layers className="h-2.5 w-2.5" />
-                            +{row.existingBatches?.length}
-                          </Badge>
-                        )}
-                      </div>
+            {/* Editable Table */}
+            <ScrollArea className="flex-1 min-h-0">
+              <div className="space-y-1">
+                {/* Header */}
+                <div className="grid grid-cols-[1fr_80px_80px_100px_40px] gap-2 text-xs font-medium text-muted-foreground px-2 py-1 bg-muted/50 rounded sticky top-0">
+                  <span>Product Name</span>
+                  <span>Stock</span>
+                  <span>Cost</span>
+                  <span>Expiry</span>
+                  <span></span>
+                </div>
+                
+                {editableRows.map((row) => (
+                  <div
+                    key={row.id}
+                    className={`grid grid-cols-[1fr_80px_80px_100px_40px] gap-2 items-center px-2 py-1.5 rounded border ${
+                      !row.isValid ? 'border-destructive/30 bg-destructive/5' :
+                      row.warningMsg ? 'border-amber-500/30 bg-amber-50/50 dark:bg-amber-950/20' :
+                      row.isNewBatch ? 'border-blue-500/30 bg-blue-50/50 dark:bg-blue-950/20' :
+                      'border-border hover:bg-muted/30'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 min-w-0">
                       <Input
                         value={row.name}
                         onChange={(e) => updateEditableRow(row.id, 'name', e.target.value)}
-                        className={`h-7 text-xs ${!row.isValid ? 'border-destructive' : row.isNewBatch ? 'border-amber-400/50' : ''}`}
-                        placeholder="Product name"
+                        placeholder="Product name..."
+                        className="h-7 text-sm border-0 bg-transparent p-0 focus-visible:ring-0"
                       />
-                      <Input
-                        value={row.manufacturer}
-                        onChange={(e) => updateEditableRow(row.id, 'manufacturer', e.target.value)}
-                        className="h-7 text-xs"
-                        placeholder="Manufacturer"
-                      />
-                      <Input
-                        value={row.current_stock}
-                        onChange={(e) => updateEditableRow(row.id, 'current_stock', e.target.value)}
-                        className="h-7 text-xs"
-                        type="number"
-                      />
-                      <Input
-                        value={row.unit_price}
-                        onChange={(e) => updateEditableRow(row.id, 'unit_price', e.target.value)}
-                        className="h-7 text-xs"
-                        type="number"
-                      />
-                      <Input
-                        value={row.selling_price}
-                        onChange={(e) => updateEditableRow(row.id, 'selling_price', e.target.value)}
-                        className="h-7 text-xs"
-                        type="number"
-                        placeholder="—"
-                      />
-                      <Input
-                        value={row.wholesale_price}
-                        onChange={(e) => updateEditableRow(row.id, 'wholesale_price', e.target.value)}
-                        className="h-7 text-xs"
-                        type="number"
-                        placeholder="—"
-                      />
-                      <Input
-                        value={row.reorder_level}
-                        onChange={(e) => updateEditableRow(row.id, 'reorder_level', e.target.value)}
-                        className="h-7 text-xs"
-                        type="number"
-                        min="0"
-                      />
-                      <Input
-                        value={row.expiry_date}
-                        onChange={(e) => updateEditableRow(row.id, 'expiry_date', e.target.value)}
-                        className="h-7 text-xs"
-                        type="date"
-                      />
-                      <Input
-                        value={row.category}
-                        onChange={(e) => updateEditableRow(row.id, 'category', e.target.value)}
-                        className="h-7 text-xs"
-                        placeholder="Category"
-                      />
-                      <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive flex-shrink-0" onClick={() => removeRow(row.id)}>
-                        <X className="h-3 w-3" />
-                      </Button>
+                      {row.isParsedFromCompound && (
+                        <Wand2 className="h-3 w-3 text-primary flex-shrink-0" />
+                      )}
+                      {row.isNewBatch && (
+                        <Layers className="h-3 w-3 text-blue-500 flex-shrink-0" />
+                      )}
                     </div>
-                  ))}
-
-                  {editableRows.length === 0 && (
-                    <div className="p-8 text-center text-muted-foreground">
-                      No products to import. Go back and check your column mappings.
-                    </div>
-                  )}
-                </div>
+                    <Input
+                      value={row.current_stock}
+                      onChange={(e) => updateEditableRow(row.id, 'current_stock', e.target.value)}
+                      className="h-7 text-sm text-center"
+                      type="number"
+                      min={0}
+                    />
+                    <Input
+                      value={row.unit_price}
+                      onChange={(e) => updateEditableRow(row.id, 'unit_price', e.target.value)}
+                      className="h-7 text-sm text-center"
+                      type="number"
+                      min={0}
+                    />
+                    <Input
+                      value={row.expiry_date}
+                      onChange={(e) => updateEditableRow(row.id, 'expiry_date', e.target.value)}
+                      className="h-7 text-sm"
+                      type="date"
+                    />
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                      onClick={() => removeRow(row.id)}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                ))}
               </div>
-            </div>
+            </ScrollArea>
 
-            <DialogFooter className="mt-4 pt-2 border-t flex-shrink-0">
-              <Button variant="outline" onClick={() => setStep('mapping')}>Back</Button>
-              <Button onClick={handleImport} disabled={validRowCount === 0} className="gap-2 bg-gradient-primary hover:opacity-90">
-                <Upload className="h-4 w-4" />
-                Import {validRowCount} Products
-                <ArrowRight className="h-4 w-4" />
-              </Button>
+            <DialogFooter className="mt-4 flex-col sm:flex-row gap-2">
+              <div className="flex-1 text-sm text-muted-foreground">
+                {validRowCount} products ready to import
+                {warningRowCount > 0 && ` (${warningRowCount} with warnings)`}
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" onClick={() => setStep('mapping')}>
+                  Back to Mapping
+                </Button>
+                <Button variant="outline" onClick={handleClose}>
+                  Cancel
+                </Button>
+                <Button
+                  onClick={handleImport}
+                  disabled={validRowCount === 0}
+                  className="gap-2 bg-gradient-primary hover:opacity-90"
+                >
+                  <CheckCircle2 className="h-4 w-4" />
+                  Import {validRowCount} Products
+                </Button>
+              </div>
             </DialogFooter>
           </div>
         )}
@@ -843,58 +1047,57 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
         {/* IMPORTING STEP */}
         {step === 'importing' && (
           <div className="flex-1 flex flex-col items-center justify-center gap-6 py-8">
-            <Loader2 className="h-12 w-12 text-primary animate-spin" />
-            <div className="w-full max-w-md">
-              <div className="flex justify-between text-sm mb-2">
-                <span>Importing products...</span>
-                <span>{importProgress}%</span>
+            <div className="relative">
+              <div className="w-20 h-20 rounded-full border-4 border-primary/20 flex items-center justify-center">
+                <Loader2 className="h-10 w-10 text-primary animate-spin" />
               </div>
-              <Progress value={importProgress} className="h-3" />
-              <p className="text-sm text-muted-foreground text-center mt-2">
-                {importedCount} of {validRowCount} products imported
-              </p>
             </div>
+            <div className="text-center space-y-2">
+              <p className="text-lg font-medium">Importing Products...</p>
+              <p className="text-muted-foreground">{importedCount} of {validRowCount} complete</p>
+            </div>
+            <Progress value={importProgress} className="w-64" />
           </div>
         )}
 
         {/* COMPLETE STEP */}
         {step === 'complete' && (
-          <div className="flex-1 flex flex-col items-center justify-center gap-6 py-8">
-            <div className={`p-4 rounded-full ${errors.length === 0 ? 'bg-success/20' : 'bg-warning/20'}`}>
-              {errors.length === 0 ? (
-                <CheckCircle2 className="h-12 w-12 text-success" />
-              ) : (
-                <AlertCircle className="h-12 w-12 text-warning" />
-              )}
-            </div>
-            
-            <div className="text-center">
-              <h3 className="text-xl font-bold mb-2">
-                {errors.length === 0 ? 'Import Successful!' : 'Import Complete with Warnings'}
-              </h3>
-              <p className="text-muted-foreground">
-                Successfully imported <span className="font-bold text-foreground">{importedCount}</span> products
-              </p>
+          <div className="flex-1 flex flex-col py-4 min-h-0">
+            <div className="flex-1 flex flex-col items-center justify-center gap-6">
+              <div className={`w-20 h-20 rounded-full flex items-center justify-center ${errors.length === 0 ? 'bg-success/10' : 'bg-amber-500/10'}`}>
+                {errors.length === 0 ? (
+                  <CheckCircle2 className="h-10 w-10 text-success" />
+                ) : (
+                  <AlertCircle className="h-10 w-10 text-amber-500" />
+                )}
+              </div>
+              <div className="text-center space-y-2">
+                <p className="text-xl font-semibold">
+                  {errors.length === 0 ? 'Import Complete!' : 'Import Complete with Errors'}
+                </p>
+                <p className="text-muted-foreground">
+                  Successfully imported {importedCount} products
+                </p>
+              </div>
             </div>
 
             {errors.length > 0 && (
-              <ScrollArea className="w-full max-h-32 border rounded-lg p-2 min-h-0">
-                <div className="space-y-1">
-                  {errors.slice(0, 10).map((error, i) => (
-                    <div key={i} className="flex items-center gap-2 text-sm text-destructive">
-                      <X className="h-3 w-3 flex-shrink-0" />
-                      {error}
-                    </div>
-                  ))}
-                  {errors.length > 10 && (
-                    <p className="text-sm text-muted-foreground">...and {errors.length - 10} more errors</p>
-                  )}
-                </div>
-              </ScrollArea>
+              <div className="mt-4">
+                <p className="text-sm font-medium mb-2 text-destructive">
+                  {errors.length} errors occurred:
+                </p>
+                <ScrollArea className="h-32 rounded-lg border border-destructive/20 bg-destructive/5 p-3">
+                  <ul className="text-sm space-y-1">
+                    {errors.map((err, i) => (
+                      <li key={i} className="text-destructive">{err}</li>
+                    ))}
+                  </ul>
+                </ScrollArea>
+              </div>
             )}
 
-            <DialogFooter className="w-full">
-              <Button onClick={handleClose} className="w-full">
+            <DialogFooter className="mt-6">
+              <Button onClick={handleClose} className="w-full sm:w-auto">
                 Done
               </Button>
             </DialogFooter>
