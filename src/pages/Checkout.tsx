@@ -23,7 +23,7 @@ import {
 } from 'lucide-react';
 import { useBranchInventory } from '@/hooks/useBranchInventory';
 import { useCart } from '@/hooks/useCart';
-import { useSales } from '@/hooks/useSales';
+import { useSales, getFEFOBatchInfo } from '@/hooks/useSales';
 import { useShifts } from '@/hooks/useShifts';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { useRegionalSettings } from '@/contexts/RegionalSettingsContext';
@@ -35,7 +35,7 @@ import { useBranchContext } from '@/contexts/BranchContext';
 import { usePlanLimits } from '@/hooks/usePlanLimits';
 import { useQuickItems } from '@/hooks/useQuickItems';
 import { supabase } from '@/integrations/supabase/client';
-import { ProductGrid } from '@/components/pos/ProductGrid';
+import { GroupedProductGrid } from '@/components/pos/GroupedProductGrid';
 import { CartPanel } from '@/components/pos/CartPanel';
 import { HeldTransactionsPanel } from '@/components/pos/HeldTransactionsPanel';
 import { DrugInteractionWarning } from '@/components/pos/DrugInteractionWarning';
@@ -261,23 +261,33 @@ const Checkout = () => {
   });
 
   // Helper to get receipt params - includes branch-specific branding
-  const getReceiptParams = (isPaid: boolean = true, isDigital: boolean = false, method: PaymentMethod = paymentMethod) => ({
-    pharmacyName: pharmacy?.name || 'PharmaTrack Pharmacy',
-    pharmacyAddress: pharmacy?.address || undefined,
-    pharmacyPhone: pharmacy?.phone || undefined,
-    pharmacyLogoUrl: pharmacy?.logo_url || undefined,
-    pharmacistInCharge: (pharmacy as any)?.pharmacist_in_charge || undefined,
-    staffName: userProfile?.full_name || undefined,
-    currency: currency as 'USD' | 'NGN' | 'GBP',
-    paymentStatus: isPaid ? 'paid' : 'unpaid' as 'paid' | 'unpaid',
-    paymentMethod: method,
-    enableLogoOnPrint: (pharmacy as any)?.enable_logo_on_print !== false,
-    isDigitalReceipt: isDigital,
-    // Branch-specific branding - overrides pharmacy defaults
-    branchName: currentBranchDetails?.name || undefined,
-    branchAddress: currentBranchDetails?.address || undefined,
-    branchPhone: currentBranchDetails?.phone || undefined,
-  });
+  const getReceiptParams = (isPaid: boolean = true, isDigital: boolean = false, method: PaymentMethod = paymentMethod) => {
+    // Calculate FEFO batch notes for multi-batch sales
+    const batchInfo = getFEFOBatchInfo(medications, cart.items);
+    const batchNotes = batchInfo.map(info => 
+      `${info.productName}: ${info.batchDetails.join(' + ')}`
+    );
+
+    return {
+      pharmacyName: pharmacy?.name || 'PharmaTrack Pharmacy',
+      pharmacyAddress: pharmacy?.address || undefined,
+      pharmacyPhone: pharmacy?.phone || undefined,
+      pharmacyLogoUrl: pharmacy?.logo_url || undefined,
+      pharmacistInCharge: (pharmacy as any)?.pharmacist_in_charge || undefined,
+      staffName: userProfile?.full_name || undefined,
+      currency: currency as 'USD' | 'NGN' | 'GBP',
+      paymentStatus: isPaid ? 'paid' : 'unpaid' as 'paid' | 'unpaid',
+      paymentMethod: method,
+      enableLogoOnPrint: (pharmacy as any)?.enable_logo_on_print !== false,
+      isDigitalReceipt: isDigital,
+      // Branch-specific branding - overrides pharmacy defaults
+      branchName: currentBranchDetails?.name || undefined,
+      branchAddress: currentBranchDetails?.address || undefined,
+      branchPhone: currentBranchDetails?.phone || undefined,
+      // FEFO batch notes
+      batchNotes,
+    };
+  };
 
   const handleHoldSale = () => {
     if (cart.items.length === 0) return;
@@ -732,7 +742,7 @@ const Checkout = () => {
                   {medications.length} items
                 </span>
               </div>
-              <ProductGrid
+              <GroupedProductGrid
                 medications={medications}
                 onAddToCart={cart.addItem}
                 isLoading={isLoading}

@@ -26,6 +26,8 @@ interface ReceiptData {
   branchName?: string;
   branchAddress?: string;
   branchPhone?: string;
+  // FEFO batch info for multi-batch sales
+  batchNotes?: string[];
 }
 
 const CURRENCY_SYMBOLS: Record<CurrencyCode, string> = {
@@ -108,6 +110,8 @@ export const generateReceipt = async ({
   branchName,
   branchAddress,
   branchPhone,
+  // FEFO batch notes
+  batchNotes = [],
 }: ReceiptData): Promise<jsPDF> => {
   // Use branch details if provided, otherwise fall back to pharmacy defaults
   const displayName = branchName || pharmacyName;
@@ -123,6 +127,7 @@ export const generateReceipt = async ({
   const staffHeight = staffName ? 5 : 0;
   const paymentMethodHeight = paymentMethod ? 5 : 0;
   const branchIndicatorHeight = branchName ? 5 : 0;
+  const batchNotesHeight = batchNotes.length > 0 ? (batchNotes.length * 4 + 4) : 0;
 
   const shouldShowLogo = isDigitalReceipt || (enableLogoOnPrint && pharmacyLogoUrl);
   const logoHeight = shouldShowLogo ? 16 : 0;
@@ -136,7 +141,8 @@ export const generateReceipt = async ({
     pharmacistHeight +
     staffHeight +
     paymentMethodHeight +
-    branchIndicatorHeight;
+    branchIndicatorHeight +
+    batchNotesHeight;
 
   // Create PDF optimized for thermal printers (80mm width)
   const doc = new jsPDF({
@@ -312,6 +318,21 @@ export const generateReceipt = async ({
     doc.setFontSize(7);
     centerText(`Payment: ${methodLabel[paymentMethod] || paymentMethod.toUpperCase()}`, y);
     y += 5;
+  }
+
+  // Batch notes for multi-batch FEFO sales
+  if (batchNotes.length > 0) {
+    doc.setFont('NotoSans', 'normal');
+    doc.setFontSize(6);
+    doc.setTextColor(100);
+    centerText('--- Batch Info (FEFO) ---', y);
+    y += 3;
+    batchNotes.forEach(note => {
+      centerText(note, y, 6);
+      y += 3;
+    });
+    doc.setTextColor(0);
+    y += 2;
   }
 
   // ============ FOOTER ============

@@ -1,9 +1,10 @@
 import { useState, useRef, useCallback, useMemo } from 'react';
 import Papa from 'papaparse';
-import { Upload, FileSpreadsheet, Check, AlertCircle, Loader2, Sparkles, ArrowRight, X, CheckCircle2, XCircle, Edit3, Eye } from 'lucide-react';
+import { Upload, FileSpreadsheet, Check, AlertCircle, Loader2, Sparkles, ArrowRight, X, CheckCircle2, XCircle, Edit3, Eye, Layers, AlertTriangle } from 'lucide-react';
 import { useMedications } from '@/hooks/useMedications';
 import { useBarcodeLibrary } from '@/hooks/useBarcodeLibrary';
-import { MedicationFormData } from '@/types/medication';
+import { MedicationFormData, Medication } from '@/types/medication';
+import { findExistingProductsByName } from '@/utils/fefoUtils';
 import { Button } from '@/components/ui/button';
 import {
   Dialog,
@@ -131,10 +132,12 @@ interface EditableRow {
   nafdac_reg_number: string;
   isValid: boolean;
   errorMsg?: string;
+  existingBatches?: Medication[]; // For duplicate detection
+  isNewBatch?: boolean; // True if adding new batch to existing product
 }
 
 export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSVImportModalProps) => {
-  const { addMedication } = useMedications();
+  const { addMedication, medications } = useMedications();
   const { findBarcodeByName } = useBarcodeLibrary();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -368,6 +371,10 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
       // Generic name - try to extract from product name if not mapped
       const genericName = '';
 
+      // Check for existing products with same name (duplicate detection)
+      const existingBatches = productName ? findExistingProductsByName(medications, productName) : [];
+      const isNewBatch = existingBatches.length > 0;
+
       const isValid = !!productName;
       return {
         id: idx,
@@ -386,9 +393,11 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
         nafdac_reg_number: nafdacReg,
         isValid,
         errorMsg: isValid ? undefined : 'Product name is required',
+        existingBatches,
+        isNewBatch,
       };
     });
-  }, [csvData, mapping, findBarcodeByName]);
+  }, [csvData, mapping, findBarcodeByName, medications]);
 
   // Apply smart reorder levels based on each product's stock
   const applySmartReorderLevels = () => {
@@ -662,6 +671,21 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
         {/* REVIEW & EDIT STEP */}
         {step === 'review' && (
           <div className="flex-1 flex flex-col overflow-hidden py-2 min-h-0">
+            {/* Duplicate detection summary */}
+            {editableRows.some(r => r.isNewBatch) && (
+              <div className="flex items-center gap-2 p-2.5 mb-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800/50">
+                <AlertTriangle className="h-4 w-4 text-amber-600 flex-shrink-0" />
+                <div className="text-sm">
+                  <span className="font-medium text-amber-800 dark:text-amber-200">
+                    {editableRows.filter(r => r.isNewBatch).length} products already exist in inventory
+                  </span>
+                  <span className="text-amber-700 dark:text-amber-300">
+                    {' '}— These will be added as new batches (FEFO auto-deduct enabled)
+                  </span>
+                </div>
+              </div>
+            )}
+            
             <div className="flex flex-wrap items-center gap-2 mb-3">
               <Badge variant="secondary" className="gap-1">
                 <Edit3 className="h-3 w-3" />
@@ -670,6 +694,12 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
               <Badge variant={validRowCount === editableRows.length ? 'default' : 'destructive'}>
                 {validRowCount} / {editableRows.length} valid
               </Badge>
+              {editableRows.some(r => r.isNewBatch) && (
+                <Badge variant="outline" className="gap-1 border-amber-500/50 text-amber-600">
+                  <Layers className="h-3 w-3" />
+                  {editableRows.filter(r => r.isNewBatch).length} existing products
+                </Badge>
+              )}
             </div>
             
             {/* Reorder Level Controls */}
@@ -716,13 +746,21 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
                   {editableRows.map((row, idx) => (
                     <div
                       key={row.id}
-                      className={`grid grid-cols-[32px_1fr_100px_60px_65px_70px_70px_60px_90px_80px_32px] gap-1 p-1.5 border-b items-center text-sm ${!row.isValid ? 'bg-destructive/10' : idx % 2 === 0 ? 'bg-background' : 'bg-muted/20'}`}
+                      className={`grid grid-cols-[32px_1fr_100px_60px_65px_70px_70px_60px_90px_80px_32px] gap-1 p-1.5 border-b items-center text-sm ${!row.isValid ? 'bg-destructive/10' : row.isNewBatch ? 'bg-amber-50 dark:bg-amber-950/20' : idx % 2 === 0 ? 'bg-background' : 'bg-muted/20'}`}
                     >
-                      <span className="text-muted-foreground text-xs">{idx + 1}</span>
+                      <div className="flex items-center gap-1">
+                        <span className="text-muted-foreground text-xs">{idx + 1}</span>
+                        {row.isNewBatch && (
+                          <Badge variant="outline" className="h-4 px-1 text-[9px] gap-0.5 border-amber-500/50 text-amber-600 bg-amber-100/50 dark:bg-amber-900/30">
+                            <Layers className="h-2.5 w-2.5" />
+                            +{row.existingBatches?.length}
+                          </Badge>
+                        )}
+                      </div>
                       <Input
                         value={row.name}
                         onChange={(e) => updateEditableRow(row.id, 'name', e.target.value)}
-                        className={`h-7 text-xs ${!row.isValid ? 'border-destructive' : ''}`}
+                        className={`h-7 text-xs ${!row.isValid ? 'border-destructive' : row.isNewBatch ? 'border-amber-400/50' : ''}`}
                         placeholder="Product name"
                       />
                       <Input

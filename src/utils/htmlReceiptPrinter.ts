@@ -21,6 +21,8 @@ interface ReceiptData {
   currency?: CurrencyCode;
   paymentStatus?: PaymentStatus;
   paymentMethod?: PaymentMethod;
+  // FEFO batch notes for multi-batch sales
+  batchNotes?: string[];
 }
 
 const CURRENCY_SYMBOLS: Record<CurrencyCode, string> = {
@@ -91,6 +93,7 @@ export const generateHtmlReceipt = ({
   currency = 'NGN',
   paymentStatus = 'paid',
   paymentMethod,
+  batchNotes = [],
 }: ReceiptData): string => {
   const statusColor = paymentStatus === 'paid' ? '#22c55e' : '#f59e0b';
   const statusText = paymentStatus === 'paid' ? 'PAID' : 'UNPAID';
@@ -231,6 +234,13 @@ export const generateHtmlReceipt = ({
   </div>
 
   ${paymentMethodText ? `<div style="text-align: center; margin-top: 5px;">Payment: ${paymentMethodText}</div>` : ''}
+
+  ${batchNotes.length > 0 ? `
+  <div style="text-align: center; margin-top: 8px; padding: 6px; background: #f0f9ff; border-radius: 4px; font-size: 9px; color: #666;">
+    <div style="font-weight: bold; margin-bottom: 3px;">📦 Batch Info (FEFO)</div>
+    ${batchNotes.map(note => `<div>${escapeHtml(note)}</div>`).join('')}
+  </div>
+  ` : ''}
 
   ${paymentStatus === 'unpaid' ? `
   <div style="text-align: center; margin-top: 10px; padding: 8px; background: #fff3cd; border-radius: 4px; font-weight: bold;">
