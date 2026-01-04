@@ -165,11 +165,11 @@ export const BatchExpiryEntryModal = ({ open, onOpenChange }: BatchExpiryEntryMo
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 min-h-0 overflow-hidden flex flex-col gap-4">
+        <div className="flex-1 min-h-0 overflow-y-auto flex flex-col gap-4 pr-2">
           {/* Shared Expiry Date Section */}
-          <Card className="p-4 bg-primary/5 border-primary/20">
+          <Card className="p-4 bg-primary/5 border-primary/20 flex-shrink-0">
             <div className="flex items-start gap-4">
-              <Calendar className="h-5 w-5 text-primary mt-1" />
+              <Calendar className="h-5 w-5 text-primary mt-1 flex-shrink-0" />
               <div className="flex-1 space-y-3">
                 <div>
                   <Label className="text-sm font-medium">Shared Expiry Date</Label>
@@ -220,7 +220,7 @@ export const BatchExpiryEntryModal = ({ open, onOpenChange }: BatchExpiryEntryMo
           </Card>
 
           {/* Products List */}
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between flex-shrink-0">
             <h3 className="font-medium flex items-center gap-2">
               <Package className="h-4 w-4" />
               Products ({products.length})
@@ -231,105 +231,93 @@ export const BatchExpiryEntryModal = ({ open, onOpenChange }: BatchExpiryEntryMo
             </Button>
           </div>
 
-          <ScrollArea className="flex-1 min-h-0">
-            <div className="space-y-2 pr-4">
-              {/* Header */}
-              <div className="grid grid-cols-12 gap-2 px-2 text-xs font-medium text-muted-foreground">
-                <div className="col-span-4">Product Name</div>
-                <div className="col-span-2">Category</div>
-                <div className="col-span-1">Qty</div>
-                <div className="col-span-2">Cost Price</div>
-                <div className="col-span-2">Sell Price</div>
-                <div className="col-span-1"></div>
-              </div>
-
-              {products.map((product, index) => (
-                <Card key={product.id} className="p-2">
-                  <div className="grid grid-cols-12 gap-2 items-center">
-                    {/* Product Name */}
-                    <div className="col-span-4">
-                      <Input
-                        placeholder="Product name"
-                        value={product.name}
-                        onChange={(e) => updateProduct(product.id, 'name', e.target.value)}
-                        className="h-9"
-                      />
-                    </div>
-
-                    {/* Category */}
-                    <div className="col-span-2">
-                      <Select
-                        value={product.category}
-                        onValueChange={(v) => updateProduct(product.id, 'category', v)}
-                      >
-                        <SelectTrigger className="h-9 text-xs">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {ALL_CATEGORIES.map((cat) => (
-                            <SelectItem key={cat} value={cat} className="text-xs">
-                              {cat}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-
-                    {/* Quantity */}
-                    <div className="col-span-1">
-                      <Input
-                        type="number"
-                        min="1"
-                        value={product.quantity}
-                        onChange={(e) => updateProduct(product.id, 'quantity', parseInt(e.target.value) || 1)}
-                        className="h-9 text-center"
-                      />
-                    </div>
-
-                    {/* Cost Price */}
-                    <div className="col-span-2">
-                      <Input
-                        type="number"
-                        min="0"
-                        placeholder="0.00"
-                        value={product.unitPrice || ''}
-                        onChange={(e) => updateProduct(product.id, 'unitPrice', parseFloat(e.target.value) || 0)}
-                        className="h-9"
-                      />
-                    </div>
-
-                    {/* Selling Price */}
-                    <div className="col-span-2">
-                      <Input
-                        type="number"
-                        min="0"
-                        placeholder="Auto"
-                        value={product.sellingPrice || ''}
-                        onChange={(e) => updateProduct(product.id, 'sellingPrice', parseFloat(e.target.value) || 0)}
-                        className="h-9"
-                      />
-                    </div>
-
-                    {/* Remove Button */}
-                    <div className="col-span-1 flex justify-center">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-destructive"
-                        onClick={() => removeProduct(product.id)}
-                        disabled={products.length === 1}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </Card>
-              ))}
+          {/* Products Grid - inline scroll */}
+          <div className="space-y-2">
+            {/* Header */}
+            <div className="grid grid-cols-12 gap-2 px-2 text-xs font-medium text-muted-foreground">
+              <div className="col-span-4">Product Name</div>
+              <div className="col-span-2">Category</div>
+              <div className="col-span-1">Qty</div>
+              <div className="col-span-2">Cost Price</div>
+              <div className="col-span-2">Sell Price</div>
+              <div className="col-span-1"></div>
             </div>
-          </ScrollArea>
+
+            {products.map((product) => (
+              <Card key={product.id} className="p-2">
+                <div className="grid grid-cols-12 gap-2 items-center">
+                  <div className="col-span-4">
+                    <Input
+                      placeholder="Product name"
+                      value={product.name}
+                      onChange={(e) => updateProduct(product.id, 'name', e.target.value)}
+                      className="h-9"
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <Select
+                      value={product.category}
+                      onValueChange={(v) => updateProduct(product.id, 'category', v)}
+                    >
+                      <SelectTrigger className="h-9 text-xs">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {ALL_CATEGORIES.map((cat) => (
+                          <SelectItem key={cat} value={cat} className="text-xs">
+                            {cat}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="col-span-1">
+                    <Input
+                      type="number"
+                      min="1"
+                      value={product.quantity}
+                      onChange={(e) => updateProduct(product.id, 'quantity', parseInt(e.target.value) || 1)}
+                      className="h-9 text-center"
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <Input
+                      type="number"
+                      min="0"
+                      placeholder="0.00"
+                      value={product.unitPrice || ''}
+                      onChange={(e) => updateProduct(product.id, 'unitPrice', parseFloat(e.target.value) || 0)}
+                      className="h-9"
+                    />
+                  </div>
+                  <div className="col-span-2">
+                    <Input
+                      type="number"
+                      min="0"
+                      placeholder="Auto"
+                      value={product.sellingPrice || ''}
+                      onChange={(e) => updateProduct(product.id, 'sellingPrice', parseFloat(e.target.value) || 0)}
+                      className="h-9"
+                    />
+                  </div>
+                  <div className="col-span-1 flex justify-center">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-destructive"
+                      onClick={() => removeProduct(product.id)}
+                      disabled={products.length === 1}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
 
           {/* Summary */}
-          <div className="flex items-center justify-between py-2 border-t">
+          <div className="flex items-center justify-between py-2 border-t flex-shrink-0">
             <div className="flex items-center gap-4 text-sm">
               <span className="text-muted-foreground">Valid products:</span>
               <Badge variant="secondary">{validCount}</Badge>
