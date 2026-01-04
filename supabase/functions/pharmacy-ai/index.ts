@@ -816,12 +816,69 @@ serve(async (req) => {
   }
 
   try {
+    // ========== AUTHENTICATION ==========
+    const authHeader = req.headers.get('Authorization');
+    if (!authHeader) {
+      console.error("No Authorization header provided");
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized - No authorization header' }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const token = authHeader.replace('Bearer ', '');
+    const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
+    const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+
+    // Verify the JWT token
+    const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+    if (authError || !user) {
+      console.error("Invalid token:", authError?.message || "No user");
+      return new Response(
+        JSON.stringify({ error: 'Unauthorized - Invalid token' }),
+        { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    console.log(`Authenticated user: ${user.id}`);
+
     const { action, payload, pharmacy_id } = await req.json();
     
-    console.log(`Processing action: ${action} for pharmacy: ${pharmacy_id}`);
+    console.log(`Processing action: ${action} for pharmacy: ${pharmacy_id} by user: ${user.id}`);
 
     if (!action) {
       throw new Error("Missing 'action' in request body");
+    }
+
+    // ========== PHARMACY AUTHORIZATION ==========
+    // Verify user belongs to the requested pharmacy (if pharmacy_id is provided)
+    if (pharmacy_id) {
+      const { data: staffRecord, error: staffError } = await supabase
+        .from('pharmacy_staff')
+        .select('pharmacy_id, is_active')
+        .eq('user_id', user.id)
+        .eq('pharmacy_id', pharmacy_id)
+        .eq('is_active', true)
+        .maybeSingle();
+
+      if (staffError) {
+        console.error("Staff lookup error:", staffError.message);
+        return new Response(
+          JSON.stringify({ error: 'Authorization check failed' }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      if (!staffRecord) {
+        console.error(`User ${user.id} not authorized for pharmacy ${pharmacy_id}`);
+        return new Response(
+          JSON.stringify({ error: 'Not authorized for this pharmacy' }),
+          { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      console.log(`User ${user.id} authorized for pharmacy ${pharmacy_id}`);
     }
 
     let result: any;
