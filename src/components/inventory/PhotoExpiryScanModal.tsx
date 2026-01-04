@@ -241,8 +241,8 @@ export const PhotoExpiryScanModal = ({ open, onOpenChange, onExpiryExtracted }: 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
-        <DialogHeader>
+      <DialogContent className="max-w-2xl h-[85dvh] flex flex-col">
+        <DialogHeader className="flex-shrink-0">
           <DialogTitle className="flex items-center gap-2 text-xl">
             <Scan className="h-5 w-5 text-primary" />
             Photo Expiry Scanner
@@ -252,7 +252,7 @@ export const PhotoExpiryScanModal = ({ open, onOpenChange, onExpiryExtracted }: 
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 overflow-hidden flex flex-col gap-4">
+        <div className="flex-1 min-h-0 overflow-y-auto flex flex-col gap-4 pr-2">
           {/* Upload area */}
           <div className="flex gap-2">
             <label className="flex-1">
