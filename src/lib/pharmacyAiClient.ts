@@ -1,3 +1,5 @@
+import { supabase } from '@/integrations/supabase/client';
+
 export class PharmacyAiError extends Error {
   status?: number;
   bodyText?: string;
@@ -14,33 +16,22 @@ export const PHARMACY_AI_URL =
   import.meta.env.VITE_PHARMACY_AI_URL ??
   `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/pharmacy-ai`;
 
-const EXTERNAL_PUBLISHABLE_KEY =
-  import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? '';
-
 export function isPharmacyAiConfigured() {
-  return Boolean(EXTERNAL_PUBLISHABLE_KEY);
+  return Boolean(import.meta.env.VITE_SUPABASE_URL);
 }
 
-function getConfigWarning() {
-  if (!EXTERNAL_PUBLISHABLE_KEY) {
-    console.warn(
-      '[pharmacy-ai] VITE_SUPABASE_PUBLISHABLE_KEY is not set. AI calls may fail.'
-    );
-  }
-}
-
-function buildHeaders() {
-  getConfigWarning();
-
+async function getAuthHeaders(): Promise<Record<string, string>> {
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
   };
 
-  // For Edge Functions (even with verify_jwt=false), Supabase expects both
-  // `apikey` and `Authorization` headers set to the anon/publishable key.
-  if (EXTERNAL_PUBLISHABLE_KEY) {
-    headers['apikey'] = EXTERNAL_PUBLISHABLE_KEY;
-    headers['Authorization'] = `Bearer ${EXTERNAL_PUBLISHABLE_KEY}`;
+  // Get the current session token
+  const { data: { session } } = await supabase.auth.getSession();
+  
+  if (session?.access_token) {
+    headers['Authorization'] = `Bearer ${session.access_token}`;
+  } else {
+    console.warn('[pharmacy-ai] No active session. AI calls may fail with 401.');
   }
 
   return headers;
@@ -52,9 +43,11 @@ export async function callPharmacyAi<T>(params: {
   pharmacy_id: string | null | undefined;
   signal?: AbortSignal;
 }): Promise<T> {
+  const headers = await getAuthHeaders();
+  
   const res = await fetch(PHARMACY_AI_URL, {
     method: 'POST',
-    headers: buildHeaders(),
+    headers,
     body: JSON.stringify({
       action: params.action,
       payload: params.payload,

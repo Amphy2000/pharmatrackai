@@ -55,16 +55,29 @@ export const DrugInteractionWarning = ({ cartItems }: DrugInteractionWarningProp
   const [isLoading, setIsLoading] = useState(false);
   const [dismissed, setDismissed] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [lastCheckedMeds, setLastCheckedMeds] = useState<string>('');
   const { pharmacyId } = usePharmacy();
 
   useEffect(() => {
-    const checkInteractions = async () => {
-      // Only check if there are 2+ different medications
-      if (cartItems.length < 2) {
-        setInteractions([]);
-        return;
-      }
+    // Get unique medication names sorted for comparison
+    const currentMeds = cartItems
+      .map(item => item.medication.name)
+      .sort()
+      .join('|');
 
+    // Only check if there are 2+ different medications AND the medication list changed
+    if (cartItems.length < 2) {
+      setInteractions([]);
+      setLastCheckedMeds('');
+      return;
+    }
+
+    // Skip if we already checked this exact combination
+    if (currentMeds === lastCheckedMeds) {
+      return;
+    }
+
+    const checkInteractions = async () => {
       setIsLoading(true);
       setError(null);
       setDismissed(false);
@@ -86,6 +99,7 @@ export const DrugInteractionWarning = ({ cartItems }: DrugInteractionWarningProp
           setInteractions([]);
         } else {
           setInteractions(data?.interactions || []);
+          setLastCheckedMeds(currentMeds);
         }
       } catch (err) {
         const { message, status, debug } = getPharmacyAiUiError(err);
@@ -97,10 +111,10 @@ export const DrugInteractionWarning = ({ cartItems }: DrugInteractionWarningProp
       }
     };
 
-    // Debounce the check
-    const timeout = setTimeout(checkInteractions, 500);
+    // Longer debounce to avoid rapid API calls during cart building
+    const timeout = setTimeout(checkInteractions, 1500);
     return () => clearTimeout(timeout);
-  }, [cartItems, pharmacyId]);
+  }, [cartItems, pharmacyId, lastCheckedMeds]);
 
   if (dismissed || (interactions.length === 0 && !isLoading && !error)) {
     return null;
