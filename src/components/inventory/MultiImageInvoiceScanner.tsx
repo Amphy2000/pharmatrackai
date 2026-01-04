@@ -10,8 +10,7 @@ import { Slider } from '@/components/ui/slider';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   Camera, FileImage, Upload, Check, X, Loader2, AlertCircle,
-  Plus, Minus, Trash2, Calendar, ChevronDown, ChevronUp,
-  Edit3, Save, RefreshCw, Eye, Wand2, ZoomIn, TriangleAlert
+  Plus, Trash2, ChevronUp, RefreshCw, Wand2, TriangleAlert
 } from 'lucide-react';
 import { useMedications } from '@/hooks/useMedications';
 import { usePharmacy } from '@/hooks/usePharmacy';
@@ -83,9 +82,7 @@ export const MultiImageInvoiceScanner = ({ open, onOpenChange }: MultiImageInvoi
   // Extracted invoice total from AI
   const [extractedInvoiceTotal, setExtractedInvoiceTotal] = useState<number | null>(null);
   
-  // Zoom-on-focus state
-  const [zoomImageUrl, setZoomImageUrl] = useState<string | null>(null);
-  const [zoomVisible, setZoomVisible] = useState(false);
+  // Removed zoom-on-focus feature - not practical with multiple invoices
   
   // Get default margin from pharmacy settings
   const defaultMargin = (pharmacy as any)?.default_margin_percent || 20;
@@ -446,19 +443,7 @@ export const MultiImageInvoiceScanner = ({ open, onOpenChange }: MultiImageInvoi
   // Count items missing expiry
   const itemsMissingExpiry = extractedItems.filter((i) => !i.expiryDate).length;
 
-  // Show zoom preview of invoice
-  const handleFocusZoom = (fieldIndex: number) => {
-    // Use the first uploaded image for zoom preview
-    if (uploadedImages.length > 0) {
-      setZoomImageUrl(uploadedImages[0].preview);
-      setZoomVisible(true);
-    }
-  };
-
-  const closeZoom = () => {
-    setZoomVisible(false);
-    setZoomImageUrl(null);
-  };
+  // Removed zoom feature - not practical with multiple invoices
 
 
   // Apply global expiry date to all empty fields
@@ -588,8 +573,6 @@ export const MultiImageInvoiceScanner = ({ open, onOpenChange }: MultiImageInvoi
     setVerifyAll(false);
     setError(null);
     setExtractedInvoiceTotal(null);
-    setZoomVisible(false);
-    setZoomImageUrl(null);
   };
 
   const matchedCount = extractedItems.filter(i => i.matched).length;
@@ -861,26 +844,14 @@ export const MultiImageInvoiceScanner = ({ open, onOpenChange }: MultiImageInvoi
 
                           {/* Unit Cost */}
                           <td className="p-2">
-                            <div className="relative">
-                              <Input
-                                type="number"
-                                min={0}
-                                value={item.unitPrice || ''}
-                                onChange={(e) => updateItem(item.id, 'unitPrice', parseFloat(e.target.value) || null)}
-                                className={`h-8 text-right pr-6 ${!item.unitPrice ? 'border-destructive' : ''}`}
-                                placeholder="0"
-                              />
-                              {uploadedImages.length > 0 && (
-                                <button
-                                  type="button"
-                                  onClick={() => handleFocusZoom(index)}
-                                  className="absolute right-1 top-1/2 -translate-y-1/2 p-0.5 rounded hover:bg-muted"
-                                  title="View invoice"
-                                >
-                                  <ZoomIn className="h-3.5 w-3.5 text-muted-foreground hover:text-primary" />
-                                </button>
-                              )}
-                            </div>
+                            <Input
+                              type="number"
+                              min={0}
+                              value={item.unitPrice || ''}
+                              onChange={(e) => updateItem(item.id, 'unitPrice', parseFloat(e.target.value) || null)}
+                              className={`h-8 text-right ${!item.unitPrice ? 'border-destructive' : ''}`}
+                              placeholder="0"
+                            />
                           </td>
 
                           {/* Row Total */}
@@ -984,32 +955,7 @@ export const MultiImageInvoiceScanner = ({ open, onOpenChange }: MultiImageInvoi
           </div>
         )}
 
-        {/* Zoom Modal for Invoice Preview */}
-        {zoomVisible && zoomImageUrl && (
-          <div 
-            className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
-            onClick={closeZoom}
-          >
-            <div className="relative max-w-4xl max-h-[90vh] overflow-auto bg-background rounded-lg p-2">
-              <Button
-                variant="secondary"
-                size="icon"
-                className="absolute top-2 right-2 z-10"
-                onClick={closeZoom}
-              >
-                <X className="h-4 w-4" />
-              </Button>
-              <img
-                src={zoomImageUrl}
-                alt="Invoice zoom"
-                className="max-w-full max-h-[85vh] object-contain"
-              />
-              <div className="text-center text-sm text-muted-foreground mt-2">
-                Click anywhere to close
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Zoom feature removed - not practical with multiple invoices */}
       </DialogContent>
     </Dialog>
   );
