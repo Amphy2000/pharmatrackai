@@ -6,7 +6,8 @@ import { useToast } from '@/hooks/use-toast';
 import { usePharmacy } from '@/hooks/usePharmacy';
 import { useOfflineSync } from '@/hooks/useOfflineSync';
 import { useBranchContext } from '@/contexts/BranchContext';
-import { isBefore, parseISO } from 'date-fns';
+import { isBefore, parseISO, format } from 'date-fns';
+import { calculateFEFODeductions, FEFODeductionResult } from '@/utils/fefoUtils';
 
 // Network timeout for sale operations (8 seconds)
 const SALE_TIMEOUT_MS = 8000;
@@ -27,6 +28,30 @@ export const findFEFOBatch = (medications: Medication[], name: string): Medicati
     .sort((a, b) => new Date(a.expiry_date).getTime() - new Date(b.expiry_date).getTime());
   
   return validBatches.length > 0 ? validBatches[0] : null;
+};
+
+// Extended FEFO deduction for cart items - returns batch info for receipts
+export interface BatchDeductionInfo {
+  productName: string;
+  usedMultipleBatches: boolean;
+  batchDetails: string[];
+}
+
+export const getFEFOBatchInfo = (
+  medications: Medication[],
+  cartItems: CartItem[]
+): BatchDeductionInfo[] => {
+  return cartItems
+    .filter(item => !item.isQuickItem)
+    .map(item => {
+      const result = calculateFEFODeductions(medications, item.medication.name, item.quantity);
+      return {
+        productName: item.medication.name,
+        usedMultipleBatches: result.usedMultipleBatches,
+        batchDetails: result.batchExpiryInfo,
+      };
+    })
+    .filter(info => info.usedMultipleBatches);
 };
 
 interface CompleteSaleParams {
