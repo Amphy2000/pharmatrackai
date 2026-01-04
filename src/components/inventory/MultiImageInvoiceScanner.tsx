@@ -599,17 +599,17 @@ export const MultiImageInvoiceScanner = ({ open, onOpenChange }: MultiImageInvoi
       if (!open) resetScanner();
       onOpenChange(open);
     }}>
-      <DialogContent className="max-w-6xl max-h-[95vh] min-h-0 overflow-hidden flex flex-col">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-xl">
-            <FileImage className="h-5 w-5 text-primary" />
-            AI Multi-Page Invoice Scanner
-            <Badge variant="outline" className="ml-2 text-xs">
-              Auto-Margin: {defaultMargin}%
+      <DialogContent className="max-w-5xl max-h-[90vh] min-h-0 overflow-hidden flex flex-col p-4">
+        <DialogHeader className="pb-2 space-y-1">
+          <DialogTitle className="flex items-center gap-2 text-lg">
+            <FileImage className="h-4 w-4 text-primary" />
+            Invoice Scanner
+            <Badge variant="outline" className="ml-1 text-[10px] px-1.5 py-0">
+              {defaultMargin}% margin
             </Badge>
           </DialogTitle>
-          <DialogDescription>
-            Upload multiple invoice pages - AI extracts and combines all products
+          <DialogDescription className="text-xs">
+            Upload invoice pages for AI extraction
           </DialogDescription>
         </DialogHeader>
 
@@ -719,140 +719,71 @@ export const MultiImageInvoiceScanner = ({ open, onOpenChange }: MultiImageInvoi
           </div>
         ) : (
           // Review Dashboard
-          <div className="flex-1 min-h-0 flex flex-col gap-4 overflow-hidden">
-            {/* Margin Controls */}
-            <div className="flex flex-wrap items-center gap-4 p-3 border rounded-lg bg-muted/20">
-              <div className="flex items-center gap-3">
-                <span className="text-sm font-medium whitespace-nowrap">Retail Margin:</span>
-                <div className="flex items-center gap-2 w-40">
-                  <Slider
-                    value={[retailMarginPercent]}
-                    onValueChange={([v]) => setRetailMarginPercent(v)}
-                    min={5}
-                    max={100}
-                    step={1}
-                    className="flex-1"
-                  />
-                  <span className="text-sm font-mono w-10">{retailMarginPercent}%</span>
-                </div>
-              </div>
+          <div className="flex-1 min-h-0 flex flex-col gap-2 overflow-hidden">
+            {/* Compact Margin & Expiry Controls - Single Row */}
+            <div className="flex flex-wrap items-center gap-2 p-2 border rounded-md bg-muted/20 text-xs">
+              <span className="font-medium">Retail:</span>
+              <Slider
+                value={[retailMarginPercent]}
+                onValueChange={([v]) => setRetailMarginPercent(v)}
+                min={5}
+                max={100}
+                step={1}
+                className="w-20"
+              />
+              <span className="font-mono w-8">{retailMarginPercent}%</span>
               
-              <div className="h-6 w-px bg-border" />
+              <div className="h-4 w-px bg-border" />
               
-              <div className="flex items-center gap-3">
-                <span className="text-sm font-medium whitespace-nowrap">Wholesale Margin:</span>
-                <div className="flex items-center gap-2 w-40">
-                  <Slider
-                    value={[wholesaleMarginPercent]}
-                    onValueChange={([v]) => setWholesaleMarginPercent(v)}
-                    min={1}
-                    max={50}
-                    step={1}
-                    className="flex-1"
-                  />
-                  <span className="text-sm font-mono w-10">{wholesaleMarginPercent}%</span>
-                </div>
-              </div>
+              <span className="font-medium">Wholesale:</span>
+              <Slider
+                value={[wholesaleMarginPercent]}
+                onValueChange={([v]) => setWholesaleMarginPercent(v)}
+                min={1}
+                max={50}
+                step={1}
+                className="w-20"
+              />
+              <span className="font-mono w-8">{wholesaleMarginPercent}%</span>
               
-              <div className="h-6 w-px bg-border" />
+              <div className="h-4 w-px bg-border" />
               
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Button
-                      variant="secondary"
-                      size="sm"
-                      onClick={applyDefaultPrices}
-                      className="h-8"
-                    >
-                      <Wand2 className="h-4 w-4 mr-2" />
-                      Apply Defaults
-                    </Button>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Fill empty Retail & Wholesale prices using margins above</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </div>
-
-            {/* Toolbar */}
-            <div className="flex flex-wrap items-center gap-3 p-3 border rounded-lg bg-muted/20">
-              {/* Quick Expiry Picker */}
-              <div className="flex items-center gap-2">
-                <span className="text-sm font-medium">Quick Expiry:</span>
-                <div className="flex gap-1">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => applyQuickExpiry(1)}
-                    className="h-7 text-xs"
-                  >
-                    +1 Year
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => applyQuickExpiry(2)}
-                    className="h-7 text-xs"
-                  >
-                    +2 Years
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => applyQuickExpiry(3)}
-                    className="h-7 text-xs"
-                  >
-                    +3 Years
-                  </Button>
-                </div>
-              </div>
-
-              <div className="h-6 w-px bg-border" />
-
-              {/* Global Expiry Input */}
-              <div className="flex items-center gap-2">
-                <Input
-                  type="date"
-                  value={globalExpiryDate}
-                  onChange={(e) => setGlobalExpiryDate(e.target.value)}
-                  className="h-7 w-36 text-xs"
-                />
-                <Button
-                  variant="secondary"
-                  size="sm"
-                  onClick={applyGlobalExpiry}
-                  disabled={!globalExpiryDate}
-                  className="h-7 text-xs"
-                >
-                  Apply to Empty
-                </Button>
-              </div>
-
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={addManualItem}
-                className="h-7 text-xs"
-              >
-                <Plus className="h-3.5 w-3.5 mr-1.5" />
-                Add Item
+              <Button variant="secondary" size="sm" onClick={applyDefaultPrices} className="h-6 text-xs px-2">
+                <Wand2 className="h-3 w-3 mr-1" />
+                Apply
               </Button>
-
+              
+              <div className="h-4 w-px bg-border" />
+              
+              {/* Quick Expiry inline */}
+              <span className="font-medium">Expiry:</span>
+              <Button variant="outline" size="sm" onClick={() => applyQuickExpiry(1)} className="h-6 text-[10px] px-1.5">+1Y</Button>
+              <Button variant="outline" size="sm" onClick={() => applyQuickExpiry(2)} className="h-6 text-[10px] px-1.5">+2Y</Button>
+              <Input
+                type="date"
+                value={globalExpiryDate}
+                onChange={(e) => setGlobalExpiryDate(e.target.value)}
+                className="h-6 w-28 text-[10px] px-1"
+              />
+              <Button variant="outline" size="sm" onClick={applyGlobalExpiry} disabled={!globalExpiryDate} className="h-6 text-[10px] px-1.5">Set</Button>
+              
               <div className="flex-1" />
-
-              {/* Summary */}
-              <div className="flex items-center gap-2">
-                <Badge variant="secondary">{matchedCount} matched</Badge>
-                <Badge variant="outline">{Math.max(0, extractedItems.length - matchedCount)} new</Badge>
-                {itemsMissingExpiry > 0 && (
-                  <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-300">
-                    {itemsMissingExpiry} missing expiry
-                  </Badge>
-                )}
-              </div>
+              
+              <Button variant="ghost" size="sm" onClick={addManualItem} className="h-6 text-xs px-2">
+                <Plus className="h-3 w-3 mr-1" />
+                Add
+              </Button>
+              
+              <Badge variant="secondary" className="text-[10px] h-5">{matchedCount} matched</Badge>
+              <Badge variant="outline" className="text-[10px] h-5">{Math.max(0, extractedItems.length - matchedCount)} new</Badge>
+              {itemsMissingExpiry > 0 && (
+                <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-300 text-[10px] h-5">
+                  {itemsMissingExpiry} no expiry
+                </Badge>
+              )}
             </div>
+
+            {/* Removed duplicate toolbar - consolidated into single row above */}
 
             {extractedItems.length === 0 && (
               <div className="flex items-start gap-2 p-3 border border-warning/30 bg-warning/5 rounded-lg text-sm">
@@ -866,215 +797,181 @@ export const MultiImageInvoiceScanner = ({ open, onOpenChange }: MultiImageInvoi
               </div>
             )}
 
-            {/* Data Table - Scrollable container with fixed height */}
-            <div className="flex-1 min-h-0 border rounded-lg overflow-hidden flex flex-col">
+            {/* Data Table - More compact with better readability */}
+            <div className="flex-1 min-h-0 border rounded-md overflow-hidden flex flex-col">
               <div className="overflow-auto flex-1">
-                <div className="min-w-[1100px]">
+                <table className="w-full text-sm">
                   {/* Table Header */}
-                  <div className="grid grid-cols-[50px_1fr_70px_100px_100px_100px_100px_120px_50px] gap-2 p-3 border-b bg-muted/30 font-medium text-sm sticky top-0 z-10 bg-background">
-                    <div>S/N</div>
-                    <div>Product Name</div>
-                    <div className="text-center">Qty</div>
-                    <div className="text-right">Unit Cost</div>
-                    <div className="text-right">Row Total</div>
-                    <div className="text-right">Retail</div>
-                    <div className="text-right">Wholesale</div>
-                    <div className="text-center">Expiry Date</div>
-                    <div></div>
-                  </div>
+                  <thead className="sticky top-0 z-10 bg-muted/80 backdrop-blur">
+                    <tr className="border-b">
+                      <th className="text-left font-medium p-2 w-10">#</th>
+                      <th className="text-left font-medium p-2 min-w-[180px]">Product</th>
+                      <th className="text-center font-medium p-2 w-16">Qty</th>
+                      <th className="text-right font-medium p-2 w-24">Cost</th>
+                      <th className="text-right font-medium p-2 w-24">Total</th>
+                      <th className="text-right font-medium p-2 w-24">Retail</th>
+                      <th className="text-right font-medium p-2 w-24">Wholesale</th>
+                      <th className="text-center font-medium p-2 w-28">Expiry</th>
+                      <th className="w-8 p-2"></th>
+                    </tr>
+                  </thead>
 
                   {/* Table Body */}
-                  <AnimatePresence>
-                    {extractedItems.map((item, index) => (
-                      <motion.div
-                        key={item.id}
-                        initial={{ opacity: 0, x: -20 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: 20 }}
-                        transition={{ delay: index * 0.03 }}
-                        className={`grid grid-cols-[50px_1fr_70px_100px_100px_100px_100px_120px_50px] gap-2 p-3 border-b items-center text-sm ${
-                          item.hasError
-                            ? 'bg-destructive/10 border-destructive/30'
-                            : item.matched
-                              ? 'bg-green-500/5'
-                              : 'bg-warning/5'
-                        }`}
-                      >
-                        {/* S/N */}
-                        <div className="text-muted-foreground">{index + 1}</div>
-
-                        {/* Product Name */}
-                        <div className="flex flex-col">
-                          <Input
-                            value={item.productName}
-                            onChange={(e) => updateItem(item.id, 'productName', e.target.value)}
-                            className="h-7 text-sm font-medium border-transparent hover:border-border focus:border-primary"
-                          />
-                          {item.matched ? (
-                            <span className="text-xs text-green-600 mt-0.5">✓ {item.matched.name}</span>
-                          ) : (
-                            <span className="text-xs text-warning mt-0.5">⚠ New item</span>
-                          )}
-                        </div>
-
-                        {/* Quantity */}
-                        <Input
-                          type="number"
-                          min={1}
-                          value={item.quantity}
-                          onChange={(e) => updateItem(item.id, 'quantity', parseInt(e.target.value) || 0)}
-                          className={`h-7 text-center text-sm ${
-                            !item.quantity || item.quantity <= 0 ? 'border-destructive' : ''
+                  <tbody>
+                    <AnimatePresence>
+                      {extractedItems.map((item, index) => (
+                        <motion.tr
+                          key={item.id}
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={{ opacity: 0 }}
+                          className={`border-b ${
+                            item.hasError
+                              ? 'bg-destructive/10'
+                              : item.matched
+                                ? 'bg-green-500/5'
+                                : 'bg-yellow-50/50'
                           }`}
-                        />
-
-                        {/* Unit Cost */}
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <div className="relative">
-                                <Input
-                                  type="number"
-                                  min={0}
-                                  step={0.01}
-                                  value={item.unitPrice || ''}
-                                  onChange={(e) => updateItem(item.id, 'unitPrice', parseFloat(e.target.value) || null)}
-                                  onFocus={() => handleFocusZoom(index)}
-                                  className={`h-7 text-right text-sm pr-6 ${
-                                    !item.unitPrice || item.unitPrice <= 0 ? 'border-destructive' : ''
-                                  }`}
-                                  placeholder="0.00"
-                                />
-                                <ZoomIn className="absolute right-1.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/50" />
-                              </div>
-                            </TooltipTrigger>
-                            <TooltipContent side="top">
-                              <p className="text-xs">Click to zoom into invoice</p>
-                            </TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-
-                        {/* Row Total (live calculated) */}
-                        <div className="text-right text-sm font-medium text-muted-foreground">
-                          {formatPrice(item.rowTotal)}
-                        </div>
-
-                        {/* Retail */}
-                        <Input
-                          type="number"
-                          min={0}
-                          step={0.01}
-                          value={item.sellingPrice || ''}
-                          onChange={(e) => updateItem(item.id, 'sellingPrice', parseFloat(e.target.value) || null)}
-                          className={`h-7 text-right text-sm ${
-                            !item.sellingPrice ? 'bg-blue-50 border-blue-200' : ''
-                          }`}
-                          placeholder={item.unitPrice ? `~${calculateRetailPrice(item.unitPrice)}` : '0.00'}
-                        />
-
-                        {/* Wholesale */}
-                        <Input
-                          type="number"
-                          min={0}
-                          step={0.01}
-                          value={item.wholesalePrice || ''}
-                          onChange={(e) => updateItem(item.id, 'wholesalePrice', parseFloat(e.target.value) || null)}
-                          className={`h-7 text-right text-sm ${
-                            !item.wholesalePrice ? 'bg-blue-50 border-blue-200' : ''
-                          }`}
-                          placeholder={item.unitPrice ? `~${calculateWholesalePrice(item.unitPrice)}` : '0.00'}
-                        />
-
-                        {/* Expiry Date - highlight yellow if missing */}
-                        <Input
-                          type="date"
-                          value={item.expiryDate || ''}
-                          onChange={(e) => updateItem(item.id, 'expiryDate', e.target.value || null)}
-                          className={`h-7 text-xs ${
-                            !item.expiryDate ? 'bg-yellow-100 border-yellow-400' : ''
-                          }`}
-                        />
-
-                        {/* Remove Button */}
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-7 w-7"
-                          onClick={() => removeItem(item.id)}
                         >
-                          <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive" />
-                        </Button>
-                      </motion.div>
-                    ))}
-                  </AnimatePresence>
-                </div>
+                          {/* S/N */}
+                          <td className="p-2 text-muted-foreground">{index + 1}</td>
+
+                          {/* Product Name */}
+                          <td className="p-2">
+                            <Input
+                              value={item.productName}
+                              onChange={(e) => updateItem(item.id, 'productName', e.target.value)}
+                              className="h-8 text-sm font-medium"
+                            />
+                            <span className={`text-[10px] ${item.matched ? 'text-green-600' : 'text-yellow-600'}`}>
+                              {item.matched ? `✓ ${item.matched.name}` : '⚠ New'}
+                            </span>
+                          </td>
+
+                          {/* Quantity */}
+                          <td className="p-2">
+                            <Input
+                              type="number"
+                              min={1}
+                              value={item.quantity}
+                              onChange={(e) => updateItem(item.id, 'quantity', parseInt(e.target.value) || 0)}
+                              className={`h-8 text-center ${!item.quantity ? 'border-destructive' : ''}`}
+                            />
+                          </td>
+
+                          {/* Unit Cost */}
+                          <td className="p-2">
+                            <div className="relative">
+                              <Input
+                                type="number"
+                                min={0}
+                                value={item.unitPrice || ''}
+                                onChange={(e) => updateItem(item.id, 'unitPrice', parseFloat(e.target.value) || null)}
+                                onFocus={() => handleFocusZoom(index)}
+                                className={`h-8 text-right pr-5 ${!item.unitPrice ? 'border-destructive' : ''}`}
+                                placeholder="0"
+                              />
+                              <ZoomIn className="absolute right-1 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground/40" />
+                            </div>
+                          </td>
+
+                          {/* Row Total */}
+                          <td className="p-2 text-right font-medium text-muted-foreground">
+                            {formatPrice(item.rowTotal)}
+                          </td>
+
+                          {/* Retail */}
+                          <td className="p-2">
+                            <Input
+                              type="number"
+                              min={0}
+                              value={item.sellingPrice || ''}
+                              onChange={(e) => updateItem(item.id, 'sellingPrice', parseFloat(e.target.value) || null)}
+                              className={`h-8 text-right ${!item.sellingPrice ? 'bg-blue-50' : ''}`}
+                              placeholder={item.unitPrice ? `~${calculateRetailPrice(item.unitPrice)}` : ''}
+                            />
+                          </td>
+
+                          {/* Wholesale */}
+                          <td className="p-2">
+                            <Input
+                              type="number"
+                              min={0}
+                              value={item.wholesalePrice || ''}
+                              onChange={(e) => updateItem(item.id, 'wholesalePrice', parseFloat(e.target.value) || null)}
+                              className={`h-8 text-right ${!item.wholesalePrice ? 'bg-blue-50' : ''}`}
+                              placeholder={item.unitPrice ? `~${calculateWholesalePrice(item.unitPrice)}` : ''}
+                            />
+                          </td>
+
+                          {/* Expiry Date */}
+                          <td className="p-2">
+                            <Input
+                              type="date"
+                              value={item.expiryDate || ''}
+                              onChange={(e) => updateItem(item.id, 'expiryDate', e.target.value || null)}
+                              className={`h-8 text-xs ${!item.expiryDate ? 'bg-yellow-100 border-yellow-400' : ''}`}
+                            />
+                          </td>
+
+                          {/* Remove */}
+                          <td className="p-2">
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => removeItem(item.id)}>
+                              <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive" />
+                            </Button>
+                          </td>
+                        </motion.tr>
+                      ))}
+                    </AnimatePresence>
+                  </tbody>
+                </table>
               </div>
             </div>
 
-            {/* Footer with Grand Total and Math Validation */}
-            <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/20">
-              <div className="flex items-center gap-4">
-                <Button
-                  variant="outline"
-                  onClick={() => setShowReviewDashboard(false)}
-                >
-                  <ChevronUp className="h-4 w-4 mr-2" />
-                  Back to Upload
-                </Button>
+            {/* Compact Footer */}
+            <div className="flex items-center justify-between p-2 border rounded-md bg-muted/20 gap-2">
+              <Button variant="outline" size="sm" onClick={() => setShowReviewDashboard(false)} className="h-8">
+                <ChevronUp className="h-3.5 w-3.5 mr-1" />
+                Back
+              </Button>
 
-                {hasInvalidItems && (
-                  <Badge variant="destructive" className="animate-pulse">
-                    <AlertCircle className="h-3 w-3 mr-1" />
-                    {extractedItems.filter(i => i.hasError).length} items need attention
-                  </Badge>
-                )}
-              </div>
+              {hasInvalidItems && (
+                <Badge variant="destructive" className="animate-pulse text-xs">
+                  <AlertCircle className="h-3 w-3 mr-1" />
+                  {extractedItems.filter(i => i.hasError).length} issues
+                </Badge>
+              )}
 
-              <div className="flex items-center gap-4">
-                {/* Invoice Total Comparison */}
-                {extractedInvoiceTotal !== null && (
-                  <div className={`text-right p-2 rounded-lg ${hasTotalMismatch ? 'bg-destructive/10 border border-destructive/30' : 'bg-green-50 border border-green-200'}`}>
-                    <div className="text-xs text-muted-foreground flex items-center gap-1">
-                      {hasTotalMismatch && <TriangleAlert className="h-3 w-3 text-destructive" />}
-                      Invoice Total
-                    </div>
-                    <div className={`text-lg font-semibold ${hasTotalMismatch ? 'text-destructive' : 'text-green-700'}`}>
-                      {formatPrice(extractedInvoiceTotal)}
-                    </div>
-                    {hasTotalMismatch && (
-                      <div className="text-xs text-destructive mt-0.5">
-                        Diff: {formatPrice(Math.abs(calculatedGrandTotal - extractedInvoiceTotal))}
-                      </div>
-                    )}
+              <div className="flex-1" />
+
+              {/* Totals */}
+              {extractedInvoiceTotal !== null && (
+                <div className={`text-right px-2 py-1 rounded ${hasTotalMismatch ? 'bg-destructive/10' : 'bg-green-50'}`}>
+                  <div className="text-[10px] text-muted-foreground flex items-center gap-1">
+                    {hasTotalMismatch && <TriangleAlert className="h-2.5 w-2.5 text-destructive" />}
+                    Invoice
                   </div>
-                )}
-
-                <div className="text-right">
-                  <div className="text-sm text-muted-foreground">Calculated Total</div>
-                  <div className={`text-2xl font-bold ${hasTotalMismatch ? 'text-destructive' : 'text-primary'}`}>
-                    {formatPrice(grandTotal)}
+                  <div className={`text-sm font-semibold ${hasTotalMismatch ? 'text-destructive' : 'text-green-700'}`}>
+                    {formatPrice(extractedInvoiceTotal)}
                   </div>
                 </div>
+              )}
 
-                <Button
-                  size="lg"
-                  onClick={handleApplyToInventory}
-                  disabled={isApplying || hasInvalidItems || extractedItems.length === 0}
-                  className="min-w-[150px]"
-                >
-                  {isApplying ? (
-                    <>
-                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                      Applying...
-                    </>
-                  ) : (
-                    <>
-                      <Check className="h-4 w-4 mr-2" />
-                      Apply to Inventory
-                    </>
-                  )}
-                </Button>
+              <div className="text-right px-2">
+                <div className="text-[10px] text-muted-foreground">Calculated</div>
+                <div className={`text-lg font-bold ${hasTotalMismatch ? 'text-destructive' : 'text-primary'}`}>
+                  {formatPrice(grandTotal)}
+                </div>
               </div>
+
+              <Button
+                onClick={handleApplyToInventory}
+                disabled={isApplying || hasInvalidItems || extractedItems.length === 0}
+                className="h-9"
+              >
+                {isApplying ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4 mr-1" />}
+                {isApplying ? 'Applying...' : 'Apply'}
+              </Button>
             </div>
           </div>
         )}
