@@ -660,21 +660,41 @@ export const InvoiceScannerModal = ({ open, onOpenChange }: InvoiceScannerModalP
 
                         {/* Auto-margin pricing section */}
                         {item.unitPrice && (
-                          <div className="mt-2 pt-2 border-t border-border/50">
-                            <div className="flex items-center justify-between text-xs">
-                              <span className="text-muted-foreground">
-                                Cost: {formatPrice(item.unitPrice)}
-                              </span>
-                              <div className="flex items-center gap-2">
-                                <DollarSign className="h-3 w-3 text-success" />
-                                <span className="text-success font-medium">
-                                  Suggested: {formatPrice(item.suggestedSellingPrice || 0)}
-                                </span>
-                                <Badge variant="outline" className="text-[10px]">
-                                  +{defaultMargin}%
-                                </Badge>
-                              </div>
+                          <div className="mt-2 pt-2 border-t border-border/50 space-y-2">
+                            <div className="text-xs text-muted-foreground">
+                              Cost: {formatPrice(item.unitPrice)}
                             </div>
+                            
+                            {/* Retail Price */}
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs w-16">Retail:</span>
+                              <Input
+                                type="number"
+                                value={item.suggestedSellingPrice || ''}
+                                onChange={(e) => updateSellingPrice(index, parseFloat(e.target.value) || 0)}
+                                className="h-6 w-20 text-xs"
+                                placeholder="—"
+                              />
+                              <Badge variant="outline" className="text-[10px]">
+                                +{defaultMargin}%
+                              </Badge>
+                            </div>
+                            
+                            {/* Wholesale Price */}
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs w-16">Wholesale:</span>
+                              <Input
+                                type="number"
+                                value={item.suggestedWholesalePrice || ''}
+                                onChange={(e) => updateWholesalePrice(index, parseFloat(e.target.value) || 0)}
+                                className="h-6 w-20 text-xs"
+                                placeholder="—"
+                              />
+                              <Badge variant="secondary" className="text-[10px]">
+                                +{defaultWholesaleMargin}%
+                              </Badge>
+                            </div>
+                            
                             {item.matched && item.suggestedSellingPrice && (
                               <div className="flex items-center justify-between mt-1">
                                 <span className="text-xs text-muted-foreground">
@@ -687,7 +707,7 @@ export const InvoiceScannerModal = ({ open, onOpenChange }: InvoiceScannerModalP
                                     className="h-6 text-xs text-success hover:text-success"
                                     onClick={() => acceptSuggestedPrice(index)}
                                   >
-                                    Apply New Price
+                                    Apply Prices
                                   </Button>
                                 )}
                               </div>
