@@ -80,6 +80,8 @@ export interface QuickItemPrefill {
   name: string;
   selling_price: number;
   quantity_to_deduct?: number;
+  expiry_date?: string;
+  manufacturing_date?: string;
 }
 
 interface AddMedicationModalProps {
@@ -188,7 +190,7 @@ export const AddMedicationModal = ({
       });
       setSupplierEntries([]);
     } else if (prefillData) {
-      // Pre-fill from Quick Item conversion
+      // Pre-fill from Quick Item conversion or Photo Expiry Scan
       form.reset({
         name: prefillData.name,
         category: smartDefaults.category,
@@ -196,8 +198,10 @@ export const AddMedicationModal = ({
         barcode_id: '',
         current_stock: 0,
         reorder_level: smartDefaults.reorder_level,
+        expiry_date: prefillData.expiry_date ? new Date(prefillData.expiry_date) : undefined,
+        manufacturing_date: prefillData.manufacturing_date ? new Date(prefillData.manufacturing_date) : undefined,
         unit_price: 0,
-        selling_price: prefillData.selling_price,
+        selling_price: prefillData.selling_price || undefined,
         wholesale_price: undefined,
         dispensing_unit: smartDefaults.dispensing_unit,
         is_controlled: false,
