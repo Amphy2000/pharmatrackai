@@ -532,63 +532,71 @@ async function handleScanInvoice(payload: any): Promise<any> {
     throw new Error("No invoice image provided. Send imageBase64 or imageUrl.");
   }
 
-  const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
-  if (!GEMINI_API_KEY) {
-    throw new Error("GEMINI_API_KEY is not configured");
+  // Use Lovable AI Gateway for faster processing
+  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+  if (!LOVABLE_API_KEY) {
+    throw new Error("LOVABLE_API_KEY is not configured");
   }
 
-  // Extract base64 content (strip data-uri prefix if present)
-  const base64Content = imageData.replace(/^data:image\/\w+;base64,/, '');
+  console.log(`Processing invoice scan via Lovable AI, size: ${imageData.length} chars`);
 
-  // Detect mime type from data-uri or default to jpeg
-  let mimeType = "image/jpeg";
-  const mimeMatch = imageData.match(/^data:(image\/\w+);base64,/);
-  if (mimeMatch) {
-    mimeType = mimeMatch[1];
-  }
-
-  console.log(`Processing invoice image, mimeType: ${mimeType}, size: ${base64Content.length} chars`);
-
-  // For invoice scanning, we use vision capabilities
-  const response = await fetchWithRetry(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{
-          role: 'user',
-          parts: [
-            { text: PROMPTS.scan_invoice },
-            { 
-              inlineData: { 
-                mimeType, 
-                data: base64Content 
-              } 
+  // Use flash-lite model for faster invoice scanning
+  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${LOVABLE_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      model: "google/gemini-2.5-flash-lite",
+      messages: [
+        {
+          role: "user",
+          content: [
+            {
+              type: "text",
+              text: PROMPTS.scan_invoice
+            },
+            {
+              type: "image_url",
+              image_url: {
+                url: imageData
+              }
             }
           ]
-        }],
-        generationConfig: {
-          responseMimeType: 'application/json',
-        },
-      }),
-    }
-  );
+        }
+      ],
+    }),
+  });
 
   if (!response.ok) {
     const errorText = await response.text();
-    console.error("Gemini Vision API error:", response.status, errorText);
+    console.error("Lovable AI Vision error:", response.status, errorText);
+    
+    if (response.status === 429) {
+      throw new Error("AI is busy. Please wait a moment and try again.");
+    }
+    if (response.status === 402) {
+      throw new Error("AI credits depleted. Please add credits in settings.");
+    }
     throw new Error(`Invoice scanning failed: ${response.status}`);
   }
 
   const data = await response.json();
-  const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
+  const content = data.choices?.[0]?.message?.content;
   
   if (!content) {
     throw new Error("Could not parse invoice");
   }
 
-  const parsed = JSON.parse(content);
+  // Parse JSON from the response (may be wrapped in markdown)
+  let jsonContent = content;
+  const jsonMatch = content.match(/```json\s*([\s\S]*?)\s*```/);
+  if (jsonMatch) {
+    jsonContent = jsonMatch[1];
+  }
+
+  const parsed = JSON.parse(jsonContent);
   
   // Normalize response shape - ensure items array exists at top level
   if (parsed.result?.items && !parsed.items) {
