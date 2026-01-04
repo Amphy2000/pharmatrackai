@@ -82,9 +82,9 @@ serve(async (req) => {
       );
     }
 
-    const GEMINI_API_KEY = Deno.env.get('GEMINI_API_KEY');
-    if (!GEMINI_API_KEY) {
-      console.error('GEMINI_API_KEY not configured');
+    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
+    if (!LOVABLE_API_KEY) {
+      console.error('LOVABLE_API_KEY not configured');
       return new Response(
         JSON.stringify({ error: 'AI service not configured' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -151,61 +151,50 @@ Return ONLY a valid JSON object with this structure:
 If you cannot identify any products, return: {"items": [], "error": "Could not extract products from image"}
 Do not include any explanation, just the JSON.`;
 
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`, {
+    // Use Lovable AI Gateway with gemini-2.5-flash-lite for faster processing
+    const responseWithUrl = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
+        'Authorization': `Bearer ${LOVABLE_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        contents: [
+        model: 'google/gemini-2.5-flash-lite',
+        messages: [
           {
             role: 'user',
-            parts: [
-              { text: `${systemPrompt}\n\nExtract all medication/product details from this invoice image. Use keyword-based extraction to find batch numbers, expiry dates, and prices. Look for table rows and extract each product. Return only valid JSON.` },
+            content: [
               {
-                inlineData: {
-                  mimeType: 'image/jpeg',
-                  data: '' // Will need to fetch image and convert to base64
+                type: 'text',
+                text: `${systemPrompt}\n\nExtract all medication/product details from this invoice image. Use keyword-based extraction to find batch numbers, expiry dates, and prices. Look for table rows and extract each product. Return only valid JSON.`
+              },
+              {
+                type: 'image_url',
+                image_url: {
+                  url: imageUrl
                 }
               }
             ]
           }
-        ],
-        generationConfig: {
-          responseMimeType: 'application/json',
-        },
-      }),
-    });
-
-    // For URL-based images, use the fileData approach with Gemini
-    const responseWithUrl = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        contents: [
-          {
-            role: 'user',
-            parts: [
-              { text: `${systemPrompt}\n\nExtract all medication/product details from this invoice image. Use keyword-based extraction to find batch numbers, expiry dates, and prices. Look for table rows and extract each product. Return only valid JSON.\n\nImage URL: ${imageUrl}` }
-            ]
-          }
-        ],
-        generationConfig: {
-          responseMimeType: 'application/json',
-        },
+        ]
       }),
     });
 
     if (!responseWithUrl.ok) {
       const errorText = await responseWithUrl.text();
-      console.error('Gemini API error:', responseWithUrl.status, errorText);
+      console.error('Lovable AI Gateway error:', responseWithUrl.status, errorText);
       
       if (responseWithUrl.status === 429) {
         return new Response(
           JSON.stringify({ error: 'Rate limit exceeded. Please try again in a moment.' }),
           { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      if (responseWithUrl.status === 402) {
+        return new Response(
+          JSON.stringify({ error: 'AI credits exhausted. Please add funds to continue.' }),
+          { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
       
@@ -216,7 +205,8 @@ Do not include any explanation, just the JSON.`;
     }
 
     const aiResponse = await responseWithUrl.json();
-    const content = aiResponse.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    // Lovable AI Gateway uses OpenAI-style response format
+    const content = aiResponse.choices?.[0]?.message?.content || '';
 
     console.log('AI response received, parsing...');
 
