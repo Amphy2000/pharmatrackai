@@ -867,11 +867,19 @@ export const MultiImageInvoiceScanner = ({ open, onOpenChange }: MultiImageInvoi
                                 min={0}
                                 value={item.unitPrice || ''}
                                 onChange={(e) => updateItem(item.id, 'unitPrice', parseFloat(e.target.value) || null)}
-                                onFocus={() => handleFocusZoom(index)}
-                                className={`h-8 text-right pr-5 ${!item.unitPrice ? 'border-destructive' : ''}`}
+                                className={`h-8 text-right pr-6 ${!item.unitPrice ? 'border-destructive' : ''}`}
                                 placeholder="0"
                               />
-                              <ZoomIn className="absolute right-1 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground/40" />
+                              {uploadedImages.length > 0 && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleFocusZoom(index)}
+                                  className="absolute right-1 top-1/2 -translate-y-1/2 p-0.5 rounded hover:bg-muted"
+                                  title="View invoice"
+                                >
+                                  <ZoomIn className="h-3.5 w-3.5 text-muted-foreground hover:text-primary" />
+                                </button>
+                              )}
                             </div>
                           </td>
 
