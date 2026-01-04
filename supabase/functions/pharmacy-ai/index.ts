@@ -173,6 +173,32 @@ Return a JSON object:
   },
   "confidence": "high" | "medium" | "low",
   "notes": "Any parsing issues or unclear items"
+}`,
+
+  scan_expiry: `Act as an expert product packaging analyzer for a pharmacy inventory system.
+Analyze the product packaging image and extract expiry/manufacturing information.
+
+Look for:
+1. Product name (medication name, brand)
+2. Expiry date (EXP, Best Before, Use By - in any format)
+3. Manufacturing date (MFG, MFD - if visible)
+4. Batch/Lot number (Batch, Lot, B.No)
+5. Any other relevant product identifiers
+
+IMPORTANT:
+- Be very precise with dates - pharmacy expiry tracking is critical
+- Convert all dates to standard format (YYYY-MM-DD)
+- If only month/year visible, use the last day of that month
+- If date is unclear, mark confidence as low
+
+Return a JSON object:
+{
+  "product_name": "Full product name as printed",
+  "expiry_date": "YYYY-MM-DD",
+  "manufacturing_date": "YYYY-MM-DD or null if not visible",
+  "batch_number": "Batch/Lot number or null",
+  "confidence": "high" | "medium" | "low",
+  "notes": "Any issues or observations about the extraction"
 }`
 };
 
@@ -574,6 +600,74 @@ async function handleScanInvoice(payload: any): Promise<any> {
   return parsed;
 }
 
+async function handleScanExpiry(payload: any): Promise<any> {
+  const imageData = payload?.imageBase64 || payload?.imageUrl;
+  
+  if (!imageData) {
+    throw new Error("No product image provided. Send imageBase64 or imageUrl.");
+  }
+
+  const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
+  if (!GEMINI_API_KEY) {
+    throw new Error("GEMINI_API_KEY is not configured");
+  }
+
+  // Extract base64 content (strip data-uri prefix if present)
+  const base64Content = imageData.replace(/^data:image\/\w+;base64,/, '');
+
+  // Detect mime type from data-uri or default to jpeg
+  let mimeType = "image/jpeg";
+  const mimeMatch = imageData.match(/^data:(image\/\w+);base64,/);
+  if (mimeMatch) {
+    mimeType = mimeMatch[1];
+  }
+
+  console.log(`Processing expiry scan, mimeType: ${mimeType}, size: ${base64Content.length} chars`);
+
+  const response = await fetchWithRetry(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{
+          role: 'user',
+          parts: [
+            { text: PROMPTS.scan_expiry },
+            { 
+              inlineData: { 
+                mimeType, 
+                data: base64Content 
+              } 
+            }
+          ]
+        }],
+        generationConfig: {
+          responseMimeType: 'application/json',
+        },
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error("Gemini Vision API error:", response.status, errorText);
+    throw new Error(`Expiry scanning failed: ${response.status}`);
+  }
+
+  const data = await response.json();
+  const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
+  
+  if (!content) {
+    throw new Error("Could not extract expiry information");
+  }
+
+  const parsed = JSON.parse(content);
+  console.log(`Extracted expiry: ${parsed.expiry_date}, product: ${parsed.product_name}`);
+  
+  return parsed;
+}
+
 // Helper functions for business insights
 function getTopCategories(medications: any[]): string {
   if (!medications?.length) return "No data available";
@@ -666,6 +760,11 @@ serve(async (req) => {
 
       case 'scan_invoice':
         result = await handleScanInvoice(payload);
+        break;
+
+      case 'scan_expiry':
+      case 'extract_expiry':
+        result = await handleScanExpiry(payload);
         break;
 
       default:

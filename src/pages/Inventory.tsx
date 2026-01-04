@@ -3,7 +3,7 @@ import { Header } from '@/components/Header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Package, AlertTriangle, PackagePlus, ClipboardList, FileImage, Zap, Clock, FileSpreadsheet, TrendingDown, Calendar, Download, FileText, ChevronDown, Plus, DollarSign, LayoutGrid, List, Search, Trash2, CheckSquare, Building2, ArrowRightLeft, RefreshCw } from 'lucide-react';
+import { Package, AlertTriangle, PackagePlus, ClipboardList, FileImage, Zap, Clock, FileSpreadsheet, TrendingDown, Calendar, Download, FileText, ChevronDown, Plus, DollarSign, LayoutGrid, List, Search, Trash2, CheckSquare, Building2, ArrowRightLeft, RefreshCw, Camera, Layers } from 'lucide-react';
 import { useBranchInventory, BranchMedication } from '@/hooks/useBranchInventory';
 import { useMedications } from '@/hooks/useMedications';
 import { ReceiveStockModal } from '@/components/inventory/ReceiveStockModal';
@@ -19,6 +19,8 @@ import { BulkMarketplaceActions } from '@/components/inventory/BulkMarketplaceAc
 import { CategoryMarketplaceToggle } from '@/components/inventory/CategoryMarketplaceToggle';
 import { QuickStockUpdateModal } from '@/components/inventory/QuickStockUpdateModal';
 import { InternalTransferModal } from '@/components/inventory/InternalTransferModal';
+import { PhotoExpiryScanModal } from '@/components/inventory/PhotoExpiryScanModal';
+import { BatchExpiryEntryModal } from '@/components/inventory/BatchExpiryEntryModal';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -67,6 +69,8 @@ const Inventory = () => {
   const [showBulkPriceModal, setShowBulkPriceModal] = useState(false);
   const [showQuickStockModal, setShowQuickStockModal] = useState(false);
   const [showTransferModal, setShowTransferModal] = useState(false);
+  const [showPhotoExpiryScan, setShowPhotoExpiryScan] = useState(false);
+  const [showBatchEntryModal, setShowBatchEntryModal] = useState(false);
   const [editingMedication, setEditingMedication] = useState<Medication | null>(null);
   const [detailMedication, setDetailMedication] = useState<Medication | null>(null);
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
@@ -75,6 +79,8 @@ const Inventory = () => {
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [bulkShelveOpen, setBulkShelveOpen] = useState(false);
   const [bulkUnshelveOpen, setBulkUnshelveOpen] = useState(false);
+  // Prefill data for Add Medication from Photo Expiry Scan
+  const [addMedicationPrefill, setAddMedicationPrefill] = useState<{ name?: string; expiry_date?: string } | undefined>();
   const { pharmacy } = usePharmacy();
   const { currency } = useCurrency();
   const { currentBranchName, isMainBranch } = useBranchContext();
@@ -351,6 +357,16 @@ const Inventory = () => {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
+              <Button onClick={() => setShowPhotoExpiryScan(true)} variant="outline" size="lg" className="gap-2">
+                <Camera className="h-5 w-5" />
+                Photo Expiry Scan
+                <Badge variant="outline" className="ml-1 text-xs bg-gradient-premium text-white border-0">AI</Badge>
+              </Button>
+              <Button onClick={() => setShowBatchEntryModal(true)} variant="outline" size="lg" className="gap-2">
+                <Layers className="h-5 w-5" />
+                Batch Entry
+                <Badge variant="secondary" className="ml-1 text-xs">Fast</Badge>
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -708,9 +724,17 @@ const Inventory = () => {
         open={showAddMedicationModal}
         onOpenChange={(open) => {
           setShowAddMedicationModal(open);
-          if (!open) setEditingMedication(null);
+          if (!open) {
+            setEditingMedication(null);
+            setAddMedicationPrefill(undefined);
+          }
         }}
         editingMedication={editingMedication}
+        prefillData={addMedicationPrefill ? {
+          name: addMedicationPrefill.name || '',
+          selling_price: 0,
+          expiry_date: addMedicationPrefill.expiry_date,
+        } : undefined}
       />
       
       <BulkPriceUpdateModal
@@ -741,6 +765,24 @@ const Inventory = () => {
           store_quantity: m.store_quantity ?? 0,
           category: m.category
         }))}
+      />
+
+      <PhotoExpiryScanModal
+        open={showPhotoExpiryScan}
+        onOpenChange={setShowPhotoExpiryScan}
+        onExpiryExtracted={(productName, expiryDate, manufacturingDate) => {
+          // Open Add Medication modal with prefilled data
+          setAddMedicationPrefill({ 
+            name: productName, 
+            expiry_date: expiryDate 
+          });
+          setShowAddMedicationModal(true);
+        }}
+      />
+
+      <BatchExpiryEntryModal
+        open={showBatchEntryModal}
+        onOpenChange={setShowBatchEntryModal}
       />
 
       {/* Bulk Delete Dialog */}
