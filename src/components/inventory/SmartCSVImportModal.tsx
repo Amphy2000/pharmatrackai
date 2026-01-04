@@ -82,16 +82,23 @@ const fieldLabels: Record<FieldKey, string> = {
 const allFields: FieldKey[] = ['name', 'current_stock', 'unit_price', 'generic_name', 'manufacturer', 'category', 'batch_number', 'reorder_level', 'expiry_date', 'selling_price', 'wholesale_price', 'barcode_id', 'nafdac_reg_number', 'supplier', 'location'];
 const NOT_MAPPED_VALUE = '__lovable_not_mapped__';
 
-// Smart column name matching patterns
+// Smart column name matching patterns - order matters (more specific first)
 const columnPatterns: Record<FieldKey, RegExp[]> = {
-  name: [/^(product|drug|medication|item|medicine)[\s_-]?name$/i, /^name$/i, /^product$/i, /^drug$/i, /^description$/i, /^item$/i, /^brand[\s_-]?name$/i],
+  name: [
+    /^product[\s_-]?description$/i, // "Product Description" - Inv1 format
+    /^(product|drug|medication|item|medicine)[\s_-]?name$/i, 
+    /^name$/i, /^product$/i, /^drug$/i, /^description$/i, /^item$/i, /^brand[\s_-]?name$/i
+  ],
   generic_name: [/^generic[\s_-]?name$/i, /^generic$/i, /^inn$/i, /^active[\s_-]?ingredient$/i, /^ingredient$/i],
   category: [/^(category|type|form|class|group)$/i, /^drug[\s_-]?(type|form|class)$/i, /^dosage[\s_-]?form$/i],
-  batch_number: [/^batch[\s_-]?(number|no|#)?$/i, /^lot[\s_-]?(number|no|#)?$/i, /^batch$/i],
+  batch_number: [/^batch[\s_-]?(number|no|#)?$/i, /^lot[\s_-]?(number|no|#)?$/i, /^batch$/i, /^invoice[\s_-]?#?$/i],
   current_stock: [/^(current[\s_-]?)?(stock|quantity|qty|units?)$/i, /^on[\s_-]?hand$/i, /^available$/i, /^count$/i, /^balance$/i],
   reorder_level: [/^(reorder|minimum|min)[\s_-]?(level|qty|stock|point)?$/i, /^rop$/i, /^min[\s_-]?stock$/i, /^alert[\s_-]?level$/i],
   expiry_date: [/^expir(y|ation)?[\s_-]?date$/i, /^exp[\s_-]?date$/i, /^best[\s_-]?before$/i, /^exp$/i],
-  unit_price: [/^(cost|purchase|buy|unit)[\s_-]?price$/i, /^cost$/i, /^cp$/i, /^purchase[\s_-]?price$/i, /^price$/i],
+  unit_price: [
+    /^rate[\s_\/]?unit[\s_-]?price/i, // "Rate/Unit Price (₦)" - Inv1 format
+    /^(cost|purchase|buy|unit)[\s_-]?price$/i, /^cost$/i, /^cp$/i, /^purchase[\s_-]?price$/i, /^rate$/i, /^price$/i
+  ],
   selling_price: [/^(sell(ing)?|retail|sale)[\s_-]?price$/i, /^sp$/i, /^retail$/i, /^mrp$/i],
   wholesale_price: [/^wholesale[\s_-]?price$/i, /^bulk[\s_-]?price$/i, /^trade[\s_-]?price$/i, /^wp$/i, /^distributor[\s_-]?price$/i],
   barcode_id: [/^bar[\s_-]?code$/i, /^upc$/i, /^ean$/i, /^gtin$/i, /^sku$/i],
@@ -142,6 +149,8 @@ interface EditableRow {
   existingBatches?: Medication[];
   isNewBatch?: boolean;
   isParsedFromCompound?: boolean;
+  hasUnitFlag?: boolean; // Flag for "1 ctn" type entries
+  originalUnit?: string; // Store original unit like "ctn"
 }
 
 // Smart defaults configuration
@@ -179,7 +188,7 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
   const [bulkExpiry, setBulkExpiry] = useState('');
   const [hasCompoundData, setHasCompoundData] = useState(false);
 
-  // Auto-detect column mappings
+  // Auto-detect column mappings - specifically handles Inv1 invoice format
   const autoMapColumns = useCallback((hdrs: string[], sampleRow?: Record<string, string>): ColumnMapping => {
     const result: ColumnMapping = {
       name: '', generic_name: '', category: '', batch_number: '', current_stock: '',
@@ -187,6 +196,25 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
       barcode_id: '', nafdac_reg_number: '', manufacturer: '', supplier: '', location: '',
     };
 
+    // First pass: try exact/partial matches on common invoice formats
+    hdrs.forEach((header) => {
+      const h = header.toLowerCase();
+      
+      // Inv1 format specific mappings
+      if (h.includes('product description') || h === 'product description') {
+        result.name = header;
+      } else if (h.includes('rate') && h.includes('unit') && h.includes('price')) {
+        result.unit_price = header;
+      } else if (h === 'qty' || h === 'quantity') {
+        result.current_stock = header;
+      } else if (h === 'vendor' || h === 'supplier') {
+        result.supplier = header;
+      } else if (h.includes('invoice') && h.includes('#')) {
+        result.batch_number = header;
+      }
+    });
+
+    // Second pass: use regex patterns for remaining fields
     hdrs.forEach((header) => {
       const normalizedHeader = header.toLowerCase().replace(/[\s_-]+/g, '');
 
@@ -214,11 +242,16 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
       if (qtyCandidate) result.current_stock = qtyCandidate;
     }
 
-    // If no name column found, try to use first text column
+    // If no name column found, try to use first text column (skip date-like and numeric columns)
     if (!result.name && hdrs.length > 0 && sampleRow) {
       const textColumn = hdrs.find((h) => {
         const v = sampleRow[h];
-        return v && v.length > 2 && isNaN(Number(v.replace(/[₦$£€,\s]/g, '')));
+        if (!v || v.length < 3) return false;
+        // Skip if value looks like a date
+        if (/^\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}$/.test(v)) return false;
+        // Skip if purely numeric
+        if (!isNaN(Number(v.replace(/[₦$£€,\s]/g, '')))) return false;
+        return true;
       });
       if (textColumn) result.name = textColumn;
     }
@@ -379,9 +412,32 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
 
   const parsePrice = (value: string): number => {
     if (!value) return 0;
-    const cleaned = value.toString().replace(/[₦$£€,\s]/g, '');
+    // Remove currency symbols, commas, spaces, and any text like "ctn"
+    const cleaned = value.toString().replace(/[₦$£€,\s]/g, '').replace(/[a-zA-Z]/g, '');
     const num = parseFloat(cleaned);
     return isNaN(num) ? 0 : num;
+  };
+
+  // Parse stock quantity - handles "1 ctn", "10", "1,000" etc.
+  const parseStock = (value: string): { stock: number; hasUnit: boolean; unit?: string } => {
+    if (!value) return { stock: 0, hasUnit: false };
+    const str = value.toString().trim();
+    
+    // Check for unit suffix like "1 ctn", "2 cartons", "10 boxes"
+    const unitMatch = str.match(/^([\d,]+)\s*(ctn|carton|cartons|box|boxes|pack|packs|pcs|pieces?)$/i);
+    if (unitMatch) {
+      const numPart = unitMatch[1].replace(/,/g, '');
+      return { 
+        stock: parseInt(numPart, 10) || 1, 
+        hasUnit: true, 
+        unit: unitMatch[2].toLowerCase() 
+      };
+    }
+    
+    // Just a number (possibly with commas)
+    const cleaned = str.replace(/,/g, '').replace(/[^0-9.-]/g, '');
+    const num = parseInt(cleaned, 10);
+    return { stock: isNaN(num) ? 1 : num, hasUnit: false };
   };
 
   const normalizeCategory = (value: string): MedicationFormData['category'] => {
@@ -442,19 +498,33 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
       }
       
       // If not compound or parsing failed, use column mapping
+      let hasUnitFlag = false;
+      let originalUnit: string | undefined;
+      
       if (!isParsedFromCompound) {
         const rawName = currentMapping.name ? row[currentMapping.name] : '';
         productName = typeof rawName === 'string' ? rawName.trim() : '';
         
-        // If still no name, use first non-empty column
+        // If still no name, try to find a text column (skip date columns)
         if (!productName) {
-          const firstValue = Object.values(row).find(v => v && v.trim());
-          productName = firstValue || '';
+          const textColumn = Object.entries(row).find(([key, v]) => {
+            // Skip if value looks like a date (DD/MM/YYYY or similar)
+            if (/^\d{1,2}[\/\-]\d{1,2}[\/\-]\d{2,4}$/.test(v)) return false;
+            // Skip numeric-only values
+            if (/^[\d,.\s₦$]+$/.test(v)) return false;
+            return v && v.length > 2;
+          });
+          productName = textColumn ? textColumn[1] : '';
         }
         
         costPrice = currentMapping.unit_price ? parsePrice(row[currentMapping.unit_price]) : smartDefaults.defaultCostPrice;
+        
+        // Use new parseStock for robust quantity handling
         const rawStock = currentMapping.current_stock ? row[currentMapping.current_stock] : '';
-        stock = rawStock ? Math.max(0, parseInt(String(rawStock).replace(/[^0-9.-]/g, ''), 10) || smartDefaults.defaultStock) : smartDefaults.defaultStock;
+        const stockResult = parseStock(rawStock);
+        stock = stockResult.stock || smartDefaults.defaultStock;
+        hasUnitFlag = stockResult.hasUnit;
+        originalUnit = stockResult.unit;
         
         const rawExpiry = currentMapping.expiry_date ? row[currentMapping.expiry_date] : '';
         expiryDate = parseDate(rawExpiry) || defaultExpiry;
@@ -466,8 +536,19 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
         category = rawCategory || 'Other';
       }
 
-      const wholesalePrice = currentMapping.wholesale_price ? String(parsePrice(row[currentMapping.wholesale_price])) : '';
-      const sellingPrice = currentMapping.selling_price ? String(parsePrice(row[currentMapping.selling_price])) : '';
+      // Get mapped wholesale/selling prices or auto-calculate margins
+      let wholesalePrice = currentMapping.wholesale_price ? parsePrice(row[currentMapping.wholesale_price]) : 0;
+      let sellingPrice = currentMapping.selling_price ? parsePrice(row[currentMapping.selling_price]) : 0;
+      
+      // Auto-calculate prices with margins if cost is set but prices are not
+      if (costPrice > 0) {
+        if (!sellingPrice) {
+          sellingPrice = Math.round(costPrice * 1.20); // 20% retail margin
+        }
+        if (!wholesalePrice) {
+          wholesalePrice = Math.round(costPrice * 1.05); // 5% wholesale margin
+        }
+      }
       
       // Calculate reorder level
       let reorderLevel: number;
@@ -497,6 +578,8 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
       let warningMsg: string | undefined;
       if (!productName) {
         warningMsg = 'No product name - will be skipped';
+      } else if (hasUnitFlag) {
+        warningMsg = `Qty "${originalUnit}" - confirm units`;
       } else if (costPrice === 0) {
         warningMsg = 'No cost price set';
       } else if (expiryDate === defaultExpiry && !isParsedFromCompound) {
@@ -514,8 +597,8 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
         reorder_level: String(reorderLevel),
         expiry_date: expiryDate,
         unit_price: String(costPrice),
-        selling_price: sellingPrice,
-        wholesale_price: wholesalePrice,
+        selling_price: String(sellingPrice),
+        wholesale_price: String(wholesalePrice),
         barcode_id: barcodeId,
         nafdac_reg_number: nafdacReg,
         isValid,
@@ -523,6 +606,8 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
         existingBatches,
         isNewBatch,
         isParsedFromCompound,
+        hasUnitFlag,
+        originalUnit,
       };
     });
   }, [findBarcodeByName, medications, getDefaultExpiry, smartDefaults]);
@@ -954,10 +1039,12 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
             <ScrollArea className="flex-1 min-h-0">
               <div className="space-y-1">
                 {/* Header */}
-                <div className="grid grid-cols-[1fr_80px_80px_100px_40px] gap-2 text-xs font-medium text-muted-foreground px-2 py-1 bg-muted/50 rounded sticky top-0">
+                <div className="grid grid-cols-[1fr_60px_70px_70px_70px_100px_32px] gap-1.5 text-xs font-medium text-muted-foreground px-2 py-1 bg-muted/50 rounded sticky top-0">
                   <span>Product Name</span>
-                  <span>Stock</span>
-                  <span>Cost</span>
+                  <span className="text-center">Stock</span>
+                  <span className="text-center">Cost</span>
+                  <span className="text-center">Retail</span>
+                  <span className="text-center">W/Sale</span>
                   <span>Expiry</span>
                   <span></span>
                 </div>
@@ -965,20 +1052,26 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
                 {editableRows.map((row) => (
                   <div
                     key={row.id}
-                    className={`grid grid-cols-[1fr_80px_80px_100px_40px] gap-2 items-center px-2 py-1.5 rounded border ${
+                    className={`grid grid-cols-[1fr_60px_70px_70px_70px_100px_32px] gap-1.5 items-center px-2 py-1.5 rounded border ${
                       !row.isValid ? 'border-destructive/30 bg-destructive/5' :
+                      row.hasUnitFlag ? 'border-orange-500/40 bg-orange-50/50 dark:bg-orange-950/20' :
                       row.warningMsg ? 'border-amber-500/30 bg-amber-50/50 dark:bg-amber-950/20' :
                       row.isNewBatch ? 'border-blue-500/30 bg-blue-50/50 dark:bg-blue-950/20' :
                       'border-border hover:bg-muted/30'
                     }`}
                   >
-                    <div className="flex items-center gap-2 min-w-0">
+                    <div className="flex items-center gap-1.5 min-w-0">
                       <Input
                         value={row.name}
                         onChange={(e) => updateEditableRow(row.id, 'name', e.target.value)}
                         placeholder="Product name..."
                         className="h-7 text-sm border-0 bg-transparent p-0 focus-visible:ring-0"
                       />
+                      {row.hasUnitFlag && (
+                        <Badge variant="outline" className="text-[10px] px-1 py-0 h-4 text-orange-600 border-orange-400 flex-shrink-0">
+                          {row.originalUnit}
+                        </Badge>
+                      )}
                       {row.isParsedFromCompound && (
                         <Wand2 className="h-3 w-3 text-primary flex-shrink-0" />
                       )}
@@ -989,30 +1082,46 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
                     <Input
                       value={row.current_stock}
                       onChange={(e) => updateEditableRow(row.id, 'current_stock', e.target.value)}
-                      className="h-7 text-sm text-center"
+                      className="h-7 text-xs text-center px-1"
                       type="number"
                       min={0}
                     />
                     <Input
                       value={row.unit_price}
                       onChange={(e) => updateEditableRow(row.id, 'unit_price', e.target.value)}
-                      className="h-7 text-sm text-center"
+                      className="h-7 text-xs text-center px-1"
                       type="number"
                       min={0}
                     />
                     <Input
+                      value={row.selling_price}
+                      onChange={(e) => updateEditableRow(row.id, 'selling_price', e.target.value)}
+                      className="h-7 text-xs text-center px-1"
+                      type="number"
+                      min={0}
+                      placeholder="Retail"
+                    />
+                    <Input
+                      value={row.wholesale_price}
+                      onChange={(e) => updateEditableRow(row.id, 'wholesale_price', e.target.value)}
+                      className="h-7 text-xs text-center px-1"
+                      type="number"
+                      min={0}
+                      placeholder="W/Sale"
+                    />
+                    <Input
                       value={row.expiry_date}
                       onChange={(e) => updateEditableRow(row.id, 'expiry_date', e.target.value)}
-                      className="h-7 text-sm"
+                      className="h-7 text-xs px-1"
                       type="date"
                     />
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                      className="h-6 w-6 text-muted-foreground hover:text-destructive"
                       onClick={() => removeRow(row.id)}
                     >
-                      <Trash2 className="h-3.5 w-3.5" />
+                      <Trash2 className="h-3 w-3" />
                     </Button>
                   </div>
                 ))}
