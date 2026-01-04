@@ -76,16 +76,26 @@ interface SupplierEntry {
   isNew: boolean;
 }
 
+export interface QuickItemPrefill {
+  name: string;
+  selling_price: number;
+  quantity_to_deduct?: number;
+}
+
 interface AddMedicationModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   editingMedication?: Medication | null;
+  prefillData?: QuickItemPrefill | null;
+  onProductCreated?: (medicationId: string) => void;
 }
 
 export const AddMedicationModal = ({
   open,
   onOpenChange,
   editingMedication,
+  prefillData,
+  onProductCreated,
 }: AddMedicationModalProps) => {
   const { addMedication, updateMedication, medications } = useMedications();
   const { suppliers, addSupplier, addSupplierProduct } = useSuppliers();
@@ -177,6 +187,24 @@ export const AddMedicationModal = ({
         active_ingredients: ingredients?.join(', ') || '',
       });
       setSupplierEntries([]);
+    } else if (prefillData) {
+      // Pre-fill from Quick Item conversion
+      form.reset({
+        name: prefillData.name,
+        category: smartDefaults.category,
+        batch_number: '',
+        barcode_id: '',
+        current_stock: 0,
+        reorder_level: smartDefaults.reorder_level,
+        unit_price: 0,
+        selling_price: prefillData.selling_price,
+        wholesale_price: undefined,
+        dispensing_unit: smartDefaults.dispensing_unit,
+        is_controlled: false,
+        nafdac_reg_number: '',
+        active_ingredients: '',
+      });
+      setSupplierEntries([]);
     } else {
       // Use smart defaults for new medications
       form.reset({
@@ -196,7 +224,7 @@ export const AddMedicationModal = ({
       });
       setSupplierEntries([]);
     }
-  }, [editingMedication, form, open, smartDefaults]);
+  }, [editingMedication, prefillData, form, open, smartDefaults]);
 
   const handleAddExistingSupplier = () => {
     if (!selectedExistingSupplier) return;
@@ -306,6 +334,11 @@ export const AddMedicationModal = ({
               sku: null,
             });
           }
+        }
+
+        // Notify parent if callback provided (for Quick Item conversion)
+        if (onProductCreated) {
+          onProductCreated(result.id);
         }
       }
       onOpenChange(false);

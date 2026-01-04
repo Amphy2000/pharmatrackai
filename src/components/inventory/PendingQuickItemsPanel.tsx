@@ -1,6 +1,6 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { format } from 'date-fns';
-import { Package, Check, X, Link2, AlertCircle, Clock, Minus } from 'lucide-react';
+import { Package, Check, X, Link2, Clock, Minus, Sparkles, PlusCircle } from 'lucide-react';
 import { useQuickItems, PendingQuickItem } from '@/hooks/useQuickItems';
 import { useMedications } from '@/hooks/useMedications';
 import { useCurrency } from '@/contexts/CurrencyContext';
@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
+import { AddMedicationModal, QuickItemPrefill } from './AddMedicationModal';
 import {
   Dialog,
   DialogContent,
@@ -38,11 +39,49 @@ export const PendingQuickItemsPanel = () => {
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [isLinking, setIsLinking] = useState(false);
+  
+  // Convert to Product state
+  const [convertModalOpen, setConvertModalOpen] = useState(false);
+  const [convertPrefill, setConvertPrefill] = useState<QuickItemPrefill | null>(null);
+  const [convertingItem, setConvertingItem] = useState<PendingQuickItem | null>(null);
+
+  // Check which items have potential matches in inventory
+  const itemsWithMatchInfo = useMemo(() => {
+    return pendingItems.map(item => {
+      const itemNameLower = item.name.toLowerCase().trim();
+      const hasMatch = medications?.some(med => 
+        med.name.toLowerCase().includes(itemNameLower) || 
+        itemNameLower.includes(med.name.toLowerCase())
+      ) ?? false;
+      
+      // Exact match check
+      const exactMatch = medications?.find(med => 
+        med.name.toLowerCase() === itemNameLower
+      );
+      
+      return {
+        ...item,
+        hasMatch,
+        exactMatch,
+        isNewProduct: !hasMatch,
+      };
+    });
+  }, [pendingItems, medications]);
 
   const handleLinkClick = (item: PendingQuickItem) => {
     setSelectedItem(item);
     setLinkDialogOpen(true);
     setSearchQuery('');
+  };
+
+  const handleConvertClick = (item: PendingQuickItem) => {
+    setConvertingItem(item);
+    setConvertPrefill({
+      name: item.name,
+      selling_price: item.selling_price,
+      quantity_to_deduct: item.quantity_sold,
+    });
+    setConvertModalOpen(true);
   };
 
   // When linking: deduct stock from inventory since item was already sold
@@ -83,6 +122,47 @@ export const PendingQuickItemsPanel = () => {
       });
     } finally {
       setIsLinking(false);
+    }
+  };
+
+  // After product is created, deduct the sold quantity and mark as linked
+  const handleProductCreated = async (medicationId: string) => {
+    if (!convertingItem || !user) return;
+
+    try {
+      // Get the freshly created medication to get its stock
+      const medication = medications?.find(m => m.id === medicationId);
+      
+      // Deduct the sold quantity from the new product's stock
+      if (medication) {
+        const newStock = Math.max(0, medication.current_stock - convertingItem.quantity_sold);
+        await updateMedication.mutateAsync({
+          id: medicationId,
+          current_stock: newStock,
+        });
+      }
+
+      // Mark quick item as linked
+      await linkToMedication.mutateAsync({
+        quickItemId: convertingItem.id,
+        medicationId,
+        reviewedBy: user.id,
+      });
+
+      toast({
+        title: 'Product Created & Linked',
+        description: `New product created. Stock adjusted by -${convertingItem.quantity_sold} for the previous sale.`,
+      });
+
+      setConvertModalOpen(false);
+      setConvertingItem(null);
+      setConvertPrefill(null);
+    } catch (error) {
+      toast({
+        title: 'Warning',
+        description: 'Product created but failed to auto-link. Please link manually.',
+        variant: 'destructive',
+      });
     }
   };
 
@@ -139,10 +219,14 @@ export const PendingQuickItemsPanel = () => {
         <CardContent>
           <ScrollArea className="max-h-[300px]">
             <div className="space-y-2">
-              {pendingItems.map((item) => (
+              {itemsWithMatchInfo.map((item) => (
                 <div
                   key={item.id}
-                  className="flex items-center justify-between p-3 rounded-lg bg-background border border-border hover:border-amber-500/30 transition-colors"
+                  className={`flex items-center justify-between p-3 rounded-lg bg-background border transition-colors ${
+                    item.isNewProduct 
+                      ? 'border-purple-500/50 bg-purple-500/5' 
+                      : 'border-border hover:border-amber-500/30'
+                  }`}
                 >
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2">
@@ -150,6 +234,12 @@ export const PendingQuickItemsPanel = () => {
                       <Badge variant="secondary" className="text-xs shrink-0">
                         ×{item.quantity_sold}
                       </Badge>
+                      {item.isNewProduct && (
+                        <Badge className="bg-purple-500/20 text-purple-600 border-purple-500/30 text-xs shrink-0 gap-1">
+                          <Sparkles className="h-3 w-3" />
+                          New
+                        </Badge>
+                      )}
                     </div>
                     <div className="flex items-center gap-3 text-xs text-muted-foreground mt-1">
                       <span>{formatPrice(item.selling_price)} each</span>
@@ -160,15 +250,27 @@ export const PendingQuickItemsPanel = () => {
                     </div>
                   </div>
                   <div className="flex items-center gap-2 shrink-0 ml-3">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="gap-1 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
-                      onClick={() => handleLinkClick(item)}
-                    >
-                      <Link2 className="h-3.5 w-3.5" />
-                      Link
-                    </Button>
+                    {item.isNewProduct ? (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-1 text-purple-600 hover:text-purple-700 hover:bg-purple-50 border-purple-300"
+                        onClick={() => handleConvertClick(item)}
+                      >
+                        <PlusCircle className="h-3.5 w-3.5" />
+                        Convert to Product
+                      </Button>
+                    ) : (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="gap-1 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+                        onClick={() => handleLinkClick(item)}
+                      >
+                        <Link2 className="h-3.5 w-3.5" />
+                        Link
+                      </Button>
+                    )}
                     <Button
                       size="sm"
                       variant="ghost"
@@ -253,6 +355,20 @@ export const PendingQuickItemsPanel = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Convert to Product Modal */}
+      <AddMedicationModal
+        open={convertModalOpen}
+        onOpenChange={(open) => {
+          setConvertModalOpen(open);
+          if (!open) {
+            setConvertingItem(null);
+            setConvertPrefill(null);
+          }
+        }}
+        prefillData={convertPrefill}
+        onProductCreated={handleProductCreated}
+      />
     </>
   );
 };
