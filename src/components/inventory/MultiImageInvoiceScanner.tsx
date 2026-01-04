@@ -849,13 +849,13 @@ export const MultiImageInvoiceScanner = ({ open, onOpenChange }: MultiImageInvoi
                               min={0}
                               value={item.unitPrice || ''}
                               onChange={(e) => updateItem(item.id, 'unitPrice', parseFloat(e.target.value) || null)}
-                              className={`h-8 text-right ${!item.unitPrice ? 'border-destructive' : ''}`}
+                              className={`h-8 text-right w-full ${!item.unitPrice ? 'border-destructive' : ''}`}
                               placeholder="0"
                             />
                           </td>
 
                           {/* Row Total */}
-                          <td className="p-2 text-right font-medium text-muted-foreground">
+                          <td className="p-2 text-right font-medium text-muted-foreground whitespace-nowrap">
                             {formatPrice(item.rowTotal)}
                           </td>
 
@@ -866,7 +866,7 @@ export const MultiImageInvoiceScanner = ({ open, onOpenChange }: MultiImageInvoi
                               min={0}
                               value={item.sellingPrice || ''}
                               onChange={(e) => updateItem(item.id, 'sellingPrice', parseFloat(e.target.value) || null)}
-                              className={`h-8 text-right ${!item.sellingPrice ? 'bg-blue-50' : ''}`}
+                              className={`h-8 text-right w-full ${!item.sellingPrice ? 'bg-blue-50' : ''}`}
                               placeholder={item.unitPrice ? `~${calculateRetailPrice(item.unitPrice)}` : ''}
                             />
                           </td>
@@ -878,7 +878,7 @@ export const MultiImageInvoiceScanner = ({ open, onOpenChange }: MultiImageInvoi
                               min={0}
                               value={item.wholesalePrice || ''}
                               onChange={(e) => updateItem(item.id, 'wholesalePrice', parseFloat(e.target.value) || null)}
-                              className={`h-8 text-right ${!item.wholesalePrice ? 'bg-blue-50' : ''}`}
+                              className={`h-8 text-right w-full ${!item.wholesalePrice ? 'bg-blue-50' : ''}`}
                               placeholder={item.unitPrice ? `~${calculateWholesalePrice(item.unitPrice)}` : ''}
                             />
                           </td>
@@ -889,7 +889,7 @@ export const MultiImageInvoiceScanner = ({ open, onOpenChange }: MultiImageInvoi
                               type="date"
                               value={item.expiryDate || ''}
                               onChange={(e) => updateItem(item.id, 'expiryDate', e.target.value || null)}
-                              className={`h-8 text-xs ${!item.expiryDate ? 'bg-yellow-100 border-yellow-400' : ''}`}
+                              className={`h-8 text-xs w-full ${!item.expiryDate ? 'bg-yellow-100 border-yellow-400' : ''}`}
                             />
                           </td>
 
