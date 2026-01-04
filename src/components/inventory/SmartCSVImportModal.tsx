@@ -698,13 +698,14 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
               <div className="h-full overflow-auto">
                 <div className="min-w-[950px]">
                   {/* Header Row */}
-                  <div className="grid grid-cols-[32px_1fr_120px_70px_70px_80px_70px_100px_90px_32px] gap-1 p-2 bg-muted text-xs font-medium sticky top-0 z-10 border-b">
+                  <div className="grid grid-cols-[32px_1fr_100px_60px_65px_70px_70px_60px_90px_80px_32px] gap-1 p-2 bg-muted text-xs font-medium sticky top-0 z-10 border-b">
                     <span>#</span>
                     <span>Product Name *</span>
                     <span>Manufacturer</span>
                     <span>Stock *</span>
                     <span>Cost *</span>
-                    <span>Sell Price</span>
+                    <span>Retail</span>
+                    <span>Wholesale</span>
                     <span>Reorder</span>
                     <span>Expiry</span>
                     <span>Category</span>
@@ -715,7 +716,7 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
                   {editableRows.map((row, idx) => (
                     <div
                       key={row.id}
-                      className={`grid grid-cols-[32px_1fr_120px_70px_70px_80px_70px_100px_90px_32px] gap-1 p-1.5 border-b items-center text-sm ${!row.isValid ? 'bg-destructive/10' : idx % 2 === 0 ? 'bg-background' : 'bg-muted/20'}`}
+                      className={`grid grid-cols-[32px_1fr_100px_60px_65px_70px_70px_60px_90px_80px_32px] gap-1 p-1.5 border-b items-center text-sm ${!row.isValid ? 'bg-destructive/10' : idx % 2 === 0 ? 'bg-background' : 'bg-muted/20'}`}
                     >
                       <span className="text-muted-foreground text-xs">{idx + 1}</span>
                       <Input
@@ -745,6 +746,13 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
                       <Input
                         value={row.selling_price}
                         onChange={(e) => updateEditableRow(row.id, 'selling_price', e.target.value)}
+                        className="h-7 text-xs"
+                        type="number"
+                        placeholder="—"
+                      />
+                      <Input
+                        value={row.wholesale_price}
+                        onChange={(e) => updateEditableRow(row.id, 'wholesale_price', e.target.value)}
                         className="h-7 text-xs"
                         type="number"
                         placeholder="—"
