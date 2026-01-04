@@ -88,6 +88,7 @@ export interface MedicationFormData {
   manufacturing_date?: string;
   unit_price: number;
   selling_price?: number;
+  wholesale_price?: number;
   barcode_id?: string;
   is_controlled?: boolean;
   nafdac_reg_number?: string;

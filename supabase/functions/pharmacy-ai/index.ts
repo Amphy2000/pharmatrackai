@@ -138,42 +138,39 @@ Return a JSON object:
 }`,
 
   scan_invoice: `Act as an expert pharmacy invoice data extraction system.
-Parse the invoice image/text and extract all medication entries with precision.
+Parse the invoice image and extract all medication/product rows.
 
-For each item, extract:
-- Product name (full name as written)
-- Quantity ordered
-- Unit price
-- Total price
-- Batch number (if visible)
-- Expiry date (if visible)
-- Supplier name (from header)
+Extract per line item (when available):
+- productName (required)
+- quantity (default 1 if unclear)
+- unitPrice (cost/purchase price)
+- sellingPrice (retail price)
+- wholesalePrice (wholesale price)
+- batchNumber
+- expiryDate
 
-Return a JSON object:
+Return ONLY valid JSON (no markdown) with this structure:
 {
-  "supplier": {
-    "name": "Supplier Company Name",
-    "invoice_number": "Invoice #",
-    "invoice_date": "Date if visible"
-  },
+  "supplierName": string | null,
+  "invoiceDate": "YYYY-MM-DD" | null,
+  "invoiceTotal": number | null,
   "items": [
     {
-      "name": "Medication Name",
+      "productName": string,
       "quantity": number,
-      "unit_price": number,
-      "total_price": number,
-      "batch_number": "if available",
-      "expiry_date": "if available"
+      "unitPrice": number | null,
+      "sellingPrice": number | null,
+      "wholesalePrice": number | null,
+      "batchNumber": string | null,
+      "expiryDate": "YYYY-MM-DD" | null
     }
   ],
-  "totals": {
-    "subtotal": number,
-    "tax": number,
-    "grand_total": number
-  },
   "confidence": "high" | "medium" | "low",
-  "notes": "Any parsing issues or unclear items"
-}`,
+  "notes": string
+}
+
+If you cannot identify any products, return:
+{ "items": [], "confidence": "low", "notes": "Could not extract products from image" }`,
 
   scan_expiry: `Act as an expert product packaging analyzer for a pharmacy inventory system.
 Analyze the product packaging image and extract expiry/manufacturing information.
@@ -527,12 +524,11 @@ Interpret this pharmacy search query and extract the search parameters.`;
 async function handleScanInvoice(payload: any): Promise<any> {
   // Accept both imageBase64 and imageUrl (they may be the same data-uri)
   const imageData = payload?.imageBase64 || payload?.imageUrl;
-  
+
   if (!imageData) {
     throw new Error("No invoice image provided. Send imageBase64 or imageUrl.");
   }
 
-  // Use Lovable AI Gateway for faster processing
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
   if (!LOVABLE_API_KEY) {
     throw new Error("LOVABLE_API_KEY is not configured");
@@ -540,7 +536,7 @@ async function handleScanInvoice(payload: any): Promise<any> {
 
   console.log(`Processing invoice scan via Lovable AI, size: ${imageData.length} chars`);
 
-  // Use flash-lite model for faster invoice scanning
+  // Use flash for better vision extraction quality
   const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -548,23 +544,15 @@ async function handleScanInvoice(payload: any): Promise<any> {
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "google/gemini-2.5-flash-lite",
+      model: "google/gemini-2.5-flash",
       messages: [
         {
           role: "user",
           content: [
-            {
-              type: "text",
-              text: PROMPTS.scan_invoice
-            },
-            {
-              type: "image_url",
-              image_url: {
-                url: imageData
-              }
-            }
-          ]
-        }
+            { type: "text", text: PROMPTS.scan_invoice },
+            { type: "image_url", image_url: { url: imageData } },
+          ],
+        },
       ],
     }),
   });
@@ -572,39 +560,55 @@ async function handleScanInvoice(payload: any): Promise<any> {
   if (!response.ok) {
     const errorText = await response.text();
     console.error("Lovable AI Vision error:", response.status, errorText);
-    
+
     if (response.status === 429) {
-      throw new Error("AI is busy. Please wait a moment and try again.");
+      throw new Error("Rate limit exceeded");
     }
     if (response.status === 402) {
-      throw new Error("AI credits depleted. Please add credits in settings.");
+      throw new Error("Payment required");
     }
     throw new Error(`Invoice scanning failed: ${response.status}`);
   }
 
   const data = await response.json();
-  const content = data.choices?.[0]?.message?.content;
-  
+  const content = data.choices?.[0]?.message?.content as string | undefined;
+
   if (!content) {
-    throw new Error("Could not parse invoice");
+    return { items: [], confidence: "low", notes: "No AI response content" };
   }
 
-  // Parse JSON from the response (may be wrapped in markdown)
-  let jsonContent = content;
-  const jsonMatch = content.match(/```json\s*([\s\S]*?)\s*```/);
-  if (jsonMatch) {
-    jsonContent = jsonMatch[1];
+  // Try to extract JSON robustly (may be wrapped in markdown or contain extra text)
+  let jsonText = content;
+  const fenced = content.match(/```json\s*([\s\S]*?)\s*```/i);
+  if (fenced?.[1]) jsonText = fenced[1];
+  else {
+    const objMatch = content.match(/\{[\s\S]*\}/);
+    if (objMatch?.[0]) jsonText = objMatch[0];
   }
 
-  const parsed = JSON.parse(jsonContent);
-  
+  let parsed: any;
+  try {
+    parsed = JSON.parse(jsonText);
+  } catch (e) {
+    console.error("Failed to parse invoice JSON:", e);
+    return {
+      items: [],
+      confidence: "low",
+      notes: "Could not parse invoice data. Please try a clearer image.",
+    };
+  }
+
   // Normalize response shape - ensure items array exists at top level
   if (parsed.result?.items && !parsed.items) {
     parsed.items = parsed.result.items;
   }
-  
+
+  if (!Array.isArray(parsed.items)) {
+    parsed.items = [];
+  }
+
   console.log(`Extracted ${parsed.items?.length || 0} items from invoice`);
-  
+
   return parsed;
 }
 

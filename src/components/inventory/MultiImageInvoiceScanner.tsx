@@ -32,8 +32,9 @@ interface ExtractedItem {
   id: string;
   productName: string;
   quantity: number;
-  unitPrice: number | null;
-  suggestedSellingPrice: number | null;
+  unitPrice: number | null; // cost price
+  sellingPrice: number | null; // retail
+  wholesalePrice: number | null;
   batchNumber: string | null;
   expiryDate: string | null;
   matched: Medication | null;
@@ -82,21 +83,54 @@ export const MultiImageInvoiceScanner = ({ open, onOpenChange }: MultiImageInvoi
   // Generate unique ID
   const generateId = () => `item-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
+  const compressInvoiceImage = async (dataUrl: string): Promise<string> => {
+    // Keep payloads small to avoid slow uploads + rate limits
+    const MAX_DIM = 1600;
+    const QUALITY = 0.78;
+
+    try {
+      const img = new Image();
+      img.src = dataUrl;
+      await new Promise<void>((resolve, reject) => {
+        img.onload = () => resolve();
+        img.onerror = () => reject(new Error('Failed to load image'));
+      });
+
+      const maxSide = Math.max(img.width, img.height);
+      const scale = maxSide > MAX_DIM ? MAX_DIM / maxSide : 1;
+      const w = Math.max(1, Math.round(img.width * scale));
+      const h = Math.max(1, Math.round(img.height * scale));
+
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return dataUrl;
+
+      ctx.drawImage(img, 0, 0, w, h);
+      return canvas.toDataURL('image/jpeg', QUALITY);
+    } catch {
+      return dataUrl;
+    }
+  };
+
   // Handle multiple file upload
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
     const newImages: UploadedImage[] = [];
-    
+
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
-      const preview = await new Promise<string>((resolve) => {
+      const original = await new Promise<string>((resolve) => {
         const reader = new FileReader();
         reader.onload = (event) => resolve(event.target?.result as string);
         reader.readAsDataURL(file);
       });
-      
+
+      const preview = await compressInvoiceImage(original);
+
       newImages.push({
         id: generateId(),
         file,
@@ -104,8 +138,8 @@ export const MultiImageInvoiceScanner = ({ open, onOpenChange }: MultiImageInvoi
         processed: false,
       });
     }
-    
-    setUploadedImages(prev => [...prev, ...newImages]);
+
+    setUploadedImages((prev) => [...prev, ...newImages]);
     setError(null);
   };
 
@@ -194,16 +228,25 @@ export const MultiImageInvoiceScanner = ({ open, onOpenChange }: MultiImageInvoi
 
               const unitPriceRaw = raw?.unitPrice ?? raw?.unit_price ?? raw?.cost_price ?? null;
               const unitPrice = typeof unitPriceRaw === 'number' ? unitPriceRaw : Number(unitPriceRaw);
-              const suggestedSellingPrice = Number.isFinite(unitPrice)
-                ? calculateSellingPrice(unitPrice)
-                : null;
+              const normalizedUnitPrice = Number.isFinite(unitPrice) ? unitPrice : null;
+
+              const sellingPriceRaw = raw?.sellingPrice ?? raw?.selling_price ?? raw?.retail_price ?? raw?.unit_retail ?? null;
+              const sellingPriceNum = typeof sellingPriceRaw === 'number' ? sellingPriceRaw : Number(sellingPriceRaw);
+              const sellingPrice = Number.isFinite(sellingPriceNum)
+                ? sellingPriceNum
+                : (normalizedUnitPrice != null ? calculateSellingPrice(normalizedUnitPrice) : null);
+
+              const wholesalePriceRaw = raw?.wholesalePrice ?? raw?.wholesale_price ?? raw?.w_sale ?? raw?.wholesale ?? null;
+              const wholesalePriceNum = typeof wholesalePriceRaw === 'number' ? wholesalePriceRaw : Number(wholesalePriceRaw);
+              const wholesalePrice = Number.isFinite(wholesalePriceNum) ? wholesalePriceNum : null;
 
               return {
                 id: generateId(),
                 productName,
                 quantity: Number(raw?.quantity ?? 1) || 1,
-                unitPrice: Number.isFinite(unitPrice) ? unitPrice : null,
-                suggestedSellingPrice,
+                unitPrice: normalizedUnitPrice,
+                sellingPrice,
+                wholesalePrice,
                 batchNumber,
                 expiryDate,
                 matched: matched || null,
@@ -241,26 +284,36 @@ export const MultiImageInvoiceScanner = ({ open, onOpenChange }: MultiImageInvoi
       // Deduplicate items by product name (combine quantities for same products)
       const deduplicatedItems = allItems.reduce((acc, item) => {
         const existingIndex = acc.findIndex(
-          existing => existing.productName.toLowerCase() === item.productName.toLowerCase() &&
-                      existing.batchNumber === item.batchNumber
+          (existing) =>
+            existing.productName.toLowerCase() === item.productName.toLowerCase() &&
+            existing.batchNumber === item.batchNumber
         );
-        
+
         if (existingIndex >= 0) {
           acc[existingIndex].quantity += item.quantity;
         } else {
           acc.push(item);
         }
-        
+
         return acc;
       }, [] as ExtractedItem[]);
 
       setExtractedItems(deduplicatedItems);
       setShowReviewDashboard(true);
 
-      toast({
-        title: 'Invoice processing complete',
-        description: `Extracted ${deduplicatedItems.length} unique items from ${totalImages} pages`,
-      });
+      if (deduplicatedItems.length === 0) {
+        toast({
+          title: 'No items extracted',
+          description:
+            'AI could not read this invoice (often handwriting/blur). You can add items manually or retake a clearer photo.',
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: 'Invoice processing complete',
+          description: `Extracted ${deduplicatedItems.length} unique items from ${totalImages} pages`,
+        });
+      }
 
     } catch (err) {
       console.error('Error processing invoices:', err);
@@ -273,21 +326,44 @@ export const MultiImageInvoiceScanner = ({ open, onOpenChange }: MultiImageInvoi
 
   // Update item field inline
   const updateItem = (id: string, field: keyof ExtractedItem, value: any) => {
-    setExtractedItems(prev => prev.map(item => {
-      if (item.id === id) {
-        const updated = { ...item, [field]: value };
-        // Validate for errors
-        updated.hasError = !updated.quantity || updated.quantity <= 0 || !updated.unitPrice || updated.unitPrice <= 0;
-        return updated;
-      }
-      return item;
-    }));
+    setExtractedItems((prev) =>
+      prev.map((item) => {
+        if (item.id === id) {
+          const updated = { ...item, [field]: value };
+          // Validate for errors
+          updated.hasError = !updated.quantity || updated.quantity <= 0 || !updated.unitPrice || updated.unitPrice <= 0;
+          return updated;
+        }
+        return item;
+      })
+    );
   };
 
   // Remove item from list
   const removeItem = (id: string) => {
-    setExtractedItems(prev => prev.filter(item => item.id !== id));
+    setExtractedItems((prev) => prev.filter((item) => item.id !== id));
   };
+
+  const addManualItem = () => {
+    setExtractedItems((prev) => [
+      {
+        id: generateId(),
+        productName: '',
+        quantity: 1,
+        unitPrice: null,
+        sellingPrice: null,
+        wholesalePrice: null,
+        batchNumber: null,
+        expiryDate: null,
+        matched: null,
+        isNew: true,
+        isEditing: false,
+        hasError: true,
+      },
+      ...prev,
+    ]);
+  };
+
 
   // Apply global expiry date to all empty fields
   const applyGlobalExpiry = () => {
@@ -343,7 +419,8 @@ export const MultiImageInvoiceScanner = ({ open, onOpenChange }: MultiImageInvoi
           id: item.matched!.id,
           current_stock: item.matched!.current_stock + item.quantity,
           unit_price: item.unitPrice || item.matched!.unit_price,
-          ...(item.suggestedSellingPrice ? { selling_price: item.suggestedSellingPrice } : {}),
+          ...(item.sellingPrice != null ? { selling_price: item.sellingPrice } : {}),
+          ...(item.wholesalePrice != null ? { wholesale_price: item.wholesalePrice } : {}),
           ...(item.expiryDate ? { expiry_date: item.expiryDate } : {}),
         });
       }
@@ -359,7 +436,8 @@ export const MultiImageInvoiceScanner = ({ open, onOpenChange }: MultiImageInvoi
             reorder_level: 10,
             expiry_date: item.expiryDate,
             unit_price: item.unitPrice,
-            selling_price: item.suggestedSellingPrice || item.unitPrice,
+            selling_price: item.sellingPrice || item.unitPrice,
+            ...(item.wholesalePrice != null ? { wholesale_price: item.wholesalePrice } : {}),
           });
         }
       }
@@ -424,7 +502,7 @@ export const MultiImageInvoiceScanner = ({ open, onOpenChange }: MultiImageInvoi
       if (!open) resetScanner();
       onOpenChange(open);
     }}>
-      <DialogContent className="max-w-6xl max-h-[95vh] overflow-hidden flex flex-col">
+      <DialogContent className="max-w-6xl max-h-[95vh] min-h-0 overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-xl">
             <FileImage className="h-5 w-5 text-primary" />
@@ -440,7 +518,7 @@ export const MultiImageInvoiceScanner = ({ open, onOpenChange }: MultiImageInvoi
 
         {!showReviewDashboard ? (
           // Upload & Processing View
-          <div className="flex-1 flex flex-col gap-4 overflow-hidden">
+          <div className="flex-1 min-h-0 flex flex-col gap-4 overflow-hidden">
             {/* Image Upload Area */}
             <div className="flex gap-4">
               <label className="flex-shrink-0 w-32 h-32 border-2 border-dashed rounded-lg flex flex-col items-center justify-center cursor-pointer hover:bg-muted/50 transition-colors">
@@ -544,7 +622,7 @@ export const MultiImageInvoiceScanner = ({ open, onOpenChange }: MultiImageInvoi
           </div>
         ) : (
           // Review Dashboard
-          <div className="flex-1 flex flex-col gap-4 overflow-hidden">
+          <div className="flex-1 min-h-0 flex flex-col gap-4 overflow-hidden">
             {/* Toolbar */}
             <div className="flex flex-wrap items-center gap-3 p-3 border rounded-lg bg-muted/20">
               {/* Quick Expiry Picker */}
@@ -599,6 +677,16 @@ export const MultiImageInvoiceScanner = ({ open, onOpenChange }: MultiImageInvoi
                 </Button>
               </div>
 
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={addManualItem}
+                className="h-7 text-xs"
+              >
+                <Plus className="h-3.5 w-3.5 mr-1.5" />
+                Add Item
+              </Button>
+
               <div className="flex-1" />
 
               {/* Verify All Checkbox */}
@@ -613,21 +701,36 @@ export const MultiImageInvoiceScanner = ({ open, onOpenChange }: MultiImageInvoi
                 </label>
               </div>
 
-              {/* Summary Badge */}
-              <Badge variant="secondary">
-                {matchedCount}/{extractedItems.length} matched
-              </Badge>
+              {/* Summary */}
+              <div className="flex items-center gap-2">
+                <Badge variant="secondary">{matchedCount} matched</Badge>
+                <Badge variant="outline">{Math.max(0, extractedItems.length - matchedCount)} new</Badge>
+              </div>
             </div>
 
+            {extractedItems.length === 0 && (
+              <div className="flex items-start gap-2 p-3 border border-warning/30 bg-warning/5 rounded-lg text-sm">
+                <AlertCircle className="h-4 w-4 text-warning mt-0.5" />
+                <div>
+                  <div className="font-medium">No items extracted</div>
+                  <div className="text-muted-foreground">
+                    If the invoice is handwritten/blurred, AI may not read it. You can add items manually (Add Item) or retake a clearer photo.
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Data Table */}
-            <ScrollArea className="flex-1 border rounded-lg">
-              <div className="min-w-[700px]">
+            <ScrollArea className="flex-1 min-h-0 border rounded-lg">
+              <div className="min-w-[980px]">
                 {/* Table Header */}
-                <div className="grid grid-cols-[50px_1fr_80px_100px_120px_60px] gap-2 p-3 border-b bg-muted/30 font-medium text-sm sticky top-0 z-10">
+                <div className="grid grid-cols-[50px_1fr_80px_110px_120px_120px_130px_60px] gap-2 p-3 border-b bg-muted/30 font-medium text-sm sticky top-0 z-10">
                   <div>S/N</div>
                   <div>Product Name</div>
                   <div className="text-center">Qty</div>
                   <div className="text-right">Unit Cost</div>
+                  <div className="text-right">Retail</div>
+                  <div className="text-right">Wholesale</div>
                   <div className="text-center">Expiry Date</div>
                   <div></div>
                 </div>
@@ -641,15 +744,18 @@ export const MultiImageInvoiceScanner = ({ open, onOpenChange }: MultiImageInvoi
                       animate={{ opacity: 1, x: 0 }}
                       exit={{ opacity: 0, x: 20 }}
                       transition={{ delay: index * 0.03 }}
-                      className={`grid grid-cols-[50px_1fr_80px_100px_120px_60px] gap-2 p-3 border-b items-center text-sm ${
-                        item.hasError ? 'bg-destructive/10 border-destructive/30' : 
-                        item.matched ? 'bg-green-500/5' : 'bg-warning/5'
+                      className={`grid grid-cols-[50px_1fr_80px_110px_120px_120px_130px_60px] gap-2 p-3 border-b items-center text-sm ${
+                        item.hasError
+                          ? 'bg-destructive/10 border-destructive/30'
+                          : item.matched
+                            ? 'bg-green-500/5'
+                            : 'bg-warning/5'
                       }`}
                     >
                       {/* S/N */}
                       <div className="text-muted-foreground">{index + 1}</div>
 
-                      {/* Product Name - Inline Editable */}
+                      {/* Product Name */}
                       <div className="flex flex-col">
                         <Input
                           value={item.productName}
@@ -657,15 +763,13 @@ export const MultiImageInvoiceScanner = ({ open, onOpenChange }: MultiImageInvoi
                           className="h-7 text-sm font-medium border-transparent hover:border-border focus:border-primary"
                         />
                         {item.matched ? (
-                          <span className="text-xs text-green-600 mt-0.5">
-                            ✓ {item.matched.name}
-                          </span>
+                          <span className="text-xs text-green-600 mt-0.5">✓ {item.matched.name}</span>
                         ) : (
                           <span className="text-xs text-warning mt-0.5">⚠ New item</span>
                         )}
                       </div>
 
-                      {/* Quantity - Inline Editable */}
+                      {/* Quantity */}
                       <Input
                         type="number"
                         min={1}
@@ -676,7 +780,7 @@ export const MultiImageInvoiceScanner = ({ open, onOpenChange }: MultiImageInvoi
                         }`}
                       />
 
-                      {/* Unit Cost - Inline Editable */}
+                      {/* Unit Cost */}
                       <Input
                         type="number"
                         min={0}
@@ -689,7 +793,29 @@ export const MultiImageInvoiceScanner = ({ open, onOpenChange }: MultiImageInvoi
                         placeholder="0.00"
                       />
 
-                      {/* Expiry Date - Inline Editable */}
+                      {/* Retail */}
+                      <Input
+                        type="number"
+                        min={0}
+                        step={0.01}
+                        value={item.sellingPrice || ''}
+                        onChange={(e) => updateItem(item.id, 'sellingPrice', parseFloat(e.target.value) || null)}
+                        className="h-7 text-right text-sm"
+                        placeholder="0.00"
+                      />
+
+                      {/* Wholesale */}
+                      <Input
+                        type="number"
+                        min={0}
+                        step={0.01}
+                        value={item.wholesalePrice || ''}
+                        onChange={(e) => updateItem(item.id, 'wholesalePrice', parseFloat(e.target.value) || null)}
+                        className="h-7 text-right text-sm"
+                        placeholder="0.00"
+                      />
+
+                      {/* Expiry Date */}
                       <Input
                         type="date"
                         value={item.expiryDate || ''}
@@ -711,6 +837,7 @@ export const MultiImageInvoiceScanner = ({ open, onOpenChange }: MultiImageInvoi
                 </AnimatePresence>
               </div>
             </ScrollArea>
+
 
             {/* Footer with Grand Total */}
             <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/20">
