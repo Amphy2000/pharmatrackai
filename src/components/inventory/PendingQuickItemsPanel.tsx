@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { format } from 'date-fns';
-import { Package, Check, X, Link2, AlertCircle, Clock } from 'lucide-react';
+import { Package, Check, X, Link2, AlertCircle, Clock, Minus } from 'lucide-react';
 import { useQuickItems, PendingQuickItem } from '@/hooks/useQuickItems';
 import { useMedications } from '@/hooks/useMedications';
 import { useCurrency } from '@/contexts/CurrencyContext';
@@ -8,8 +8,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { useToast } from '@/hooks/use-toast';
 import {
   Dialog,
   DialogContent,
@@ -29,13 +29,15 @@ import {
 
 export const PendingQuickItemsPanel = () => {
   const { pendingItems, isLoading, linkToMedication, markAsReviewed, pendingCount } = useQuickItems();
-  const { medications } = useMedications();
+  const { medications, updateMedication } = useMedications();
   const { formatPrice } = useCurrency();
   const { user } = useAuth();
+  const { toast } = useToast();
 
   const [selectedItem, setSelectedItem] = useState<PendingQuickItem | null>(null);
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [isLinking, setIsLinking] = useState(false);
 
   const handleLinkClick = (item: PendingQuickItem) => {
     setSelectedItem(item);
@@ -43,17 +45,45 @@ export const PendingQuickItemsPanel = () => {
     setSearchQuery('');
   };
 
+  // When linking: deduct stock from inventory since item was already sold
   const handleLink = async (medicationId: string) => {
     if (!selectedItem || !user) return;
     
-    await linkToMedication.mutateAsync({
-      quickItemId: selectedItem.id,
-      medicationId,
-      reviewedBy: user.id,
-    });
-    
-    setLinkDialogOpen(false);
-    setSelectedItem(null);
+    const medication = medications?.find(m => m.id === medicationId);
+    if (!medication) return;
+
+    setIsLinking(true);
+    try {
+      // Deduct the sold quantity from inventory
+      const newStock = Math.max(0, medication.current_stock - selectedItem.quantity_sold);
+      await updateMedication.mutateAsync({
+        id: medicationId,
+        current_stock: newStock,
+      });
+
+      // Mark quick item as linked
+      await linkToMedication.mutateAsync({
+        quickItemId: selectedItem.id,
+        medicationId,
+        reviewedBy: user.id,
+      });
+      
+      toast({
+        title: 'Item Linked & Stock Updated',
+        description: `Deducted ${selectedItem.quantity_sold} from "${medication.name}" (${medication.current_stock} → ${newStock})`,
+      });
+
+      setLinkDialogOpen(false);
+      setSelectedItem(null);
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: 'Failed to link item and update stock',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLinking(false);
+    }
   };
 
   const handleDismiss = async (item: PendingQuickItem) => {
@@ -161,21 +191,25 @@ export const PendingQuickItemsPanel = () => {
           <DialogHeader>
             <DialogTitle>Link to Inventory Item</DialogTitle>
             <DialogDescription>
-              Link "{selectedItem?.name}" to an existing inventory item so it can be tracked properly.
+              Link "{selectedItem?.name}" to an existing inventory item. 
+              <span className="font-medium text-amber-600"> Stock will be deducted</span> since this item was already sold.
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
             <div className="p-3 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
               <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400">
-                <AlertCircle className="h-4 w-4" />
-                <span className="text-sm font-medium">Quick Item Details</span>
+                <Minus className="h-4 w-4" />
+                <span className="text-sm font-medium">Quick Item Sold (Stock Deduction)</span>
               </div>
               <div className="mt-2 text-sm text-amber-600 dark:text-amber-500">
                 <p><strong>Name:</strong> {selectedItem?.name}</p>
                 <p><strong>Sold Price:</strong> {formatPrice(selectedItem?.selling_price || 0)}</p>
-                <p><strong>Quantity:</strong> {selectedItem?.quantity_sold}</p>
+                <p><strong>Quantity Sold:</strong> <span className="font-bold">-{selectedItem?.quantity_sold}</span></p>
               </div>
+              <p className="mt-2 text-xs text-muted-foreground">
+                When you link this to an inventory item, the quantity will be deducted from stock.
+              </p>
             </div>
 
             <Command className="rounded-lg border">
@@ -193,13 +227,14 @@ export const PendingQuickItemsPanel = () => {
                       value={med.name}
                       onSelect={() => handleLink(med.id)}
                       className="cursor-pointer"
+                      disabled={isLinking}
                     >
                       <div className="flex items-center gap-3 w-full">
                         <Package className="h-4 w-4 text-muted-foreground shrink-0" />
                         <div className="flex-1 min-w-0">
                           <p className="font-medium truncate">{med.name}</p>
                           <p className="text-xs text-muted-foreground">
-                            Stock: {med.current_stock} • {formatPrice(med.selling_price || med.unit_price)}
+                            Stock: {med.current_stock} → {Math.max(0, med.current_stock - (selectedItem?.quantity_sold || 0))} • {formatPrice(med.selling_price || med.unit_price)}
                           </p>
                         </div>
                         <Check className="h-4 w-4 text-emerald-500 opacity-0 group-data-[selected=true]:opacity-100" />
@@ -212,7 +247,7 @@ export const PendingQuickItemsPanel = () => {
           </div>
 
           <DialogFooter>
-            <Button variant="outline" onClick={() => setLinkDialogOpen(false)}>
+            <Button variant="outline" onClick={() => setLinkDialogOpen(false)} disabled={isLinking}>
               Cancel
             </Button>
           </DialogFooter>
