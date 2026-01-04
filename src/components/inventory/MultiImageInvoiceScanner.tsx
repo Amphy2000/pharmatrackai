@@ -787,13 +787,13 @@ export const MultiImageInvoiceScanner = ({ open, onOpenChange }: MultiImageInvoi
                   {/* Table Header */}
                   <thead className="sticky top-0 z-10 bg-muted/80 backdrop-blur">
                     <tr className="border-b">
-                      <th className="text-left font-medium p-2 w-10">#</th>
-                      <th className="text-left font-medium p-2 min-w-[180px]">Product</th>
-                      <th className="text-center font-medium p-2 w-16">Qty</th>
-                      <th className="text-right font-medium p-2 w-24">Cost</th>
+                      <th className="text-left font-medium p-2 w-8">#</th>
+                      <th className="text-left font-medium p-2 min-w-[140px]">Product</th>
+                      <th className="text-center font-medium p-2 w-20">Qty</th>
+                      <th className="text-right font-medium p-2 w-20">Cost</th>
                       <th className="text-right font-medium p-2 w-24">Total</th>
-                      <th className="text-right font-medium p-2 w-24">Retail</th>
-                      <th className="text-right font-medium p-2 w-24">Wholesale</th>
+                      <th className="text-right font-medium p-2 w-20">Retail</th>
+                      <th className="text-right font-medium p-2 w-20">Wholesale</th>
                       <th className="text-center font-medium p-2 w-28">Expiry</th>
                       <th className="w-8 p-2"></th>
                     </tr>
@@ -838,7 +838,7 @@ export const MultiImageInvoiceScanner = ({ open, onOpenChange }: MultiImageInvoi
                               min={1}
                               value={item.quantity}
                               onChange={(e) => updateItem(item.id, 'quantity', parseInt(e.target.value) || 0)}
-                              className={`h-8 text-center ${!item.quantity ? 'border-destructive' : ''}`}
+                              className={`h-8 text-center w-full ${!item.quantity ? 'border-destructive' : ''}`}
                             />
                           </td>
 
