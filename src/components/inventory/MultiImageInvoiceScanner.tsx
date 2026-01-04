@@ -720,11 +720,12 @@ export const MultiImageInvoiceScanner = ({ open, onOpenChange }: MultiImageInvoi
               </div>
             )}
 
-            {/* Data Table */}
-            <ScrollArea className="flex-1 min-h-0 border rounded-lg">
-              <div className="min-w-[980px]">
-                {/* Table Header */}
-                <div className="grid grid-cols-[50px_1fr_80px_110px_120px_120px_130px_60px] gap-2 p-3 border-b bg-muted/30 font-medium text-sm sticky top-0 z-10">
+            {/* Data Table - Scrollable container with fixed height */}
+            <div className="flex-1 min-h-0 border rounded-lg overflow-hidden flex flex-col">
+              <div className="overflow-auto flex-1">
+                <div className="min-w-[980px]">
+                  {/* Table Header */}
+                  <div className="grid grid-cols-[50px_1fr_80px_110px_120px_120px_130px_60px] gap-2 p-3 border-b bg-muted/30 font-medium text-sm sticky top-0 z-10 bg-background">
                   <div>S/N</div>
                   <div>Product Name</div>
                   <div className="text-center">Qty</div>
@@ -835,9 +836,9 @@ export const MultiImageInvoiceScanner = ({ open, onOpenChange }: MultiImageInvoi
                     </motion.div>
                   ))}
                 </AnimatePresence>
+                </div>
               </div>
-            </ScrollArea>
-
+            </div>
 
             {/* Footer with Grand Total */}
             <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/20">
