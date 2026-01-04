@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -6,10 +6,12 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Progress } from '@/components/ui/progress';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Slider } from '@/components/ui/slider';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   Camera, FileImage, Upload, Check, X, Loader2, AlertCircle,
   Plus, Minus, Trash2, Calendar, ChevronDown, ChevronUp,
-  Edit3, Save, RefreshCw, Eye
+  Edit3, Save, RefreshCw, Eye, Wand2, ZoomIn, TriangleAlert
 } from 'lucide-react';
 import { useMedications } from '@/hooks/useMedications';
 import { usePharmacy } from '@/hooks/usePharmacy';
@@ -41,6 +43,8 @@ interface ExtractedItem {
   isNew: boolean;
   isEditing: boolean;
   hasError: boolean;
+  rowTotal: number; // quantity * unitPrice
+  hasMathError: boolean; // if row math doesn't match
 }
 
 interface UploadedImage {
@@ -72,12 +76,35 @@ export const MultiImageInvoiceScanner = ({ open, onOpenChange }: MultiImageInvoi
   const [verifyAll, setVerifyAll] = useState(false);
   const [isApplying, setIsApplying] = useState(false);
   
+  // Margin state for auto-pricing
+  const [retailMarginPercent, setRetailMarginPercent] = useState(20);
+  const [wholesaleMarginPercent, setWholesaleMarginPercent] = useState(5);
+  
+  // Extracted invoice total from AI
+  const [extractedInvoiceTotal, setExtractedInvoiceTotal] = useState<number | null>(null);
+  
+  // Zoom-on-focus state
+  const [zoomImageUrl, setZoomImageUrl] = useState<string | null>(null);
+  const [zoomVisible, setZoomVisible] = useState(false);
+  
   // Get default margin from pharmacy settings
   const defaultMargin = (pharmacy as any)?.default_margin_percent || 20;
 
+  // Initialize retail margin from pharmacy settings
+  useEffect(() => {
+    if (defaultMargin) {
+      setRetailMarginPercent(defaultMargin);
+    }
+  }, [defaultMargin]);
+
   // Calculate suggested selling price based on cost and margin
-  const calculateSellingPrice = (costPrice: number): number => {
-    return Math.round(costPrice * (1 + defaultMargin / 100));
+  const calculateRetailPrice = (costPrice: number): number => {
+    return Math.round(costPrice * (1 + retailMarginPercent / 100));
+  };
+
+  // Calculate wholesale price based on cost and margin
+  const calculateWholesalePrice = (costPrice: number): number => {
+    return Math.round(costPrice * (1 + wholesaleMarginPercent / 100) * 100) / 100;
   };
 
   // Generate unique ID
@@ -232,18 +259,19 @@ export const MultiImageInvoiceScanner = ({ open, onOpenChange }: MultiImageInvoi
 
               const sellingPriceRaw = raw?.sellingPrice ?? raw?.selling_price ?? raw?.retail_price ?? raw?.unit_retail ?? null;
               const sellingPriceNum = typeof sellingPriceRaw === 'number' ? sellingPriceRaw : Number(sellingPriceRaw);
-              const sellingPrice = Number.isFinite(sellingPriceNum)
-                ? sellingPriceNum
-                : (normalizedUnitPrice != null ? calculateSellingPrice(normalizedUnitPrice) : null);
+              const sellingPrice = Number.isFinite(sellingPriceNum) ? sellingPriceNum : null;
 
               const wholesalePriceRaw = raw?.wholesalePrice ?? raw?.wholesale_price ?? raw?.w_sale ?? raw?.wholesale ?? null;
               const wholesalePriceNum = typeof wholesalePriceRaw === 'number' ? wholesalePriceRaw : Number(wholesalePriceRaw);
               const wholesalePrice = Number.isFinite(wholesalePriceNum) ? wholesalePriceNum : null;
 
+              const qty = Number(raw?.quantity ?? 1) || 1;
+              const rowTotal = (normalizedUnitPrice ?? 0) * qty;
+
               return {
                 id: generateId(),
                 productName,
-                quantity: Number(raw?.quantity ?? 1) || 1,
+                quantity: qty,
                 unitPrice: normalizedUnitPrice,
                 sellingPrice,
                 wholesalePrice,
@@ -253,8 +281,17 @@ export const MultiImageInvoiceScanner = ({ open, onOpenChange }: MultiImageInvoi
                 isNew: !matched,
                 isEditing: false,
                 hasError: false,
+                rowTotal,
+                hasMathError: false,
               };
             });
+
+            // Extract invoice total if available
+            const invoiceTotalRaw = data.invoiceTotal ?? data.invoice_total ?? data.grandTotal ?? data.total;
+            const invoiceTotal = typeof invoiceTotalRaw === 'number' ? invoiceTotalRaw : Number(invoiceTotalRaw);
+            if (Number.isFinite(invoiceTotal) && invoiceTotal > 0) {
+              setExtractedInvoiceTotal((prev) => (prev ?? 0) + invoiceTotal);
+            }
 
             allItems.push(...processedItems);
           }
@@ -324,12 +361,16 @@ export const MultiImageInvoiceScanner = ({ open, onOpenChange }: MultiImageInvoi
     }
   };
 
-  // Update item field inline
+  // Update item field inline with live row total sync
   const updateItem = (id: string, field: keyof ExtractedItem, value: any) => {
     setExtractedItems((prev) =>
       prev.map((item) => {
         if (item.id === id) {
           const updated = { ...item, [field]: value };
+          // Recalculate row total when quantity or unitPrice changes
+          const qty = field === 'quantity' ? (value || 0) : (updated.quantity || 0);
+          const unitPrice = field === 'unitPrice' ? (value || 0) : (updated.unitPrice || 0);
+          updated.rowTotal = qty * unitPrice;
           // Validate for errors
           updated.hasError = !updated.quantity || updated.quantity <= 0 || !updated.unitPrice || updated.unitPrice <= 0;
           return updated;
@@ -359,9 +400,64 @@ export const MultiImageInvoiceScanner = ({ open, onOpenChange }: MultiImageInvoi
         isNew: true,
         isEditing: false,
         hasError: true,
+        rowTotal: 0,
+        hasMathError: false,
       },
       ...prev,
     ]);
+  };
+
+  // Apply default prices to all items with empty prices
+  const applyDefaultPrices = () => {
+    setExtractedItems((prev) =>
+      prev.map((item) => {
+        if (!item.unitPrice || item.unitPrice <= 0) return item;
+        
+        const updatedItem = { ...item };
+        
+        // Apply retail price if empty
+        if (!item.sellingPrice || item.sellingPrice <= 0) {
+          updatedItem.sellingPrice = calculateRetailPrice(item.unitPrice);
+        }
+        
+        // Apply wholesale price if empty
+        if (!item.wholesalePrice || item.wholesalePrice <= 0) {
+          updatedItem.wholesalePrice = calculateWholesalePrice(item.unitPrice);
+        }
+        
+        return updatedItem;
+      })
+    );
+
+    toast({
+      title: 'Default prices applied',
+      description: `Retail (+${retailMarginPercent}%) and Wholesale (+${wholesaleMarginPercent}%) prices filled for items with cost`,
+    });
+  };
+
+  // Calculate grand total from all rows
+  const calculatedGrandTotal = extractedItems.reduce((sum, item) => sum + item.rowTotal, 0);
+
+  // Check if calculated total matches extracted total (within ₦1 tolerance)
+  const hasTotalMismatch =
+    extractedInvoiceTotal !== null &&
+    Math.abs(calculatedGrandTotal - extractedInvoiceTotal) > 1;
+
+  // Count items missing expiry
+  const itemsMissingExpiry = extractedItems.filter((i) => !i.expiryDate).length;
+
+  // Show zoom preview of invoice
+  const handleFocusZoom = (fieldIndex: number) => {
+    // Use the first uploaded image for zoom preview
+    if (uploadedImages.length > 0) {
+      setZoomImageUrl(uploadedImages[0].preview);
+      setZoomVisible(true);
+    }
+  };
+
+  const closeZoom = () => {
+    setZoomVisible(false);
+    setZoomImageUrl(null);
   };
 
 
@@ -386,10 +482,8 @@ export const MultiImageInvoiceScanner = ({ open, onOpenChange }: MultiImageInvoi
     setGlobalExpiryDate(date);
   };
 
-  // Calculate grand total
-  const grandTotal = extractedItems.reduce((sum, item) => {
-    return sum + ((item.unitPrice || 0) * item.quantity);
-  }, 0);
+  // Grand total now uses rowTotal for live sync
+  const grandTotal = calculatedGrandTotal;
 
   // Check if all items are valid
   const hasInvalidItems = extractedItems.some(item => 
@@ -493,6 +587,9 @@ export const MultiImageInvoiceScanner = ({ open, onOpenChange }: MultiImageInvoi
     setGlobalExpiryDate('');
     setVerifyAll(false);
     setError(null);
+    setExtractedInvoiceTotal(null);
+    setZoomVisible(false);
+    setZoomImageUrl(null);
   };
 
   const matchedCount = extractedItems.filter(i => i.matched).length;
@@ -623,6 +720,62 @@ export const MultiImageInvoiceScanner = ({ open, onOpenChange }: MultiImageInvoi
         ) : (
           // Review Dashboard
           <div className="flex-1 min-h-0 flex flex-col gap-4 overflow-hidden">
+            {/* Margin Controls */}
+            <div className="flex flex-wrap items-center gap-4 p-3 border rounded-lg bg-muted/20">
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-medium whitespace-nowrap">Retail Margin:</span>
+                <div className="flex items-center gap-2 w-40">
+                  <Slider
+                    value={[retailMarginPercent]}
+                    onValueChange={([v]) => setRetailMarginPercent(v)}
+                    min={5}
+                    max={100}
+                    step={1}
+                    className="flex-1"
+                  />
+                  <span className="text-sm font-mono w-10">{retailMarginPercent}%</span>
+                </div>
+              </div>
+              
+              <div className="h-6 w-px bg-border" />
+              
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-medium whitespace-nowrap">Wholesale Margin:</span>
+                <div className="flex items-center gap-2 w-40">
+                  <Slider
+                    value={[wholesaleMarginPercent]}
+                    onValueChange={([v]) => setWholesaleMarginPercent(v)}
+                    min={1}
+                    max={50}
+                    step={1}
+                    className="flex-1"
+                  />
+                  <span className="text-sm font-mono w-10">{wholesaleMarginPercent}%</span>
+                </div>
+              </div>
+              
+              <div className="h-6 w-px bg-border" />
+              
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      onClick={applyDefaultPrices}
+                      className="h-8"
+                    >
+                      <Wand2 className="h-4 w-4 mr-2" />
+                      Apply Defaults
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Fill empty Retail & Wholesale prices using margins above</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
+
             {/* Toolbar */}
             <div className="flex flex-wrap items-center gap-3 p-3 border rounded-lg bg-muted/20">
               {/* Quick Expiry Picker */}
@@ -689,22 +842,15 @@ export const MultiImageInvoiceScanner = ({ open, onOpenChange }: MultiImageInvoi
 
               <div className="flex-1" />
 
-              {/* Verify All Checkbox */}
-              <div className="flex items-center gap-2">
-                <Checkbox
-                  id="verifyAll"
-                  checked={verifyAll}
-                  onCheckedChange={(checked) => setVerifyAll(!!checked)}
-                />
-                <label htmlFor="verifyAll" className="text-sm cursor-pointer">
-                  Verify All
-                </label>
-              </div>
-
               {/* Summary */}
               <div className="flex items-center gap-2">
                 <Badge variant="secondary">{matchedCount} matched</Badge>
                 <Badge variant="outline">{Math.max(0, extractedItems.length - matchedCount)} new</Badge>
+                {itemsMissingExpiry > 0 && (
+                  <Badge variant="outline" className="bg-yellow-100 text-yellow-800 border-yellow-300">
+                    {itemsMissingExpiry} missing expiry
+                  </Badge>
+                )}
               </div>
             </div>
 
@@ -723,124 +869,149 @@ export const MultiImageInvoiceScanner = ({ open, onOpenChange }: MultiImageInvoi
             {/* Data Table - Scrollable container with fixed height */}
             <div className="flex-1 min-h-0 border rounded-lg overflow-hidden flex flex-col">
               <div className="overflow-auto flex-1">
-                <div className="min-w-[980px]">
+                <div className="min-w-[1100px]">
                   {/* Table Header */}
-                  <div className="grid grid-cols-[50px_1fr_80px_110px_120px_120px_130px_60px] gap-2 p-3 border-b bg-muted/30 font-medium text-sm sticky top-0 z-10 bg-background">
-                  <div>S/N</div>
-                  <div>Product Name</div>
-                  <div className="text-center">Qty</div>
-                  <div className="text-right">Unit Cost</div>
-                  <div className="text-right">Retail</div>
-                  <div className="text-right">Wholesale</div>
-                  <div className="text-center">Expiry Date</div>
-                  <div></div>
-                </div>
+                  <div className="grid grid-cols-[50px_1fr_70px_100px_100px_100px_100px_120px_50px] gap-2 p-3 border-b bg-muted/30 font-medium text-sm sticky top-0 z-10 bg-background">
+                    <div>S/N</div>
+                    <div>Product Name</div>
+                    <div className="text-center">Qty</div>
+                    <div className="text-right">Unit Cost</div>
+                    <div className="text-right">Row Total</div>
+                    <div className="text-right">Retail</div>
+                    <div className="text-right">Wholesale</div>
+                    <div className="text-center">Expiry Date</div>
+                    <div></div>
+                  </div>
 
-                {/* Table Body */}
-                <AnimatePresence>
-                  {extractedItems.map((item, index) => (
-                    <motion.div
-                      key={item.id}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      exit={{ opacity: 0, x: 20 }}
-                      transition={{ delay: index * 0.03 }}
-                      className={`grid grid-cols-[50px_1fr_80px_110px_120px_120px_130px_60px] gap-2 p-3 border-b items-center text-sm ${
-                        item.hasError
-                          ? 'bg-destructive/10 border-destructive/30'
-                          : item.matched
-                            ? 'bg-green-500/5'
-                            : 'bg-warning/5'
-                      }`}
-                    >
-                      {/* S/N */}
-                      <div className="text-muted-foreground">{index + 1}</div>
-
-                      {/* Product Name */}
-                      <div className="flex flex-col">
-                        <Input
-                          value={item.productName}
-                          onChange={(e) => updateItem(item.id, 'productName', e.target.value)}
-                          className="h-7 text-sm font-medium border-transparent hover:border-border focus:border-primary"
-                        />
-                        {item.matched ? (
-                          <span className="text-xs text-green-600 mt-0.5">✓ {item.matched.name}</span>
-                        ) : (
-                          <span className="text-xs text-warning mt-0.5">⚠ New item</span>
-                        )}
-                      </div>
-
-                      {/* Quantity */}
-                      <Input
-                        type="number"
-                        min={1}
-                        value={item.quantity}
-                        onChange={(e) => updateItem(item.id, 'quantity', parseInt(e.target.value) || 0)}
-                        className={`h-7 text-center text-sm ${
-                          !item.quantity || item.quantity <= 0 ? 'border-destructive' : ''
+                  {/* Table Body */}
+                  <AnimatePresence>
+                    {extractedItems.map((item, index) => (
+                      <motion.div
+                        key={item.id}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: 20 }}
+                        transition={{ delay: index * 0.03 }}
+                        className={`grid grid-cols-[50px_1fr_70px_100px_100px_100px_100px_120px_50px] gap-2 p-3 border-b items-center text-sm ${
+                          item.hasError
+                            ? 'bg-destructive/10 border-destructive/30'
+                            : item.matched
+                              ? 'bg-green-500/5'
+                              : 'bg-warning/5'
                         }`}
-                      />
-
-                      {/* Unit Cost */}
-                      <Input
-                        type="number"
-                        min={0}
-                        step={0.01}
-                        value={item.unitPrice || ''}
-                        onChange={(e) => updateItem(item.id, 'unitPrice', parseFloat(e.target.value) || null)}
-                        className={`h-7 text-right text-sm ${
-                          !item.unitPrice || item.unitPrice <= 0 ? 'border-destructive' : ''
-                        }`}
-                        placeholder="0.00"
-                      />
-
-                      {/* Retail */}
-                      <Input
-                        type="number"
-                        min={0}
-                        step={0.01}
-                        value={item.sellingPrice || ''}
-                        onChange={(e) => updateItem(item.id, 'sellingPrice', parseFloat(e.target.value) || null)}
-                        className="h-7 text-right text-sm"
-                        placeholder="0.00"
-                      />
-
-                      {/* Wholesale */}
-                      <Input
-                        type="number"
-                        min={0}
-                        step={0.01}
-                        value={item.wholesalePrice || ''}
-                        onChange={(e) => updateItem(item.id, 'wholesalePrice', parseFloat(e.target.value) || null)}
-                        className="h-7 text-right text-sm"
-                        placeholder="0.00"
-                      />
-
-                      {/* Expiry Date */}
-                      <Input
-                        type="date"
-                        value={item.expiryDate || ''}
-                        onChange={(e) => updateItem(item.id, 'expiryDate', e.target.value || null)}
-                        className="h-7 text-xs"
-                      />
-
-                      {/* Remove Button */}
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7"
-                        onClick={() => removeItem(item.id)}
                       >
-                        <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive" />
-                      </Button>
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
+                        {/* S/N */}
+                        <div className="text-muted-foreground">{index + 1}</div>
+
+                        {/* Product Name */}
+                        <div className="flex flex-col">
+                          <Input
+                            value={item.productName}
+                            onChange={(e) => updateItem(item.id, 'productName', e.target.value)}
+                            className="h-7 text-sm font-medium border-transparent hover:border-border focus:border-primary"
+                          />
+                          {item.matched ? (
+                            <span className="text-xs text-green-600 mt-0.5">✓ {item.matched.name}</span>
+                          ) : (
+                            <span className="text-xs text-warning mt-0.5">⚠ New item</span>
+                          )}
+                        </div>
+
+                        {/* Quantity */}
+                        <Input
+                          type="number"
+                          min={1}
+                          value={item.quantity}
+                          onChange={(e) => updateItem(item.id, 'quantity', parseInt(e.target.value) || 0)}
+                          className={`h-7 text-center text-sm ${
+                            !item.quantity || item.quantity <= 0 ? 'border-destructive' : ''
+                          }`}
+                        />
+
+                        {/* Unit Cost */}
+                        <TooltipProvider>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <div className="relative">
+                                <Input
+                                  type="number"
+                                  min={0}
+                                  step={0.01}
+                                  value={item.unitPrice || ''}
+                                  onChange={(e) => updateItem(item.id, 'unitPrice', parseFloat(e.target.value) || null)}
+                                  onFocus={() => handleFocusZoom(index)}
+                                  className={`h-7 text-right text-sm pr-6 ${
+                                    !item.unitPrice || item.unitPrice <= 0 ? 'border-destructive' : ''
+                                  }`}
+                                  placeholder="0.00"
+                                />
+                                <ZoomIn className="absolute right-1.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground/50" />
+                              </div>
+                            </TooltipTrigger>
+                            <TooltipContent side="top">
+                              <p className="text-xs">Click to zoom into invoice</p>
+                            </TooltipContent>
+                          </Tooltip>
+                        </TooltipProvider>
+
+                        {/* Row Total (live calculated) */}
+                        <div className="text-right text-sm font-medium text-muted-foreground">
+                          {formatPrice(item.rowTotal)}
+                        </div>
+
+                        {/* Retail */}
+                        <Input
+                          type="number"
+                          min={0}
+                          step={0.01}
+                          value={item.sellingPrice || ''}
+                          onChange={(e) => updateItem(item.id, 'sellingPrice', parseFloat(e.target.value) || null)}
+                          className={`h-7 text-right text-sm ${
+                            !item.sellingPrice ? 'bg-blue-50 border-blue-200' : ''
+                          }`}
+                          placeholder={item.unitPrice ? `~${calculateRetailPrice(item.unitPrice)}` : '0.00'}
+                        />
+
+                        {/* Wholesale */}
+                        <Input
+                          type="number"
+                          min={0}
+                          step={0.01}
+                          value={item.wholesalePrice || ''}
+                          onChange={(e) => updateItem(item.id, 'wholesalePrice', parseFloat(e.target.value) || null)}
+                          className={`h-7 text-right text-sm ${
+                            !item.wholesalePrice ? 'bg-blue-50 border-blue-200' : ''
+                          }`}
+                          placeholder={item.unitPrice ? `~${calculateWholesalePrice(item.unitPrice)}` : '0.00'}
+                        />
+
+                        {/* Expiry Date - highlight yellow if missing */}
+                        <Input
+                          type="date"
+                          value={item.expiryDate || ''}
+                          onChange={(e) => updateItem(item.id, 'expiryDate', e.target.value || null)}
+                          className={`h-7 text-xs ${
+                            !item.expiryDate ? 'bg-yellow-100 border-yellow-400' : ''
+                          }`}
+                        />
+
+                        {/* Remove Button */}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7"
+                          onClick={() => removeItem(item.id)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive" />
+                        </Button>
+                      </motion.div>
+                    ))}
+                  </AnimatePresence>
                 </div>
               </div>
             </div>
 
-            {/* Footer with Grand Total */}
+            {/* Footer with Grand Total and Math Validation */}
             <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/20">
               <div className="flex items-center gap-4">
                 <Button
@@ -860,9 +1031,27 @@ export const MultiImageInvoiceScanner = ({ open, onOpenChange }: MultiImageInvoi
               </div>
 
               <div className="flex items-center gap-4">
+                {/* Invoice Total Comparison */}
+                {extractedInvoiceTotal !== null && (
+                  <div className={`text-right p-2 rounded-lg ${hasTotalMismatch ? 'bg-destructive/10 border border-destructive/30' : 'bg-green-50 border border-green-200'}`}>
+                    <div className="text-xs text-muted-foreground flex items-center gap-1">
+                      {hasTotalMismatch && <TriangleAlert className="h-3 w-3 text-destructive" />}
+                      Invoice Total
+                    </div>
+                    <div className={`text-lg font-semibold ${hasTotalMismatch ? 'text-destructive' : 'text-green-700'}`}>
+                      {formatPrice(extractedInvoiceTotal)}
+                    </div>
+                    {hasTotalMismatch && (
+                      <div className="text-xs text-destructive mt-0.5">
+                        Diff: {formatPrice(Math.abs(calculatedGrandTotal - extractedInvoiceTotal))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
                 <div className="text-right">
-                  <div className="text-sm text-muted-foreground">Grand Total</div>
-                  <div className="text-2xl font-bold text-primary">
+                  <div className="text-sm text-muted-foreground">Calculated Total</div>
+                  <div className={`text-2xl font-bold ${hasTotalMismatch ? 'text-destructive' : 'text-primary'}`}>
                     {formatPrice(grandTotal)}
                   </div>
                 </div>
@@ -885,6 +1074,33 @@ export const MultiImageInvoiceScanner = ({ open, onOpenChange }: MultiImageInvoi
                     </>
                   )}
                 </Button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Zoom Modal for Invoice Preview */}
+        {zoomVisible && zoomImageUrl && (
+          <div 
+            className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4"
+            onClick={closeZoom}
+          >
+            <div className="relative max-w-4xl max-h-[90vh] overflow-auto bg-background rounded-lg p-2">
+              <Button
+                variant="secondary"
+                size="icon"
+                className="absolute top-2 right-2 z-10"
+                onClick={closeZoom}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+              <img
+                src={zoomImageUrl}
+                alt="Invoice zoom"
+                className="max-w-full max-h-[85vh] object-contain"
+              />
+              <div className="text-center text-sm text-muted-foreground mt-2">
+                Click anywhere to close
               </div>
             </div>
           </div>
