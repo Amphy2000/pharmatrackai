@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Package, AlertTriangle, XCircle, Clock, Plus, ShoppingCart, Upload, Zap, Archive, Sparkles } from 'lucide-react';
 import { useMedications } from '@/hooks/useMedications';
 import { usePermissions } from '@/hooks/usePermissions';
+import { useRegionalSettings } from '@/contexts/RegionalSettingsContext';
 import { Medication } from '@/types/medication';
 import { Header } from '@/components/Header';
 import { MetricCard } from '@/components/dashboard/MetricCard';
@@ -16,6 +17,7 @@ import { SalesAnalytics } from '@/components/dashboard/SalesAnalytics';
 import { ShiftClock } from '@/components/dashboard/ShiftClock';
 import { StaffPerformancePanel } from '@/components/dashboard/StaffPerformancePanel';
 import PharmacyAnalyticsPanel from '@/components/dashboard/PharmacyAnalyticsPanel';
+import { SimpleDashboard } from '@/components/dashboard/SimpleDashboard';
 import { MedicationsTable } from '@/components/inventory/MedicationsTable';
 import { AddMedicationModal } from '@/components/inventory/AddMedicationModal';
 import { CSVImportModal } from '@/components/inventory/CSVImportModal';
@@ -100,6 +102,7 @@ const BulkUnshelveButton = ({ medications }: { medications: Medication[] }) => {
 const Index = () => {
   const { medications, isLoading, getMetrics, isLowStock } = useMedications();
   const { isOwnerOrManager } = usePermissions();
+  const { isSimpleMode } = useRegionalSettings();
   const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -134,6 +137,26 @@ const Index = () => {
       setEditingMedication(null);
     }
   };
+
+  // Simple Mode: Show minimal dashboard
+  if (isSimpleMode) {
+    return (
+      <div className="min-h-screen bg-background">
+        <Header />
+        <main className="container mx-auto px-4 sm:px-6 py-6 sm:py-8 max-w-3xl">
+          <section className="mb-6 animate-fade-in">
+            <h1 className="text-2xl sm:text-3xl font-bold font-display tracking-tight mb-2">
+              Dashboard
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              What would you like to do today?
+            </p>
+          </section>
+          <SimpleDashboard />
+        </main>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">

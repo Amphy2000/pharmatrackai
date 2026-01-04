@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Package, AlertTriangle, PackagePlus, ClipboardList, FileImage, Zap, Clock, FileSpreadsheet, TrendingDown, Calendar, Download, FileText, ChevronDown, Plus, DollarSign, LayoutGrid, List, Search, Trash2, CheckSquare, Building2, ArrowRightLeft, RefreshCw, Camera, Layers } from 'lucide-react';
 import { useBranchInventory, BranchMedication } from '@/hooks/useBranchInventory';
 import { useMedications } from '@/hooks/useMedications';
+import { useRegionalSettings } from '@/contexts/RegionalSettingsContext';
 import { ReceiveStockModal } from '@/components/inventory/ReceiveStockModal';
 import { StockCountModal } from '@/components/inventory/StockCountModal';
 import { MultiImageInvoiceScanner } from '@/components/inventory/MultiImageInvoiceScanner';
@@ -20,6 +21,8 @@ import { QuickStockUpdateModal } from '@/components/inventory/QuickStockUpdateMo
 import { InternalTransferModal } from '@/components/inventory/InternalTransferModal';
 import { PhotoExpiryScanModal } from '@/components/inventory/PhotoExpiryScanModal';
 import { BatchExpiryEntryModal } from '@/components/inventory/BatchExpiryEntryModal';
+import { ShelfEntryWizard } from '@/components/inventory/ShelfEntryWizard';
+import { SimpleInventoryActions } from '@/components/inventory/SimpleInventoryActions';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -55,6 +58,7 @@ const Inventory = () => {
   const { medications: branchMedications, allCatalogMedications, isMainBranch: isBranchMain, getMetrics } = useBranchInventory();
   // Also get mutations from useMedications for editing
   const { deleteMedication, updateMedication } = useMedications();
+  const { isSimpleMode } = useRegionalSettings();
   
   // Use branch-specific meds for all displays (expiry, low stock, etc.)
   // This ensures new branches show 0 items until stock is transferred
@@ -69,6 +73,7 @@ const Inventory = () => {
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [showPhotoExpiryScan, setShowPhotoExpiryScan] = useState(false);
   const [showBatchEntryModal, setShowBatchEntryModal] = useState(false);
+  const [showShelfEntryWizard, setShowShelfEntryWizard] = useState(false);
   const [editingMedication, setEditingMedication] = useState<Medication | null>(null);
   const [detailMedication, setDetailMedication] = useState<Medication | null>(null);
   const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
@@ -247,7 +252,7 @@ const Inventory = () => {
           <div>
             <div className="flex items-center gap-3 mb-1">
               <h1 className="font-display text-3xl font-bold text-gradient">
-                Inventory Operations
+                {isSimpleMode ? 'Inventory' : 'Inventory Operations'}
               </h1>
               {plan !== 'starter' && (
                 <Badge variant="outline" className="gap-1.5 font-normal">
@@ -258,100 +263,116 @@ const Inventory = () => {
               )}
             </div>
             <p className="text-muted-foreground mt-1">
-              {isMainBranch 
-                ? 'Central inventory management - stock levels apply to all branches'
-                : `Managing stock for ${currentBranchName}`
+              {isSimpleMode 
+                ? 'Add and manage your products'
+                : isMainBranch 
+                  ? 'Central inventory management - stock levels apply to all branches'
+                  : `Managing stock for ${currentBranchName}`
               }
             </p>
           </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <Button onClick={() => setShowBulkPriceModal(true)} variant="outline" className="gap-2">
-              <DollarSign className="h-4 w-4" />
-              Bulk Pricing
-            </Button>
-            <Button onClick={() => setShowAddMedicationModal(true)} className="gap-2 bg-gradient-primary hover:opacity-90 btn-glow">
-              <Plus className="h-4 w-4" />
-              Add New Medication
-            </Button>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" className="gap-2">
-                  <Download className="h-4 w-4" />
-                  Export Report
-                  <ChevronDown className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={handleExportPDF} className="gap-2">
-                  <FileText className="h-4 w-4" />
-                  Export as PDF
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={handleExportExcel} className="gap-2">
-                  <FileSpreadsheet className="h-4 w-4" />
-                  Export as Excel (CSV)
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+          {!isSimpleMode && (
+            <div className="flex items-center gap-2 flex-wrap">
+              <Button onClick={() => setShowBulkPriceModal(true)} variant="outline" className="gap-2">
+                <DollarSign className="h-4 w-4" />
+                Bulk Pricing
+              </Button>
+              <Button onClick={() => setShowAddMedicationModal(true)} className="gap-2 bg-gradient-primary hover:opacity-90 btn-glow">
+                <Plus className="h-4 w-4" />
+                Add New Medication
+              </Button>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="gap-2">
+                    <Download className="h-4 w-4" />
+                    Export Report
+                    <ChevronDown className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={handleExportPDF} className="gap-2">
+                    <FileText className="h-4 w-4" />
+                    Export as PDF
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={handleExportExcel} className="gap-2">
+                    <FileSpreadsheet className="h-4 w-4" />
+                    Export as Excel (CSV)
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          )}
         </div>
 
-        {/* Rapid Stock Entry Section */}
-        <Card className="mb-8 border-primary/20 glass-card">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center gap-2 text-lg">
-              <div className="p-2 rounded-lg bg-gradient-primary">
-                <Zap className="h-5 w-5 text-primary-foreground" />
+        {/* Simple Mode: Minimal Quick Actions */}
+        {isSimpleMode ? (
+          <SimpleInventoryActions
+            onAddProducts={() => setShowAddMedicationModal(true)}
+            onScanInvoice={() => setShowMultiImageScanner(true)}
+            onUpdateStock={() => setShowQuickStockModal(true)}
+            onShelfEntry={() => setShowShelfEntryWizard(true)}
+          />
+        ) : null}
+
+        {/* Rapid Stock Entry Section - Only in Enterprise Mode */}
+        {!isSimpleMode && (
+          <Card className="mb-8 border-primary/20 glass-card">
+            <CardHeader className="pb-3">
+              <CardTitle className="flex items-center gap-2 text-lg">
+                <div className="p-2 rounded-lg bg-gradient-primary">
+                  <Zap className="h-5 w-5 text-primary-foreground" />
+                </div>
+                Rapid Stock Entry
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-sm text-muted-foreground mb-4">
+                Fast inventory management tools to save time during stocking
+              </p>
+              <div className="flex flex-wrap gap-3">
+                <Button onClick={() => setShowShelfEntryWizard(true)} variant="default" size="lg" className="gap-2 bg-gradient-primary hover:opacity-90 btn-glow">
+                  <Layers className="h-5 w-5" />
+                  Shelf Entry
+                  <Badge variant="secondary" className="ml-1 text-xs bg-white/20">Fastest</Badge>
+                </Button>
+                <Button onClick={() => setShowQuickStockModal(true)} variant="secondary" size="lg" className="gap-2">
+                  <RefreshCw className="h-5 w-5" />
+                  Quick Stock Update
+                </Button>
+                <Button onClick={() => setShowTransferModal(true)} variant="outline" size="lg" className="gap-2">
+                  <ArrowRightLeft className="h-5 w-5" />
+                  Transfer Stock
+                </Button>
+                <Button onClick={() => setShowReceiveStockModal(true)} variant="outline" size="lg" className="gap-2">
+                  <PackagePlus className="h-5 w-5" />
+                  Receive Stock
+                </Button>
+                <Button onClick={() => setShowStockCountModal(true)} variant="outline" size="lg" className="gap-2">
+                  <ClipboardList className="h-5 w-5" />
+                  Stock Count
+                </Button>
+                <Button onClick={() => setShowCSVImportModal(true)} variant="outline" size="lg" className="gap-2">
+                  <FileSpreadsheet className="h-5 w-5" />
+                  CSV Import
+                </Button>
+                <Button onClick={() => setShowMultiImageScanner(true)} variant="outline" size="lg" className="gap-2">
+                  <FileImage className="h-5 w-5" />
+                  Scan Invoice
+                  <Badge variant="outline" className="ml-1 text-xs bg-gradient-premium text-white border-0">AI</Badge>
+                </Button>
+                <Button onClick={() => setShowPhotoExpiryScan(true)} variant="outline" size="lg" className="gap-2">
+                  <Camera className="h-5 w-5" />
+                  Photo Expiry Scan
+                  <Badge variant="outline" className="ml-1 text-xs bg-gradient-premium text-white border-0">AI</Badge>
+                </Button>
+                <Button onClick={() => setShowBatchEntryModal(true)} variant="outline" size="lg" className="gap-2">
+                  <Layers className="h-5 w-5" />
+                  Batch Entry
+                </Button>
               </div>
-              Rapid Stock Entry
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-sm text-muted-foreground mb-4">
-              Fast inventory management tools to save time during stocking
-            </p>
-            <div className="flex flex-wrap gap-3">
-              <Button onClick={() => setShowQuickStockModal(true)} variant="default" size="lg" className="gap-2 btn-glow">
-                <RefreshCw className="h-5 w-5" />
-                Quick Stock Update
-                <Badge variant="secondary" className="ml-1 text-xs">Fast</Badge>
-              </Button>
-              <Button onClick={() => setShowTransferModal(true)} variant="secondary" size="lg" className="gap-2">
-                <ArrowRightLeft className="h-5 w-5" />
-                Transfer Stock
-                <Badge variant="outline" className="ml-1 text-xs">Shelf ↔ Store</Badge>
-              </Button>
-              <Button onClick={() => setShowReceiveStockModal(true)} variant="outline" size="lg" className="gap-2">
-                <PackagePlus className="h-5 w-5" />
-                Receive Stock
-                <Badge variant="secondary" className="ml-1 text-xs">Scan</Badge>
-              </Button>
-              <Button onClick={() => setShowStockCountModal(true)} variant="outline" size="lg" className="gap-2">
-                <ClipboardList className="h-5 w-5" />
-                Stock Count
-              </Button>
-              <Button onClick={() => setShowCSVImportModal(true)} variant="outline" size="lg" className="gap-2">
-                <FileSpreadsheet className="h-5 w-5" />
-                CSV Import
-                <Badge variant="outline" className="ml-1 text-xs">Bulk</Badge>
-              </Button>
-              <Button onClick={() => setShowMultiImageScanner(true)} variant="outline" size="lg" className="gap-2">
-                <FileImage className="h-5 w-5" />
-                Scan Invoice
-                <Badge variant="outline" className="ml-1 text-xs bg-gradient-premium text-white border-0">AI</Badge>
-              </Button>
-              <Button onClick={() => setShowPhotoExpiryScan(true)} variant="outline" size="lg" className="gap-2">
-                <Camera className="h-5 w-5" />
-                Photo Expiry Scan
-                <Badge variant="outline" className="ml-1 text-xs bg-gradient-premium text-white border-0">AI</Badge>
-              </Button>
-              <Button onClick={() => setShowBatchEntryModal(true)} variant="outline" size="lg" className="gap-2">
-                <Layers className="h-5 w-5" />
-                Batch Entry
-                <Badge variant="secondary" className="ml-1 text-xs">Fast</Badge>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
@@ -817,6 +838,12 @@ const Inventory = () => {
         medication={detailMedication}
         open={!!detailMedication}
         onOpenChange={(open) => !open && setDetailMedication(null)}
+      />
+
+      {/* Shelf Entry Wizard */}
+      <ShelfEntryWizard
+        open={showShelfEntryWizard}
+        onOpenChange={setShowShelfEntryWizard}
       />
     </div>
   );

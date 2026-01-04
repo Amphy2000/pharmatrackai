@@ -246,12 +246,12 @@ export const RegionCurrencySettings = () => {
                   <Switch checked={posMode === 'simple'} onCheckedChange={() => handlePOSModeChange('simple')} />
                 </div>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Fast checkout for small pharmacies. Hides customer info fields and regulatory batch tracking.
+                  Simplified dashboard with fewer buttons. Perfect for beginners or technophobic users.
                 </p>
                 <div className="flex flex-wrap gap-1 mt-2">
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-muted">Quick sales</span>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-muted">No customer forms</span>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-muted">Minimal tracking</span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-success/20 text-success">Beginner-friendly</span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-muted">Fewer buttons</span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-muted">Quick actions only</span>
                 </div>
               </div>
             </div>
@@ -276,12 +276,12 @@ export const RegionCurrencySettings = () => {
                   <Switch checked={posMode === 'enterprise'} onCheckedChange={() => handlePOSModeChange('enterprise')} />
                 </div>
                 <p className="text-sm text-muted-foreground mt-1">
-                  Full compliance for clinics and large pharmacies. Enables {regulatory.abbreviation} tracking and customer details.
+                  Full-featured dashboard with all analytics, AI insights, and advanced tools.
                 </p>
                 <div className="flex flex-wrap gap-1 mt-2">
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-muted">Full {regulatory.abbreviation} compliance</span>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-muted">Customer tracking</span>
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-muted">Prescription support</span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-muted">All features</span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-muted">Analytics & Reports</span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-muted">AI Insights</span>
                 </div>
               </div>
             </div>
