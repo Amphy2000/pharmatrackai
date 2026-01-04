@@ -280,3 +280,164 @@ export function parseNumericValue(value: string): number {
   
   return isNaN(num) ? 0 : num;
 }
+
+// Parse a compound product line that contains multiple data points in a single string
+// Examples:
+// "Paracetamol 500mg Tab x100 @₦1500 exp 03/26"
+// "Amoxicillin 250mg Caps - 50pcs N2000 B/N: ABC123"
+// "Vitamin C 1000mg (30 tablets) - ₦3,500"
+export interface ParsedProductLine {
+  name: string;
+  quantity?: number;
+  price?: number;
+  expiry?: string;
+  batchNumber?: string;
+  category?: string;
+}
+
+export function parseCompoundProductLine(text: string): ParsedProductLine {
+  if (!text || !text.trim()) {
+    return { name: '' };
+  }
+  
+  let remaining = text.trim();
+  const result: ParsedProductLine = { name: '' };
+  
+  // Extract quantity patterns: x100, 100pcs, 100 units, (30 tablets), qty:50
+  const qtyPatterns = [
+    /\bx(\d+)\b/i,
+    /\b(\d+)\s*(pcs|pieces|units?|tabs?|tablets?|caps?|capsules?|bottles?|packs?|boxes?|cartons?)\b/i,
+    /\((\d+)\s*(tablets?|caps?|pieces?|pcs|units?)?\)/i,
+    /\bqty[:\s]*(\d+)/i,
+    /\bstock[:\s]*(\d+)/i,
+  ];
+  
+  for (const pattern of qtyPatterns) {
+    const match = remaining.match(pattern);
+    if (match) {
+      result.quantity = parseInt(match[1], 10);
+      remaining = remaining.replace(match[0], ' ');
+      break;
+    }
+  }
+  
+  // Extract price patterns: ₦1500, N2000, @₦1,500, NGN 3500, price: 2000
+  const pricePatterns = [
+    /[₦N]\s*([\d,]+(?:\.\d{2})?)/i,
+    /@\s*[₦N]?\s*([\d,]+(?:\.\d{2})?)/i,
+    /\bNGN\s*([\d,]+(?:\.\d{2})?)/i,
+    /\bprice[:\s]*[₦N]?\s*([\d,]+(?:\.\d{2})?)/i,
+    /\bcost[:\s]*[₦N]?\s*([\d,]+(?:\.\d{2})?)/i,
+    /\b([\d,]+(?:\.\d{2})?)\s*(?:naira|ngn)\b/i,
+  ];
+  
+  for (const pattern of pricePatterns) {
+    const match = remaining.match(pattern);
+    if (match) {
+      result.price = parseFloat(match[1].replace(/,/g, ''));
+      remaining = remaining.replace(match[0], ' ');
+      break;
+    }
+  }
+  
+  // Extract expiry patterns: exp 03/26, expiry: 2026-03-01, exp. Mar 2026, best before 03/2026
+  const expiryPatterns = [
+    /\b(?:exp(?:iry)?|best\s*before|bb)[:\s.]*(\d{1,2})[\/\-](\d{2,4})\b/i,
+    /\b(?:exp(?:iry)?|best\s*before|bb)[:\s.]*(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})\b/i,
+    /\b(?:exp(?:iry)?|best\s*before|bb)[:\s.]*([a-z]{3})\s*(\d{4})\b/i,
+  ];
+  
+  for (const pattern of expiryPatterns) {
+    const match = remaining.match(pattern);
+    if (match) {
+      if (match[3]) {
+        // YYYY-MM-DD format
+        result.expiry = `${match[1]}-${match[2].padStart(2, '0')}-${match[3].padStart(2, '0')}`;
+      } else if (/^[a-z]{3}$/i.test(match[1])) {
+        // Month name format
+        const months: Record<string, string> = {
+          jan: '01', feb: '02', mar: '03', apr: '04', may: '05', jun: '06',
+          jul: '07', aug: '08', sep: '09', oct: '10', nov: '11', dec: '12'
+        };
+        const monthNum = months[match[1].toLowerCase()];
+        if (monthNum) {
+          result.expiry = `${match[2]}-${monthNum}-01`;
+        }
+      } else {
+        // MM/YY or MM/YYYY format
+        let year = match[2];
+        if (year.length === 2) year = `20${year}`;
+        result.expiry = `${year}-${match[1].padStart(2, '0')}-01`;
+      }
+      remaining = remaining.replace(match[0], ' ');
+      break;
+    }
+  }
+  
+  // Extract batch number patterns: B/N: ABC123, batch: XYZ789, lot: 12345
+  const batchPatterns = [
+    /\b(?:b\/n|batch|lot|bn)[:\s]*([A-Z0-9\-]+)/i,
+  ];
+  
+  for (const pattern of batchPatterns) {
+    const match = remaining.match(pattern);
+    if (match) {
+      result.batchNumber = match[1].trim();
+      remaining = remaining.replace(match[0], ' ');
+      break;
+    }
+  }
+  
+  // Detect category from common keywords
+  const categoryKeywords: Record<string, string> = {
+    'tab': 'Tablet', 'tablet': 'Tablet', 'tablets': 'Tablet',
+    'cap': 'Capsule', 'caps': 'Capsule', 'capsule': 'Capsule', 'capsules': 'Capsule',
+    'syrup': 'Syrup', 'syr': 'Syrup', 'suspension': 'Syrup', 'susp': 'Syrup',
+    'inj': 'Injection', 'injection': 'Injection', 'vial': 'Injection',
+    'cream': 'Cream', 'ointment': 'Cream', 'gel': 'Cream', 'topical': 'Cream',
+    'drop': 'Drops', 'drops': 'Drops', 'eye': 'Drops', 'ear': 'Drops',
+    'inhaler': 'Inhaler', 'spray': 'Inhaler', 'nasal': 'Inhaler',
+    'powder': 'Powder', 'sachet': 'Powder',
+  };
+  
+  for (const [keyword, category] of Object.entries(categoryKeywords)) {
+    const regex = new RegExp(`\\b${keyword}s?\\b`, 'i');
+    if (regex.test(remaining)) {
+      result.category = category;
+      break;
+    }
+  }
+  
+  // Clean up the remaining text to get the product name
+  result.name = remaining
+    .replace(/\s+/g, ' ')
+    .replace(/^[\s\-–—:,]+|[\s\-–—:,]+$/g, '')
+    .trim();
+  
+  // If name is empty or too short, use original text
+  if (result.name.length < 2) {
+    result.name = text.trim().substring(0, 100);
+  }
+  
+  return result;
+}
+
+// Check if a text line likely contains compound data (multiple fields in one)
+export function isCompoundLine(text: string): boolean {
+  if (!text || text.length < 5) return false;
+  
+  const indicators = [
+    /[₦N]\s*[\d,]+/i, // Price
+    /\bx\d+\b/i, // Quantity like x100
+    /\d+\s*(?:pcs|pieces|units?|tabs?|caps?)\b/i, // Quantity with unit
+    /\bexp(?:iry)?[:\s]/i, // Expiry
+    /\b(?:b\/n|batch|lot)[:\s]/i, // Batch
+  ];
+  
+  let matchCount = 0;
+  for (const pattern of indicators) {
+    if (pattern.test(text)) matchCount++;
+  }
+  
+  return matchCount >= 1;
+}
