@@ -181,8 +181,8 @@ export const ShelfEntryWizard = ({ open, onOpenChange }: ShelfEntryWizardProps) 
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-2xl max-h-[90vh] p-0 overflow-hidden">
-        <DialogHeader className="p-6 pb-0">
+      <DialogContent className="max-w-2xl max-h-[85vh] p-0 flex flex-col overflow-hidden">
+        <DialogHeader className="p-6 pb-4 flex-shrink-0">
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5">
               <Package className="h-5 w-5 text-primary" />
@@ -196,9 +196,9 @@ export const ShelfEntryWizard = ({ open, onOpenChange }: ShelfEntryWizardProps) 
           </div>
         </DialogHeader>
 
-        <div className="p-6 pt-4 space-y-4">
+        <div className="flex-1 overflow-y-auto px-6 space-y-4 min-h-0">
           {/* Shared Expiry Date */}
-          <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/30 border border-border/50">
+          <div className="flex flex-wrap items-center gap-3 p-3 rounded-lg bg-muted/30 border border-border/50">
             <Calendar className="h-4 w-4 text-muted-foreground" />
             <Label className="text-sm font-medium">Shared Expiry:</Label>
             <Input
@@ -240,7 +240,7 @@ export const ShelfEntryWizard = ({ open, onOpenChange }: ShelfEntryWizardProps) 
           </div>
 
           {/* Entry Table */}
-          <ScrollArea className="h-[300px] border rounded-lg">
+          <div className="border rounded-lg">
             <div className="p-3 space-y-2">
               {/* Header */}
               <div className="grid grid-cols-[1fr,100px,40px] gap-2 text-xs font-medium text-muted-foreground px-1">
@@ -318,7 +318,7 @@ export const ShelfEntryWizard = ({ open, onOpenChange }: ShelfEntryWizardProps) 
                 Add another row (or press Tab/Enter)
               </Button>
             </div>
-          </ScrollArea>
+          </div>
 
           {/* Skip Costs Option */}
           <div className="flex items-center gap-2 p-3 rounded-lg bg-primary/5 border border-primary/20">
@@ -338,7 +338,7 @@ export const ShelfEntryWizard = ({ open, onOpenChange }: ShelfEntryWizardProps) 
           </div>
         </div>
 
-        <DialogFooter className="p-6 pt-0 gap-2">
+        <DialogFooter className="p-6 pt-4 flex-shrink-0 border-t gap-2">
           <Button variant="outline" onClick={handleClose}>
             I'll finish later
           </Button>
