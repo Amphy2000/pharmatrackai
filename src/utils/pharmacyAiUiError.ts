@@ -25,14 +25,13 @@ export function getPharmacyAiUiError(err: unknown): {
     const debug = err.bodyText;
 
     if (status === 429) {
-      // Gemini typically returns 429 when rate-limited or quota is exhausted.
       const quotaHint = debug && looksLikeQuotaIssue(debug);
       return {
         status,
         debug,
         message: quotaHint
-          ? 'AI is rate-limited (Gemini quota reached). Please wait a bit or top up/raise your Gemini quota, then retry.'
-          : 'AI is busy (rate limited). Please wait ~30 seconds and retry.',
+          ? 'AI is rate-limited (quota reached). Please wait a bit or top up usage, then retry.'
+          : 'AI is busy (rate limited). Please wait a few seconds and retry.',
       };
     }
 
@@ -52,10 +51,10 @@ export function getPharmacyAiUiError(err: unknown): {
         status,
         debug,
         message: quotaHint
-          ? 'AI access denied due to quota/billing on Gemini (403). Please check your Gemini billing/quota and retry.'
+          ? 'AI access denied due to quota/billing (403). Please check your AI usage/billing and retry.'
           : keyHint
-            ? 'AI access denied (403). Your Gemini API key may be invalid/restricted. Please verify the key and its restrictions.'
-            : 'AI access denied (403). Ensure your external backend endpoint allows unauthenticated calls (JWT verification off) and keys are correct.',
+            ? 'AI access denied (403). Your API key may be invalid/restricted. Please verify the key and its restrictions.'
+            : 'AI access denied (403). Ensure your backend endpoint allows the request and keys are correct.',
       };
     }
 
