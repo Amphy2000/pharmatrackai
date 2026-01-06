@@ -42,14 +42,44 @@ export const BarcodeScanner = ({ open, onOpenChange, onScan }: BarcodeScannerPro
     return () => {
       if (scannerRef.current) {
         scannerRef.current.stop().catch(() => {});
+        (scannerRef.current as any).clear?.();
       }
     };
   }, []);
 
+  // IMPORTANT: Dialog's onOpenChange does NOT fire when a controlled `open` prop changes.
+  // So we start/stop the camera scanner based on `open` (same behavior as Explore page).
+  useEffect(() => {
+    if (!open) {
+      stopScanning().catch(() => {});
+      setError(null);
+      return;
+    }
+
+    // Delay to ensure portal content + target div exist
+    const t = window.setTimeout(() => {
+      startScanning();
+    }, 150);
+
+    return () => window.clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open]);
+
   const startScanning = async () => {
     setError(null);
-    
+
+    // Guard: avoid double start
+    if (scannerRef.current) return;
+
     try {
+      // Radix Dialog content mounts via portal; the container can be missing for a tick.
+      if (!document.getElementById('pos-barcode-reader')) {
+        window.setTimeout(() => {
+          if (open) startScanning();
+        }, 50);
+        return;
+      }
+
       const scanner = new Html5Qrcode('pos-barcode-reader');
       scannerRef.current = scanner;
 
@@ -62,7 +92,7 @@ export const BarcodeScanner = ({ open, onOpenChange, onScan }: BarcodeScannerPro
         },
         (decodedText) => {
           onScan(decodedText);
-          stopScanning();
+          stopScanning().catch(() => {});
           onOpenChange(false);
         },
         () => {} // Ignore scan failures (no barcode in frame yet)
@@ -71,8 +101,9 @@ export const BarcodeScanner = ({ open, onOpenChange, onScan }: BarcodeScannerPro
       setIsScanning(true);
     } catch (err) {
       console.error('Error starting scanner:', err);
-      setError('Camera access denied. Please allow camera access or use a USB/Bluetooth barcode scanner.');
+      setError('Camera could not start. Please allow camera access and try again.');
       setIsScanning(false);
+      scannerRef.current = null;
     }
   };
 
@@ -80,6 +111,7 @@ export const BarcodeScanner = ({ open, onOpenChange, onScan }: BarcodeScannerPro
     if (scannerRef.current) {
       try {
         await scannerRef.current.stop();
+        (scannerRef.current as any).clear?.();
         scannerRef.current = null;
       } catch (error) {
         console.error('Error stopping scanner:', error);
@@ -88,14 +120,13 @@ export const BarcodeScanner = ({ open, onOpenChange, onScan }: BarcodeScannerPro
     setIsScanning(false);
   };
 
-  const handleOpenChange = async (isOpen: boolean) => {
-    if (isOpen) {
-      onOpenChange(true);
-      // Small delay to ensure DOM is ready
-      setTimeout(() => startScanning(), 100);
-    } else {
-      await stopScanning();
-      onOpenChange(false);
+  const handleOpenChange = (nextOpen: boolean) => {
+    // Let parent control state
+    onOpenChange(nextOpen);
+
+    // If user closes via overlay/esc, stop camera immediately
+    if (!nextOpen) {
+      stopScanning().catch(() => {});
     }
   };
 
@@ -153,9 +184,6 @@ export const BarcodeScanner = ({ open, onOpenChange, onScan }: BarcodeScannerPro
           Cancel
         </Button>
 
-        <p className="text-xs text-muted-foreground text-center">
-          You can also scan using a USB/Bluetooth barcode scanner
-        </p>
       </DialogContent>
     </Dialog>
   );
