@@ -37,6 +37,35 @@ export const useSmartUpsell = ({
     return items.map(i => `${i.medication.id}:${i.quantity}`).sort().join('|');
   }, []);
 
+  // Deterministic fallback suggestions (keeps the UI useful if AI is temporarily rate-limited)
+  const getFallbackSuggestions = useCallback((): UpsellSuggestion[] => {
+    const cartIds = new Set(cartItems.map(i => i.medication.id));
+    const cartCategories = new Set(
+      cartItems.map(i => i.medication.category).filter(Boolean)
+    );
+
+    const candidates = availableMedications
+      .filter(m => !cartIds.has(m.id))
+      .filter(m => (m.current_stock ?? 0) > 0)
+      .sort((a, b) => {
+        const aCat = cartCategories.has(a.category) ? 1 : 0;
+        const bCat = cartCategories.has(b.category) ? 1 : 0;
+        if (aCat !== bCat) return bCat - aCat;
+        return (b.current_stock ?? 0) - (a.current_stock ?? 0);
+      })
+      .slice(0, 2);
+
+    return candidates.map((m) => ({
+      product_id: m.id,
+      product_name: m.name,
+      reason: cartCategories.has(m.category)
+        ? `Popular add-on from ${m.category}`
+        : 'Popular add-on item',
+      confidence: 0.6,
+      medication: m,
+    }));
+  }, [availableMedications, cartItems]);
+
   const fetchSuggestions = useCallback(async () => {
     if (cartItems.length === 0 || availableMedications.length === 0) {
       setSuggestions([]);
@@ -81,14 +110,22 @@ export const useSmartUpsell = ({
       setSuggestions(enrichedSuggestions);
       lastCartHashRef.current = currentHash;
     } catch (err) {
+      // Don't blank the UI on temporary AI failures.
       const { message, status, debug } = getPharmacyAiUiError(err);
       if (status) console.warn('[smart-upsell] pharmacy-ai error', { status, debug });
       setError(message);
-      setSuggestions([]);
+
+      setSuggestions((prev) => {
+        if (prev.length > 0) return prev;
+        return getFallbackSuggestions();
+      });
+
+      // Prevent repeated failing calls for the same cart state
+      lastCartHashRef.current = currentHash;
     } finally {
       setIsLoading(false);
     }
-  }, [cartItems, availableMedications, getCartHash, pharmacyId]);
+  }, [cartItems, availableMedications, getCartHash, getFallbackSuggestions, pharmacyId]);
 
   // Debounced fetch when cart changes
   useEffect(() => {
