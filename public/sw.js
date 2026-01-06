@@ -2,65 +2,75 @@
 
 declare const self: ServiceWorkerGlobalScope;
 
-const CACHE_NAME = 'pharmatrack-pos-v1';
-const STATIC_CACHE = 'pharmatrack-static-v1';
-const DATA_CACHE = 'pharmatrack-data-v1';
+const CACHE_NAME = 'pharmatrack-pos-v2';
+const STATIC_CACHE = 'pharmatrack-static-v2';
+const DATA_CACHE = 'pharmatrack-data-v2';
 const PENDING_SYNC = 'pharmatrack-pending-sync';
 
-// Static assets to cache
+// Static assets to cache - minimal for development
 const STATIC_ASSETS = [
-  '/',
-  '/checkout',
   '/manifest.json',
 ];
 
 // Install event - cache static assets
 self.addEventListener('install', (event: ExtendableEvent) => {
-  console.log('[ServiceWorker] Installing...');
+  console.log('[ServiceWorker] Installing v2...');
   event.waitUntil(
     caches.open(STATIC_CACHE).then((cache) => {
       console.log('[ServiceWorker] Caching static assets');
       return cache.addAll(STATIC_ASSETS);
     })
   );
+  // Force new service worker to activate immediately
   self.skipWaiting();
 });
 
-// Activate event - clean up old caches
+// Activate event - clean up ALL old caches
 self.addEventListener('activate', (event: ExtendableEvent) => {
-  console.log('[ServiceWorker] Activating...');
+  console.log('[ServiceWorker] Activating v2...');
   event.waitUntil(
     caches.keys().then((cacheNames) => {
       return Promise.all(
         cacheNames
-          .filter((name) => name !== STATIC_CACHE && name !== DATA_CACHE && name !== CACHE_NAME)
-          .map((name) => caches.delete(name))
+          .filter((name) => 
+            name !== STATIC_CACHE && 
+            name !== DATA_CACHE && 
+            name !== CACHE_NAME &&
+            name !== PENDING_SYNC
+          )
+          .map((name) => {
+            console.log('[ServiceWorker] Deleting old cache:', name);
+            return caches.delete(name);
+          })
       );
     })
   );
+  // Take control of all clients immediately
   self.clients.claim();
 });
 
-// Fetch event - network first with cache fallback
+// Fetch event - NETWORK FIRST for everything (fixes refresh issues)
 self.addEventListener('fetch', (event: FetchEvent) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // Skip non-GET requests for caching
+  // Skip non-GET requests
   if (request.method !== 'GET') {
     return;
   }
 
-  // For API requests, try network first
+  // For API requests, always network first with cache fallback
   if (url.pathname.includes('/rest/v1/') || url.pathname.includes('/functions/')) {
     event.respondWith(
       fetch(request)
         .then((response) => {
-          // Clone the response to cache it
-          const responseClone = response.clone();
-          caches.open(DATA_CACHE).then((cache) => {
-            cache.put(request, responseClone);
-          });
+          // Only cache successful responses
+          if (response.ok) {
+            const responseClone = response.clone();
+            caches.open(DATA_CACHE).then((cache) => {
+              cache.put(request, responseClone);
+            });
+          }
           return response;
         })
         .catch(async () => {
@@ -79,34 +89,34 @@ self.addEventListener('fetch', (event: FetchEvent) => {
     return;
   }
 
-  // For static assets, cache first
+  // For all other requests (HTML, JS, CSS) - NETWORK FIRST to ensure fresh content
   event.respondWith(
-    caches.match(request).then((cachedResponse) => {
-      if (cachedResponse) {
-        // Return cached response but also fetch in background
-        fetch(request).then((response) => {
-          caches.open(STATIC_CACHE).then((cache) => {
-            cache.put(request, response);
-          });
-        }).catch(() => {});
-        return cachedResponse;
-      }
-
-      // Not in cache, fetch from network
-      return fetch(request).then((response) => {
+    fetch(request)
+      .then((response) => {
+        // Don't cache navigation requests to ensure fresh content
+        if (request.mode === 'navigate') {
+          return response;
+        }
+        // Cache other assets for offline fallback
         const responseClone = response.clone();
         caches.open(STATIC_CACHE).then((cache) => {
           cache.put(request, responseClone);
         });
         return response;
-      }).catch(() => {
-        // Return offline page for navigation requests
+      })
+      .catch(async () => {
+        // Network failed, try cache
+        const cachedResponse = await caches.match(request);
+        if (cachedResponse) {
+          return cachedResponse;
+        }
+        // For navigation requests, return cached index
         if (request.mode === 'navigate') {
-          return caches.match('/') || new Response('Offline', { status: 503 });
+          const indexResponse = await caches.match('/');
+          if (indexResponse) return indexResponse;
         }
         return new Response('Offline', { status: 503 });
-      });
-    })
+      })
   );
 });
 

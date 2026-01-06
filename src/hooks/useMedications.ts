@@ -57,15 +57,32 @@ export const useMedications = () => {
         throw new Error('No pharmacy selected. Please select a pharmacy and try again.');
       }
 
+      // Build insert object, only include wholesale_price if it has a value
+      const insertData: Record<string, any> = {
+        name: newMedication.name,
+        category: newMedication.category,
+        batch_number: newMedication.batch_number,
+        current_stock: newMedication.current_stock,
+        reorder_level: newMedication.reorder_level,
+        expiry_date: newMedication.expiry_date,
+        unit_price: newMedication.unit_price,
+        pharmacy_id: pharmacyId,
+        metadata: newMedication.metadata || {},
+      };
+
+      // Only add optional fields if they have values
+      if (newMedication.selling_price != null) insertData.selling_price = newMedication.selling_price;
+      if (newMedication.wholesale_price != null) insertData.wholesale_price = newMedication.wholesale_price;
+      if (newMedication.manufacturing_date) insertData.manufacturing_date = newMedication.manufacturing_date;
+      if (newMedication.barcode_id) insertData.barcode_id = newMedication.barcode_id;
+      if (newMedication.dispensing_unit) insertData.dispensing_unit = newMedication.dispensing_unit;
+      if (newMedication.is_controlled != null) insertData.is_controlled = newMedication.is_controlled;
+      if (newMedication.nafdac_reg_number) insertData.nafdac_reg_number = newMedication.nafdac_reg_number;
+      if (newMedication.active_ingredients) insertData.active_ingredients = newMedication.active_ingredients;
+
       const { data, error } = await supabase
         .from('medications')
-        .insert([
-          {
-            ...newMedication,
-            pharmacy_id: pharmacyId,
-            metadata: newMedication.metadata || {},
-          },
-        ])
+        .insert([insertData as any])
         .select()
         .single();
 
@@ -105,9 +122,19 @@ export const useMedications = () => {
         throw new Error('Medication not found or you do not have access to it');
       }
 
+      // Build update object explicitly to avoid sending undefined fields
+      const updateData: Record<string, any> = {};
+      
+      // Copy over all defined values
+      Object.entries(updates).forEach(([key, value]) => {
+        if (value !== undefined) {
+          updateData[key] = value;
+        }
+      });
+
       const { data, error } = await supabase
         .from('medications')
-        .update(updates)
+        .update(updateData)
         .eq('id', id)
         .select()
         .maybeSingle();

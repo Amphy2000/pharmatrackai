@@ -392,10 +392,16 @@ const Checkout = () => {
       // Skip stock validation when offline - trust local cache
       if (!isOffline) {
         // SAFEGUARD 1: Verify stock availability before processing (online only)
+        // Skip validation for Quick Items (Express Sales) - they don't have inventory
         const stockIssues: string[] = [];
         const priceChanges: { name: string; oldPrice: number; newPrice: number }[] = [];
         
         for (const item of currentItems) {
+          // Skip Quick Items - they don't exist in inventory
+          if (item.isQuickItem) {
+            continue;
+          }
+          
           const freshMed = branchMedications.find(m => m.id === item.medication.id);
           if (!freshMed) {
             stockIssues.push(`${item.medication.name} is no longer available`);
@@ -423,7 +429,7 @@ const Checkout = () => {
           }
         }
         
-        // Show stock issues as error
+        // Show stock issues as error (only if there are issues with non-quick items)
         if (stockIssues.length > 0) {
           toast({
             title: 'Stock Changed',
@@ -445,10 +451,12 @@ const Checkout = () => {
           });
           // Update cart items with fresh prices for accurate receipt
           currentItems.forEach(item => {
-            const fresh = branchMedications.find(m => m.id === item.medication.id);
-            if (fresh) {
-              item.medication.selling_price = fresh.selling_price;
-              item.medication.unit_price = fresh.unit_price;
+            if (!item.isQuickItem) {
+              const fresh = branchMedications.find(m => m.id === item.medication.id);
+              if (fresh) {
+                item.medication.selling_price = fresh.selling_price;
+                item.medication.unit_price = fresh.unit_price;
+              }
             }
           });
         }
