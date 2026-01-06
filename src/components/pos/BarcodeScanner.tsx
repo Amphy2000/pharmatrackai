@@ -18,14 +18,16 @@ interface BarcodeScannerProps {
 
 export const BarcodeScanner = ({ open, onOpenChange, onScan }: BarcodeScannerProps) => {
   const [isScanning, setIsScanning] = useState(false);
+  const [isStarting, setIsStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [cameras, setCameras] = useState<{ id: string; label: string }[]>([]);
   const [selectedCamera, setSelectedCamera] = useState<string | null>(null);
   const [isMobile, setIsMobile] = useState(false);
+  const [requiresTapToStart, setRequiresTapToStart] = useState(false);
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Auto-detect hardware barcode scanner input
+  // Auto-detect hardware barcode scanner input (USB/Bluetooth “keyboard wedge”)
   useBarcodeScanner({
     onScan: (barcode) => {
       if (open) {
@@ -38,49 +40,72 @@ export const BarcodeScanner = ({ open, onOpenChange, onScan }: BarcodeScannerPro
   });
 
   useEffect(() => {
-    // Detect if mobile device
-    setIsMobile(/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent));
+    // Detect if mobile device (many mobile browsers require a user gesture before opening the camera)
+    const mobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+      navigator.userAgent
+    );
+    setIsMobile(mobile);
+    setRequiresTapToStart(mobile);
   }, []);
 
   useEffect(() => {
     if (open && containerRef.current) {
+      setError(null);
+      setIsStarting(false);
+      // Reset to “tap to start” on mobile each time the modal opens
+      setRequiresTapToStart(isMobile);
       getCameras();
     }
 
     return () => {
       stopScanning();
     };
-  }, [open]);
+  }, [open, isMobile]);
 
   const getCameras = async () => {
     try {
       const devices = await Html5Qrcode.getCameras();
-      setCameras(devices.map(d => ({ id: d.id, label: d.label })));
-      
-      // Auto-select: prefer back camera on mobile, first available otherwise
-      if (devices.length > 0) {
-        const backCamera = devices.find(d => 
-          d.label.toLowerCase().includes('back') || 
-          d.label.toLowerCase().includes('rear') ||
-          d.label.toLowerCase().includes('environment')
-        );
-        setSelectedCamera(backCamera?.id || devices[0].id);
+      const list = devices.map((d) => ({ id: d.id, label: d.label }));
+      setCameras(list);
+
+      if (devices.length === 0) {
+        setSelectedCamera(null);
+        setError('No camera detected on this device. You can still scan with a USB/Bluetooth barcode scanner.');
+        return;
       }
+
+      // Auto-select: prefer back camera on mobile, first available otherwise
+      const backCamera = devices.find((d) => {
+        const label = (d.label || '').toLowerCase();
+        return label.includes('back') || label.includes('rear') || label.includes('environment');
+      });
+
+      // When labels are empty (common before permission), mobile “back camera” is often the last device.
+      const fallbackId = isMobile ? devices[devices.length - 1].id : devices[0].id;
+      setSelectedCamera(backCamera?.id || fallbackId);
     } catch (err) {
       console.error('Error getting cameras:', err);
+      setError('Camera access is unavailable. You can still scan with a USB/Bluetooth barcode scanner.');
     }
   };
 
   useEffect(() => {
-    if (selectedCamera && open) {
-      startScanning(selectedCamera);
-    }
-  }, [selectedCamera, open]);
+    if (!open) return;
+    if (!selectedCamera) return;
+
+    // Desktop: start automatically.
+    // Mobile: require a tap to start (avoids iOS/Safari “user gesture required” issues).
+    if (requiresTapToStart) return;
+
+    startScanning(selectedCamera);
+  }, [selectedCamera, open, requiresTapToStart]);
 
   const startScanning = async (cameraId: string) => {
     if (!containerRef.current) return;
 
     // Stop existing scanner first
+    setIsStarting(true);
+    setRequiresTapToStart(false);
     await stopScanning();
 
     try {
@@ -88,13 +113,31 @@ export const BarcodeScanner = ({ open, onOpenChange, onScan }: BarcodeScannerPro
       const html5QrCode = new Html5Qrcode('barcode-reader');
       scannerRef.current = html5QrCode;
 
+      const formats = [
+        Html5QrcodeSupportedFormats.CODE_128,
+        Html5QrcodeSupportedFormats.CODE_39,
+        Html5QrcodeSupportedFormats.EAN_13,
+        Html5QrcodeSupportedFormats.EAN_8,
+        Html5QrcodeSupportedFormats.UPC_A,
+        Html5QrcodeSupportedFormats.UPC_E,
+        Html5QrcodeSupportedFormats.ITF,
+        Html5QrcodeSupportedFormats.CODABAR,
+      ];
+
+      // Types for html5-qrcode vary across versions; use a permissive config object.
+      const config: any = {
+        fps: 10,
+        qrbox: { width: 250, height: 100 },
+        aspectRatio: isMobile ? 1.5 : 2.5,
+        formatsToSupport: formats,
+        experimentalFeatures: {
+          useBarCodeDetectorIfSupported: true,
+        },
+      };
+
       await html5QrCode.start(
         cameraId,
-        {
-          fps: 10,
-          qrbox: { width: 250, height: 100 },
-          aspectRatio: isMobile ? 1.5 : 2.5,
-        },
+        config,
         (decodedText) => {
           onScan(decodedText);
           stopScanning();
@@ -102,11 +145,19 @@ export const BarcodeScanner = ({ open, onOpenChange, onScan }: BarcodeScannerPro
         },
         () => {}
       );
+
       setIsScanning(true);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Error starting scanner:', err);
-      setError('Unable to access camera. Please ensure camera permissions are granted.');
+      const msg =
+        err?.name === 'NotAllowedError'
+          ? 'Camera permission denied. Tap “Start Camera Scan” and allow camera access.'
+          : 'Unable to access camera. Please grant camera permissions and try again.';
+      setError(msg);
       setIsScanning(false);
+      setRequiresTapToStart(true);
+    } finally {
+      setIsStarting(false);
     }
   };
 
@@ -184,21 +235,48 @@ export const BarcodeScanner = ({ open, onOpenChange, onScan }: BarcodeScannerPro
 
         <div className="space-y-2">
           <p className="text-sm text-muted-foreground text-center">
-            Position barcode in frame, or use a USB/Bluetooth scanner
+            {requiresTapToStart
+              ? 'Tap “Start Camera Scan”, then align the barcode in the frame.'
+              : 'Align the barcode in the frame to scan.'}
           </p>
-          
+
           <div className="flex gap-2">
+            {requiresTapToStart && selectedCamera && (
+              <Button
+                onClick={() => startScanning(selectedCamera)}
+                className="flex-1 gap-2"
+                disabled={isStarting}
+              >
+                {isStarting ? (
+                  <span className="inline-flex items-center gap-2">
+                    <span className="h-4 w-4 animate-spin rounded-full border-2 border-primary-foreground/60 border-t-primary-foreground" />
+                    Starting…
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-2">
+                    <Camera className="h-4 w-4" />
+                    Start Camera Scan
+                  </span>
+                )}
+              </Button>
+            )}
+
             {cameras.length > 1 && (
               <Button variant="outline" onClick={switchCamera} className="flex-1 gap-2">
                 <RefreshCw className="h-4 w-4" />
                 Switch Camera
               </Button>
             )}
+
             <Button variant="outline" onClick={handleClose} className="flex-1 gap-2">
               <X className="h-4 w-4" />
               Cancel
             </Button>
           </div>
+
+          <p className="text-xs text-muted-foreground text-center">
+            You can also scan using a USB/Bluetooth barcode scanner.
+          </p>
         </div>
       </DialogContent>
     </Dialog>
