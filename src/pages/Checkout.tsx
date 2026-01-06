@@ -640,7 +640,7 @@ const Checkout = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/30">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/30 overflow-x-hidden touch-pan-y">
       {/* Expired Batch Warning Dialog */}
       <ExpiredBatchWarningDialog
         open={expiredWarning.open}
@@ -739,11 +739,11 @@ const Checkout = () => {
       </header>
 
       {/* Main Content - Premium single-screen layout */}
-      <main className="container mx-auto px-4 sm:px-6 py-3 sm:py-4">
-        <div className="grid gap-4 lg:grid-cols-3">
+      <main className="container mx-auto px-2 sm:px-6 py-2 sm:py-4 overflow-x-hidden">
+        <div className="grid gap-3 sm:gap-4 lg:grid-cols-3">
           {/* Product Grid - Takes 2/3 */}
           <div className="lg:col-span-2">
-            <div className="bg-card/80 backdrop-blur-sm rounded-2xl p-4 border border-border/40 shadow-sm h-[calc(100vh-7rem)]">
+            <div className="bg-card/80 backdrop-blur-sm rounded-xl sm:rounded-2xl p-3 sm:p-4 border border-border/40 shadow-sm h-[calc(100vh-8rem)] sm:h-[calc(100vh-7rem)] overflow-hidden">
               <div className="flex items-center justify-between mb-3">
                 <h2 className="text-sm font-bold font-display">Select Products</h2>
                 <span className="text-xs text-muted-foreground">
@@ -762,7 +762,7 @@ const Checkout = () => {
 
           {/* Cart Panel - taller than products, but NEVER grows with item count */}
           <div className="lg:col-span-1">
-            <div className="bg-card/90 backdrop-blur-sm rounded-2xl p-4 border border-border/40 shadow-sm lg:sticky lg:top-20">
+            <div className="bg-card/90 backdrop-blur-sm rounded-xl sm:rounded-2xl p-3 sm:p-4 border border-border/40 shadow-sm lg:sticky lg:top-20 max-h-[calc(100vh-6rem)] overflow-y-auto">
               {/* Cart Header with Sale Type Toggle */}
               <div className="flex items-center justify-between mb-3 pb-3 border-b border-border/30">
                 <div className="flex items-center gap-2">

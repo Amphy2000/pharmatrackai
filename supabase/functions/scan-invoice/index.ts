@@ -6,18 +6,6 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-// Keyword dictionary for Nigerian supplier invoices
-const KEYWORD_DICTIONARY = {
-  productName: ['Item', 'Description', 'Drug Name', 'Product', 'SKU Name', 'Name', 'Medicine', 'Drug', 'Medication'],
-  purchasePrice: ['P.Price', 'Cost', 'Unit Cost', 'Rate', 'W-Sale', 'Land Cost', 'Cost Price', 'Purchase', 'Buying Price'],
-  sellingPrice: ['S.Price', 'Retail', 'MSRP', 'Unit Price', 'Dispense Price', 'Selling', 'Sale Price', 'Price'],
-  batchNumber: ['BN', 'B/N', 'Batch', 'Lot', 'Lot No', 'Control No', 'Batch Number', 'Batch No'],
-  expiryDate: ['EXP', 'Expiry', 'Best Before', 'Valid To', 'E.Date', 'Exp Date', 'Expiry Date', 'Expires'],
-  manufacturingDate: ['MFG', 'Mfg Date', 'Manufacturing', 'Prod Date', 'Production Date', 'Made'],
-  quantity: ['Qty', 'In Stock', 'Balance', 'SOH', 'Count', 'Quantity', 'Units', 'Pcs', 'Pieces'],
-  nafdacNumber: ['NAFDAC', 'Reg No', 'Registration', 'NAFDAC No', 'Reg Number'],
-};
-
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === 'OPTIONS') {
@@ -63,21 +51,14 @@ serve(async (req) => {
       );
     }
 
-    const { imageUrl } = await req.json();
-
-    if (!imageUrl) {
+    const body = await req.json();
+    
+    // Support both single imageUrl and multiple images array
+    const images: string[] = body.images || (body.imageUrl ? [body.imageUrl] : []);
+    
+    if (images.length === 0) {
       return new Response(
-        JSON.stringify({ error: 'Image URL is required' }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Validate imageUrl is a proper URL
-    try {
-      new URL(imageUrl);
-    } catch {
-      return new Response(
-        JSON.stringify({ error: 'Invalid image URL format' }),
+        JSON.stringify({ error: 'At least one image is required' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -91,107 +72,116 @@ serve(async (req) => {
       );
     }
 
-    console.log(`Processing invoice image for user ${user.id}, pharmacy ${staffRecord.pharmacy_id}`);
+    console.log(`Processing ${images.length} invoice image(s) for user ${user.id}, pharmacy ${staffRecord.pharmacy_id}`);
 
-    // Build keyword hints for the AI
-    const keywordHints = Object.entries(KEYWORD_DICTIONARY)
-      .map(([field, keywords]) => `${field}: Look for "${keywords.join('", "')}"`)
-      .join('\n');
+    // Enhanced Pharmacy Invoice Specialist prompt
+    const systemPrompt = `You are a PHARMACY INVOICE SPECIALIST with 20 years of experience reading Nigerian supplier invoices, receipts, and delivery notes.
 
-    const systemPrompt = `You are an expert at extracting product information from pharmaceutical invoices and receipts, especially Nigerian supplier invoices.
+YOUR MISSION: Extract EVERY SINGLE product row from this invoice. Be thorough - missing a product costs the pharmacy money.
 
-KEYWORD DICTIONARY - Look for these terms ANYWHERE on the page:
-${keywordHints}
+## EXTRACTION RULES (CRITICAL):
 
-TABLE EXTRACTION RULES:
-1. Identify horizontal rows in the invoice - each row is typically one product
-2. Look for the "Total Amount" at the bottom to verify prices
-3. Look for the "Date" at the top for invoice date reference
-4. IGNORE page headers/footers, invoice numbers, company addresses, and terms/conditions - these are NOT products
-5. Skip rows that contain only text like "Thank you", "Terms", "Subtotal", "VAT", "Discount", etc.
+1. **SCAN EVERY ROW**: Look at each horizontal row in the table. If a row has a drug name + quantity + any price, extract it.
 
-DATE PATTERN PRIORITIZATION:
-- If you see a 4-digit year near a 2-digit month (e.g., 05/2027, 2027-05), prioritize it as Expiry Date for that row
-- Common formats: MM/YYYY, YYYY-MM, DD/MM/YYYY, MM-DD-YYYY
-- Convert all dates to YYYY-MM-DD format
+2. **DO NOT SKIP ROWS** because of:
+   - Unusual formatting or merged cells
+   - Handwritten annotations
+   - Poor image quality - make your best guess
+   - Unusual product names or abbreviations
 
-BATCH NUMBER PATTERNS:
-- Alphanumeric strings like "BN2044", "LOT-A123", "B/N: 45678"
-- Usually 4-10 characters
+3. **COLUMN DETECTION**: Look for these column headers (Nigerian invoices):
+   - Product/Item/Description/Drug Name → productName
+   - Qty/Quantity/Pcs/Units → quantity  
+   - Cost/P.Price/Unit Cost/Rate → unitPrice (what pharmacy PAID)
+   - S.Price/Retail/Selling → sellingPrice (what pharmacy SELLS for)
+   - BN/Batch/Lot → batchNumber
+   - EXP/Expiry/Best Before → expiryDate
+   - MFG/Mfg Date → manufacturingDate
 
-For each PRODUCT item found (ignore non-product rows), identify:
-- productName: The medication or product name (REQUIRED - must be an actual product, not a header or footer)
-- quantity: The quantity purchased (default to 1 if unclear)
-- unitPrice: Price per unit/cost price if visible (optional)
-- sellingPrice: Retail/selling price if different from unit price (optional)
-- batchNumber: Batch/lot number (IMPORTANT - look for BN:, Batch:, Lot:)
-- expiryDate: Expiry date in YYYY-MM-DD format (IMPORTANT - look for EXP:, Expiry:)
-- manufacturingDate: Manufacturing date in YYYY-MM-DD format if visible (optional)
-- nafdacNumber: NAFDAC registration number if visible (optional)
+4. **PRICE INTERPRETATION**:
+   - If only ONE price column exists, treat it as unitPrice (cost price)
+   - Nigerian Naira format: ₦1,500.00 or 1500 or N1500
+   - Remove commas and currency symbols when extracting
 
-Return ONLY a valid JSON object with this structure:
+5. **DATE FORMATS** - Convert ALL to YYYY-MM-DD:
+   - 05/27 → 2027-05-01 (assume future for expiry)
+   - Jan 2027 → 2027-01-01
+   - 2027-05-15 → 2027-05-15
+
+6. **QUANTITY DEFAULTS**: If quantity is unclear or missing, use 1
+
+7. **BATCH NUMBERS**: Look for alphanumeric codes like BN2044, LOT-A123, B/N: 45678
+
+## OUTPUT FORMAT (JSON only, no explanation):
+
 {
   "items": [
     {
-      "productName": "string",
+      "productName": "string - full product name as written",
       "quantity": number,
       "unitPrice": number or null,
       "sellingPrice": number or null,
       "batchNumber": "string or null",
       "expiryDate": "YYYY-MM-DD or null",
-      "manufacturingDate": "YYYY-MM-DD or null",
-      "nafdacNumber": "string or null"
+      "manufacturingDate": "YYYY-MM-DD or null"
     }
   ],
   "invoiceTotal": number or null,
   "invoiceDate": "YYYY-MM-DD or null",
-  "supplierName": "string or null"
+  "supplierName": "string or null",
+  "invoiceNumber": "string or null"
 }
 
-If you cannot identify any products, return: {"items": [], "error": "Could not extract products from image"}
-Do not include any explanation, just the JSON.`;
+REMEMBER: Extract EVERY product row. When in doubt, include it. Empty items array is only acceptable if the image has NO products at all.`;
 
-    // Use Lovable AI Gateway with gemini-2.5-flash-lite for faster processing
-    const responseWithUrl = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
+    // Build message content with all images
+    const messageContent: any[] = [
+      {
+        type: 'text',
+        text: images.length > 1 
+          ? `Extract ALL products from these ${images.length} invoice pages. Combine all items into a single list. Be thorough - scan every row of every page.`
+          : `Extract ALL products from this invoice image. Be thorough - scan every row. Do not skip any products.`
+      }
+    ];
+
+    // Add all images
+    for (const imageUrl of images) {
+      messageContent.push({
+        type: 'image_url',
+        image_url: {
+          url: imageUrl
+        }
+      });
+    }
+
+    // Use gemini-2.5-flash for better accuracy (not lite)
+    const response = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${LOVABLE_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        model: 'google/gemini-2.5-flash-lite',
+        model: 'google/gemini-2.5-flash',
         messages: [
-          {
-            role: 'user',
-            content: [
-              {
-                type: 'text',
-                text: `${systemPrompt}\n\nExtract all medication/product details from this invoice image. Use keyword-based extraction to find batch numbers, expiry dates, and prices. Look for table rows and extract each product. Return only valid JSON.`
-              },
-              {
-                type: 'image_url',
-                image_url: {
-                  url: imageUrl
-                }
-              }
-            ]
-          }
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: messageContent }
         ]
       }),
     });
 
-    if (!responseWithUrl.ok) {
-      const errorText = await responseWithUrl.text();
-      console.error('Lovable AI Gateway error:', responseWithUrl.status, errorText);
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Lovable AI Gateway error:', response.status, errorText);
       
-      if (responseWithUrl.status === 429) {
+      if (response.status === 429) {
         return new Response(
-          JSON.stringify({ error: 'Rate limit exceeded. Please try again in a moment.' }),
+          JSON.stringify({ error: 'Rate limit exceeded. Please try again in a moment.', rateLimited: true }),
           { status: 429, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
-      if (responseWithUrl.status === 402) {
+      if (response.status === 402) {
         return new Response(
           JSON.stringify({ error: 'AI credits exhausted. Please add funds to continue.' }),
           { status: 402, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -204,8 +194,7 @@ Do not include any explanation, just the JSON.`;
       );
     }
 
-    const aiResponse = await responseWithUrl.json();
-    // Lovable AI Gateway uses OpenAI-style response format
+    const aiResponse = await response.json();
     const content = aiResponse.choices?.[0]?.message?.content || '';
 
     console.log('AI response received, parsing...');
@@ -213,7 +202,6 @@ Do not include any explanation, just the JSON.`;
     // Parse JSON from response
     let result;
     try {
-      // Try to extract JSON from the response
       const jsonMatch = content.match(/\{[\s\S]*\}/);
       if (jsonMatch) {
         result = JSON.parse(jsonMatch[0]);
@@ -221,7 +209,7 @@ Do not include any explanation, just the JSON.`;
         throw new Error('No JSON found in response');
       }
     } catch (parseError) {
-      console.error('Failed to parse AI response:', parseError);
+      console.error('Failed to parse AI response:', parseError, 'Content:', content);
       return new Response(
         JSON.stringify({ 
           items: [], 
@@ -241,8 +229,7 @@ Do not include any explanation, just the JSON.`;
       result.items = result.items.map((item: any) => {
         // Validate expiry date format
         if (item.expiryDate && !/^\d{4}-\d{2}-\d{2}$/.test(item.expiryDate)) {
-          // Try to parse and reformat common date formats
-          const dateStr = item.expiryDate;
+          const dateStr = String(item.expiryDate);
           const yearMatch = dateStr.match(/20\d{2}/);
           const monthMatch = dateStr.match(/\b(0?[1-9]|1[0-2])\b/);
           if (yearMatch && monthMatch) {
@@ -257,7 +244,15 @@ Do not include any explanation, just the JSON.`;
           item.quantity = 1;
         }
 
-        // Auto-match barcode from master library if not already present
+        // Clean up prices - ensure they're numbers
+        if (item.unitPrice) {
+          item.unitPrice = Number(String(item.unitPrice).replace(/[₦,N\s]/g, '')) || null;
+        }
+        if (item.sellingPrice) {
+          item.sellingPrice = Number(String(item.sellingPrice).replace(/[₦,N\s]/g, '')) || null;
+        }
+
+        // Auto-match barcode from master library
         if (!item.barcode && item.productName && barcodeLibrary) {
           const normalizedName = item.productName.toLowerCase().trim();
           const match = barcodeLibrary.find((entry: any) => {
@@ -273,6 +268,11 @@ Do not include any explanation, just the JSON.`;
         
         return item;
       });
+
+      // Remove items with empty product names
+      result.items = result.items.filter((item: any) => 
+        item.productName && item.productName.trim().length > 0
+      );
     }
 
     console.log('Extracted items:', result.items?.length || 0);
