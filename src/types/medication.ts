@@ -87,12 +87,13 @@ export interface MedicationFormData {
   expiry_date: string;
   manufacturing_date?: string;
   unit_price: number;
-  selling_price?: number;
-  wholesale_price?: number;
+  selling_price?: number | null;
+  wholesale_price?: number | null;
   barcode_id?: string;
   is_controlled?: boolean;
   nafdac_reg_number?: string;
   dispensing_unit?: DispensingUnit;
+  active_ingredients?: string[];
 }
 
 export interface DashboardMetrics {

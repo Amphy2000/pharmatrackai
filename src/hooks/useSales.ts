@@ -356,6 +356,14 @@ async function processOnlineSale({
     const totalPrice = price * item.quantity;
     totalSaleAmount += totalPrice;
 
+    // Skip database operations for Quick Items (Express Sales)
+    // Quick items don't exist in inventory - they're recorded in pending_quick_items
+    if (item.isQuickItem) {
+      const itemReceiptId = items.length > 1 ? `${receiptId}-${index + 1}` : receiptId;
+      results.push({ item, newStock: 9999, receiptId: itemReceiptId });
+      continue;
+    }
+
     let currentStock = 0;
 
     if (currentBranchId && !isMainBranch) {
