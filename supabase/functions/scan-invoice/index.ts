@@ -74,56 +74,73 @@ serve(async (req) => {
 
     console.log(`Processing ${images.length} invoice image(s) for user ${user.id}, pharmacy ${staffRecord.pharmacy_id}`);
 
-    // Enhanced Pharmacy Invoice Specialist prompt (tuned for Item Name / Quantity / Price/Unit screenshots)
-    const systemPrompt = `You are a PHARMACY INVOICE SPECIALIST with expert OCR for screenshots of invoice tables.
+    // Enhanced Pharmacy Invoice Specialist prompt
+    const systemPrompt = `You are a PHARMACY INVOICE SPECIALIST with 20 years of experience reading Nigerian supplier invoices, receipts, and delivery notes.
 
-YOUR MISSION: Extract EVERY SINGLE product row from the invoice table. If a row contains a drug/product name + quantity + a price, capture it.
+YOUR MISSION: Extract EVERY SINGLE product row from this invoice. Be thorough - missing a product costs the pharmacy money.
 
-## TARGET FORMAT (THIS MATTERS):
-Many screenshots use these exact headers:
-- **Item Name** → productName
-- **Quantity** → quantity
-- **Price/Unit** → unitPrice (COST PRICE)
-- **HSN/SAC** → IGNORE COMPLETELY (do not output)
-- **Amount/Total** → optional; if unit price is missing but Amount and Quantity exist, infer unitPrice = Amount / Quantity.
+## EXTRACTION RULES (CRITICAL):
 
-## CRITICAL EXTRACTION RULES:
-1. **EXTRACT EVERY ROW**: Walk row-by-row down the table. Do not skip rows because of formatting.
-2. **IGNORE NON-ITEM LINES**: Ignore headers, page titles, and summary rows like Subtotal/Tax/Discount/Grand Total.
-3. **CURRENCY NORMALIZATION** (VERY IMPORTANT):
-   - Ignore the **₦** symbol and any commas.
-   - Examples: "₦ 4,800.00" → 4800, "₦4,800" → 4800, "4,800" → 4800.
-4. **QUANTITY**: Parse as a number. If unclear/missing but an item exists, use 1.
-5. **DO NOT INVENT FIELDS**: Do not output HSN/SAC. Do not add extra keys.
+1. **SCAN EVERY ROW**: Look at each horizontal row in the table. If a row has a drug name + quantity + any price, extract it.
 
-## OUTPUT FORMAT (JSON ONLY — no markdown, no code fences, no commentary):
+2. **DO NOT SKIP ROWS** because of:
+   - Unusual formatting or merged cells
+   - Handwritten annotations
+   - Poor image quality - make your best guess
+   - Unusual product names or abbreviations
+
+3. **COLUMN DETECTION**: Look for these column headers (Nigerian invoices):
+   - Product/Item/Description/Drug Name → productName
+   - Qty/Quantity/Pcs/Units → quantity  
+   - Cost/P.Price/Unit Cost/Rate → unitPrice (what pharmacy PAID)
+   - S.Price/Retail/Selling → sellingPrice (what pharmacy SELLS for)
+   - BN/Batch/Lot → batchNumber
+   - EXP/Expiry/Best Before → expiryDate
+   - MFG/Mfg Date → manufacturingDate
+
+4. **PRICE INTERPRETATION**:
+   - If only ONE price column exists, treat it as unitPrice (cost price)
+   - Nigerian Naira format: ₦1,500.00 or 1500 or N1500
+   - Remove commas and currency symbols when extracting
+
+5. **DATE FORMATS** - Convert ALL to YYYY-MM-DD:
+   - 05/27 → 2027-05-01 (assume future for expiry)
+   - Jan 2027 → 2027-01-01
+   - 2027-05-15 → 2027-05-15
+
+6. **QUANTITY DEFAULTS**: If quantity is unclear or missing, use 1
+
+7. **BATCH NUMBERS**: Look for alphanumeric codes like BN2044, LOT-A123, B/N: 45678
+
+## OUTPUT FORMAT (JSON only, no explanation):
+
 {
   "items": [
     {
-      "productName": "string",
+      "productName": "string - full product name as written",
       "quantity": number,
-      "unitPrice": number | null,
-      "sellingPrice": number | null,
-      "batchNumber": string | null,
-      "expiryDate": "YYYY-MM-DD" | null,
-      "manufacturingDate": "YYYY-MM-DD" | null
+      "unitPrice": number or null,
+      "sellingPrice": number or null,
+      "batchNumber": "string or null",
+      "expiryDate": "YYYY-MM-DD or null",
+      "manufacturingDate": "YYYY-MM-DD or null"
     }
   ],
-  "invoiceTotal": number | null,
-  "invoiceDate": "YYYY-MM-DD" | null,
-  "supplierName": "string" | null,
-  "invoiceNumber": "string" | null
+  "invoiceTotal": number or null,
+  "invoiceDate": "YYYY-MM-DD or null",
+  "supplierName": "string or null",
+  "invoiceNumber": "string or null"
 }
 
-Return an empty items array ONLY if there are truly no line items in the image.`;
+REMEMBER: Extract EVERY product row. When in doubt, include it. Empty items array is only acceptable if the image has NO products at all.`;
 
     // Build message content with all images
     const messageContent: any[] = [
       {
         type: 'text',
-        text: images.length > 1
-          ? `Extract ALL line items from these ${images.length} invoice pages and COMBINE into one items list. Use Item Name→productName, Quantity→quantity, Price/Unit→unitPrice. Ignore HSN/SAC completely. Remove ₦ and commas from numbers.`
-          : `Extract ALL line items from this invoice image. Use Item Name→productName, Quantity→quantity, Price/Unit→unitPrice. Ignore HSN/SAC completely. Remove ₦ and commas from numbers.`
+        text: images.length > 1 
+          ? `Extract ALL products from these ${images.length} invoice pages. Combine all items into a single list. Be thorough - scan every row of every page.`
+          : `Extract ALL products from this invoice image. Be thorough - scan every row. Do not skip any products.`
       }
     ];
 
