@@ -30,7 +30,7 @@ import { useSales } from '@/hooks/useSales';
 import { format } from 'date-fns';
 import { usePharmacy } from '@/hooks/usePharmacy';
 import { useCurrency } from '@/contexts/CurrencyContext';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { parseISO, isBefore, isAfter, addDays } from 'date-fns';
 

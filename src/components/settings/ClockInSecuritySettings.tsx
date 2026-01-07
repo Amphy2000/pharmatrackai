@@ -8,7 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Wifi, QrCode, Shield, Check, Printer, RefreshCw } from 'lucide-react';
 import { usePharmacy } from '@/hooks/usePharmacy';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { generateLocationQRCode } from '@/components/shifts/LocationQRScanner';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';

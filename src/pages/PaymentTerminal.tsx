@@ -27,7 +27,7 @@ import { generateHtmlReceipt, printHtmlReceipt } from '@/utils/htmlReceiptPrinte
 import { usePharmacy } from '@/hooks/usePharmacy';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/lib/supabase';
 import { usePermissions } from '@/hooks/usePermissions';
 
 type PaymentMethod = 'cash' | 'transfer' | 'pos';

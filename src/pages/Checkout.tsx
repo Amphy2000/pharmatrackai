@@ -34,7 +34,7 @@ import { usePendingTransactions } from '@/hooks/usePendingTransactions';
 import { useBranchContext } from '@/contexts/BranchContext';
 import { usePlanLimits } from '@/hooks/usePlanLimits';
 import { useQuickItems } from '@/hooks/useQuickItems';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/lib/supabase';
 import { GroupedProductGrid } from '@/components/pos/GroupedProductGrid';
 import { CartPanel } from '@/components/pos/CartPanel';
 import { HeldTransactionsPanel } from '@/components/pos/HeldTransactionsPanel';

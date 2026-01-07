@@ -12,7 +12,7 @@ import { useMedications } from '@/hooks/useMedications';
 import { usePharmacy } from '@/hooks/usePharmacy';
 import { useToast } from '@/hooks/use-toast';
 import { useCurrency } from '@/contexts/CurrencyContext';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/lib/supabase';
 import type { Medication } from '@/types/medication';
 import sampleInvoiceImage from '@/assets/sample-invoice.png';
 

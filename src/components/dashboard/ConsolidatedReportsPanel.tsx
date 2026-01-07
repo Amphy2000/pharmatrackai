@@ -22,7 +22,7 @@ import {
   Clock
 } from 'lucide-react';
 import { startOfDay, endOfDay, parseISO, startOfMonth, endOfMonth, subDays, format } from 'date-fns';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/lib/supabase';
 import { useQuery } from '@tanstack/react-query';
 import { usePharmacy } from '@/hooks/usePharmacy';
 
