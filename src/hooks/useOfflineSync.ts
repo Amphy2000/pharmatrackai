@@ -163,8 +163,7 @@ export const useOfflineSync = () => {
 
     try {
       // Dynamic import to avoid circular deps
-      const { supabase } = await import('@/integrations/supabase/client');
-      
+      const { supabase } = await import('@/lib/supabase');
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         setState(prev => ({ ...prev, isSyncing: false }));

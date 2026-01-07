@@ -101,10 +101,20 @@ export const BranchProvider = ({ children }: { children: ReactNode }) => {
 
   const currentBranch = branches.find(b => b.id === currentBranchId);
   const currentBranchName = currentBranch?.name || 'Main Branch';
-  
-  // Consider it "main branch" if no branch is selected OR if the selected branch is explicitly marked as main
-  // This ensures backward compatibility with pharmacies that haven't set up branches yet
-  const isMainBranch = !currentBranchId || currentBranch?.is_main_branch || branches.length === 0;
+
+  // Treat as "main branch" when:
+  // - no branch selected
+  // - selected branch is explicitly marked as main
+  // - there are no branches (legacy)
+  // - there is only 1 branch OR no branch is marked as main (legacy data)
+  // This prevents inventories from showing empty just because is_main_branch wasn't set.
+  const hasExplicitMainBranch = branches.some(b => b.is_main_branch);
+  const isMainBranch =
+    !currentBranchId ||
+    branches.length === 0 ||
+    branches.length === 1 ||
+    !hasExplicitMainBranch ||
+    Boolean(currentBranch?.is_main_branch);
 
   // Branch limit calculations
   const activeBranchesLimit = pharmacy?.active_branches_limit ?? 1;
