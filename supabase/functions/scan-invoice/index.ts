@@ -206,6 +206,20 @@ REMEMBER: Extract EVERY product row. When in doubt, include it. Empty items arra
       if (jsonMatch) {
         result = JSON.parse(jsonMatch[0]);
       } else {
+        // Check if AI returned a text explanation instead of JSON
+        if (content.toLowerCase().includes('cannot') || 
+            content.toLowerCase().includes("can't") ||
+            content.toLowerCase().includes('unable') ||
+            content.toLowerCase().includes('sorry')) {
+          console.log('AI returned explanation instead of data:', content);
+          return new Response(
+            JSON.stringify({ 
+              items: [], 
+              error: 'Could not extract products from this image. Please ensure the invoice is clear and well-lit, or try a different angle.' 
+            }),
+            { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
         throw new Error('No JSON found in response');
       }
     } catch (parseError) {
@@ -213,7 +227,19 @@ REMEMBER: Extract EVERY product row. When in doubt, include it. Empty items arra
       return new Response(
         JSON.stringify({ 
           items: [], 
-          error: 'Could not parse invoice data. Please try with a clearer image.' 
+          error: 'Could not parse invoice data. Please try with a clearer image or take another photo.' 
+        }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+    
+    // Check if items array is empty
+    if (!result.items || result.items.length === 0) {
+      console.log('AI returned empty items array');
+      return new Response(
+        JSON.stringify({ 
+          items: [], 
+          error: 'No products found in this image. Please ensure the invoice shows a product list with names and prices.' 
         }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
