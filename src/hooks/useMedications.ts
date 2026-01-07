@@ -144,10 +144,14 @@ export const useMedications = () => {
         throw new Error('Medication not found or you do not have access to it');
       }
 
+      // Extract wholesale_price separately - it may not exist on external databases
+      const wholesalePrice = updates.wholesale_price;
+      delete updates.wholesale_price;
+
       // Build update object explicitly to avoid sending undefined fields
       const updateData: Record<string, any> = {};
       
-      // Copy over all defined values
+      // Copy over all defined values (except wholesale_price which we handle separately)
       Object.entries(updates).forEach(([key, value]) => {
         if (value !== undefined) {
           updateData[key] = value;
@@ -163,7 +167,29 @@ export const useMedications = () => {
 
       if (error) throw error;
       if (!data) throw new Error('Failed to update medication');
-      return data;
+
+      let finalData = data;
+
+      // If wholesale_price was provided, try to update it separately (may fail if column doesn't exist)
+      if (wholesalePrice !== undefined) {
+        try {
+          const wpResult = await supabase
+            .from('medications')
+            .update({ wholesale_price: wholesalePrice } as any)
+            .eq('id', id)
+            .select()
+            .maybeSingle();
+          
+          if (!wpResult.error && wpResult.data) {
+            finalData = wpResult.data;
+          }
+          // Silently ignore errors - column might not exist on external database
+        } catch {
+          // Silently ignore - wholesale_price column may not exist
+        }
+      }
+
+      return finalData;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['medications'] });

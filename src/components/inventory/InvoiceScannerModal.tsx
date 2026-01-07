@@ -143,7 +143,7 @@ export const InvoiceScannerModal = ({ open, onOpenChange }: InvoiceScannerModalP
     });
   };
 
-  // Process images with AI - calls edge function directly
+  // Process images with AI - calls Lovable Cloud edge function
   const handleProcessImage = async () => {
     if (imageUrls.length === 0) return;
 
@@ -151,55 +151,39 @@ export const InvoiceScannerModal = ({ open, onOpenChange }: InvoiceScannerModalP
     setError(null);
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.access_token) {
-        setError('Please log in to use the AI scanner');
-        return;
-      }
+      // Import the Lovable Cloud supabase client for edge functions
+      const { supabase: cloudSupabase } = await import('@/integrations/supabase/client');
 
-      // Call the scan-invoice function with all images
-      const functionsBaseUrl = import.meta.env.VITE_EXTERNAL_SUPABASE_URL as string | undefined;
-      if (!functionsBaseUrl) {
-        setError('External backend URL is missing (VITE_EXTERNAL_SUPABASE_URL).');
-        return;
-      }
-
-      const response = await fetch(`${functionsBaseUrl}/functions/v1/scan-invoice`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
-        },
-        body: JSON.stringify({
+      const { data, error: fnError } = await cloudSupabase.functions.invoke('scan-invoice', {
+        body: {
           images: imageUrls,
           imageUrl: imageUrls[0], // Backward compatibility
-        }),
+        },
       });
 
-      if (response.status === 429) {
-        setError('AI is busy (rate limited). Please wait a moment and try again.');
+      if (fnError) {
+        console.error('Edge function error:', fnError);
+        if (fnError.message?.includes('429') || fnError.message?.toLowerCase().includes('rate')) {
+          setError('AI is busy (rate limited). Please wait a moment and try again.');
+        } else if (fnError.message?.includes('402')) {
+          setError('AI credits exhausted. Please contact support.');
+        } else {
+          setError(fnError.message || 'Failed to process invoice');
+        }
         return;
       }
 
-      if (response.status === 402) {
-        setError('AI credits exhausted. Please contact support.');
-        return;
-      }
-
-      if (!response.ok) {
-        const errData = await response.json().catch(() => ({}));
-        setError(errData.error || 'Failed to process invoice');
-        return;
-      }
-
-      const data = await response.json();
-
-      if (data.error) {
+      if (data?.error) {
         setError(data.error);
         return;
       }
 
-      const rawItems = data.items || [];
+      const rawItems = data?.items || [];
+
+      if (rawItems.length === 0) {
+        setError('No products found. Please ensure the invoice shows a clear product list with names and prices.');
+        return;
+      }
 
       // Match to existing medications
       const items: ExtractedItem[] = rawItems.map((raw: any) => {
