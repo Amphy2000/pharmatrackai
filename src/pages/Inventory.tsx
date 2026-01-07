@@ -54,7 +54,13 @@ import { MedicationDetailModal } from '@/components/inventory/MedicationDetailMo
 
 const Inventory = () => {
   // Use branch-specific inventory for display (clean slate for new branches)
-  const { medications: branchMedications, allCatalogMedications, isMainBranch: isBranchMain, getMetrics } = useBranchInventory();
+  const {
+    medications: branchMedications,
+    allCatalogMedications,
+    isMainBranch: isBranchMain,
+    getMetrics,
+    error: branchInventoryError,
+  } = useBranchInventory();
   // Also get mutations from useMedications for editing
   const { deleteMedication, updateMedication } = useMedications();
   const { isSimpleMode } = useRegionalSettings();

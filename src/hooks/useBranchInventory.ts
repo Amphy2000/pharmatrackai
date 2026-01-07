@@ -389,6 +389,7 @@ export const useBranchInventory = () => {
     medications, // Only stocked items for non-main branches
     allCatalogMedications: allMedications, // Full catalog for inventory management
     isLoading,
+    error,
     isOffline,
     updateBranchStock,
     receiveStockToBranch,

@@ -157,21 +157,24 @@ export const InvoiceScannerModal = ({ open, onOpenChange }: InvoiceScannerModalP
         return;
       }
 
-      // Call the scan-invoice edge function with all images
-      const response = await fetch(
-        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/scan-invoice`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${session.access_token}`,
-          },
-          body: JSON.stringify({ 
-            images: imageUrls,
-            imageUrl: imageUrls[0] // Backward compatibility
-          }),
-        }
-      );
+      // Call the scan-invoice function with all images
+      const functionsBaseUrl = import.meta.env.VITE_EXTERNAL_SUPABASE_URL as string | undefined;
+      if (!functionsBaseUrl) {
+        setError('External backend URL is missing (VITE_EXTERNAL_SUPABASE_URL).');
+        return;
+      }
+
+      const response = await fetch(`${functionsBaseUrl}/functions/v1/scan-invoice`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          images: imageUrls,
+          imageUrl: imageUrls[0], // Backward compatibility
+        }),
+      });
 
       if (response.status === 429) {
         setError('AI is busy (rate limited). Please wait a moment and try again.');
