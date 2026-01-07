@@ -4,7 +4,7 @@ import { useBranchInventory } from '@/hooks/useBranchInventory';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { usePharmacy } from '@/hooks/usePharmacy';
 import { useSuppliers } from '@/hooks/useSuppliers';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/lib/supabase';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';

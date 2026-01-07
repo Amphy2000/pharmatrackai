@@ -3,7 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { motion } from 'framer-motion';
 import { ShoppingBag, AlertTriangle, XCircle, TrendingUp } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/lib/supabase';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { useBranchInventory } from '@/hooks/useBranchInventory';
 import { usePharmacy } from '@/hooks/usePharmacy';

@@ -3,7 +3,7 @@ import { ScanBarcode, Hash, Loader2 } from 'lucide-react';
 import { Medication } from '@/types/medication';
 import { useMedications } from '@/hooks/useMedications';
 import { useBarcodeScanner } from '@/hooks/useBarcodeScanner';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/lib/supabase';
 import {
   Dialog,
   DialogContent,
