@@ -1,43 +1,38 @@
 // Main Supabase client wrapper (External only)
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import type { Database } from "@/integrations/supabase/types";
-
-const EXTERNAL_SUPABASE_URL = import.meta.env.VITE_EXTERNAL_SUPABASE_URL as string | undefined;
-const EXTERNAL_SUPABASE_KEY = import.meta.env.VITE_EXTERNAL_SUPABASE_PUBLISHABLE_KEY as string | undefined;
-
-export const externalSupabaseUrl = EXTERNAL_SUPABASE_URL;
-
-export const isExternalSupabaseConfigured = Boolean(
-  EXTERNAL_SUPABASE_URL &&
-    EXTERNAL_SUPABASE_URL.trim() !== "" &&
-    EXTERNAL_SUPABASE_KEY &&
-    EXTERNAL_SUPABASE_KEY.trim() !== ""
-);
+import { readExternalBackendConfig } from "@/lib/externalBackendConfig";
 
 const externalConfigError = () =>
   new Error(
     [
       "External backend not configured.",
       "Missing VITE_EXTERNAL_SUPABASE_URL and/or VITE_EXTERNAL_SUPABASE_PUBLISHABLE_KEY.",
-      "Set both Secrets, then hard refresh."
+      "If you've already set them, publish the app or let it load runtime config, then refresh.",
     ].join(" ")
   );
 
+export const isExternalSupabaseConfigured = () => Boolean(readExternalBackendConfig());
+
 let _client: SupabaseClient<Database> | null = null;
+let _clientUrl: string | null = null;
 
 export const getSupabaseClient = (): SupabaseClient<Database> => {
-  if (!isExternalSupabaseConfigured) throw externalConfigError();
+  const cfg = readExternalBackendConfig();
+  if (!cfg) throw externalConfigError();
 
-  if (_client) return _client;
+  // Reuse client if same URL
+  if (_client && _clientUrl === cfg.url) return _client;
 
-  console.log("🔌 Supabase client using External:", EXTERNAL_SUPABASE_URL);
+  console.log("🔌 Supabase client using External:", cfg.url);
 
-  _client = createClient<Database>(EXTERNAL_SUPABASE_URL!, EXTERNAL_SUPABASE_KEY!, {
+  _clientUrl = cfg.url;
+  _client = createClient<Database>(cfg.url, cfg.publishableKey, {
     auth: {
       storage: localStorage,
       persistSession: true,
-      autoRefreshToken: true
-    }
+      autoRefreshToken: true,
+    },
   });
 
   return _client;
@@ -49,6 +44,7 @@ export const supabase: SupabaseClient<Database> = new Proxy({} as SupabaseClient
     const client = getSupabaseClient() as any;
     const value = client[prop as any];
     return typeof value === "function" ? value.bind(client) : value;
-  }
+  },
 });
+
 
