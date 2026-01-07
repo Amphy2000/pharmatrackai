@@ -7,7 +7,7 @@ import { FeatureDurationSelect } from './FeatureDurationSelect';
 import { useMedications } from '@/hooks/useMedications';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { cn } from '@/lib/utils';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/lib/supabase';
 import { useToast } from '@/hooks/use-toast';
 import {
   Table,

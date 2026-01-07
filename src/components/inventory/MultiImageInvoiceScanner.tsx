@@ -15,7 +15,7 @@ import {
 import { useMedications } from '@/hooks/useMedications';
 import { usePharmacy } from '@/hooks/usePharmacy';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/lib/supabase';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { format, addYears } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';

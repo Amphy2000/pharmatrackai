@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { ShieldCheck, Lock, Eye, EyeOff, AlertTriangle, Check, Percent, Loader2 } from 'lucide-react';
 import { usePharmacy } from '@/hooks/usePharmacy';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/lib/supabase';
 
 export const PriceShieldSettings = () => {
   const { pharmacy, updatePharmacySettings } = usePharmacy();

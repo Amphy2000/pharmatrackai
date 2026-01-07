@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/lib/supabase';
 import { usePharmacy } from '@/hooks/usePharmacy';
 import { useBranches } from '@/hooks/useBranches';
 import { useCurrency } from '@/contexts/CurrencyContext';

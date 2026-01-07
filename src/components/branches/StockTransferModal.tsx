@@ -14,7 +14,7 @@ import {
 import { useBranches } from '@/hooks/useBranches';
 import { usePharmacy } from '@/hooks/usePharmacy';
 import { useMedications } from '@/hooks/useMedications';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/lib/supabase';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { 
   ArrowRight, 
