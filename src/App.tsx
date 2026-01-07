@@ -5,6 +5,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ErrorBoundary } from "@/components/common/ErrorBoundary";
+import { ExternalBackendGate } from "@/components/common/ExternalBackendGate";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { CurrencyProvider } from "@/contexts/CurrencyContext";
 import { RegionalSettingsProvider } from "@/contexts/RegionalSettingsContext";
@@ -68,71 +69,236 @@ const queryClient = new QueryClient({
 });
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <DemoProvider>
-      <AuthProvider>
-        <OfflineProvider>
-          <RegionalSettingsProvider>
-            <CurrencyProvider>
-              <BranchProvider>
-                <ProductTourProvider>
-                  <TooltipProvider>
-                  <Toaster />
-                  <Sonner />
-                <BrowserRouter>
-                  <ErrorBoundary>
-                    <Routes>
-                      {/* Public Routes */}
-                      <Route path="/" element={<Landing />} />
-                      <Route path="/pitch" element={<SalesPitch />} />
-                      <Route path="/sales-resources" element={<SalesResources />} />
-                      <Route path="/auth" element={<Auth />} />
-                      <Route path="/forgot-password" element={<ForgotPassword />} />
-                      <Route path="/reset-password" element={<ResetPassword />} />
-                      <Route path="/onboarding" element={<OnboardingWizard />} />
-                      <Route path="/demo" element={<DemoDashboard />} />
-                      <Route path="/explore" element={<Explore />} />
-                      <Route path="/p/:partnerId" element={<PartnerLanding />} />
+  <ExternalBackendGate>
+    <QueryClientProvider client={queryClient}>
+      <DemoProvider>
+        <AuthProvider>
+          <OfflineProvider>
+            <RegionalSettingsProvider>
+              <CurrencyProvider>
+                <BranchProvider>
+                  <ProductTourProvider>
+                    <TooltipProvider>
+                      <Toaster />
+                      <Sonner />
+                      <BrowserRouter>
+                        <ErrorBoundary>
+                          <Routes>
+                            {/* Public Routes */}
+                            <Route path="/" element={<Landing />} />
+                            <Route path="/pitch" element={<SalesPitch />} />
+                            <Route path="/sales-resources" element={<SalesResources />} />
+                            <Route path="/auth" element={<Auth />} />
+                            <Route path="/forgot-password" element={<ForgotPassword />} />
+                            <Route path="/reset-password" element={<ResetPassword />} />
+                            <Route path="/onboarding" element={<OnboardingWizard />} />
+                            <Route path="/demo" element={<DemoDashboard />} />
+                            <Route path="/explore" element={<Explore />} />
+                            <Route path="/p/:partnerId" element={<PartnerLanding />} />
 
-                      {/* Protected Routes */}
-                      <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
-                      <Route path="/cashier-dashboard" element={<ProtectedRoute><CashierDashboard /></ProtectedRoute>} />
-                      <Route path="/staff-dashboard" element={<ProtectedRoute><StaffDashboard /></ProtectedRoute>} />
-                      <Route path="/manager-dashboard" element={<ProtectedRoute><ManagerDashboard /></ProtectedRoute>} />
-                      <Route path="/my-sales" element={<ProtectedRoute><MySales /></ProtectedRoute>} />
-                      <Route path="/checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
-                      <Route path="/payment-terminal" element={<ProtectedRoute><PaymentTerminal /></ProtectedRoute>} />
-                      <Route path="/sales" element={<ProtectedRoute><SalesHistory /></ProtectedRoute>} />
-                      <Route path="/customers" element={<ProtectedRoute><Customers /></ProtectedRoute>} />
-                      <Route path="/branches" element={<ProtectedRoute><Branches /></ProtectedRoute>} />
-                      <Route path="/inventory" element={<ProtectedRoute><Inventory /></ProtectedRoute>} />
-                      <Route path="/suppliers" element={<ProtectedRoute><PermissionRoute anyOf={["access_suppliers"]}><Suppliers /></PermissionRoute></ProtectedRoute>} />
-                      <Route path="/settings" element={<ProtectedRoute><Settings /></ProtectedRoute>} />
-                      <Route path="/profile" element={<ProtectedRoute><ProfileSettings /></ProtectedRoute>} />
-                      <Route path="/guide" element={<ProtectedRoute><UserGuide /></ProtectedRoute>} />
-                      <Route path="/admin" element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>} />
-                      <Route path="/admin/marketplace-analytics" element={<ProtectedRoute><AdminMarketplaceAnalytics /></ProtectedRoute>} />
-                      <Route path="/audit-log" element={<ProtectedRoute><AuditLog /></ProtectedRoute>} />
-                      <Route path="/shift-history" element={<ProtectedRoute><ShiftHistory /></ProtectedRoute>} />
-                      <Route path="/shifts" element={<ProtectedRoute><ShiftHistory /></ProtectedRoute>} />
-                      <Route path="/notifications" element={<ProtectedRoute><Notifications /></ProtectedRoute>} />
-                      <Route path="/upsell-analytics" element={<ProtectedRoute><UpsellAnalytics /></ProtectedRoute>} />
-                      <Route path="/marketplace-insights" element={<ProtectedRoute><MarketplaceInsights /></ProtectedRoute>} />
-                      {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-                      <Route path="*" element={<NotFound />} />
-                      <Route path="*" element={<NotFound />} />
-                    </Routes>
-                  </ErrorBoundary>
-                </BrowserRouter>
-                </TooltipProvider>
-              </ProductTourProvider>
-            </BranchProvider>
-          </CurrencyProvider>
-        </RegionalSettingsProvider>
-        </OfflineProvider>
-      </AuthProvider>
-    </DemoProvider>
-  </QueryClientProvider>
+                            {/* Protected Routes */}
+                            <Route
+                              path="/dashboard"
+                              element={
+                                <ProtectedRoute>
+                                  <Dashboard />
+                                </ProtectedRoute>
+                              }
+                            />
+                            <Route
+                              path="/cashier-dashboard"
+                              element={
+                                <ProtectedRoute>
+                                  <CashierDashboard />
+                                </ProtectedRoute>
+                              }
+                            />
+                            <Route
+                              path="/staff-dashboard"
+                              element={
+                                <ProtectedRoute>
+                                  <StaffDashboard />
+                                </ProtectedRoute>
+                              }
+                            />
+                            <Route
+                              path="/manager-dashboard"
+                              element={
+                                <ProtectedRoute>
+                                  <ManagerDashboard />
+                                </ProtectedRoute>
+                              }
+                            />
+                            <Route
+                              path="/my-sales"
+                              element={
+                                <ProtectedRoute>
+                                  <MySales />
+                                </ProtectedRoute>
+                              }
+                            />
+                            <Route
+                              path="/checkout"
+                              element={
+                                <ProtectedRoute>
+                                  <Checkout />
+                                </ProtectedRoute>
+                              }
+                            />
+                            <Route
+                              path="/payment-terminal"
+                              element={
+                                <ProtectedRoute>
+                                  <PaymentTerminal />
+                                </ProtectedRoute>
+                              }
+                            />
+                            <Route
+                              path="/sales"
+                              element={
+                                <ProtectedRoute>
+                                  <SalesHistory />
+                                </ProtectedRoute>
+                              }
+                            />
+                            <Route
+                              path="/customers"
+                              element={
+                                <ProtectedRoute>
+                                  <Customers />
+                                </ProtectedRoute>
+                              }
+                            />
+                            <Route
+                              path="/branches"
+                              element={
+                                <ProtectedRoute>
+                                  <Branches />
+                                </ProtectedRoute>
+                              }
+                            />
+                            <Route
+                              path="/inventory"
+                              element={
+                                <ProtectedRoute>
+                                  <Inventory />
+                                </ProtectedRoute>
+                              }
+                            />
+                            <Route
+                              path="/suppliers"
+                              element={
+                                <ProtectedRoute>
+                                  <PermissionRoute anyOf={["access_suppliers"]}>
+                                    <Suppliers />
+                                  </PermissionRoute>
+                                </ProtectedRoute>
+                              }
+                            />
+                            <Route
+                              path="/settings"
+                              element={
+                                <ProtectedRoute>
+                                  <Settings />
+                                </ProtectedRoute>
+                              }
+                            />
+                            <Route
+                              path="/profile"
+                              element={
+                                <ProtectedRoute>
+                                  <ProfileSettings />
+                                </ProtectedRoute>
+                              }
+                            />
+                            <Route
+                              path="/guide"
+                              element={
+                                <ProtectedRoute>
+                                  <UserGuide />
+                                </ProtectedRoute>
+                              }
+                            />
+                            <Route
+                              path="/admin"
+                              element={
+                                <ProtectedRoute>
+                                  <AdminDashboard />
+                                </ProtectedRoute>
+                              }
+                            />
+                            <Route
+                              path="/admin/marketplace-analytics"
+                              element={
+                                <ProtectedRoute>
+                                  <AdminMarketplaceAnalytics />
+                                </ProtectedRoute>
+                              }
+                            />
+                            <Route
+                              path="/audit-log"
+                              element={
+                                <ProtectedRoute>
+                                  <AuditLog />
+                                </ProtectedRoute>
+                              }
+                            />
+                            <Route
+                              path="/shift-history"
+                              element={
+                                <ProtectedRoute>
+                                  <ShiftHistory />
+                                </ProtectedRoute>
+                              }
+                            />
+                            <Route
+                              path="/shifts"
+                              element={
+                                <ProtectedRoute>
+                                  <ShiftHistory />
+                                </ProtectedRoute>
+                              }
+                            />
+                            <Route
+                              path="/notifications"
+                              element={
+                                <ProtectedRoute>
+                                  <Notifications />
+                                </ProtectedRoute>
+                              }
+                            />
+                            <Route
+                              path="/upsell-analytics"
+                              element={
+                                <ProtectedRoute>
+                                  <UpsellAnalytics />
+                                </ProtectedRoute>
+                              }
+                            />
+                            <Route
+                              path="/marketplace-insights"
+                              element={
+                                <ProtectedRoute>
+                                  <MarketplaceInsights />
+                                </ProtectedRoute>
+                              }
+                            />
+                            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+                            <Route path="*" element={<NotFound />} />
+                            <Route path="*" element={<NotFound />} />
+                          </Routes>
+                        </ErrorBoundary>
+                      </BrowserRouter>
+                    </TooltipProvider>
+                  </ProductTourProvider>
+                </BranchProvider>
+              </CurrencyProvider>
+            </RegionalSettingsProvider>
+          </OfflineProvider>
+        </AuthProvider>
+      </DemoProvider>
+    </QueryClientProvider>
+  </ExternalBackendGate>
 );
 
 export default App;
