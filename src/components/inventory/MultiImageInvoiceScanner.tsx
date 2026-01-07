@@ -187,12 +187,22 @@ export const MultiImageInvoiceScanner = ({ open, onOpenChange }: MultiImageInvoi
       const images = uploadedImages.map((img) => img.preview);
       setProcessingProgress(15);
 
-      const { data, error: fnError } = await cloudSupabase.functions.invoke('scan-invoice', {
+      const timeoutMs = 70_000;
+      const invokePromise = cloudSupabase.functions.invoke('scan-invoice', {
         body: {
           images,
           imageUrl: images[0], // backward compatibility
         },
       });
+
+      const timeoutPromise = new Promise<never>((_resolve, reject) => {
+        const t = setTimeout(() => {
+          clearTimeout(t);
+          reject(new Error('Invoice scan is taking too long. Try a clearer photo or fewer pages.'));
+        }, timeoutMs);
+      });
+
+      const { data, error: fnError } = await Promise.race([invokePromise, timeoutPromise]);
 
       if (fnError) {
         const msg = fnError.message || String(fnError);
@@ -200,6 +210,8 @@ export const MultiImageInvoiceScanner = ({ open, onOpenChange }: MultiImageInvoi
           setError('AI is busy (rate limited). Please wait a moment and try again.');
         } else if (msg.includes('402')) {
           setError('AI credits exhausted. Please contact support.');
+        } else if (msg.includes('504') || msg.toLowerCase().includes('timeout')) {
+          setError('Invoice scan timed out. Try a clearer photo or fewer pages.');
         } else {
           setError(msg || 'Failed to process invoice');
         }
