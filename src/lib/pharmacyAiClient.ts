@@ -14,10 +14,10 @@ export class PharmacyAiError extends Error {
 
 export const PHARMACY_AI_URL =
   import.meta.env.VITE_PHARMACY_AI_URL ??
-  `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/pharmacy-ai`;
+  `${import.meta.env.VITE_EXTERNAL_SUPABASE_URL}/functions/v1/pharmacy-ai`;
 
 export function isPharmacyAiConfigured() {
-  return Boolean(import.meta.env.VITE_SUPABASE_URL);
+  return Boolean(import.meta.env.VITE_PHARMACY_AI_URL || import.meta.env.VITE_EXTERNAL_SUPABASE_URL);
 }
 
 async function getAuthHeaders(): Promise<Record<string, string>> {

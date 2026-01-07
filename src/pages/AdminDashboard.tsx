@@ -132,7 +132,7 @@ const AdminDashboard = () => {
   }, [adminLoading, isAdmin, navigate, toast]);
 
   // Fetch all pharmacies with metrics
-  const { data: pharmacies = [], isLoading: loadingPharmacies } = useQuery({
+  const { data: pharmacies = [], isLoading: loadingPharmacies, error: pharmaciesQueryError } = useQuery({
     queryKey: ['admin-pharmacies'],
     queryFn: async () => {
       const { data: pharmaciesData, error: pharmaciesError } = await supabase
@@ -144,28 +144,32 @@ const AdminDashboard = () => {
 
       const pharmaciesWithMetrics: PharmacyWithMetrics[] = await Promise.all(
         (pharmaciesData || []).map(async (pharmacy) => {
-          const { count: staffCount } = await supabase
+          const { count: staffCount, error: staffErr } = await supabase
             .from('pharmacy_staff')
             .select('*', { count: 'exact', head: true })
             .eq('pharmacy_id', pharmacy.id)
             .eq('is_active', true);
+          if (staffErr) throw new Error(`Staff count error for ${pharmacy.name}: ${staffErr.message}`);
 
-          const { count: medicationCount } = await supabase
+          const { count: medicationCount, error: medsErr } = await supabase
             .from('medications')
             .select('*', { count: 'exact', head: true })
             .eq('pharmacy_id', pharmacy.id);
+          if (medsErr) throw new Error(`Products count error for ${pharmacy.name}: ${medsErr.message}`);
 
-          const { data: salesData } = await supabase
+          const { data: salesData, error: salesErr } = await supabase
             .from('sales')
             .select('total_price')
             .eq('pharmacy_id', pharmacy.id);
+          if (salesErr) throw new Error(`Sales query error for ${pharmacy.name}: ${salesErr.message}`);
 
           const totalRevenue = salesData?.reduce((sum, sale) => sum + sale.total_price, 0) || 0;
 
-          const { count: customersCount } = await supabase
+          const { count: customersCount, error: customersErr } = await supabase
             .from('customers')
             .select('*', { count: 'exact', head: true })
             .eq('pharmacy_id', pharmacy.id);
+          if (customersErr) throw new Error(`Customers count error for ${pharmacy.name}: ${customersErr.message}`);
 
           return {
             ...pharmacy,
@@ -391,7 +395,7 @@ const AdminDashboard = () => {
             </Button>
             <Badge className="bg-gradient-to-r from-amber-500 to-orange-500 text-white border-0 gap-1">
               <Crown className="h-3 w-3" />
-              Super Admin
+              {isSuperAdmin ? 'Super Admin' : 'Admin'}
             </Badge>
           </div>
         </div>
