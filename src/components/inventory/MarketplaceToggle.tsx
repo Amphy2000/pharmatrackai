@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Globe, GlobeLock } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/supabase";
 import { useToast } from "@/hooks/use-toast";
 
 interface MarketplaceToggleProps {

@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Flame, TrendingUp, MapPin, Sparkles, ChevronRight } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from "@/lib/supabase";
 
 interface TrendingItem {
   name: string;
