@@ -151,34 +151,41 @@ export const InvoiceScannerModal = ({ open, onOpenChange }: InvoiceScannerModalP
     setError(null);
 
     try {
-      // Import the Lovable Cloud supabase client for edge functions
+      // Use the Lovable Cloud supabase client for edge functions
       const { supabase: cloudSupabase } = await import('@/integrations/supabase/client');
+
+      console.log('[InvoiceScanner] Calling scan-invoice edge function...');
 
       const { data, error: fnError } = await cloudSupabase.functions.invoke('scan-invoice', {
         body: {
           images: imageUrls,
-          imageUrl: imageUrls[0], // Backward compatibility
+          imageUrl: imageUrls[0],
         },
       });
 
+      console.log('[InvoiceScanner] Response:', { data, fnError });
+
       if (fnError) {
-        console.error('Edge function error:', fnError);
-        if (fnError.message?.includes('429') || fnError.message?.toLowerCase().includes('rate')) {
+        console.error('[InvoiceScanner] Edge function error:', fnError);
+        const errMsg = fnError.message || String(fnError);
+        if (errMsg.includes('429') || errMsg.toLowerCase().includes('rate')) {
           setError('AI is busy (rate limited). Please wait a moment and try again.');
-        } else if (fnError.message?.includes('402')) {
+        } else if (errMsg.includes('402')) {
           setError('AI credits exhausted. Please contact support.');
         } else {
-          setError(fnError.message || 'Failed to process invoice');
+          setError(errMsg || 'Failed to process invoice');
         }
         return;
       }
 
       if (data?.error) {
+        console.log('[InvoiceScanner] Data contains error:', data.error);
         setError(data.error);
         return;
       }
 
       const rawItems = data?.items || [];
+      console.log('[InvoiceScanner] Extracted items count:', rawItems.length);
 
       if (rawItems.length === 0) {
         setError('No products found. Please ensure the invoice shows a clear product list with names and prices.');
@@ -222,7 +229,7 @@ export const InvoiceScannerModal = ({ open, onOpenChange }: InvoiceScannerModalP
         description: `Found ${items.length} items, ${items.filter(i => i.matched).length} matched to inventory`,
       });
     } catch (err) {
-      console.error('Error processing invoice:', err);
+      console.error('[InvoiceScanner] Error processing invoice:', err);
       setError(err instanceof Error ? err.message : 'Failed to process invoice');
     } finally {
       setIsProcessing(false);
