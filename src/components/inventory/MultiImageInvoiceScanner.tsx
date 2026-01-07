@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -20,9 +20,6 @@ import { useCurrency } from '@/contexts/CurrencyContext';
 import { format, addYears } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
 import type { Medication } from '@/types/medication';
-import { callPharmacyAiWithFallback, PharmacyAiError } from '@/lib/pharmacyAiClient';
-import { getPharmacyAiUiError } from '@/utils/pharmacyAiUiError';
-
 
 interface MultiImageInvoiceScannerProps {
   open: boolean;
@@ -172,151 +169,110 @@ export const MultiImageInvoiceScanner = ({ open, onOpenChange }: MultiImageInvoi
     setUploadedImages(prev => prev.filter(img => img.id !== id));
   };
 
-  // Process all images with AI
+  // Process all images with AI (Lovable AI via backend function)
   const handleProcessImages = async () => {
     if (uploadedImages.length === 0) return;
 
     setIsProcessing(true);
-    setProcessingProgress(0);
+    setProcessingProgress(5);
+    setCurrentProcessingPage(1);
     setError(null);
     setExtractedItems([]);
-
-    const allItems: ExtractedItem[] = [];
-    const totalImages = uploadedImages.length;
+    setExtractedInvoiceTotal(null);
 
     try {
-      if (!pharmacy?.id) {
-        setError('No pharmacy selected. Please reload and try again.');
+      // Use the Lovable Cloud client for backend functions
+      const { supabase: cloudSupabase } = await import('@/integrations/supabase/client');
+
+      const images = uploadedImages.map((img) => img.preview);
+      setProcessingProgress(15);
+
+      const { data, error: fnError } = await cloudSupabase.functions.invoke('scan-invoice', {
+        body: {
+          images,
+          imageUrl: images[0], // backward compatibility
+        },
+      });
+
+      if (fnError) {
+        const msg = fnError.message || String(fnError);
+        if (msg.includes('429') || msg.toLowerCase().includes('rate')) {
+          setError('AI is busy (rate limited). Please wait a moment and try again.');
+        } else if (msg.includes('402')) {
+          setError('AI credits exhausted. Please contact support.');
+        } else {
+          setError(msg || 'Failed to process invoice');
+        }
         return;
       }
 
-      for (let i = 0; i < uploadedImages.length; i++) {
-        setCurrentProcessingPage(i + 1);
-        setProcessingProgress(((i) / totalImages) * 100);
-
-        const image = uploadedImages[i];
-
-        try {
-          const maxAttempts = 3;
-          let lastErr: unknown = null;
-          let data: any = null;
-
-          for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-            try {
-              data = await callPharmacyAiWithFallback<any>({
-                actions: ['scan_invoice', 'invoice_scan'],
-                payload: {
-                  imageUrl: image.preview,
-                  imageBase64: image.preview,
-                  isMultiPage: true,
-                  pageNumber: i + 1,
-                  totalPages: totalImages,
-                },
-                pharmacy_id: pharmacy.id,
-              });
-              break;
-            } catch (err) {
-              lastErr = err;
-              if (err instanceof PharmacyAiError && err.status === 429 && attempt < maxAttempts) {
-                // Client-side backoff (the backend may also be retrying)
-                await new Promise((r) => setTimeout(r, 1200 * attempt));
-                continue;
-              }
-              throw err;
-            }
-          }
-
-          if (!data) {
-            throw lastErr ?? new Error('AI request failed');
-          }
-
-          if (data?.rateLimited) {
-            // Some backends respond with 200 + { rateLimited: true } instead of HTTP 429
-            throw new PharmacyAiError('Rate limited', { status: 429, bodyText: JSON.stringify(data) });
-          }
-
-          if (data.items && Array.isArray(data.items)) {
-            const processedItems: ExtractedItem[] = data.items.map((raw: any) => {
-              const productName = String(raw?.productName ?? raw?.name ?? raw?.product_name ?? '').trim();
-              const batchNumber = (raw?.batchNumber ?? raw?.batch_number ?? null) as string | null;
-              const expiryDate = (raw?.expiryDate ?? raw?.expiry_date ?? null) as string | null;
-
-              const matched = medications.find((med) => {
-                const medName = med.name.toLowerCase();
-                const name = productName.toLowerCase();
-                return (
-                  (name && (medName.includes(name) || name.includes(medName))) ||
-                  (batchNumber && med.batch_number === batchNumber)
-                );
-              });
-
-              const unitPriceRaw = raw?.unitPrice ?? raw?.unit_price ?? raw?.cost_price ?? null;
-              const unitPrice = typeof unitPriceRaw === 'number' ? unitPriceRaw : Number(unitPriceRaw);
-              const normalizedUnitPrice = Number.isFinite(unitPrice) ? unitPrice : null;
-
-              const sellingPriceRaw = raw?.sellingPrice ?? raw?.selling_price ?? raw?.retail_price ?? raw?.unit_retail ?? null;
-              const sellingPriceNum = typeof sellingPriceRaw === 'number' ? sellingPriceRaw : Number(sellingPriceRaw);
-              const sellingPrice = Number.isFinite(sellingPriceNum) ? sellingPriceNum : null;
-
-              const wholesalePriceRaw = raw?.wholesalePrice ?? raw?.wholesale_price ?? raw?.w_sale ?? raw?.wholesale ?? null;
-              const wholesalePriceNum = typeof wholesalePriceRaw === 'number' ? wholesalePriceRaw : Number(wholesalePriceRaw);
-              const wholesalePrice = Number.isFinite(wholesalePriceNum) ? wholesalePriceNum : null;
-
-              const qty = Number(raw?.quantity ?? 1) || 1;
-              const rowTotal = (normalizedUnitPrice ?? 0) * qty;
-
-              return {
-                id: generateId(),
-                productName,
-                quantity: qty,
-                unitPrice: normalizedUnitPrice,
-                sellingPrice,
-                wholesalePrice,
-                batchNumber,
-                expiryDate,
-                matched: matched || null,
-                isNew: !matched,
-                isEditing: false,
-                hasError: false,
-                rowTotal,
-                hasMathError: false,
-              };
-            });
-
-            // Extract invoice total if available
-            const invoiceTotalRaw = data.invoiceTotal ?? data.invoice_total ?? data.grandTotal ?? data.total;
-            const invoiceTotal = typeof invoiceTotalRaw === 'number' ? invoiceTotalRaw : Number(invoiceTotalRaw);
-            if (Number.isFinite(invoiceTotal) && invoiceTotal > 0) {
-              setExtractedInvoiceTotal((prev) => (prev ?? 0) + invoiceTotal);
-            }
-
-            allItems.push(...processedItems);
-          }
-
-          // Mark image as processed
-          setUploadedImages(prev => prev.map(img =>
-            img.id === image.id ? { ...img, processed: true } : img
-          ));
-
-          setProcessingProgress(((i + 1) / totalImages) * 100);
-        } catch (err) {
-          console.error(`Error processing page ${i + 1}:`, err);
-
-          const { message, status, debug } = getPharmacyAiUiError(err);
-          if (status) console.warn('[multi-invoice-scan] pharmacy-ai error', { status, debug, page: i + 1 });
-
-          if (status === 401 || status === 403) {
-            setError(message);
-            break;
-          }
-
-          // For rate-limit and other per-page errors, continue scanning the next page
-          continue;
-        }
+      if (data?.error) {
+        setError(String(data.error));
+        return;
       }
 
-      // Deduplicate items by product name (combine quantities for same products)
-      const deduplicatedItems = allItems.reduce((acc, item) => {
+      const rawItems = Array.isArray(data?.items) ? data.items : [];
+
+      // Mark all images as processed
+      setUploadedImages((prev) => prev.map((img) => ({ ...img, processed: true })));
+      setProcessingProgress(85);
+
+      const processedItems: ExtractedItem[] = rawItems.map((raw: any) => {
+        const productName = String(raw?.productName ?? raw?.name ?? raw?.product_name ?? '').trim();
+        const batchNumber = (raw?.batchNumber ?? raw?.batch_number ?? null) as string | null;
+        const expiryDate = (raw?.expiryDate ?? raw?.expiry_date ?? null) as string | null;
+
+        const matched = medications.find((med) => {
+          const medName = med.name.toLowerCase();
+          const name = productName.toLowerCase();
+          return (
+            (name && (medName.includes(name) || name.includes(medName))) ||
+            (batchNumber && med.batch_number === batchNumber)
+          );
+        });
+
+        const unitPriceRaw = raw?.unitPrice ?? raw?.unit_price ?? raw?.cost_price ?? null;
+        const unitPriceNum = typeof unitPriceRaw === 'number' ? unitPriceRaw : Number(unitPriceRaw);
+        const unitPrice = Number.isFinite(unitPriceNum) ? unitPriceNum : null;
+
+        const sellingPriceRaw = raw?.sellingPrice ?? raw?.selling_price ?? raw?.retail_price ?? raw?.unit_retail ?? null;
+        const sellingPriceNum = typeof sellingPriceRaw === 'number' ? sellingPriceRaw : Number(sellingPriceRaw);
+        const sellingPrice = Number.isFinite(sellingPriceNum) ? sellingPriceNum : null;
+
+        const wholesalePriceRaw = raw?.wholesalePrice ?? raw?.wholesale_price ?? raw?.w_sale ?? raw?.wholesale ?? null;
+        const wholesalePriceNum = typeof wholesalePriceRaw === 'number' ? wholesalePriceRaw : Number(wholesalePriceRaw);
+        const wholesalePrice = Number.isFinite(wholesalePriceNum) ? wholesalePriceNum : null;
+
+        const qty = Number(raw?.quantity ?? 1) || 1;
+        const rowTotal = (unitPrice ?? 0) * qty;
+
+        return {
+          id: generateId(),
+          productName,
+          quantity: qty,
+          unitPrice,
+          sellingPrice,
+          wholesalePrice,
+          batchNumber,
+          expiryDate,
+          matched: matched || null,
+          isNew: !matched,
+          isEditing: false,
+          hasError: false,
+          rowTotal,
+          hasMathError: false,
+        };
+      });
+
+      // Extract invoice total if provided
+      const invoiceTotalRaw = data?.invoiceTotal ?? data?.invoice_total ?? data?.grandTotal ?? data?.total;
+      const invoiceTotal = typeof invoiceTotalRaw === 'number' ? invoiceTotalRaw : Number(invoiceTotalRaw);
+      if (Number.isFinite(invoiceTotal) && invoiceTotal > 0) {
+        setExtractedInvoiceTotal(invoiceTotal);
+      }
+
+      // Deduplicate items by product name + batch
+      const deduplicatedItems = processedItems.reduce((acc, item) => {
         const existingIndex = acc.findIndex(
           (existing) =>
             existing.productName.toLowerCase() === item.productName.toLowerCase() &&
@@ -325,6 +281,7 @@ export const MultiImageInvoiceScanner = ({ open, onOpenChange }: MultiImageInvoi
 
         if (existingIndex >= 0) {
           acc[existingIndex].quantity += item.quantity;
+          acc[existingIndex].rowTotal = (acc[existingIndex].unitPrice ?? 0) * acc[existingIndex].quantity;
         } else {
           acc.push(item);
         }
@@ -345,13 +302,12 @@ export const MultiImageInvoiceScanner = ({ open, onOpenChange }: MultiImageInvoi
       } else {
         toast({
           title: 'Invoice processing complete',
-          description: `Extracted ${deduplicatedItems.length} unique items from ${totalImages} pages`,
+          description: `Extracted ${deduplicatedItems.length} unique items from ${uploadedImages.length} page(s)`,
         });
       }
-
     } catch (err) {
       console.error('Error processing invoices:', err);
-      setError('Failed to process invoices. Please try again.');
+      setError(err instanceof Error ? err.message : 'Failed to process invoices. Please try again.');
     } finally {
       setIsProcessing(false);
       setProcessingProgress(100);
