@@ -12,7 +12,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { useSubscription } from '@/hooks/useSubscription';
 import { usePharmacy } from '@/hooks/usePharmacy';
 import { useBranchLimit } from '@/hooks/useBranchLimit';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/lib/supabase';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
 import { Crown, Check, Zap, Calendar, CreditCard, Loader2, RefreshCw, Key, XCircle, AlertTriangle } from 'lucide-react';

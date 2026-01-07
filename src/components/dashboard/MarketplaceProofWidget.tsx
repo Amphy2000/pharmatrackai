@@ -12,7 +12,7 @@ import {
   ArrowRight,
   Users
 } from 'lucide-react';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/lib/supabase';
 import { usePharmacy } from '@/hooks/usePharmacy';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { Card, CardContent } from '@/components/ui/card';

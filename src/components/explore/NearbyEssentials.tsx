@@ -3,7 +3,7 @@ import { MapPin, Store, MessageCircle, Navigation, Loader2, ShoppingBag, Zap, Gl
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/lib/supabase';
 import { useGeolocation, calculateDistance, getApproximateCoordinates, getFallbackLocationName, getGoogleMapsLink } from '@/hooks/useGeolocation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { smartShuffle } from '@/utils/smartShuffle';

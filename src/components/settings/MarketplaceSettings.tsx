@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Globe, Zap, Package, Info, Save, Loader2, Phone, MessageCircle, MapPin, Check, Navigation, EyeOff } from 'lucide-react';
 import { usePharmacy } from '@/hooks/usePharmacy';
 import { useMedications } from '@/hooks/useMedications';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { AddressAutocomplete } from '@/components/common/AddressAutocomplete';

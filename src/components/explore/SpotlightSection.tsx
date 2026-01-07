@@ -3,7 +3,7 @@ import { Star, ChevronLeft, ChevronRight, MapPin, Store, MessageCircle, Clock, N
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from '@/lib/supabase';
 import { differenceInDays } from 'date-fns';
 import { useGeolocation, calculateDistance, getApproximateCoordinates, getFallbackLocationName, getGoogleMapsLink } from '@/hooks/useGeolocation';
 import { motion } from 'framer-motion';
