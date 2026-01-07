@@ -1,19 +1,30 @@
 // Main Supabase client wrapper
-// Prefer external Supabase credentials (if provided), otherwise fall back to Lovable Cloud
+// ALWAYS prefer external Supabase credentials when available
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from '@/integrations/supabase/types';
 
-const EXTERNAL_SUPABASE_URL = import.meta.env.VITE_EXTERNAL_SUPABASE_URL;
-const EXTERNAL_SUPABASE_KEY = import.meta.env.VITE_EXTERNAL_SUPABASE_PUBLISHABLE_KEY;
+// External Supabase credentials (user's own Supabase project)
+const EXTERNAL_SUPABASE_URL = import.meta.env.VITE_EXTERNAL_SUPABASE_URL as string | undefined;
+const EXTERNAL_SUPABASE_KEY = import.meta.env.VITE_EXTERNAL_SUPABASE_PUBLISHABLE_KEY as string | undefined;
 
-const CLOUD_SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const CLOUD_SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+// Lovable Cloud credentials (fallback)
+const CLOUD_SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
+const CLOUD_SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
 
-const isExternalSupabaseConfigured = Boolean(EXTERNAL_SUPABASE_URL && EXTERNAL_SUPABASE_KEY);
-const SUPABASE_URL = isExternalSupabaseConfigured ? EXTERNAL_SUPABASE_URL : CLOUD_SUPABASE_URL;
-const SUPABASE_KEY = isExternalSupabaseConfigured ? EXTERNAL_SUPABASE_KEY : CLOUD_SUPABASE_KEY;
+// Check if external Supabase is configured - must have valid URL and key
+const isExternalSupabaseConfigured = !!(
+  EXTERNAL_SUPABASE_URL && 
+  EXTERNAL_SUPABASE_URL.trim() !== '' && 
+  EXTERNAL_SUPABASE_KEY && 
+  EXTERNAL_SUPABASE_KEY.trim() !== ''
+);
 
-console.log('Supabase client using:', isExternalSupabaseConfigured ? 'External Supabase' : 'Lovable Cloud');
+// Use external Supabase if configured, otherwise fall back to Lovable Cloud
+const SUPABASE_URL = isExternalSupabaseConfigured ? EXTERNAL_SUPABASE_URL! : CLOUD_SUPABASE_URL;
+const SUPABASE_KEY = isExternalSupabaseConfigured ? EXTERNAL_SUPABASE_KEY! : CLOUD_SUPABASE_KEY;
+
+// Log which Supabase instance is being used (helpful for debugging)
+console.log('🔌 Supabase client using:', isExternalSupabaseConfigured ? `External (${SUPABASE_URL})` : 'Lovable Cloud');
 
 export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_KEY, {
   auth: {
