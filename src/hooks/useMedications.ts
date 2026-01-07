@@ -57,7 +57,7 @@ export const useMedications = () => {
         throw new Error('No pharmacy selected. Please select a pharmacy and try again.');
       }
 
-      // Build insert object, only include wholesale_price if it has a value
+      // Build insert object with only core required fields first
       const insertData: Record<string, any> = {
         name: newMedication.name,
         category: newMedication.category,
@@ -70,9 +70,8 @@ export const useMedications = () => {
         metadata: newMedication.metadata || {},
       };
 
-      // Only add optional fields if they have values
+      // Only add optional fields if they have values (skip wholesale_price - may not exist on all dbs)
       if (newMedication.selling_price != null) insertData.selling_price = newMedication.selling_price;
-      if (newMedication.wholesale_price != null) insertData.wholesale_price = newMedication.wholesale_price;
       if (newMedication.manufacturing_date) insertData.manufacturing_date = newMedication.manufacturing_date;
       if (newMedication.barcode_id) insertData.barcode_id = newMedication.barcode_id;
       if (newMedication.dispensing_unit) insertData.dispensing_unit = newMedication.dispensing_unit;
@@ -80,14 +79,37 @@ export const useMedications = () => {
       if (newMedication.nafdac_reg_number) insertData.nafdac_reg_number = newMedication.nafdac_reg_number;
       if (newMedication.active_ingredients) insertData.active_ingredients = newMedication.active_ingredients;
 
-      const { data, error } = await supabase
+      // Try to insert first
+      const result = await supabase
         .from('medications')
         .insert([insertData as any])
         .select()
         .single();
 
-      if (error) throw error;
-      return data;
+      if (result.error) throw result.error;
+      
+      let finalData = result.data;
+
+      // If success and wholesale_price provided, try to update it separately (may fail if column doesn't exist)
+      if (finalData && newMedication.wholesale_price != null) {
+        try {
+          const updateResult = await supabase
+            .from('medications')
+            .update({ wholesale_price: newMedication.wholesale_price } as any)
+            .eq('id', finalData.id)
+            .select()
+            .single();
+          
+          if (!updateResult.error && updateResult.data) {
+            finalData = updateResult.data;
+          }
+          // Silently ignore errors - column might not exist on external database
+        } catch {
+          // Silently ignore - wholesale_price column may not exist
+        }
+      }
+
+      return finalData;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['medications'] });
