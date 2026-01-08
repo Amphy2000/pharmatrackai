@@ -671,23 +671,27 @@ const Checkout = () => {
                   <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-gradient-primary flex items-center justify-center shadow-sm">
                     <ShoppingCart className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-white" />
                   </div>
-                  Point of Sale
-                  {isSimpleMode ? (
-                    <Badge variant="secondary" className="text-[10px] gap-1 ml-1">
-                      <Zap className="h-3 w-3" />
-                      Simple
-                    </Badge>
-                  ) : plan !== 'starter' ? (
-                    <Badge variant="outline" className="text-[10px] gap-1 ml-1 border-primary/30 text-primary">
-                      <Building2 className="h-3 w-3" />
-                      {currentBranchName}
-                    </Badge>
-                  ) : (
-                    <Badge variant="outline" className="text-[10px] gap-1 ml-1 border-primary/30 text-primary">
-                      <Building2 className="h-3 w-3" />
-                      Enterprise
-                    </Badge>
-                  )}
+                  <span className="sm:hidden">POS</span>
+                  <span className="hidden sm:inline">Point of Sale</span>
+                  {/* Branch/Mode badges - desktop only */}
+                  <span className="hidden sm:inline-flex">
+                    {isSimpleMode ? (
+                      <Badge variant="secondary" className="text-[10px] gap-1 ml-1">
+                        <Zap className="h-3 w-3" />
+                        Simple
+                      </Badge>
+                    ) : plan !== 'starter' ? (
+                      <Badge variant="outline" className="text-[10px] gap-1 ml-1 border-primary/30 text-primary">
+                        <Building2 className="h-3 w-3" />
+                        {currentBranchName}
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-[10px] gap-1 ml-1 border-primary/30 text-primary">
+                        <Building2 className="h-3 w-3" />
+                        Enterprise
+                      </Badge>
+                    )}
+                  </span>
                 </h1>
               </div>
             </div>
@@ -695,18 +699,18 @@ const Checkout = () => {
             <div className="flex items-center gap-2 sm:gap-3">
               {/* Offline Mode Indicator */}
               {isOffline && (
-                <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-warning/10 border border-warning/30">
+                <div className="flex items-center gap-1.5 px-2 sm:px-2.5 py-1.5 rounded-lg bg-warning/10 border border-warning/30">
                   <WifiOff className="h-3.5 w-3.5 text-warning" />
                   <span className="text-xs font-medium text-warning hidden sm:inline">Offline Mode</span>
                 </div>
               )}
 
-              {/* Keyboard Shortcuts Button */}
+              {/* Keyboard Shortcuts Button - desktop only */}
               <Button
                 variant="ghost"
                 size="icon"
                 onClick={() => setShowShortcuts(true)}
-                className="h-8 w-8 sm:h-9 sm:w-9 rounded-lg text-muted-foreground hover:text-foreground"
+                className="hidden sm:flex h-9 w-9 rounded-lg text-muted-foreground hover:text-foreground"
                 title="Keyboard shortcuts (/)"
               >
                 <Keyboard className="h-4 w-4" />
