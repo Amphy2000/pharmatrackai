@@ -762,11 +762,11 @@ const Checkout = () => {
             </div>
           </div>
 
-          {/* Cart Panel - constrained height, scrollable on mobile */}
+          {/* Cart Panel - more space on mobile for cart items */}
           <div className="lg:col-span-1">
-            <div className="bg-card/90 backdrop-blur-sm rounded-xl sm:rounded-2xl p-3 sm:p-4 border border-border/40 shadow-sm lg:sticky lg:top-20 h-[42dvh] sm:h-[45dvh] lg:h-[calc(100dvh-6rem)] overflow-hidden flex flex-col">
-              {/* Cart Header with Sale Type Toggle */}
-              <div className="flex items-center justify-between mb-3 pb-3 border-b border-border/30">
+            <div className="bg-card/90 backdrop-blur-sm rounded-xl sm:rounded-2xl p-3 sm:p-4 border border-border/40 shadow-sm lg:sticky lg:top-20 h-[55dvh] sm:h-[50dvh] lg:h-[calc(100dvh-6rem)] overflow-hidden flex flex-col">
+              {/* Cart Header - compact */}
+              <div className="flex items-center justify-between mb-2 pb-2 border-b border-border/30 flex-shrink-0">
                 <div className="flex items-center gap-2">
                   <h2 className="text-sm font-bold font-display">Cart</h2>
                   {cart.items.length > 0 && (
@@ -788,16 +788,16 @@ const Checkout = () => {
                 )}
               </div>
 
-              {/* Sale Type Toggle (Retail/Wholesale) */}
+              {/* Sale Type Toggle - compact on mobile */}
               {cart.items.length > 0 && (
                 <SaleTypeToggle
                   saleType={saleType}
                   onSaleTypeChange={setSaleType}
-                  className="mb-3 flex-shrink-0"
+                  className="mb-2 flex-shrink-0"
                 />
               )}
 
-              {/* Scrollable cart items container */}
+              {/* Scrollable cart items - takes remaining space */}
               <div className="flex-1 min-h-0 overflow-y-auto">
                 <CartPanel
                   items={cart.items}
@@ -808,26 +808,26 @@ const Checkout = () => {
                   saleType={saleType}
                 />
 
-                {/* Smart Upsell Suggestions - AI-powered */}
+                {/* Smart Upsell - hidden on mobile to save space */}
                 {cart.items.length > 0 && (
-                  <SmartUpsellPanel
-                    suggestions={upsellSuggestions}
-                    isLoading={isLoadingUpsells}
-                    onAddToCart={cart.addItem}
-                    onDismiss={dismissSuggestion}
-                    cartItems={cart.items}
-                  />
+                  <div className="hidden sm:block">
+                    <SmartUpsellPanel
+                      suggestions={upsellSuggestions}
+                      isLoading={isLoadingUpsells}
+                      onAddToCart={cart.addItem}
+                      onDismiss={dismissSuggestion}
+                      cartItems={cart.items}
+                    />
+                  </div>
                 )}
 
-                {/* Collapsible extras */}
+                {/* Collapsible extras - hidden on mobile */}
                 {cart.items.length > 0 && (
-                  <div className="mt-3 space-y-1">
-                    {/* Drug Interaction Warning */}
+                  <div className="hidden sm:block mt-3 space-y-1">
                     {cart.items.length >= 2 && (
                       <DrugInteractionWarning cartItems={cart.items} />
                     )}
 
-                    {/* Patient & Prescription Accordion */}
                     <Collapsible>
                       <CollapsibleTrigger asChild>
                         <Button variant="ghost" size="sm" className="w-full justify-between h-8 px-2 text-xs text-muted-foreground hover:text-foreground">
@@ -851,16 +851,15 @@ const Checkout = () => {
                         />
                       </CollapsibleContent>
                     </Collapsible>
-
                   </div>
                 )}
               </div>
 
-              {/* Action Buttons - Always visible at bottom */}
-              <div className="space-y-2 mt-4 flex-shrink-0 pt-2 border-t border-border/30">
+              {/* Action Buttons - compact on mobile */}
+              <div className="space-y-2 mt-2 flex-shrink-0 pt-2 border-t border-border/30">
                 {cart.items.length > 0 && (
                   <div className="grid grid-cols-2 gap-2">
-                    <Button onClick={handleHoldSale} variant="outline" size="sm" className="h-9 gap-1.5 text-xs rounded-xl">
+                    <Button onClick={handleHoldSale} variant="outline" size="sm" className="h-8 sm:h-9 gap-1 text-xs rounded-xl">
                       <Pause className="h-3.5 w-3.5" />
                       Hold
                     </Button>
@@ -869,7 +868,7 @@ const Checkout = () => {
                       variant="outline"
                       size="sm"
                       disabled={isProcessing}
-                      className="h-9 gap-1.5 text-xs rounded-xl border-amber-500/40 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30"
+                      className="h-8 sm:h-9 gap-1 text-xs rounded-xl border-amber-500/40 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30"
                     >
                       <FileText className="h-3.5 w-3.5" />
                       Invoice
@@ -880,7 +879,7 @@ const Checkout = () => {
                 <Button
                   onClick={() => setCheckoutOpen(true)}
                   disabled={cart.items.length === 0}
-                  className="w-full h-10 sm:h-11 text-sm font-bold gap-2 bg-gradient-primary hover:opacity-90 shadow-md rounded-xl transition-all hover:shadow-lg"
+                  className="w-full h-9 sm:h-11 text-sm font-bold gap-2 bg-gradient-primary hover:opacity-90 shadow-md rounded-xl transition-all hover:shadow-lg"
                 >
                   <CreditCard className="h-4 w-4" />
                   Complete Sale
