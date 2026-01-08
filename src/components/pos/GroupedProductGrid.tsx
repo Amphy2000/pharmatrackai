@@ -159,22 +159,22 @@ export const GroupedProductGrid = ({
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-2 sm:gap-3">
-        <div className="relative flex-1">
+      <div className="flex items-center gap-2 sm:gap-3">
+        <div className="relative flex-1 min-w-0">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             ref={searchInputRef}
             placeholder="Search by name, ingredient, or barcode..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 h-12 rounded-xl bg-muted/30 border-border/50"
+            className="pl-10 h-12 w-full rounded-xl bg-muted/30 border-border/50"
           />
         </div>
         {onQuickItemClick && (
           <Button
             onClick={onQuickItemClick}
             variant="outline"
-            className="h-12 gap-2 px-3 rounded-xl border-amber-500/40 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30"
+            className="h-12 w-12 sm:w-auto shrink-0 gap-2 px-0 sm:px-3 rounded-xl border-amber-500/40 text-amber-600 hover:bg-amber-50 dark:hover:bg-amber-950/30"
             title="Quick Item (Express Sale)"
           >
             <Zap className="h-5 w-5" />
@@ -184,7 +184,7 @@ export const GroupedProductGrid = ({
         <Button
           onClick={() => setScannerOpen(true)}
           variant="outline"
-          className="h-12 gap-2 px-4 rounded-xl border-primary/30 hover:bg-primary/10"
+          className="h-12 w-12 sm:w-auto shrink-0 gap-2 px-0 sm:px-4 rounded-xl border-primary/30 hover:bg-primary/10"
         >
           <ScanBarcode className="h-5 w-5 text-primary" />
           <span className="hidden sm:inline">Scan</span>
