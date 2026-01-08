@@ -357,33 +357,33 @@ const SalesPitch = () => {
     features: string[];
     popular?: boolean;
   }> = {
-    starter: {
-      name: 'Switch & Save',
-      tagline: 'Lifetime License Feel',
-      setup: '₦150,000',
-      monthly: '₦10,000',
-      annual: '₦100,000',
-      target: 'Single-branch pharmacies',
-      features: ['Cloud Backups', '1 User', 'Unlimited SKUs', 'Basic POS', 'Expiry Tracking', 'Email Support']
+    lite: {
+      name: 'Lite',
+      tagline: 'Essential POS',
+      setup: '₦0',
+      monthly: '₦7,500',
+      annual: '₦38,700',
+      target: 'New pharmacies starting digital',
+      features: ['Basic POS System', 'Cloud Backups', '2 User Accounts', 'Unlimited SKUs', 'Expiry Tracking', '5 AI Invoice Scans/month', 'Basic Reports', 'Email Support']
     },
     pro: {
       name: 'AI Powerhouse',
-      tagline: 'Stop Drug Waste',
+      tagline: 'Stop Drug Waste with AI',
       setup: '₦0',
       monthly: '₦35,000',
-      annual: '₦350,000',
-      target: 'Growing pharmacies',
-      features: ['Everything in Starter', 'AI Expiry Predictions', 'Demand Forecasting', 'Unlimited Users', 'Multi-Branch', 'Staff Tracking', 'Priority Support'],
+      annual: '₦180,000',
+      target: 'Fast-growing pharmacies using AI',
+      features: ['Everything in Lite', 'UNLIMITED AI Invoice Scans', 'Automated Expiry Discounting', 'Demand Forecasting AI', 'Unlimited Users', 'Multi-Branch Ready', 'Staff Clock-in', 'NAFDAC Reports', 'Priority WhatsApp Support'],
       popular: true
     },
     enterprise: {
       name: 'Enterprise',
-      tagline: 'Hospital Chains',
+      tagline: 'Global Standard',
       setup: 'Custom',
       monthly: 'Custom',
       annual: 'Custom',
-      target: 'Large organizations',
-      features: ['Everything in Pro', 'White-label', 'Custom API', 'Dedicated Manager', '24/7 Support', 'SLA Guarantee', 'On-site Training']
+      target: 'Hospital chains & large networks',
+      features: ['Everything in Pro', 'White-label Options', 'Custom API Access', 'Dedicated Account Manager', '24/7 Priority Support']
     }
   };
   return <div ref={containerRef} className="bg-background text-foreground overflow-x-hidden">
