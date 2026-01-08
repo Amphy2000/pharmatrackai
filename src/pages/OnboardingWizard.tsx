@@ -25,9 +25,7 @@ import {
   Sparkles,
   CheckCircle2
 } from 'lucide-react';
-
-// External Supabase URL for edge functions
-const EXTERNAL_FUNCTIONS_URL = 'https://sdejkpweecasdzsixxbd.supabase.co/functions/v1';
+import { getExternalFunctionsUrl } from '@/lib/externalFunctionsUrl';
 
 type Step = 'country' | 'pharmacy' | 'import';
 
@@ -140,7 +138,7 @@ const OnboardingWizard = () => {
       if (phone) {
         try {
           const ownerName = user.user_metadata?.full_name || pharmacyName;
-          await fetch(`${EXTERNAL_FUNCTIONS_URL}/send-welcome-sms`, {
+          await fetch(`${getExternalFunctionsUrl()}/send-welcome-sms`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',

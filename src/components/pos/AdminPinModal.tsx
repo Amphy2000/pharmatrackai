@@ -6,9 +6,7 @@ import { Label } from '@/components/ui/label';
 import { ShieldCheck, Lock, AlertTriangle, Loader2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { toast } from 'sonner';
-
-// External Supabase URL for edge functions
-const EXTERNAL_FUNCTIONS_URL = 'https://sdejkpweecasdzsixxbd.supabase.co/functions/v1';
+import { getExternalFunctionsUrl } from '@/lib/externalFunctionsUrl';
 
 interface AdminPinModalProps {
   open: boolean;
@@ -47,7 +45,7 @@ export const AdminPinModal = ({
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData?.session?.access_token;
 
-      const fetchResponse = await fetch(`${EXTERNAL_FUNCTIONS_URL}/verify-admin-pin`, {
+      const fetchResponse = await fetch(`${getExternalFunctionsUrl()}/verify-admin-pin`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
