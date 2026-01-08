@@ -60,7 +60,8 @@ const Settings = () => {
         </div>
 
         <Tabs value={currentTab} onValueChange={handleTabChange} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 lg:flex lg:flex-wrap h-auto gap-1 p-1">
+          <div className="overflow-x-auto -mx-4 px-4 pb-2">
+            <TabsList className="inline-flex w-max sm:w-full sm:flex sm:flex-wrap h-auto gap-1 p-1 min-w-0">
             {!isManager && (
               <>
                 <TabsTrigger value="general" className="gap-2 text-xs sm:text-sm">
@@ -123,7 +124,8 @@ const Settings = () => {
                 )}
               </>
             )}
-          </TabsList>
+            </TabsList>
+          </div>
 
           <TabsContent value="general">
             <Card className="mb-6">
