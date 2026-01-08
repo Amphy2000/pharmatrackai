@@ -852,20 +852,6 @@ const Checkout = () => {
                       </CollapsibleContent>
                     </Collapsible>
 
-                    <Collapsible>
-                      <CollapsibleTrigger asChild>
-                        <Button variant="ghost" size="sm" className="w-full justify-between h-8 px-2 text-xs text-muted-foreground hover:text-foreground">
-                          <span className="flex items-center gap-1.5">
-                            <Camera className="h-3.5 w-3.5" />
-                            {prescriptionImages.length > 0 ? `${prescriptionImages.length} image(s) attached` : 'Attach Prescription (Optional)'}
-                          </span>
-                          <ChevronDown className="h-3.5 w-3.5 transition-transform duration-200 group-data-[state=open]:rotate-180" />
-                        </Button>
-                      </CollapsibleTrigger>
-                      <CollapsibleContent className="pt-2">
-                        <PrescriptionImageUpload images={prescriptionImages} onImagesChange={setPrescriptionImages} />
-                      </CollapsibleContent>
-                    </Collapsible>
                   </div>
                 )}
               </div>
