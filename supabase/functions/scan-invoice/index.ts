@@ -1,4 +1,5 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -22,6 +23,9 @@ function normalizePrice(v: unknown): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
+// AI scan limits per plan
+const LITE_SCAN_LIMIT = 5;
+
 serve(async (req) => {
   // Handle CORS preflight
   if (req.method === "OPTIONS") {
@@ -37,6 +41,7 @@ serve(async (req) => {
 
     // Support both single imageUrl and multiple images array
     const images: string[] = body?.images || (body?.imageUrl ? [body.imageUrl] : []);
+    const pharmacyId: string | undefined = body?.pharmacy_id;
 
     if (!Array.isArray(images) || images.length === 0) {
       return jsonResponse({ error: "At least one image is required" }, { status: 400 });
@@ -46,6 +51,68 @@ serve(async (req) => {
     if (!LOVABLE_API_KEY) {
       console.error("LOVABLE_API_KEY not configured");
       return jsonResponse({ error: "AI service not configured" }, { status: 500 });
+    }
+
+    // Check AI scan limits if pharmacy_id is provided
+    if (pharmacyId) {
+      const supabaseUrl = Deno.env.get("SUPABASE_URL");
+      const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+      
+      if (supabaseUrl && supabaseServiceKey) {
+        const supabase = createClient(supabaseUrl, supabaseServiceKey);
+        
+        // Get pharmacy plan and scan usage
+        const { data: pharmacy, error: pharmacyError } = await supabase
+          .from("pharmacies")
+          .select("subscription_plan, ai_scans_used_this_month, ai_scans_reset_at")
+          .eq("id", pharmacyId)
+          .single();
+        
+        if (pharmacyError) {
+          console.error("Error fetching pharmacy:", pharmacyError);
+        } else if (pharmacy) {
+          const plan = pharmacy.subscription_plan;
+          const isLitePlan = plan === 'lite' || plan === 'starter';
+          
+          if (isLitePlan) {
+            // Check if we need to reset monthly counter
+            const resetAt = pharmacy.ai_scans_reset_at ? new Date(pharmacy.ai_scans_reset_at) : null;
+            const now = new Date();
+            const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+            
+            let scansUsed = pharmacy.ai_scans_used_this_month || 0;
+            
+            // Reset counter if needed
+            if (!resetAt || resetAt < startOfMonth) {
+              await supabase
+                .from("pharmacies")
+                .update({ ai_scans_used_this_month: 0, ai_scans_reset_at: now.toISOString() })
+                .eq("id", pharmacyId);
+              scansUsed = 0;
+            }
+            
+            // Check if limit exceeded
+            if (scansUsed >= LITE_SCAN_LIMIT) {
+              console.log(`scan-invoice: Pharmacy ${pharmacyId} has exceeded AI scan limit (${scansUsed}/${LITE_SCAN_LIMIT})`);
+              return jsonResponse({
+                error: "AI scan limit reached",
+                upgrade_required: true,
+                scans_used: scansUsed,
+                scans_limit: LITE_SCAN_LIMIT,
+                message: `You've used all ${LITE_SCAN_LIMIT} free AI scans this month. Upgrade to AI Powerhouse for unlimited scans.`
+              }, { status: 402 });
+            }
+            
+            // Increment counter after successful validation
+            await supabase
+              .from("pharmacies")
+              .update({ ai_scans_used_this_month: scansUsed + 1 })
+              .eq("id", pharmacyId);
+            
+            console.log(`scan-invoice: Pharmacy ${pharmacyId} scan count: ${scansUsed + 1}/${LITE_SCAN_LIMIT}`);
+          }
+        }
+      }
     }
 
     console.log(`scan-invoice: processing ${images.length} image(s)`);
@@ -248,4 +315,3 @@ REMEMBER: Extract EVERY product row. When in doubt, include it. Empty items arra
     return jsonResponse({ error: errorMessage }, { status: 500 });
   }
 });
-

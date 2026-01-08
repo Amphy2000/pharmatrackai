@@ -8,6 +8,8 @@ export interface PlanLimits {
   planName: string;
   features: string[];
   hasAIFeatures: boolean;
+  hasLimitedAI: boolean;
+  aiScansLimit: number;
   hasMultiBranch: boolean;
   hasUnlimitedUsers: boolean;
   hasNAFDACReports: boolean;
@@ -29,10 +31,13 @@ const PLAN_FEATURES = {
       '2 User Accounts',
       'Unlimited SKUs',
       'Expiry Tracking',
+      '5 AI Invoice Scans/month',
       'Basic Reports',
       'Email Support'
     ],
-    hasAIFeatures: false,
+    hasAIFeatures: true, // Limited AI
+    hasLimitedAI: true,
+    aiScansLimit: 5,
     hasMultiBranch: false,
     hasUnlimitedUsers: false,
     hasNAFDACReports: false,
@@ -52,10 +57,13 @@ const PLAN_FEATURES = {
       '2 User Accounts',
       'Unlimited SKUs',
       'Expiry Tracking',
+      '5 AI Invoice Scans/month',
       'Basic Reports',
       'Email Support'
     ],
-    hasAIFeatures: false,
+    hasAIFeatures: true,
+    hasLimitedAI: true,
+    aiScansLimit: 5,
     hasMultiBranch: false,
     hasUnlimitedUsers: false,
     hasNAFDACReports: false,
@@ -70,7 +78,7 @@ const PLAN_FEATURES = {
     maxBranches: 10,
     features: [
       'Everything in Lite',
-      'AI Invoice Scanner',
+      'UNLIMITED AI Invoice Scans',
       'Automated Expiry Discounting',
       'Demand Forecasting AI',
       'Unlimited Users',
@@ -81,6 +89,8 @@ const PLAN_FEATURES = {
       'Priority WhatsApp Support'
     ],
     hasAIFeatures: true,
+    hasLimitedAI: false,
+    aiScansLimit: 999999,
     hasMultiBranch: true,
     hasUnlimitedUsers: true,
     hasNAFDACReports: true,
@@ -104,6 +114,8 @@ const PLAN_FEATURES = {
       'On-site Training'
     ],
     hasAIFeatures: true,
+    hasLimitedAI: false,
+    aiScansLimit: 999999,
     hasMultiBranch: true,
     hasUnlimitedUsers: true,
     hasNAFDACReports: true,
@@ -144,6 +156,8 @@ export const usePlanLimits = () => {
       planName: getPlanName(plan),
       features: planConfig.features,
       hasAIFeatures: planConfig.hasAIFeatures,
+      hasLimitedAI: planConfig.hasLimitedAI,
+      aiScansLimit: planConfig.aiScansLimit,
       hasMultiBranch: planConfig.hasMultiBranch,
       hasUnlimitedUsers: planConfig.hasUnlimitedUsers,
       hasNAFDACReports: planConfig.hasNAFDACReports,
