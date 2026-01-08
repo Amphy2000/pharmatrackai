@@ -2,9 +2,7 @@ import { useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { usePharmacy } from '@/hooks/usePharmacy';
 import { toast } from 'sonner';
-
-// External Supabase URL for edge functions
-const EXTERNAL_FUNCTIONS_URL = 'https://sdejkpweecasdzsixxbd.supabase.co/functions/v1';
+import { getExternalFunctionsUrl } from '@/lib/externalFunctionsUrl';
 
 type AlertType = 'low_stock' | 'expiring' | 'expired' | 'custom' | 'daily_summary';
 type AlertChannel = 'sms' | 'whatsapp';
@@ -71,7 +69,7 @@ export const useAlerts = () => {
       const { data: sessionData } = await supabase.auth.getSession();
       const token = sessionData?.session?.access_token;
 
-      const fetchResponse = await fetch(`${EXTERNAL_FUNCTIONS_URL}/termii-alert`, {
+      const fetchResponse = await fetch(`${getExternalFunctionsUrl()}/termii-alert`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

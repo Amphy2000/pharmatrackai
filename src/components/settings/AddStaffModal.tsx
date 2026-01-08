@@ -12,9 +12,7 @@ import { usePharmacy } from '@/hooks/usePharmacy';
 import { useBranches } from '@/hooks/useBranches';
 import { useToast } from '@/hooks/use-toast';
 import { PERMISSION_LABELS, ROLE_TEMPLATES, PermissionKey } from '@/hooks/usePermissions';
-
-// External Supabase URL for edge functions
-const EXTERNAL_FUNCTIONS_URL = 'https://sdejkpweecasdzsixxbd.supabase.co/functions/v1';
+import { getExternalFunctionsUrl } from '@/lib/externalFunctionsUrl';
 
 interface AddStaffModalProps {
   isOpen: boolean;
@@ -87,7 +85,7 @@ export const AddStaffModal = ({ isOpen, onClose, onSuccess, mode = 'owner', forc
       const token = sessionData?.session?.access_token;
 
       // Call external edge function to create staff
-      const fetchResponse = await fetch(`${EXTERNAL_FUNCTIONS_URL}/create-staff`, {
+      const fetchResponse = await fetch(`${getExternalFunctionsUrl()}/create-staff`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
