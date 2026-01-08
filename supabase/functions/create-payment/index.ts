@@ -7,33 +7,38 @@ const corsHeaders = {
 };
 
 // Plan pricing in kobo (1 Naira = 100 kobo)
-// Annual discount: 40% off
-const ANNUAL_DISCOUNT = 0.4;
+// Discount rates
+const QUARTERLY_DISCOUNT = 0.16; // 16% off (effective ₦25,000/mo for Pro)
+const ANNUAL_DISCOUNT = 0.57;    // 57% off (effective ₦15,000/mo for Pro)
 
 // 3-tier pricing model: Lite, Pro, Enterprise
 const PLAN_CONFIG = {
   lite: { 
     setupFee: 0,
     monthlyFee: 750000,   // ₦7,500/month
-    annualFee: Math.round(750000 * 12 * (1 - ANNUAL_DISCOUNT)),  // ₦54,000/year
+    quarterlyFee: Math.round(750000 * 3 * (1 - QUARTERLY_DISCOUNT)),  // ₦18,900/quarter
+    annualFee: Math.round(750000 * 12 * (1 - ANNUAL_DISCOUNT)),       // ₦38,700/year
     isHybrid: false,
   },
   // Legacy starter plan - maps to lite for existing subscribers
   starter: { 
     setupFee: 0,
-    monthlyFee: 750000,   // Treated as lite now
+    monthlyFee: 750000,
+    quarterlyFee: Math.round(750000 * 3 * (1 - QUARTERLY_DISCOUNT)),
     annualFee: Math.round(750000 * 12 * (1 - ANNUAL_DISCOUNT)),
     isHybrid: false,
   },
   pro: { 
     setupFee: 0,
     monthlyFee: 3500000,  // ₦35,000/month
-    annualFee: Math.round(3500000 * 12 * (1 - ANNUAL_DISCOUNT)),  // ₦252,000/year
+    quarterlyFee: 7500000, // ₦75,000/quarter (₦25,000/mo effective)
+    annualFee: 18000000,   // ₦180,000/year (₦15,000/mo effective - 57% off)
     isHybrid: false,
   },
   enterprise: { 
     setupFee: 0,
     monthlyFee: 0,
+    quarterlyFee: 0,
     annualFee: 0,
     isHybrid: false,
   },
@@ -88,7 +93,6 @@ serve(async (req) => {
     const { plan, callback_url, billing_period } = await req.json();
     console.log("Payment request for plan:", plan, "billing:", billing_period || 'monthly');
 
-    const isAnnual = billing_period === 'annual';
     const planConfig = PLAN_CONFIG[plan as keyof typeof PLAN_CONFIG];
     if (!plan || !planConfig) {
       throw new Error("Invalid plan selected");
@@ -119,20 +123,28 @@ serve(async (req) => {
 
     // Determine amount based on plan type and billing period
     let chargeAmount: number;
+    let billingDescription: string;
+    
     if (planConfig.isHybrid) {
       // Hybrid plans charge setup fee first, then monthly/annual maintenance
       chargeAmount = planConfig.setupFee;
-    } else if (isAnnual && planConfig.annualFee > 0) {
+      billingDescription = "Setup Fee";
+    } else if (billing_period === 'annual' && planConfig.annualFee > 0) {
       chargeAmount = planConfig.annualFee;
+      billingDescription = "Annual Subscription";
+    } else if (billing_period === 'quarterly' && planConfig.quarterlyFee > 0) {
+      chargeAmount = planConfig.quarterlyFee;
+      billingDescription = "Quarterly Subscription";
     } else {
       chargeAmount = planConfig.monthlyFee;
+      billingDescription = "Monthly Subscription";
     }
 
     if (chargeAmount === 0) {
       throw new Error("Enterprise plan requires contacting sales");
     }
 
-    console.log("Initializing Paystack transaction for amount:", chargeAmount);
+    console.log("Initializing Paystack transaction for amount:", chargeAmount, billingDescription);
 
     // Create Paystack transaction
     const response = await fetch("https://api.paystack.co/transaction/initialize", {
@@ -149,6 +161,8 @@ serve(async (req) => {
           pharmacy_id: staff.pharmacy_id,
           plan: plan,
           pharmacy_name: pharmacyName,
+          billing_period: billing_period || 'monthly',
+          billing_description: billingDescription,
           is_hybrid: planConfig.isHybrid,
           monthly_fee: planConfig.monthlyFee,
         },

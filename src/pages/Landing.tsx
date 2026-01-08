@@ -91,28 +91,32 @@ const Landing = () => {
     }).format(revenue * 12 * 0.05);
   };
 
-  // State for annual billing toggle
-  const [isAnnualBilling, setIsAnnualBilling] = useState(false);
+  // State for billing period toggle (monthly, quarterly, annual)
+  const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'quarterly' | 'annual'>('annual');
   
-  // Annual discount rate (40% off)
-  const ANNUAL_DISCOUNT = 0.4;
+  // Discount rates
+  const QUARTERLY_DISCOUNT = 0.16; // 16% off
+  const ANNUAL_DISCOUNT = 0.57;    // 57% off (effective ₦15,000/mo for Pro)
 
   // NGN Pricing (3-Tier Model)
   const ngnPricing = {
     lite: {
       name: 'Lite',
-      tagline: 'Essential POS',
+      tagline: 'Essential POS + Try AI',
       setup: '₦0',
       monthly: '₦7,500',
       monthlyPrice: 7500,
+      quarterly: `₦${Math.round(7500 * 3 * (1 - QUARTERLY_DISCOUNT)).toLocaleString()}`,
+      quarterlyPrice: Math.round(7500 * 3 * (1 - QUARTERLY_DISCOUNT)),
       annual: `₦${Math.round(7500 * 12 * (1 - ANNUAL_DISCOUNT)).toLocaleString()}`,
       annualPrice: Math.round(7500 * 12 * (1 - ANNUAL_DISCOUNT)),
       setupLabel: 'No Setup Fee',
       target: 'New pharmacies starting digital',
-      features: ['Basic POS System', 'Cloud Backups', '2 User Accounts', 'Unlimited SKUs', 'Expiry Tracking', 'Basic Reports', 'Email Support'],
-      notIncluded: ['AI Features', 'Multi-Branch', 'Staff Clock-in'],
+      features: ['Basic POS System', 'Cloud Backups', '2 User Accounts', 'Unlimited SKUs', 'Expiry Tracking', '5 AI Invoice Scans/month', 'Basic Reports', 'Email Support'],
+      notIncluded: ['Unlimited AI', 'Multi-Branch', 'Staff Clock-in'],
       highlight: false,
-      isNew: true
+      isNew: true,
+      badge: 'Try AI Free'
     },
     pro: {
       name: 'AI Powerhouse',
@@ -120,11 +124,13 @@ const Landing = () => {
       setup: '₦0',
       monthly: '₦35,000',
       monthlyPrice: 35000,
-      annual: `₦${Math.round(35000 * 12 * (1 - ANNUAL_DISCOUNT)).toLocaleString()}`,
-      annualPrice: Math.round(35000 * 12 * (1 - ANNUAL_DISCOUNT)),
+      quarterly: '₦75,000',
+      quarterlyPrice: 7500000 / 100, // ₦75,000
+      annual: '₦180,000',
+      annualPrice: 180000,
       setupLabel: 'Zero Setup Fee',
       target: 'Fast-growing pharmacies using AI',
-      features: ['Everything in Lite', 'AI Invoice Scanner', 'Automated Expiry Discounting', 'Demand Forecasting AI', 'Unlimited Users', 'Multi-Branch Ready', 'Staff Clock-in Tracking', 'NAFDAC Compliance Reports', 'Controlled Drugs Register', 'Priority WhatsApp Support'],
+      features: ['Everything in Lite', 'UNLIMITED AI Invoice Scans', 'Automated Expiry Discounting', 'Demand Forecasting AI', 'Unlimited Users', 'Multi-Branch Ready', 'Staff Clock-in Tracking', 'NAFDAC Compliance Reports', 'Controlled Drugs Register', 'Priority WhatsApp Support'],
       notIncluded: [],
       highlight: true,
       isNew: false,
@@ -136,6 +142,8 @@ const Landing = () => {
       setup: 'Custom',
       monthly: 'Custom',
       monthlyPrice: 0,
+      quarterly: 'Custom',
+      quarterlyPrice: 0,
       annual: 'Custom',
       annualPrice: 0,
       setupLabel: 'Custom Quote',
@@ -1404,14 +1412,29 @@ const Landing = () => {
               {isInternational ? 'Simple, transparent pricing for global businesses' : 'Start small with Lite, or unlock AI power with Pro'}
             </p>
             
-            {/* Billing Period Toggle */}
             {!isInternational && (
               <div className="flex flex-col items-center gap-4 mb-8">
-                <div className="inline-flex items-center gap-4 px-6 py-3 rounded-full bg-muted/50 border border-border/50">
-                  <span className={`text-sm ${!isAnnualBilling ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>Monthly</span>
-                  <Switch checked={isAnnualBilling} onCheckedChange={setIsAnnualBilling} />
-                  <span className={`text-sm ${isAnnualBilling ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>Annual</span>
-                  {isAnnualBilling && <Badge className="bg-success text-success-foreground">Save 40%</Badge>}
+                <div className="inline-flex items-center gap-1 p-1 rounded-full bg-muted/50 border border-border/50">
+                  <button
+                    onClick={() => setBillingPeriod('monthly')}
+                    className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${billingPeriod === 'monthly' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                  >
+                    Monthly
+                  </button>
+                  <button
+                    onClick={() => setBillingPeriod('quarterly')}
+                    className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${billingPeriod === 'quarterly' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                  >
+                    Quarterly
+                    <Badge className="ml-2 bg-info/20 text-info text-[10px] px-1.5">16% off</Badge>
+                  </button>
+                  <button
+                    onClick={() => setBillingPeriod('annual')}
+                    className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${billingPeriod === 'annual' ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+                  >
+                    Annual
+                    <Badge className="ml-2 bg-success text-success-foreground text-[10px] px-1.5">57% off</Badge>
+                  </button>
                 </div>
               </div>
             )}
@@ -1458,10 +1481,17 @@ const Landing = () => {
                           </div>
                         )}
                         <div className="flex items-baseline gap-1">
-                          {isAnnualBilling && plan.annualPrice > 0 ? (
+                          {billingPeriod === 'annual' && plan.annualPrice > 0 ? (
                             <>
                               <span className={`text-2xl font-display font-bold ${plan.highlight ? 'text-gradient' : ''}`}>
                                 ₦{Math.round(plan.annualPrice / 12).toLocaleString()}
+                              </span>
+                              <span className="text-xs text-muted-foreground">/month</span>
+                            </>
+                          ) : billingPeriod === 'quarterly' && plan.quarterlyPrice > 0 ? (
+                            <>
+                              <span className={`text-2xl font-display font-bold ${plan.highlight ? 'text-gradient' : ''}`}>
+                                ₦{Math.round(plan.quarterlyPrice / 3).toLocaleString()}
                               </span>
                               <span className="text-xs text-muted-foreground">/month</span>
                             </>
@@ -1472,13 +1502,21 @@ const Landing = () => {
                             </>
                           )}
                         </div>
-                        {isAnnualBilling && plan.annualPrice > 0 && (
+                        {billingPeriod === 'annual' && plan.annualPrice > 0 && (
                           <p className="text-xs text-success mt-1">
                             {plan.annual}/year (save ₦{((plan.monthlyPrice * 12) - plan.annualPrice).toLocaleString()})
                           </p>
                         )}
+                        {billingPeriod === 'quarterly' && plan.quarterlyPrice > 0 && (
+                          <p className="text-xs text-info mt-1">
+                            ₦{plan.quarterlyPrice.toLocaleString()}/quarter
+                          </p>
+                        )}
                         {'savings' in plan && plan.savings && (
                           <p className="text-xs text-primary font-medium mt-2">{plan.savings}</p>
+                        )}
+                        {'badge' in plan && plan.badge && (
+                          <Badge className="mt-2 bg-success/10 text-success border-success/30">{plan.badge}</Badge>
                         )}
                       </div>
 

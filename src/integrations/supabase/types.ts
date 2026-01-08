@@ -843,6 +843,8 @@ export type Database = {
           active_branches_limit: number
           address: string | null
           admin_pin_hash: string | null
+          ai_scans_reset_at: string | null
+          ai_scans_used_this_month: number
           alert_channel: string | null
           alert_recipient_phone: string | null
           auto_renew: boolean | null
@@ -886,6 +888,8 @@ export type Database = {
           active_branches_limit?: number
           address?: string | null
           admin_pin_hash?: string | null
+          ai_scans_reset_at?: string | null
+          ai_scans_used_this_month?: number
           alert_channel?: string | null
           alert_recipient_phone?: string | null
           auto_renew?: boolean | null
@@ -929,6 +933,8 @@ export type Database = {
           active_branches_limit?: number
           address?: string | null
           admin_pin_hash?: string | null
+          ai_scans_reset_at?: string | null
+          ai_scans_used_this_month?: number
           alert_channel?: string | null
           alert_recipient_phone?: string | null
           auto_renew?: boolean | null
@@ -2206,6 +2212,14 @@ export type Database = {
       expire_featured_items: { Args: never; Returns: undefined }
       generate_internal_barcode: { Args: never; Returns: string }
       generate_receipt_id: { Args: never; Returns: string }
+      get_ai_scan_usage: {
+        Args: { pharmacy_uuid: string }
+        Returns: {
+          reset_at: string
+          scans_limit: number
+          scans_used: number
+        }[]
+      }
       get_featured_medications: {
         Args: never
         Returns: {
@@ -2256,6 +2270,10 @@ export type Database = {
         }
         Returns: boolean
       }
+      increment_ai_scan_usage: {
+        Args: { pharmacy_uuid: string }
+        Returns: number
+      }
       is_branch_within_limit: {
         Args: { _branch_id: string; _pharmacy_id: string }
         Returns: boolean
@@ -2274,6 +2292,7 @@ export type Database = {
       }
       is_platform_admin: { Args: { _user_id: string }; Returns: boolean }
       is_super_admin: { Args: { _user_id: string }; Returns: boolean }
+      reset_monthly_ai_scans: { Args: never; Returns: undefined }
       search_drug_database: {
         Args: { search_term: string }
         Returns: {
