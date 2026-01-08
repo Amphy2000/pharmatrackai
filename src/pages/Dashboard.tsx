@@ -31,6 +31,7 @@ import { ProfitMarginAnalyzer } from '@/components/dashboard/ProfitMarginAnalyze
 import { DemandForecasting } from '@/components/dashboard/DemandForecasting';
 import { ExpiryDiscountEngine } from '@/components/dashboard/ExpiryDiscountEngine';
 import { QuickGlancePanel } from '@/components/dashboard/QuickGlancePanel';
+import { QuickFinancialsPanel } from '@/components/dashboard/QuickFinancialsPanel';
 import { SavingsROIPanel } from '@/components/dashboard/SavingsROIPanel';
 import { SlowMovingProductsPanel } from '@/components/dashboard/SlowMovingProductsPanel';
 import { LiveActivityFeed } from '@/components/dashboard/LiveActivityFeed';
@@ -301,46 +302,8 @@ const Dashboard = () => {
               </div>
             </motion.section>
 
-            {/* Key Metrics - Today's Sales, Protected Value */}
-            <motion.section 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-            >
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
-                <Card className="glass-card border-border/50 overflow-hidden">
-                  <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-transparent" />
-                  <CardContent className="pt-6 relative">
-                    <div className="flex items-center gap-4">
-                      <div className="h-14 w-14 rounded-2xl bg-emerald-500/20 flex items-center justify-center">
-                        <DollarSign className="h-7 w-7 text-emerald-500" />
-                      </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground mb-1">Today's Sales</p>
-                        <p className="text-2xl sm:text-3xl font-bold font-display">{formatPrice(todaysSales)}</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="glass-card border-border/50 overflow-hidden">
-                  <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-transparent" />
-                  <CardContent className="pt-6 relative">
-                    <div className="flex items-center gap-4">
-                      <div className="h-14 w-14 rounded-2xl bg-primary/20 flex items-center justify-center">
-                        <Shield className="h-7 w-7 text-primary" />
-                      </div>
-                      <div>
-                        <p className="text-sm text-muted-foreground mb-1">Protected Value</p>
-                        <p className="text-2xl sm:text-3xl font-bold font-display">{formatPrice(protectedValue)}</p>
-                        <p className="text-xs text-muted-foreground">Expiry & theft prevention</p>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-              </div>
-            </motion.section>
+            {/* Quick Financials Panel - "Your Money" */}
+            <QuickFinancialsPanel />
 
             {/* Branch-Specific Alert Summary Widget */}
             <BranchAlertSummaryWidget />
