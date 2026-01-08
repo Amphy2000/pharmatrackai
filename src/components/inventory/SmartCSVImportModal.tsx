@@ -1128,22 +1128,23 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
               </div>
             </ScrollArea>
 
-            <DialogFooter className="mt-4 flex-col gap-2">
-              <div className="w-full text-sm text-muted-foreground text-center sm:text-left">
+            <DialogFooter className="mt-4 pt-4 border-t border-border/30 flex-shrink-0 flex-col gap-2">
+              <div className="w-full text-xs sm:text-sm text-muted-foreground text-center sm:text-left">
                 {validRowCount} products ready to import
                 {warningRowCount > 0 && ` (${warningRowCount} with warnings)`}
               </div>
-              <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-                <Button variant="outline" onClick={() => setStep('mapping')} className="w-full sm:w-auto">
-                  Back to Mapping
+              <div className="flex flex-col-reverse sm:flex-row gap-2 w-full">
+                <Button variant="outline" onClick={() => setStep('mapping')} className="w-full sm:w-auto" size="sm">
+                  Back
                 </Button>
-                <Button variant="outline" onClick={handleClose} className="w-full sm:w-auto">
+                <Button variant="outline" onClick={handleClose} className="w-full sm:w-auto" size="sm">
                   Cancel
                 </Button>
                 <Button
                   onClick={handleImport}
                   disabled={validRowCount === 0}
-                  className="gap-2 bg-gradient-primary hover:opacity-90 w-full sm:w-auto"
+                  className="gap-2 bg-gradient-primary hover:opacity-90 w-full sm:flex-1"
+                  size="sm"
                 >
                   <CheckCircle2 className="h-4 w-4" />
                   Import {validRowCount} Products

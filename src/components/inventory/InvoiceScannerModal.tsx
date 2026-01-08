@@ -321,23 +321,23 @@ export const InvoiceScannerModal = ({ open, onOpenChange }: InvoiceScannerModalP
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2 text-xl">
-            <Sparkles className="h-5 w-5 text-primary" />
+      <DialogContent className="max-w-5xl max-h-[90vh] sm:max-h-[90vh] h-[95vh] sm:h-auto overflow-hidden flex flex-col p-4 sm:p-6">
+        <DialogHeader className="flex-shrink-0">
+          <DialogTitle className="flex items-center gap-2 text-base sm:text-xl">
+            <Sparkles className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
             AI Invoice Scanner
-            <Badge variant="outline" className="ml-2 text-xs">
+            <Badge variant="outline" className="ml-2 text-[10px] sm:text-xs hidden sm:inline-flex">
               Auto-Margin: {defaultMargin}%
             </Badge>
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-xs sm:text-sm">
             Upload invoice images or PDFs - AI extracts products and creates/updates inventory
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex gap-4 flex-1 overflow-hidden">
-          {/* Left: Image upload */}
-          <div className="w-2/5 flex flex-col">
+        <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 flex-1 overflow-hidden min-h-0">
+          {/* Left: Image upload - hidden on mobile when items exist */}
+          <div className={`${extractedItems.length > 0 ? 'hidden sm:flex' : 'flex'} sm:w-2/5 flex-col flex-shrink-0`}>
             {imageUrls.length === 0 ? (
               <div className="flex-1 flex flex-col">
                 <label className="flex-1 border-2 border-dashed rounded-lg flex flex-col items-center justify-center cursor-pointer hover:bg-muted/50 transition-colors">
@@ -453,7 +453,7 @@ export const InvoiceScannerModal = ({ open, onOpenChange }: InvoiceScannerModalP
           </div>
 
           {/* Right: Extracted items - Editable verification table */}
-          <div className="flex-1 flex flex-col">
+          <div className="flex-1 flex flex-col min-h-0 overflow-hidden">
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm font-medium">Verification Table</span>
               {extractedItems.length > 0 && (
@@ -607,14 +607,14 @@ export const InvoiceScannerModal = ({ open, onOpenChange }: InvoiceScannerModalP
           </div>
         </div>
 
-        <DialogFooter className="gap-2 sm:gap-0 mt-4">
-          <Button variant="outline" onClick={() => onOpenChange(false)}>
+        <DialogFooter className="flex-shrink-0 gap-2 mt-4 pt-4 border-t border-border/30 flex-col-reverse sm:flex-row">
+          <Button variant="outline" onClick={() => onOpenChange(false)} className="w-full sm:w-auto">
             Cancel
           </Button>
           <Button
             onClick={handleApplyToInventory}
             disabled={extractedItems.length === 0 || isApplying}
-            className="gap-2"
+            className="gap-2 w-full sm:w-auto"
           >
             {isApplying ? (
               <>
@@ -624,7 +624,7 @@ export const InvoiceScannerModal = ({ open, onOpenChange }: InvoiceScannerModalP
             ) : (
               <>
                 <Check className="h-4 w-4" />
-                Apply {extractedItems.length} Items to Inventory
+                Apply {extractedItems.length} Items
               </>
             )}
           </Button>

@@ -760,9 +760,9 @@ const Checkout = () => {
             </div>
           </div>
 
-          {/* Cart Panel - taller than products, but NEVER grows with item count */}
+          {/* Cart Panel - constrained height, scrollable on mobile */}
           <div className="lg:col-span-1">
-            <div className="bg-card/90 backdrop-blur-sm rounded-xl sm:rounded-2xl p-3 sm:p-4 border border-border/40 shadow-sm lg:sticky lg:top-20 max-h-[calc(100vh-6rem)] overflow-y-auto">
+            <div className="bg-card/90 backdrop-blur-sm rounded-xl sm:rounded-2xl p-3 sm:p-4 border border-border/40 shadow-sm lg:sticky lg:top-20 max-h-[50vh] sm:max-h-[60vh] lg:max-h-[calc(100vh-6rem)] overflow-hidden flex flex-col">
               {/* Cart Header with Sale Type Toggle */}
               <div className="flex items-center justify-between mb-3 pb-3 border-b border-border/30">
                 <div className="flex items-center gap-2">
@@ -791,82 +791,85 @@ const Checkout = () => {
                 <SaleTypeToggle
                   saleType={saleType}
                   onSaleTypeChange={setSaleType}
-                  className="mb-3"
+                  className="mb-3 flex-shrink-0"
                 />
               )}
 
-              <CartPanel
-                items={cart.items}
-                onIncrement={cart.incrementQuantity}
-                onDecrement={cart.decrementQuantity}
-                onRemove={cart.removeItem}
-                total={cart.getTotal(saleType)}
-                saleType={saleType}
-              />
-
-              {/* Smart Upsell Suggestions - AI-powered */}
-              {cart.items.length > 0 && (
-                <SmartUpsellPanel
-                  suggestions={upsellSuggestions}
-                  isLoading={isLoadingUpsells}
-                  onAddToCart={cart.addItem}
-                  onDismiss={dismissSuggestion}
-                  cartItems={cart.items}
+              {/* Scrollable cart items container */}
+              <div className="flex-1 min-h-0 overflow-y-auto">
+                <CartPanel
+                  items={cart.items}
+                  onIncrement={cart.incrementQuantity}
+                  onDecrement={cart.decrementQuantity}
+                  onRemove={cart.removeItem}
+                  total={cart.getTotal(saleType)}
+                  saleType={saleType}
                 />
-              )}
 
-              {/* Collapsible extras */}
-              {cart.items.length > 0 && (
-                <div className="mt-3 space-y-1">
-                  {/* Drug Interaction Warning */}
-                  {cart.items.length >= 2 && (
-                    <DrugInteractionWarning cartItems={cart.items} />
-                  )}
+                {/* Smart Upsell Suggestions - AI-powered */}
+                {cart.items.length > 0 && (
+                  <SmartUpsellPanel
+                    suggestions={upsellSuggestions}
+                    isLoading={isLoadingUpsells}
+                    onAddToCart={cart.addItem}
+                    onDismiss={dismissSuggestion}
+                    cartItems={cart.items}
+                  />
+                )}
 
-                  {/* Patient & Prescription Accordion */}
-                  <Collapsible>
-                    <CollapsibleTrigger asChild>
-                      <Button variant="ghost" size="sm" className="w-full justify-between h-8 px-2 text-xs text-muted-foreground hover:text-foreground">
-                        <span className="flex items-center gap-1.5">
-                          <User className="h-3.5 w-3.5" />
-                          {selectedPatient ? selectedPatient.full_name : 'Select Patient (Optional)'}
-                        </span>
-                        <ChevronDown className="h-3.5 w-3.5 transition-transform duration-200 group-data-[state=open]:rotate-180" />
-                      </Button>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent className="pt-2">
-                      <PatientSelector
-                        selectedPatient={selectedPatient}
-                        onSelectPatient={(patient) => {
-                          setSelectedPatient(patient);
-                          if (patient) {
-                            setCustomerName(patient.full_name);
-                          }
-                        }}
-                        onSkip={() => setCustomerName('')}
-                      />
-                    </CollapsibleContent>
-                  </Collapsible>
+                {/* Collapsible extras */}
+                {cart.items.length > 0 && (
+                  <div className="mt-3 space-y-1">
+                    {/* Drug Interaction Warning */}
+                    {cart.items.length >= 2 && (
+                      <DrugInteractionWarning cartItems={cart.items} />
+                    )}
 
-                  <Collapsible>
-                    <CollapsibleTrigger asChild>
-                      <Button variant="ghost" size="sm" className="w-full justify-between h-8 px-2 text-xs text-muted-foreground hover:text-foreground">
-                        <span className="flex items-center gap-1.5">
-                          <Camera className="h-3.5 w-3.5" />
-                          {prescriptionImages.length > 0 ? `${prescriptionImages.length} image(s) attached` : 'Attach Prescription (Optional)'}
-                        </span>
-                        <ChevronDown className="h-3.5 w-3.5 transition-transform duration-200 group-data-[state=open]:rotate-180" />
-                      </Button>
-                    </CollapsibleTrigger>
-                    <CollapsibleContent className="pt-2">
-                      <PrescriptionImageUpload images={prescriptionImages} onImagesChange={setPrescriptionImages} />
-                    </CollapsibleContent>
-                  </Collapsible>
-                </div>
-              )}
+                    {/* Patient & Prescription Accordion */}
+                    <Collapsible>
+                      <CollapsibleTrigger asChild>
+                        <Button variant="ghost" size="sm" className="w-full justify-between h-8 px-2 text-xs text-muted-foreground hover:text-foreground">
+                          <span className="flex items-center gap-1.5">
+                            <User className="h-3.5 w-3.5" />
+                            {selectedPatient ? selectedPatient.full_name : 'Select Patient (Optional)'}
+                          </span>
+                          <ChevronDown className="h-3.5 w-3.5 transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                        </Button>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="pt-2">
+                        <PatientSelector
+                          selectedPatient={selectedPatient}
+                          onSelectPatient={(patient) => {
+                            setSelectedPatient(patient);
+                            if (patient) {
+                              setCustomerName(patient.full_name);
+                            }
+                          }}
+                          onSkip={() => setCustomerName('')}
+                        />
+                      </CollapsibleContent>
+                    </Collapsible>
 
-              {/* Action Buttons */}
-              <div className="space-y-2 mt-4">
+                    <Collapsible>
+                      <CollapsibleTrigger asChild>
+                        <Button variant="ghost" size="sm" className="w-full justify-between h-8 px-2 text-xs text-muted-foreground hover:text-foreground">
+                          <span className="flex items-center gap-1.5">
+                            <Camera className="h-3.5 w-3.5" />
+                            {prescriptionImages.length > 0 ? `${prescriptionImages.length} image(s) attached` : 'Attach Prescription (Optional)'}
+                          </span>
+                          <ChevronDown className="h-3.5 w-3.5 transition-transform duration-200 group-data-[state=open]:rotate-180" />
+                        </Button>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent className="pt-2">
+                        <PrescriptionImageUpload images={prescriptionImages} onImagesChange={setPrescriptionImages} />
+                      </CollapsibleContent>
+                    </Collapsible>
+                  </div>
+                )}
+              </div>
+
+              {/* Action Buttons - Always visible at bottom */}
+              <div className="space-y-2 mt-4 flex-shrink-0 pt-2 border-t border-border/30">
                 {cart.items.length > 0 && (
                   <div className="grid grid-cols-2 gap-2">
                     <Button onClick={handleHoldSale} variant="outline" size="sm" className="h-9 gap-1.5 text-xs rounded-xl">
@@ -889,9 +892,9 @@ const Checkout = () => {
                 <Button
                   onClick={() => setCheckoutOpen(true)}
                   disabled={cart.items.length === 0}
-                  className="w-full h-11 text-sm font-bold gap-2 bg-gradient-primary hover:opacity-90 shadow-md rounded-xl transition-all hover:shadow-lg"
+                  className="w-full h-10 sm:h-11 text-sm font-bold gap-2 bg-gradient-primary hover:opacity-90 shadow-md rounded-xl transition-all hover:shadow-lg"
                 >
-                  <CreditCard className="h-4 w-4 sm:h-5 sm:w-5" />
+                  <CreditCard className="h-4 w-4" />
                   Complete Sale
                 </Button>
               </div>
