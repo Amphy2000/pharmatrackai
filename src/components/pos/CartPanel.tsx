@@ -37,9 +37,9 @@ export const CartPanel = ({
   }
 
   return (
-    <div className="flex flex-col">
-      {/* Scrollable items - fixed height with overflow scroll */}
-      <div className="max-h-[280px] overflow-y-auto pr-1 space-y-1.5 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
+    <div className="flex flex-col h-full">
+      {/* Scrollable items - constrained height on mobile */}
+      <div className="flex-1 min-h-0 overflow-y-auto pr-1 space-y-1.5 scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
         {items.map((item, index) => {
           // For quick items, use the quickItemPrice; for regular items, use wholesale or retail price
           const price = item.isQuickItem
@@ -142,8 +142,8 @@ export const CartPanel = ({
         })}
       </div>
 
-      {/* Totals */}
-      <div className="mt-4 pt-4 border-t border-border/50">
+      {/* Totals - always visible */}
+      <div className="mt-3 pt-3 border-t border-border/50 flex-shrink-0">
         <div className="flex justify-between items-center text-xs text-muted-foreground mb-2">
           <span>
             {items.length} {items.length === 1 ? 'item' : 'items'}
@@ -155,9 +155,9 @@ export const CartPanel = ({
           </span>
           <span className="tabular-nums">{formatPrice(total)}</span>
         </div>
-        <div className="flex justify-between items-center p-3 rounded-xl bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border border-primary/20">
-          <span className="font-bold">Total</span>
-          <span className="font-bold text-xl text-primary tabular-nums">{formatPrice(total)}</span>
+        <div className="flex justify-between items-center p-2.5 sm:p-3 rounded-xl bg-gradient-to-r from-primary/10 via-primary/5 to-transparent border border-primary/20">
+          <span className="font-bold text-sm">Total</span>
+          <span className="font-bold text-lg sm:text-xl text-primary tabular-nums">{formatPrice(total)}</span>
         </div>
       </div>
     </div>
