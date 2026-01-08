@@ -38,8 +38,17 @@ export const AlertSettings = () => {
   // Load saved settings from database
   useEffect(() => {
     if (pharmacy?.id) {
-      // Load from database - default sender ID to PharmaTrack
-      setSenderId((pharmacy as any)?.termii_sender_id || 'PharmaTrack');
+      // Load from database - default Sender ID to PharmaTrack
+      const existingSenderId = (pharmacy as any)?.termii_sender_id as string | undefined;
+      const effectiveSenderId = existingSenderId || 'PharmaTrack';
+      setSenderId(effectiveSenderId);
+
+      // If the pharmacy has no Sender ID set yet, persist PharmaTrack once so backend functions
+      // don't fall back to the pharmacy name (e.g. "SophiedekP").
+      if (!existingSenderId) {
+        updatePharmacySettings.mutate({ termii_sender_id: 'PharmaTrack' });
+      }
+
       setPhone((pharmacy as any)?.alert_recipient_phone || '');
       setUseWhatsApp((pharmacy as any)?.alert_channel === 'whatsapp');
       
@@ -98,10 +107,12 @@ export const AlertSettings = () => {
 
     setIsSavingPhone(true);
     try {
-      // Save phone and channel to database
+      // Save phone/channel to database, and ensure Sender ID defaults to PharmaTrack
+      // (prevents Termii from falling back to the pharmacy name like "SophiedekP")
       await updatePharmacySettings.mutateAsync({
         alert_recipient_phone: cleanPhone.startsWith('234') ? cleanPhone : cleanPhone.replace(/^0/, '234'),
         alert_channel: useWhatsApp ? 'whatsapp' : 'sms',
+        termii_sender_id: (pharmacy as any)?.termii_sender_id || 'PharmaTrack',
       });
 
       // Save UI preferences to localStorage
