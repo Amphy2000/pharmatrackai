@@ -550,12 +550,12 @@ export const MultiImageInvoiceScanner = ({ open, onOpenChange }: MultiImageInvoi
       if (!open) resetScanner();
       onOpenChange(open);
     }}>
-      <DialogContent className="max-w-5xl max-h-[90vh] min-h-0 overflow-hidden flex flex-col p-4">
+      <DialogContent className="w-[95vw] max-w-5xl max-h-[90vh] min-h-0 overflow-hidden flex flex-col p-3 sm:p-4">
         <DialogHeader className="pb-2 space-y-1">
-          <DialogTitle className="flex items-center gap-2 text-lg">
-            <FileImage className="h-4 w-4 text-primary" />
-            Invoice Scanner
-            <Badge variant="outline" className="ml-1 text-[10px] px-1.5 py-0">
+          <DialogTitle className="flex items-center gap-2 text-base sm:text-lg flex-wrap">
+            <FileImage className="h-4 w-4 text-primary flex-shrink-0" />
+            <span>Invoice Scanner</span>
+            <Badge variant="outline" className="text-[10px] px-1.5 py-0">
               {defaultMargin}% margin
             </Badge>
           </DialogTitle>
@@ -568,9 +568,9 @@ export const MultiImageInvoiceScanner = ({ open, onOpenChange }: MultiImageInvoi
           // Upload & Processing View
           <div className="flex-1 min-h-0 flex flex-col gap-4 overflow-hidden">
             {/* Image Upload Area */}
-            <div className="flex gap-4">
-              <label className="flex-shrink-0 w-32 h-32 border-2 border-dashed rounded-lg flex flex-col items-center justify-center cursor-pointer hover:bg-muted/50 transition-colors">
-                <Camera className="h-8 w-8 text-muted-foreground mb-1" />
+            <div className="flex flex-col sm:flex-row gap-3 sm:gap-4">
+              <label className="flex-shrink-0 w-full sm:w-32 h-24 sm:h-32 border-2 border-dashed rounded-lg flex flex-col items-center justify-center cursor-pointer hover:bg-muted/50 transition-colors">
+                <Camera className="h-6 sm:h-8 w-6 sm:w-8 text-muted-foreground mb-1" />
                 <span className="text-xs text-muted-foreground text-center">Add Pages</span>
                 <input
                   type="file"
@@ -582,14 +582,14 @@ export const MultiImageInvoiceScanner = ({ open, onOpenChange }: MultiImageInvoi
               </label>
 
               {/* Image Thumbnails */}
-              <ScrollArea className="flex-1">
-                <div className="flex gap-2 pb-2">
+              <ScrollArea className="flex-1 w-full">
+                <div className="flex flex-wrap sm:flex-nowrap gap-2 pb-2">
                   {uploadedImages.map((img, index) => (
                     <div key={img.id} className="relative flex-shrink-0">
                       <img
                         src={img.preview}
                         alt={`Page ${index + 1}`}
-                        className={`w-28 h-28 object-cover rounded-lg border-2 ${
+                        className={`w-20 h-20 sm:w-28 sm:h-28 object-cover rounded-lg border-2 ${
                           img.processed ? 'border-green-500' : 'border-border'
                         }`}
                       />
@@ -597,21 +597,21 @@ export const MultiImageInvoiceScanner = ({ open, onOpenChange }: MultiImageInvoi
                         variant="secondary" 
                         className="absolute top-1 left-1 text-[10px] h-5"
                       >
-                        Page {index + 1}
+                        {index + 1}
                       </Badge>
                       {img.processed && (
-                        <div className="absolute top-1 right-1 h-5 w-5 bg-green-500 rounded-full flex items-center justify-center">
-                          <Check className="h-3 w-3 text-white" />
+                        <div className="absolute top-1 right-1 h-4 w-4 sm:h-5 sm:w-5 bg-green-500 rounded-full flex items-center justify-center">
+                          <Check className="h-2 w-2 sm:h-3 sm:w-3 text-white" />
                         </div>
                       )}
                       <Button
                         variant="destructive"
                         size="icon"
-                        className="absolute bottom-1 right-1 h-6 w-6"
+                        className="absolute bottom-1 right-1 h-5 w-5 sm:h-6 sm:w-6"
                         onClick={() => removeImage(img.id)}
                         disabled={isProcessing}
                       >
-                        <X className="h-3 w-3" />
+                        <X className="h-2 w-2 sm:h-3 sm:w-3" />
                       </Button>
                     </div>
                   ))}
@@ -671,33 +671,37 @@ export const MultiImageInvoiceScanner = ({ open, onOpenChange }: MultiImageInvoi
         ) : (
           // Review Dashboard
           <div className="flex-1 min-h-0 flex flex-col gap-2 overflow-hidden">
-            {/* Compact Margin & Expiry Controls - Single Row */}
-            <div className="flex flex-wrap items-center gap-2 p-2 border rounded-md bg-muted/20 text-xs">
-              <span className="font-medium">Retail:</span>
-              <Slider
-                value={[retailMarginPercent]}
-                onValueChange={([v]) => setRetailMarginPercent(v)}
-                min={5}
-                max={100}
-                step={1}
-                className="w-20"
-              />
-              <span className="font-mono w-8">{retailMarginPercent}%</span>
+            {/* Compact Margin & Expiry Controls - Responsive */}
+            <div className="flex flex-col sm:flex-row flex-wrap items-start sm:items-center gap-2 p-2 border rounded-md bg-muted/20 text-xs overflow-x-auto">
+              <div className="flex items-center gap-2">
+                <span className="font-medium">Retail:</span>
+                <Slider
+                  value={[retailMarginPercent]}
+                  onValueChange={([v]) => setRetailMarginPercent(v)}
+                  min={5}
+                  max={100}
+                  step={1}
+                  className="w-16 sm:w-20"
+                />
+                <span className="font-mono w-8">{retailMarginPercent}%</span>
+              </div>
               
-              <div className="h-4 w-px bg-border" />
+              <div className="hidden sm:block h-4 w-px bg-border" />
               
-              <span className="font-medium">Wholesale:</span>
-              <Slider
-                value={[wholesaleMarginPercent]}
-                onValueChange={([v]) => setWholesaleMarginPercent(v)}
-                min={1}
-                max={50}
-                step={1}
-                className="w-20"
-              />
-              <span className="font-mono w-8">{wholesaleMarginPercent}%</span>
+              <div className="flex items-center gap-2">
+                <span className="font-medium">Wholesale:</span>
+                <Slider
+                  value={[wholesaleMarginPercent]}
+                  onValueChange={([v]) => setWholesaleMarginPercent(v)}
+                  min={1}
+                  max={50}
+                  step={1}
+                  className="w-16 sm:w-20"
+                />
+                <span className="font-mono w-8">{wholesaleMarginPercent}%</span>
+              </div>
               
-              <div className="h-4 w-px bg-border" />
+              <div className="hidden sm:block h-4 w-px bg-border" />
               
               <Button variant="secondary" size="sm" onClick={applyDefaultPrices} className="h-6 text-xs px-2">
                 <Wand2 className="h-3 w-3 mr-1" />
@@ -748,177 +752,181 @@ export const MultiImageInvoiceScanner = ({ open, onOpenChange }: MultiImageInvoi
               </div>
             )}
 
-            {/* Data Table - More compact with better readability */}
+            {/* Data Table - Horizontally scrollable on mobile */}
             <div className="flex-1 min-h-0 border rounded-md overflow-hidden flex flex-col">
               <div className="overflow-auto flex-1">
-                <table className="w-full text-sm">
-                  {/* Table Header */}
-                  <thead className="sticky top-0 z-10 bg-muted/80 backdrop-blur">
-                    <tr className="border-b">
-                      <th className="text-left font-medium p-2 w-8">#</th>
-                      <th className="text-left font-medium p-2 min-w-[140px]">Product</th>
-                      <th className="text-center font-medium p-2 w-20">Qty</th>
-                      <th className="text-right font-medium p-2 w-20">Cost</th>
-                      <th className="text-right font-medium p-2 w-24">Total</th>
-                      <th className="text-right font-medium p-2 w-20">Retail</th>
-                      <th className="text-right font-medium p-2 w-20">Wholesale</th>
-                      <th className="text-center font-medium p-2 w-28">Expiry</th>
-                      <th className="w-8 p-2"></th>
-                    </tr>
-                  </thead>
+                <div className="min-w-[700px]">
+                  <table className="w-full text-sm">
+                    {/* Table Header */}
+                    <thead className="sticky top-0 z-10 bg-muted/80 backdrop-blur">
+                      <tr className="border-b">
+                        <th className="text-left font-medium p-2 w-8">#</th>
+                        <th className="text-left font-medium p-2 min-w-[140px]">Product</th>
+                        <th className="text-center font-medium p-2 w-16">Qty</th>
+                        <th className="text-right font-medium p-2 w-20">Cost</th>
+                        <th className="text-right font-medium p-2 w-20">Total</th>
+                        <th className="text-right font-medium p-2 w-20">Retail</th>
+                        <th className="text-right font-medium p-2 w-20">W/Sale</th>
+                        <th className="text-center font-medium p-2 w-28">Expiry</th>
+                        <th className="w-8 p-2"></th>
+                      </tr>
+                    </thead>
 
-                  {/* Table Body */}
-                  <tbody>
-                    <AnimatePresence>
-                      {extractedItems.map((item, index) => (
-                        <motion.tr
-                          key={item.id}
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          exit={{ opacity: 0 }}
-                          className={`border-b ${
-                            item.hasError
-                              ? 'bg-destructive/10'
-                              : item.matched
-                                ? 'bg-green-500/5'
-                                : 'bg-yellow-50/50'
-                          }`}
-                        >
-                          {/* S/N */}
-                          <td className="p-2 text-muted-foreground">{index + 1}</td>
+                    {/* Table Body */}
+                    <tbody>
+                      <AnimatePresence>
+                        {extractedItems.map((item, index) => (
+                          <motion.tr
+                            key={item.id}
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className={`border-b ${
+                              item.hasError
+                                ? 'bg-destructive/10'
+                                : item.matched
+                                  ? 'bg-green-500/5'
+                                  : 'bg-yellow-50/50'
+                            }`}
+                          >
+                            {/* S/N */}
+                            <td className="p-2 text-muted-foreground text-xs">{index + 1}</td>
 
-                          {/* Product Name */}
-                          <td className="p-2">
-                            <Input
-                              value={item.productName}
-                              onChange={(e) => updateItem(item.id, 'productName', e.target.value)}
-                              className="h-8 text-sm font-medium"
-                            />
-                            <span className={`text-[10px] ${item.matched ? 'text-green-600' : 'text-yellow-600'}`}>
-                              {item.matched ? `✓ ${item.matched.name}` : '⚠ New'}
-                            </span>
-                          </td>
+                            {/* Product Name */}
+                            <td className="p-2">
+                              <Input
+                                value={item.productName}
+                                onChange={(e) => updateItem(item.id, 'productName', e.target.value)}
+                                className="h-7 text-xs font-medium"
+                              />
+                              <span className={`text-[10px] ${item.matched ? 'text-green-600' : 'text-yellow-600'}`}>
+                                {item.matched ? `✓ ${item.matched.name.substring(0, 20)}` : '⚠ New'}
+                              </span>
+                            </td>
 
-                          {/* Quantity */}
-                          <td className="p-2">
-                            <Input
-                              type="number"
-                              min={1}
-                              value={item.quantity}
-                              onChange={(e) => updateItem(item.id, 'quantity', parseInt(e.target.value) || 0)}
-                              className={`h-8 text-center w-full ${!item.quantity ? 'border-destructive' : ''}`}
-                            />
-                          </td>
+                            {/* Quantity */}
+                            <td className="p-2">
+                              <Input
+                                type="number"
+                                min={1}
+                                value={item.quantity}
+                                onChange={(e) => updateItem(item.id, 'quantity', parseInt(e.target.value) || 0)}
+                                className={`h-7 text-center text-xs w-full ${!item.quantity ? 'border-destructive' : ''}`}
+                              />
+                            </td>
 
-                          {/* Unit Cost */}
-                          <td className="p-2">
-                            <Input
-                              type="number"
-                              min={0}
-                              value={item.unitPrice || ''}
-                              onChange={(e) => updateItem(item.id, 'unitPrice', parseFloat(e.target.value) || null)}
-                              className={`h-8 text-right w-full ${!item.unitPrice ? 'border-destructive' : ''}`}
-                              placeholder="0"
-                            />
-                          </td>
+                            {/* Unit Cost */}
+                            <td className="p-2">
+                              <Input
+                                type="number"
+                                min={0}
+                                value={item.unitPrice || ''}
+                                onChange={(e) => updateItem(item.id, 'unitPrice', parseFloat(e.target.value) || null)}
+                                className={`h-7 text-right text-xs w-full ${!item.unitPrice ? 'border-destructive' : ''}`}
+                                placeholder="0"
+                              />
+                            </td>
 
-                          {/* Row Total */}
-                          <td className="p-2 text-right font-medium text-muted-foreground whitespace-nowrap">
-                            {formatPrice(item.rowTotal)}
-                          </td>
+                            {/* Row Total */}
+                            <td className="p-2 text-right text-xs font-medium text-muted-foreground whitespace-nowrap">
+                              {formatPrice(item.rowTotal)}
+                            </td>
 
-                          {/* Retail */}
-                          <td className="p-2">
-                            <Input
-                              type="number"
-                              min={0}
-                              value={item.sellingPrice || ''}
-                              onChange={(e) => updateItem(item.id, 'sellingPrice', parseFloat(e.target.value) || null)}
-                              className={`h-8 text-right w-full ${!item.sellingPrice ? 'bg-blue-50' : ''}`}
-                              placeholder={item.unitPrice ? `~${calculateRetailPrice(item.unitPrice)}` : ''}
-                            />
-                          </td>
+                            {/* Retail */}
+                            <td className="p-2">
+                              <Input
+                                type="number"
+                                min={0}
+                                value={item.sellingPrice || ''}
+                                onChange={(e) => updateItem(item.id, 'sellingPrice', parseFloat(e.target.value) || null)}
+                                className={`h-7 text-right text-xs w-full ${!item.sellingPrice ? 'bg-blue-50' : ''}`}
+                                placeholder={item.unitPrice ? `~${calculateRetailPrice(item.unitPrice)}` : ''}
+                              />
+                            </td>
 
-                          {/* Wholesale */}
-                          <td className="p-2">
-                            <Input
-                              type="number"
-                              min={0}
-                              value={item.wholesalePrice || ''}
-                              onChange={(e) => updateItem(item.id, 'wholesalePrice', parseFloat(e.target.value) || null)}
-                              className={`h-8 text-right w-full ${!item.wholesalePrice ? 'bg-blue-50' : ''}`}
-                              placeholder={item.unitPrice ? `~${calculateWholesalePrice(item.unitPrice)}` : ''}
-                            />
-                          </td>
+                            {/* Wholesale */}
+                            <td className="p-2">
+                              <Input
+                                type="number"
+                                min={0}
+                                value={item.wholesalePrice || ''}
+                                onChange={(e) => updateItem(item.id, 'wholesalePrice', parseFloat(e.target.value) || null)}
+                                className={`h-7 text-right text-xs w-full ${!item.wholesalePrice ? 'bg-blue-50' : ''}`}
+                                placeholder={item.unitPrice ? `~${calculateWholesalePrice(item.unitPrice)}` : ''}
+                              />
+                            </td>
 
-                          {/* Expiry Date */}
-                          <td className="p-2">
-                            <Input
-                              type="date"
-                              value={item.expiryDate || ''}
-                              onChange={(e) => updateItem(item.id, 'expiryDate', e.target.value || null)}
-                              className={`h-8 text-xs w-full ${!item.expiryDate ? 'bg-yellow-100 border-yellow-400' : ''}`}
-                            />
-                          </td>
+                            {/* Expiry Date */}
+                            <td className="p-2">
+                              <Input
+                                type="date"
+                                value={item.expiryDate || ''}
+                                onChange={(e) => updateItem(item.id, 'expiryDate', e.target.value || null)}
+                                className={`h-7 text-xs w-full ${!item.expiryDate ? 'bg-yellow-100 border-yellow-400' : ''}`}
+                              />
+                            </td>
 
-                          {/* Remove */}
-                          <td className="p-2">
-                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => removeItem(item.id)}>
-                              <Trash2 className="h-3.5 w-3.5 text-muted-foreground hover:text-destructive" />
-                            </Button>
-                          </td>
-                        </motion.tr>
-                      ))}
-                    </AnimatePresence>
-                  </tbody>
-                </table>
+                            {/* Remove */}
+                            <td className="p-2">
+                              <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => removeItem(item.id)}>
+                                <Trash2 className="h-3 w-3 text-muted-foreground hover:text-destructive" />
+                              </Button>
+                            </td>
+                          </motion.tr>
+                        ))}
+                      </AnimatePresence>
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
 
-            {/* Compact Footer */}
-            <div className="flex items-center justify-between p-2 border rounded-md bg-muted/20 gap-2">
-              <Button variant="outline" size="sm" onClick={() => setShowReviewDashboard(false)} className="h-8">
-                <ChevronUp className="h-3.5 w-3.5 mr-1" />
-                Back
-              </Button>
+            {/* Compact Footer - Responsive */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-2 border rounded-md bg-muted/20 gap-2">
+              <div className="flex items-center gap-2">
+                <Button variant="outline" size="sm" onClick={() => setShowReviewDashboard(false)} className="h-8">
+                  <ChevronUp className="h-3.5 w-3.5 mr-1" />
+                  Back
+                </Button>
 
-              {hasInvalidItems && (
-                <Badge variant="destructive" className="animate-pulse text-xs">
-                  <AlertCircle className="h-3 w-3 mr-1" />
-                  {extractedItems.filter(i => i.hasError).length} issues
-                </Badge>
-              )}
-
-              <div className="flex-1" />
-
-              {/* Totals */}
-              {extractedInvoiceTotal !== null && (
-                <div className={`text-right px-2 py-1 rounded ${hasTotalMismatch ? 'bg-destructive/10' : 'bg-green-50'}`}>
-                  <div className="text-[10px] text-muted-foreground flex items-center gap-1">
-                    {hasTotalMismatch && <TriangleAlert className="h-2.5 w-2.5 text-destructive" />}
-                    Invoice
-                  </div>
-                  <div className={`text-sm font-semibold ${hasTotalMismatch ? 'text-destructive' : 'text-green-700'}`}>
-                    {formatPrice(extractedInvoiceTotal)}
-                  </div>
-                </div>
-              )}
-
-              <div className="text-right px-2">
-                <div className="text-[10px] text-muted-foreground">Calculated</div>
-                <div className={`text-lg font-bold ${hasTotalMismatch ? 'text-destructive' : 'text-primary'}`}>
-                  {formatPrice(grandTotal)}
-                </div>
+                {hasInvalidItems && (
+                  <Badge variant="destructive" className="animate-pulse text-xs">
+                    <AlertCircle className="h-3 w-3 mr-1" />
+                    {extractedItems.filter(i => i.hasError).length} issues
+                  </Badge>
+                )}
               </div>
 
-              <Button
-                onClick={handleApplyToInventory}
-                disabled={isApplying || hasInvalidItems || extractedItems.length === 0}
-                className="h-9"
-              >
-                {isApplying ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4 mr-1" />}
-                {isApplying ? 'Applying...' : 'Apply'}
-              </Button>
+              <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end">
+                {/* Totals */}
+                {extractedInvoiceTotal !== null && (
+                  <div className={`text-right px-2 py-1 rounded ${hasTotalMismatch ? 'bg-destructive/10' : 'bg-green-50'}`}>
+                    <div className="text-[10px] text-muted-foreground flex items-center gap-1">
+                      {hasTotalMismatch && <TriangleAlert className="h-2.5 w-2.5 text-destructive" />}
+                      Invoice
+                    </div>
+                    <div className={`text-sm font-semibold ${hasTotalMismatch ? 'text-destructive' : 'text-green-700'}`}>
+                      {formatPrice(extractedInvoiceTotal)}
+                    </div>
+                  </div>
+                )}
+
+                <div className="text-right px-2">
+                  <div className="text-[10px] text-muted-foreground">Calculated</div>
+                  <div className={`text-sm sm:text-lg font-bold ${hasTotalMismatch ? 'text-destructive' : 'text-primary'}`}>
+                    {formatPrice(grandTotal)}
+                  </div>
+                </div>
+
+                <Button
+                  onClick={handleApplyToInventory}
+                  disabled={isApplying || hasInvalidItems || extractedItems.length === 0}
+                  className="h-9"
+                >
+                  {isApplying ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4 mr-1" />}
+                  {isApplying ? 'Applying...' : 'Apply'}
+                </Button>
+              </div>
             </div>
           </div>
         )}

@@ -911,7 +911,7 @@ const Checkout = () => {
 
       {/* Checkout Dialog */}
       <Dialog open={checkoutOpen} onOpenChange={setCheckoutOpen}>
-        <DialogContent className="sm:max-w-md mx-4">
+        <DialogContent className="w-[95vw] max-w-md p-4 sm:p-6">
           {!saleComplete ? (
             <>
               <DialogHeader>

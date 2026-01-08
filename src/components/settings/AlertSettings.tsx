@@ -340,6 +340,19 @@ Your SMS integration is working correctly!`,
     setIsSaved(false);
   }, [phone, useWhatsApp, lowStockEnabled, expiryEnabled, dailySummaryEnabled, autoAlertsEnabled]);
 
+  // Auto-save toggle states to localStorage when they change
+  useEffect(() => {
+    if (!pharmacy?.id) return;
+    const settings = {
+      lowStockEnabled,
+      expiryEnabled,
+      dailySummaryEnabled,
+      autoAlertsEnabled,
+      lastAlertSent,
+    };
+    localStorage.setItem(`${ALERT_SETTINGS_KEY}_${pharmacy.id}`, JSON.stringify(settings));
+  }, [pharmacy?.id, lowStockEnabled, expiryEnabled, dailySummaryEnabled, autoAlertsEnabled, lastAlertSent]);
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -396,6 +409,14 @@ Your SMS integration is working correctly!`,
           </div>
         </CardHeader>
         <CardContent className="space-y-6">
+          {/* Sender ID Notice */}
+          <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-sm">
+            <p className="text-amber-700 dark:text-amber-300">
+              <strong>Note:</strong> SMS alerts use <strong>PharmaTrack</strong> as the Sender ID. 
+              If you have a custom Sender ID approved with Termii, contact support to update it.
+            </p>
+          </div>
+          
           {/* SMS Configuration - Hidden, using PharmaTrack as default */}
           <input type="hidden" value={senderId} />
 

@@ -778,17 +778,17 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
 
   return (
     <Dialog open={open} onOpenChange={(nextOpen) => { if (!nextOpen) handleClose(); else onOpenChange(true); }}>
-      <DialogContent className="sm:max-w-4xl h-[90dvh] min-h-0 overflow-hidden flex flex-col">
-        <DialogHeader>
-          <DialogTitle className="font-display text-xl flex items-center gap-2">
-            <FileSpreadsheet className="h-5 w-5 text-primary" />
-            Import Products
-            <Badge variant="secondary" className="ml-2 gap-1">
+      <DialogContent className="w-[95vw] max-w-4xl h-[90dvh] min-h-0 overflow-hidden flex flex-col p-3 sm:p-6">
+        <DialogHeader className="pb-2">
+          <DialogTitle className="font-display text-lg sm:text-xl flex items-center gap-2 flex-wrap">
+            <FileSpreadsheet className="h-5 w-5 text-primary flex-shrink-0" />
+            <span>Import Products</span>
+            <Badge variant="secondary" className="gap-1">
               <Sparkles className="h-3 w-3" />
               Zero-Friction
             </Badge>
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="text-xs sm:text-sm">
             {step === 'upload' && "Upload any file - we'll figure out the rest"}
             {step === 'mapping' && `Found ${headers.length} columns. Adjust mappings if needed.`}
             {step === 'review' && `Review ${editableRows.length} products. Edit anything before importing.`}
@@ -1035,9 +1035,9 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
               </Button>
             </div>
 
-            {/* Editable Table */}
+            {/* Editable Table - Horizontally scrollable on mobile */}
             <ScrollArea className="flex-1 min-h-0">
-              <div className="space-y-1">
+              <div className="min-w-[600px] space-y-1">
                 {/* Header */}
                 <div className="grid grid-cols-[1fr_60px_70px_70px_70px_100px_32px] gap-1.5 text-xs font-medium text-muted-foreground px-2 py-1 bg-muted/50 rounded sticky top-0">
                   <span>Product Name</span>
@@ -1128,22 +1128,22 @@ export const SmartCSVImportModal = ({ open, onOpenChange, onComplete }: SmartCSV
               </div>
             </ScrollArea>
 
-            <DialogFooter className="mt-4 flex-col sm:flex-row gap-2">
-              <div className="flex-1 text-sm text-muted-foreground">
+            <DialogFooter className="mt-4 flex-col gap-2">
+              <div className="w-full text-sm text-muted-foreground text-center sm:text-left">
                 {validRowCount} products ready to import
                 {warningRowCount > 0 && ` (${warningRowCount} with warnings)`}
               </div>
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={() => setStep('mapping')}>
+              <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
+                <Button variant="outline" onClick={() => setStep('mapping')} className="w-full sm:w-auto">
                   Back to Mapping
                 </Button>
-                <Button variant="outline" onClick={handleClose}>
+                <Button variant="outline" onClick={handleClose} className="w-full sm:w-auto">
                   Cancel
                 </Button>
                 <Button
                   onClick={handleImport}
                   disabled={validRowCount === 0}
-                  className="gap-2 bg-gradient-primary hover:opacity-90"
+                  className="gap-2 bg-gradient-primary hover:opacity-90 w-full sm:w-auto"
                 >
                   <CheckCircle2 className="h-4 w-4" />
                   Import {validRowCount} Products
