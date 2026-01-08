@@ -125,12 +125,12 @@ const Landing = () => {
       monthly: '₦35,000',
       monthlyPrice: 35000,
       quarterly: '₦75,000',
-      quarterlyPrice: 7500000 / 100, // ₦75,000
+      quarterlyPrice: 75000,
       annual: '₦180,000',
       annualPrice: 180000,
       setupLabel: 'Zero Setup Fee',
       target: 'Fast-growing pharmacies using AI',
-      features: ['Everything in Lite', 'UNLIMITED AI Invoice Scans', 'Automated Expiry Discounting', 'Demand Forecasting AI', 'Unlimited Users', 'Multi-Branch Ready', 'Staff Clock-in Tracking', 'NAFDAC Compliance Reports', 'Controlled Drugs Register', 'Priority WhatsApp Support'],
+      features: ['Everything in Lite', 'UNLIMITED AI Invoice Scans', 'Automated Expiry Discounting', 'Demand Forecasting AI', 'Unlimited Users', 'Multi-Branch Ready', 'Staff Clock-in', 'NAFDAC Reports', 'Priority WhatsApp Support'],
       notIncluded: [],
       highlight: true,
       isNew: false,
@@ -148,7 +148,7 @@ const Landing = () => {
       annualPrice: 0,
       setupLabel: 'Custom Quote',
       target: 'Hospital chains & large networks',
-      features: ['Everything in Pro', 'White-label Options', 'Custom API Access', 'Dedicated Account Manager', '24/7 Priority Support', 'Custom Integrations', 'SLA Guarantee', 'On-site Training'],
+      features: ['Everything in Pro', 'White-label Options', 'Custom API Access', 'Dedicated Account Manager', '24/7 Priority Support'],
       notIncluded: [],
       highlight: false,
       isNew: false

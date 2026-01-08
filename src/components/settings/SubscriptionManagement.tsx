@@ -21,8 +21,9 @@ import { Separator } from '@/components/ui/separator';
 import { BranchPricingCalculator } from '@/components/subscription/BranchPricingCalculator';
 import { describeFunctionsInvokeError } from '@/utils/functionsError';
 
-// Annual discount rate (40% off)
-const ANNUAL_DISCOUNT = 0.4;
+// Discount rates
+const QUARTERLY_DISCOUNT = 0.16; // 16% off
+const ANNUAL_DISCOUNT = 0.57;    // 57% off
 
 const plans = [
   {
@@ -33,11 +34,22 @@ const plans = [
     setupPrice: 0,
     monthly: '₦7,500',
     monthlyPrice: 7500,
+    quarterly: `₦${Math.round(7500 * 3 * (1 - QUARTERLY_DISCOUNT)).toLocaleString()}`,
+    quarterlyPrice: Math.round(7500 * 3 * (1 - QUARTERLY_DISCOUNT)),
     annual: `₦${Math.round(7500 * 12 * (1 - ANNUAL_DISCOUNT)).toLocaleString()}`,
     annualPrice: Math.round(7500 * 12 * (1 - ANNUAL_DISCOUNT)),
     setupLabel: 'No Setup Fee',
     target: 'New pharmacies starting digital',
-    features: ['Basic POS System', 'Cloud Backups', '2 User Accounts', 'Unlimited SKUs', 'Expiry Tracking', 'Basic Reports', 'Email Support'],
+    features: [
+      'Basic POS System',
+      'Cloud Backups',
+      '2 User Accounts',
+      'Unlimited SKUs',
+      'Expiry Tracking',
+      '5 AI Invoice Scans/month',
+      'Basic Reports',
+      'Email Support'
+    ],
     popular: false,
     buttonText: 'Get Started',
     isNew: true,
@@ -50,11 +62,23 @@ const plans = [
     setupPrice: 0,
     monthly: '₦35,000',
     monthlyPrice: 35000,
-    annual: `₦${Math.round(35000 * 12 * (1 - ANNUAL_DISCOUNT)).toLocaleString()}`,
-    annualPrice: Math.round(35000 * 12 * (1 - ANNUAL_DISCOUNT)),
+    quarterly: '₦75,000',
+    quarterlyPrice: 75000,
+    annual: '₦180,000',
+    annualPrice: 180000,
     setupLabel: 'Zero Setup Fee',
     target: 'Fast-growing pharmacies using AI',
-    features: ['Everything in Lite', 'AI Invoice Scanner', 'Demand Forecasting AI', 'Unlimited Users', 'Multi-Branch Ready', 'Staff Clock-in', 'NAFDAC Reports', 'Priority WhatsApp Support'],
+    features: [
+      'Everything in Lite',
+      'UNLIMITED AI Invoice Scans',
+      'Automated Expiry Discounting',
+      'Demand Forecasting AI',
+      'Unlimited Users',
+      'Multi-Branch Ready',
+      'Staff Clock-in',
+      'NAFDAC Reports',
+      'Priority WhatsApp Support'
+    ],
     popular: true,
     buttonText: 'Subscribe',
     isNew: false,
@@ -68,11 +92,19 @@ const plans = [
     setupPrice: 0,
     monthly: 'Custom',
     monthlyPrice: 0,
+    quarterly: 'Custom',
+    quarterlyPrice: 0,
     annual: 'Custom',
     annualPrice: 0,
     setupLabel: 'Custom Quote',
     target: 'Hospital chains & large networks',
-    features: ['Everything in Pro', 'White-label Options', 'Custom API Access', 'Dedicated Account Manager', '24/7 Priority Support'],
+    features: [
+      'Everything in Pro',
+      'White-label Options',
+      'Custom API Access',
+      'Dedicated Account Manager',
+      '24/7 Priority Support'
+    ],
     popular: false,
     buttonText: 'Contact Sales',
     isNew: false,
@@ -97,7 +129,7 @@ export const SubscriptionManagement = () => {
   const queryClient = useQueryClient();
   const [isProcessing, setIsProcessing] = useState<string | null>(null);
   const [isUpgradingBranches, setIsUpgradingBranches] = useState(false);
-  const [isAnnual, setIsAnnual] = useState(false);
+  const [billingPeriod, setBillingPeriod] = useState<'monthly' | 'quarterly' | 'annual'>('annual');
   const [autoRenew, setAutoRenew] = useState(pharmacy?.auto_renew ?? true);
   const [isTogglingAutoRenew, setIsTogglingAutoRenew] = useState(false);
   
@@ -206,6 +238,7 @@ export const SubscriptionManagement = () => {
       const paymentBody = {
         plan: planId,
         pharmacy_id: pharmacy?.id,
+        billing_period: billingPeriod,
         callback_url: `${window.location.origin}/settings?tab=subscription`,
       };
 
@@ -593,20 +626,40 @@ export const SubscriptionManagement = () => {
                 Choose the plan that best fits your pharmacy
               </CardDescription>
             </div>
-            {/* Annual/Monthly Toggle */}
-            <div className="flex items-center gap-3 px-4 py-2 rounded-xl bg-muted/50 border border-border/50">
-              <Label htmlFor="billing-toggle" className={`text-sm ${!isAnnual ? 'text-primary font-medium' : 'text-muted-foreground'}`}>
+            {/* Billing Period Toggle */}
+            <div className="flex items-center gap-1 p-1 rounded-xl bg-muted/50 border border-border/50">
+              <button
+                onClick={() => setBillingPeriod('monthly')}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                  billingPeriod === 'monthly' 
+                    ? 'bg-primary text-primary-foreground' 
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
                 Monthly
-              </Label>
-              <Switch
-                id="billing-toggle"
-                checked={isAnnual}
-                onCheckedChange={setIsAnnual}
-              />
-              <Label htmlFor="billing-toggle" className={`text-sm ${isAnnual ? 'text-primary font-medium' : 'text-muted-foreground'}`}>
+              </button>
+              <button
+                onClick={() => setBillingPeriod('quarterly')}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                  billingPeriod === 'quarterly' 
+                    ? 'bg-primary text-primary-foreground' 
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                Quarterly
+                <Badge variant="secondary" className="ml-1 text-[10px] bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">-16%</Badge>
+              </button>
+              <button
+                onClick={() => setBillingPeriod('annual')}
+                className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                  billingPeriod === 'annual' 
+                    ? 'bg-primary text-primary-foreground' 
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
                 Annual
-                <Badge variant="secondary" className="ml-2 text-xs bg-success text-success-foreground">Save 40%</Badge>
-              </Label>
+                <Badge variant="secondary" className="ml-1 text-[10px] bg-success/20 text-success">-57%</Badge>
+              </button>
             </div>
           </div>
         </CardHeader>
@@ -642,21 +695,30 @@ export const SubscriptionManagement = () => {
                       <p className="text-sm text-muted-foreground">{planOption.tagline}</p>
                     </div>
                     <div className="mt-4 space-y-1">
-                      {planOption.setupPrice > 0 && !isAnnual && (
+                      {planOption.setupPrice > 0 && billingPeriod === 'monthly' && (
                         <div className="flex items-baseline gap-1">
                           <span className="text-2xl font-bold">{planOption.setup}</span>
                           <span className="text-xs text-muted-foreground">{planOption.setupLabel}</span>
                         </div>
                       )}
                       <div className="flex items-baseline gap-1">
-                        <span className={`${planOption.setupPrice > 0 && !isAnnual ? 'text-base' : 'text-2xl font-bold'}`}>
-                          {isAnnual ? `₦${Math.round(planOption.annualPrice / 12).toLocaleString()}` : planOption.monthly}
+                        <span className={`${planOption.setupPrice > 0 && billingPeriod === 'monthly' ? 'text-base' : 'text-2xl font-bold'}`}>
+                          {billingPeriod === 'annual' && planOption.annualPrice > 0
+                            ? `₦${Math.round(planOption.annualPrice / 12).toLocaleString()}`
+                            : billingPeriod === 'quarterly' && planOption.quarterlyPrice > 0
+                            ? `₦${Math.round(planOption.quarterlyPrice / 3).toLocaleString()}`
+                            : planOption.monthly}
                         </span>
                         <span className="text-xs text-muted-foreground">/month</span>
                       </div>
-                      {isAnnual && planOption.annualPrice > 0 && (
+                      {billingPeriod === 'annual' && planOption.annualPrice > 0 && (
                         <p className="text-xs text-success">
                           {planOption.annual}/year (save ₦{((planOption.monthlyPrice * 12) - planOption.annualPrice).toLocaleString()})
+                        </p>
+                      )}
+                      {billingPeriod === 'quarterly' && planOption.quarterlyPrice > 0 && (
+                        <p className="text-xs text-amber-600 dark:text-amber-400">
+                          {planOption.quarterly}/quarter (save ₦{((planOption.monthlyPrice * 3) - planOption.quarterlyPrice).toLocaleString()})
                         </p>
                       )}
                       {planOption.savings && (

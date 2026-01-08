@@ -83,9 +83,8 @@ const PLAN_FEATURES = {
       'Demand Forecasting AI',
       'Unlimited Users',
       'Multi-Branch Ready',
-      'Staff Clock-in Tracking',
-      'NAFDAC Compliance Reports',
-      'Controlled Drugs Register',
+      'Staff Clock-in',
+      'NAFDAC Reports',
       'Priority WhatsApp Support'
     ],
     hasAIFeatures: true,
