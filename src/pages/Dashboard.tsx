@@ -434,8 +434,41 @@ const Dashboard = () => {
             </motion.section>
           </TabsContent>
 
-          {/* Analytics Tab - All Complex Charts */}
+          {/* Analytics Tab - Financials First for Owners */}
           <TabsContent value="analytics" className="space-y-6">
+            {/* Sales Analytics - Revenue, Profit, Orders (FIRST) */}
+            {isOwnerOrManager && medications.length > 0 && (
+              <motion.section 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+              >
+                <SalesAnalytics />
+              </motion.section>
+            )}
+
+            {/* Financial Summary - Inventory value, expired loss (SECOND) */}
+            {isOwnerOrManager && medications.length > 0 && (
+              <motion.section 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.15 }}
+              >
+                <FinancialSummary medications={medications} />
+              </motion.section>
+            )}
+
+            {/* Manager KPIs - Today's revenue, margin (THIRD) */}
+            {isOwnerOrManager && (
+              <motion.section 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
+              >
+                <ManagerKPIPanel />
+              </motion.section>
+            )}
+
             {/* Quick Glance, Shift Clock & Live Activity */}
             <motion.section 
               variants={containerVariants}
@@ -453,15 +486,6 @@ const Dashboard = () => {
                   <LiveActivityFeed />
                 </motion.div>
               </div>
-            </motion.section>
-
-            {/* Staff Quick Actions */}
-            <motion.section 
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.15 }}
-            >
-              <StaffQuickActions />
             </motion.section>
 
             {/* Key Metrics */}
@@ -514,67 +538,12 @@ const Dashboard = () => {
               </div>
             </motion.section>
 
-            {/* Staff Performance - Owner/Manager Only */}
-            {isOwnerOrManager && (
-              <motion.section 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
-              >
-                <StaffPerformancePanel />
-              </motion.section>
-            )}
-
-            {/* Multi-Branch Reports - Owner/Manager Only */}
-            {isOwnerOrManager && (
-              <motion.section 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.32 }}
-              >
-                <OwnerBranchReportsPanel />
-              </motion.section>
-            )}
-
-            {/* Consolidated Reports - Owner/Manager Only */}
-            {isOwnerOrManager && (
-              <motion.section 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.35 }}
-              >
-                <ConsolidatedReportsPanel />
-              </motion.section>
-            )}
-
-            {/* Branch Comparison - Owner/Manager Only */}
-            {isOwnerOrManager && (
-              <motion.section 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.34 }}
-              >
-                <BranchComparisonPanel />
-              </motion.section>
-            )}
-
-            {/* Manager KPIs */}
-            {isOwnerOrManager && (
-              <motion.section 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.35 }}
-              >
-                <ManagerKPIPanel />
-              </motion.section>
-            )}
-
             {/* Business Intelligence Section */}
             {isOwnerOrManager && medications.length > 0 && (
               <motion.section 
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4 }}
+                transition={{ delay: 0.35 }}
               >
                 <div className="flex items-center gap-3 mb-6">
                   <div className="h-10 w-10 rounded-xl bg-gradient-primary flex items-center justify-center shadow-glow-primary">
@@ -592,14 +561,47 @@ const Dashboard = () => {
               </motion.section>
             )}
 
-            {/* Financial Summary - Owner/Manager Only */}
-            {isOwnerOrManager && medications.length > 0 && (
+            {/* Multi-Branch Reports - Owner/Manager Only */}
+            {isOwnerOrManager && (
+              <motion.section 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4 }}
+              >
+                <OwnerBranchReportsPanel />
+              </motion.section>
+            )}
+
+            {/* Consolidated Reports - Owner/Manager Only */}
+            {isOwnerOrManager && (
+              <motion.section 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.45 }}
+              >
+                <ConsolidatedReportsPanel />
+              </motion.section>
+            )}
+
+            {/* Branch Comparison - Owner/Manager Only */}
+            {isOwnerOrManager && (
               <motion.section 
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.5 }}
               >
-                <FinancialSummary medications={medications} />
+                <BranchComparisonPanel />
+              </motion.section>
+            )}
+
+            {/* Staff Performance - Owner/Manager Only */}
+            {isOwnerOrManager && (
+              <motion.section 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.55 }}
+              >
+                <StaffPerformancePanel />
               </motion.section>
             )}
 
@@ -608,29 +610,27 @@ const Dashboard = () => {
               <motion.section 
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.55 }}
+                transition={{ delay: 0.6 }}
               >
                 <InventoryCharts medications={medications} />
               </motion.section>
             )}
 
-            {/* Sales Analytics */}
-            {isOwnerOrManager && medications.length > 0 && (
-              <motion.section 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.58 }}
-              >
-                <SalesAnalytics />
-              </motion.section>
-            )}
+            {/* Staff Quick Actions */}
+            <motion.section 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.65 }}
+            >
+              <StaffQuickActions />
+            </motion.section>
 
             {/* NAFDAC Compliance */}
             {medications.length > 0 && (
               <motion.section 
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.62 }}
+                transition={{ delay: 0.7 }}
               >
                 <NAFDACCompliancePanel medications={medications} />
               </motion.section>
