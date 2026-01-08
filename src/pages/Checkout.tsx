@@ -17,7 +17,7 @@ import {
   Keyboard,
   HelpCircle,
   User,
-  Camera,
+  
   ChevronDown,
   WifiOff
 } from 'lucide-react';
@@ -41,7 +41,7 @@ import { HeldTransactionsPanel } from '@/components/pos/HeldTransactionsPanel';
 import { DrugInteractionWarning } from '@/components/pos/DrugInteractionWarning';
 import { ReceiptPreviewModal } from '@/components/pos/ReceiptPreviewModal';
 import { PatientSelector } from '@/components/pos/PatientSelector';
-import { PrescriptionImageUpload } from '@/components/pos/PrescriptionImageUpload';
+// PrescriptionImageUpload removed - not needed
 import { KeyboardShortcutsOverlay } from '@/components/pos/KeyboardShortcutsOverlay';
 import { ExpiredBatchWarningDialog } from '@/components/pos/ExpiredBatchWarningDialog';
 import { SmartUpsellPanel } from '@/components/pos/SmartUpsellPanel';
