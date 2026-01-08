@@ -55,87 +55,90 @@ export const CartPanel = ({
             <div
               key={item.medication.id}
               className={cn(
-                'group relative p-3 rounded-xl transition-all duration-200',
+                'group relative p-2.5 rounded-xl transition-all duration-200',
                 item.isQuickItem
                   ? 'bg-gradient-to-r from-amber-500/10 to-transparent border border-amber-500/20'
                   : 'bg-gradient-to-r from-muted/40 to-transparent border border-transparent hover:border-border/50',
                 isLastItem && !item.isQuickItem && 'ring-1 ring-primary/20 bg-primary/5'
               )}
             >
-              <div className="flex items-center gap-3">
-                {/* Product icon */}
-                <div className={cn(
-                  'w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0',
-                  item.isQuickItem
-                    ? 'bg-gradient-to-br from-amber-500/20 to-amber-500/5'
-                    : 'bg-gradient-to-br from-primary/15 to-primary/5'
-                )}>
-                  {item.isQuickItem ? (
-                    <Zap className="h-5 w-5 text-amber-500" />
-                  ) : (
-                    <Package className="h-5 w-5 text-primary" />
-                  )}
+              {/* Mobile: stacked layout, Desktop: row layout */}
+              <div className="flex flex-col gap-2">
+                {/* Row 1: Name + Delete */}
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0 flex-1">
+                    <div className={cn(
+                      'w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0',
+                      item.isQuickItem
+                        ? 'bg-gradient-to-br from-amber-500/20 to-amber-500/5'
+                        : 'bg-gradient-to-br from-primary/15 to-primary/5'
+                    )}>
+                      {item.isQuickItem ? (
+                        <Zap className="h-4 w-4 text-amber-500" />
+                      ) : (
+                        <Package className="h-4 w-4 text-primary" />
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <h4 className="font-semibold text-sm leading-tight truncate">{item.medication.name}</h4>
+                      {item.isQuickItem && (
+                        <Badge variant="outline" className="h-4 px-1 text-[9px] border-amber-500/30 text-amber-600 mt-0.5">
+                          Quick
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 flex-shrink-0 text-destructive/60 hover:text-destructive hover:bg-destructive/10"
+                    onClick={() => onRemove(item.medication.id)}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
                 </div>
 
-                {/* Product info */}
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-1.5">
-                    <h4 className="font-semibold text-sm leading-tight truncate">{item.medication.name}</h4>
-                    {item.isQuickItem && (
-                      <Badge variant="outline" className="h-5 px-1.5 text-[10px] border-amber-500/30 text-amber-600">
-                        Quick
-                      </Badge>
-                    )}
-                  </div>
-                  <div className="flex items-center gap-1.5 mt-0.5">
-                    <p className="text-xs text-muted-foreground">{formatPrice(price)} ea.</p>
+                {/* Row 2: Price + Qty controls + Total */}
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-xs text-muted-foreground flex-shrink-0">
+                    {formatPrice(price)} ea.
                     {saleType === 'wholesale' && item.medication.wholesale_price && !item.isQuickItem && (
-                      <Badge variant="secondary" className="h-4 px-1 text-[9px]">W</Badge>
+                      <Badge variant="secondary" className="h-4 px-1 text-[9px] ml-1">W</Badge>
                     )}
+                  </p>
+
+                  {/* Quantity controls */}
+                  <div className="flex items-center gap-1 bg-background/80 rounded-lg p-0.5 border border-border/30">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 rounded hover:bg-muted"
+                      onClick={() => onDecrement(item.medication.id)}
+                      disabled={item.quantity <= 1}
+                    >
+                      <Minus className="h-3.5 w-3.5" />
+                    </Button>
+                    <span className="w-6 text-center text-sm font-bold tabular-nums">{item.quantity}</span>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 rounded hover:bg-muted"
+                      onClick={() => onIncrement(item.medication.id)}
+                      disabled={isMaxStock}
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+
+                  {/* Item total */}
+                  <div className="text-right flex-shrink-0">
+                    <p className={cn(
+                      'font-bold text-sm tabular-nums',
+                      item.isQuickItem ? 'text-amber-600' : 'text-primary'
+                    )}>{formatPrice(itemTotal)}</p>
+                    {isMaxStock && <p className="text-[9px] text-amber-600 dark:text-amber-400">Max</p>}
                   </div>
                 </div>
-
-                {/* Quantity controls */}
-                <div className="flex items-center gap-1 bg-background/80 rounded-lg p-1 border border-border/30">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7 rounded hover:bg-muted"
-                    onClick={() => onDecrement(item.medication.id)}
-                    disabled={item.quantity <= 1}
-                  >
-                    <Minus className="h-3.5 w-3.5" />
-                  </Button>
-                  <span className="w-7 text-center text-sm font-bold tabular-nums">{item.quantity}</span>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7 rounded hover:bg-muted"
-                    onClick={() => onIncrement(item.medication.id)}
-                    disabled={isMaxStock}
-                  >
-                    <Plus className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-
-                {/* Item total */}
-                <div className="text-right min-w-[80px]">
-                  <p className={cn(
-                    'font-bold text-sm tabular-nums',
-                    item.isQuickItem ? 'text-amber-600' : 'text-primary'
-                  )}>{formatPrice(itemTotal)}</p>
-                  {isMaxStock && <p className="text-[10px] text-amber-600 dark:text-amber-400">Max</p>}
-                </div>
-
-                {/* Delete button */}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7 opacity-60 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity text-destructive/60 hover:text-destructive hover:bg-destructive/10"
-                  onClick={() => onRemove(item.medication.id)}
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
               </div>
             </div>
           );
