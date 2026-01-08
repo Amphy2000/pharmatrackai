@@ -640,7 +640,7 @@ const Checkout = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/30 overflow-x-hidden touch-pan-y">
+    <div className="h-[100dvh] bg-gradient-to-br from-background via-background to-muted/30 overflow-hidden flex flex-col touch-pan-y">
       {/* Expired Batch Warning Dialog */}
       <ExpiredBatchWarningDialog
         open={expiredWarning.open}
@@ -657,7 +657,7 @@ const Checkout = () => {
       />
 
       {/* Premium Header */}
-      <header className="sticky top-0 z-50 border-b border-border/30 bg-background/70 backdrop-blur-2xl">
+      <header className="z-50 flex-shrink-0 border-b border-border/30 bg-background/70 backdrop-blur-2xl">
         <div className="container mx-auto px-4 sm:px-6">
           <div className="flex h-14 sm:h-16 items-center justify-between">
             <div className="flex items-center gap-3 sm:gap-4">
@@ -739,30 +739,32 @@ const Checkout = () => {
       </header>
 
       {/* Main Content - Premium single-screen layout */}
-      <main className="container mx-auto px-2 sm:px-6 py-2 sm:py-4 overflow-x-hidden">
-        <div className="grid gap-3 sm:gap-4 lg:grid-cols-3">
+      <main className="container mx-auto px-2 sm:px-6 py-2 sm:py-4 flex-1 min-h-0 overflow-hidden">
+        <div className="flex flex-col gap-3 sm:gap-4 h-full min-h-0 lg:grid lg:grid-cols-3">
           {/* Product Grid - Takes 2/3 */}
-          <div className="lg:col-span-2">
-            <div className="bg-card/80 backdrop-blur-sm rounded-xl sm:rounded-2xl p-3 sm:p-4 border border-border/40 shadow-sm h-[calc(100vh-8rem)] sm:h-[calc(100vh-7rem)] overflow-hidden">
-              <div className="flex items-center justify-between mb-3">
+          <div className="lg:col-span-2 flex-1 min-h-0">
+            <div className="bg-card/80 backdrop-blur-sm rounded-xl sm:rounded-2xl p-3 sm:p-4 border border-border/40 shadow-sm h-full min-h-0 overflow-hidden flex flex-col">
+              <div className="flex items-center justify-between mb-3 flex-shrink-0">
                 <h2 className="text-sm font-bold font-display">Select Products</h2>
                 <span className="text-xs text-muted-foreground">
                   {medications.length} items
                 </span>
               </div>
-              <GroupedProductGrid
-                medications={medications}
-                onAddToCart={cart.addItem}
-                isLoading={isLoading}
-                onQuickItemClick={() => setQuickItemOpen(true)}
-                autoFocusSearch={true}
-              />
+              <div className="flex-1 min-h-0">
+                <GroupedProductGrid
+                  medications={medications}
+                  onAddToCart={cart.addItem}
+                  isLoading={isLoading}
+                  onQuickItemClick={() => setQuickItemOpen(true)}
+                  autoFocusSearch={true}
+                />
+              </div>
             </div>
           </div>
 
           {/* Cart Panel - constrained height, scrollable on mobile */}
           <div className="lg:col-span-1">
-            <div className="bg-card/90 backdrop-blur-sm rounded-xl sm:rounded-2xl p-3 sm:p-4 border border-border/40 shadow-sm lg:sticky lg:top-20 max-h-[50vh] sm:max-h-[60vh] lg:max-h-[calc(100vh-6rem)] overflow-hidden flex flex-col">
+            <div className="bg-card/90 backdrop-blur-sm rounded-xl sm:rounded-2xl p-3 sm:p-4 border border-border/40 shadow-sm lg:sticky lg:top-20 h-[42dvh] sm:h-[45dvh] lg:h-[calc(100dvh-6rem)] overflow-hidden flex flex-col">
               {/* Cart Header with Sale Type Toggle */}
               <div className="flex items-center justify-between mb-3 pb-3 border-b border-border/30">
                 <div className="flex items-center gap-2">

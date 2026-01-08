@@ -158,8 +158,8 @@ export const GroupedProductGrid = ({
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center gap-2 sm:gap-3">
+    <div className="flex flex-col min-h-0 h-full gap-4">
+      <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
         <div className="relative flex-1 min-w-0">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -191,7 +191,7 @@ export const GroupedProductGrid = ({
         </Button>
       </div>
 
-      <ScrollArea className="h-[calc(100vh-280px)]">
+      <ScrollArea className="flex-1 min-h-0">
         {filteredProducts.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-60 text-muted-foreground">
             <Search className="h-12 w-12 mb-4 opacity-30" />
