@@ -73,14 +73,14 @@ import { FileText, Banknote, CreditCard as CreditCardIcon, Landmark } from 'luci
 const Checkout = () => {
   const { medications: branchMedications, isLoading, isOffline, updateLocalStock } = useBranchInventory();
   
-  // Map branch medications to match expected Medication type with current_stock from branch_stock
-  // Filter to only show items with stock > 0 (for POS, we only want sellable items)
-  const medications = branchMedications
-    .filter(m => m.branch_stock > 0) // Only show items that can be sold
+  // Keep a full list for barcode lookups (including 0 stock), but display only sellable items.
+  const allMedications = branchMedications
     .map(m => ({
       ...m,
       current_stock: m.branch_stock, // Use branch-specific stock
     })) as unknown as import('@/types/medication').Medication[];
+
+  const medications = allMedications.filter(m => m.current_stock > 0);
   const { completeSale } = useSales();
   const { activeShift } = useShifts();
   const cart = useCart();
@@ -160,8 +160,16 @@ const Checkout = () => {
   };
 
   const handleBarcodeScan = useCallback((barcode: string) => {
-    const medication = medications.find(
-      (med) => med.barcode_id === barcode || med.batch_number === barcode
+    const normalize = (v: string | null | undefined) =>
+      String(v ?? '')
+        .trim()
+        .replace(/\u200B/g, '')
+        .replace(/\s+/g, '');
+
+    const scanned = normalize(barcode);
+
+    const medication = allMedications.find(
+      (med) => normalize(med.barcode_id) === scanned || normalize(med.batch_number) === scanned
     );
 
     if (medication) {
@@ -187,10 +195,10 @@ const Checkout = () => {
     } else {
       toast({
         title: 'Item not found',
-        description: `Barcode: ${barcode}`,
+        description: `Barcode: ${scanned || barcode}`,
       });
     }
-  }, [medications, cart, toast]);
+  }, [allMedications, cart, toast]);
 
   // Enable global scanner (works even without focus on search)
   useBarcodeScanner({
