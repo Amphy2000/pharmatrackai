@@ -133,8 +133,11 @@ const PaymentTerminal = () => {
     
     try {
       // Separate regular items from quick items
-      const regularItems = transactionToPrint.items.filter(item => !item.isQuickItem);
-      const quickItems = transactionToPrint.items.filter(item => item.isQuickItem);
+      const isQuickItem = (item: CartItem) =>
+        item.isQuickItem === true || String(item.medication?.id || '').startsWith('quick-');
+
+      const regularItems = transactionToPrint.items.filter((item) => !isQuickItem(item));
+      const quickItems = transactionToPrint.items.filter((item) => isQuickItem(item));
 
       // Only call completeSale for regular inventory items (to deduct stock)
       if (regularItems.length > 0) {

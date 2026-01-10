@@ -96,21 +96,28 @@ export const usePendingTransactions = () => {
       const barcode = generateBarcode();
 
       // Serialize items for storage
-      const serializedItems = items.map(item => ({
-        medication: {
-          id: item.medication.id,
-          name: item.medication.name,
-          category: item.medication.category,
-          unit_price: item.medication.unit_price,
-          selling_price: item.medication.selling_price,
-          current_stock: item.medication.current_stock,
-          reorder_level: item.medication.reorder_level,
-          dispensing_unit: item.medication.dispensing_unit,
-          batch_number: item.medication.batch_number,
-          expiry_date: item.medication.expiry_date,
-        },
-        quantity: item.quantity,
-      }));
+      const serializedItems = items.map(item => {
+        const isQuickItem =
+          item.isQuickItem === true || String(item.medication?.id || '').startsWith('quick-');
+
+        return {
+          medication: {
+            id: item.medication.id,
+            name: item.medication.name,
+            category: item.medication.category,
+            unit_price: item.medication.unit_price,
+            selling_price: item.medication.selling_price,
+            current_stock: item.medication.current_stock,
+            reorder_level: item.medication.reorder_level,
+            dispensing_unit: item.medication.dispensing_unit,
+            batch_number: item.medication.batch_number,
+            expiry_date: item.medication.expiry_date,
+          },
+          quantity: item.quantity,
+          isQuickItem,
+          quickItemPrice: item.quickItemPrice ?? null,
+        };
+      });
 
       const { data, error } = await supabase
         .from('pending_transactions')
