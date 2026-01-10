@@ -353,42 +353,21 @@ export const AddStaffModal = ({ isOpen, onClose, onSuccess, mode = 'owner', forc
                       ([key, { label, description }]) => (
                         <div 
                           key={key} 
-                          className="flex items-start gap-3 cursor-pointer"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            togglePermission(key);
-                          }}
+                          className="flex items-start gap-3"
                         >
                           <Checkbox
                             id={`perm-${key}`}
                             checked={selectedPermissions.includes(key)}
-                            onCheckedChange={(checked) => {
-                              if (checked) {
-                                setSelectedPermissions(prev => 
-                                  prev.includes(key) ? prev : [...prev, key]
-                                );
-                              } else {
-                                setSelectedPermissions(prev => prev.filter(p => p !== key));
-                              }
-                            }}
-                            onClick={(e) => e.stopPropagation()}
+                            onCheckedChange={() => togglePermission(key)}
                             className="mt-0.5"
                           />
-                          <div className="flex-1 min-w-0">
-                            <Label 
-                              htmlFor={`perm-${key}`} 
-                              className="font-medium cursor-pointer text-sm"
-                              onClick={(e) => {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                togglePermission(key);
-                              }}
-                            >
-                              {label}
-                            </Label>
+                          <label 
+                            htmlFor={`perm-${key}`}
+                            className="flex-1 min-w-0 cursor-pointer"
+                          >
+                            <span className="font-medium text-sm block">{label}</span>
                             <p className="text-xs text-muted-foreground line-clamp-2">{description}</p>
-                          </div>
+                          </label>
                         </div>
                       )
                     )}
