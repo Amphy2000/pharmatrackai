@@ -3,7 +3,7 @@
 declare const self: ServiceWorkerGlobalScope;
 
 // IMPORTANT: Update this version number when deploying changes to force cache refresh
-const SW_VERSION = 'v4';
+const SW_VERSION = 'v5';
 const CACHE_NAME = `pharmatrack-pos-${SW_VERSION}`;
 const STATIC_CACHE = `pharmatrack-static-${SW_VERSION}`;
 const DATA_CACHE = `pharmatrack-data-${SW_VERSION}`;

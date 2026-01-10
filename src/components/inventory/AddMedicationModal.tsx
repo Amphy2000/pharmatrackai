@@ -289,8 +289,9 @@ export const AddMedicationModal = ({
       current_stock: values.current_stock,
       reorder_level: values.reorder_level,
       unit_price: values.unit_price,
-      selling_price: values.selling_price || undefined,
-      wholesale_price: values.wholesale_price || undefined,
+      // Use null check instead of || to preserve 0 values
+      selling_price: values.selling_price != null ? values.selling_price : undefined,
+      wholesale_price: values.wholesale_price != null ? values.wholesale_price : undefined,
       expiry_date: format(values.expiry_date, 'yyyy-MM-dd'),
       manufacturing_date: values.manufacturing_date ? format(values.manufacturing_date, 'yyyy-MM-dd') : undefined,
       dispensing_unit: (values.dispensing_unit as DispensingUnit) || 'unit',
