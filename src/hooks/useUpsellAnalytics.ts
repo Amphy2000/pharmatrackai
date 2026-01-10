@@ -155,6 +155,13 @@ export const trackUpsellSuggestion = async (
   reason: string,
   confidenceScore: number
 ): Promise<string | null> => {
+  const isUuid = (v: string) =>
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(v);
+
+  // Quick-sale items use ids like "quick-..."; skip them to avoid UUID errors in analytics.
+  if (!isUuid(suggestedMedicationId)) return null;
+  const safeCartIds = (cartMedicationIds || []).filter(isUuid);
+
   const { data, error } = await supabase
     .from('upsell_analytics')
     .insert({
@@ -162,7 +169,7 @@ export const trackUpsellSuggestion = async (
       branch_id: branchId,
       staff_id: staffId,
       suggested_medication_id: suggestedMedicationId,
-      cart_medication_ids: cartMedicationIds,
+      cart_medication_ids: safeCartIds,
       suggestion_reason: reason,
       confidence_score: confidenceScore,
       was_accepted: false,
