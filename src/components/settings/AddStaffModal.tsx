@@ -5,7 +5,6 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { UserPlus, Loader2, Mail, Lock, User, Shield, Building2 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { usePharmacy } from '@/hooks/usePharmacy';
@@ -188,8 +187,8 @@ export const AddStaffModal = ({ isOpen, onClose, onSuccess, mode = 'owner', forc
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-hidden flex flex-col">
-        <DialogHeader>
+      <DialogContent className="max-w-lg max-h-[90vh] sm:max-h-[85vh] overflow-hidden flex flex-col p-0">
+        <DialogHeader className="px-4 sm:px-6 pt-4 sm:pt-6 pb-2">
           <DialogTitle className="flex items-center gap-2">
             <UserPlus className="h-5 w-5 text-primary" />
             Add Staff Member
@@ -199,8 +198,8 @@ export const AddStaffModal = ({ isOpen, onClose, onSuccess, mode = 'owner', forc
           </DialogDescription>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="flex-1 overflow-hidden flex flex-col">
-          <ScrollArea className="flex-1 pr-4">
+        <form onSubmit={handleSubmit} className="flex-1 overflow-hidden flex flex-col min-h-0">
+          <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-2">
             <div className="space-y-4 pb-4">
               {/* Basic Info */}
               <div className="space-y-4">
@@ -323,6 +322,7 @@ export const AddStaffModal = ({ isOpen, onClose, onSuccess, mode = 'owner', forc
                   </p>
                 </div>
               )}
+
               {/* Permissions (only for staff role) */}
               {formData.role === 'staff' && (
                 <div className="space-y-3">
@@ -336,7 +336,11 @@ export const AddStaffModal = ({ isOpen, onClose, onSuccess, mode = 'owner', forc
                         type="button"
                         variant="outline"
                         size="sm"
-                        onClick={() => applyTemplate(key)}
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          applyTemplate(key);
+                        }}
                       >
                         {template.name}
                       </Button>
@@ -344,20 +348,46 @@ export const AddStaffModal = ({ isOpen, onClose, onSuccess, mode = 'owner', forc
                   </div>
 
                   {/* Permission Checkboxes */}
-                  <div className="border rounded-lg p-3 space-y-3">
+                  <div className="border rounded-lg p-3 space-y-3 max-h-[200px] overflow-y-auto">
                     {(Object.entries(PERMISSION_LABELS) as [PermissionKey, { label: string; description: string }][]).map(
                       ([key, { label, description }]) => (
-                        <div key={key} className="flex items-start gap-3">
+                        <div 
+                          key={key} 
+                          className="flex items-start gap-3 cursor-pointer"
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            togglePermission(key);
+                          }}
+                        >
                           <Checkbox
                             id={`perm-${key}`}
                             checked={selectedPermissions.includes(key)}
-                            onCheckedChange={() => togglePermission(key)}
+                            onCheckedChange={(checked) => {
+                              if (checked) {
+                                setSelectedPermissions(prev => 
+                                  prev.includes(key) ? prev : [...prev, key]
+                                );
+                              } else {
+                                setSelectedPermissions(prev => prev.filter(p => p !== key));
+                              }
+                            }}
+                            onClick={(e) => e.stopPropagation()}
+                            className="mt-0.5"
                           />
-                          <div className="flex-1">
-                            <Label htmlFor={`perm-${key}`} className="font-medium cursor-pointer">
+                          <div className="flex-1 min-w-0">
+                            <Label 
+                              htmlFor={`perm-${key}`} 
+                              className="font-medium cursor-pointer text-sm"
+                              onClick={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                togglePermission(key);
+                              }}
+                            >
                               {label}
                             </Label>
-                            <p className="text-xs text-muted-foreground">{description}</p>
+                            <p className="text-xs text-muted-foreground line-clamp-2">{description}</p>
                           </div>
                         </div>
                       )
@@ -366,9 +396,9 @@ export const AddStaffModal = ({ isOpen, onClose, onSuccess, mode = 'owner', forc
                 </div>
               )}
             </div>
-          </ScrollArea>
+          </div>
 
-          <DialogFooter className="pt-4 border-t">
+          <DialogFooter className="px-4 sm:px-6 py-4 border-t bg-background flex-shrink-0">
             <Button type="button" variant="outline" onClick={onClose} disabled={isLoading}>
               Cancel
             </Button>

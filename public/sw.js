@@ -2,9 +2,11 @@
 
 declare const self: ServiceWorkerGlobalScope;
 
-const CACHE_NAME = 'pharmatrack-pos-v2';
-const STATIC_CACHE = 'pharmatrack-static-v2';
-const DATA_CACHE = 'pharmatrack-data-v2';
+// IMPORTANT: Update this version number when deploying changes to force cache refresh
+const SW_VERSION = 'v4';
+const CACHE_NAME = `pharmatrack-pos-${SW_VERSION}`;
+const STATIC_CACHE = `pharmatrack-static-${SW_VERSION}`;
+const DATA_CACHE = `pharmatrack-data-${SW_VERSION}`;
 const PENDING_SYNC = 'pharmatrack-pending-sync';
 
 // Static assets to cache - minimal for development
@@ -12,59 +14,74 @@ const STATIC_ASSETS = [
   '/manifest.json',
 ];
 
-// Install event - cache static assets
+// Install event - cache static assets and immediately take over
 self.addEventListener('install', (event: ExtendableEvent) => {
-  console.log('[ServiceWorker] Installing v2...');
+  console.log(`[ServiceWorker] Installing ${SW_VERSION}...`);
   event.waitUntil(
     caches.open(STATIC_CACHE).then((cache) => {
       console.log('[ServiceWorker] Caching static assets');
       return cache.addAll(STATIC_ASSETS);
     })
   );
-  // Force new service worker to activate immediately
+  // Force new service worker to activate immediately - skip waiting phase
   self.skipWaiting();
 });
 
-// Activate event - clean up ALL old caches
+// Activate event - clean up ALL old caches aggressively
 self.addEventListener('activate', (event: ExtendableEvent) => {
-  console.log('[ServiceWorker] Activating v2...');
+  console.log(`[ServiceWorker] Activating ${SW_VERSION}...`);
   event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
+    (async () => {
+      // Delete ALL old caches that don't match current version
+      const cacheNames = await caches.keys();
+      await Promise.all(
         cacheNames
           .filter((name) => 
-            name !== STATIC_CACHE && 
-            name !== DATA_CACHE && 
-            name !== CACHE_NAME &&
-            name !== PENDING_SYNC
+            !name.includes(SW_VERSION) && name !== PENDING_SYNC
           )
           .map((name) => {
             console.log('[ServiceWorker] Deleting old cache:', name);
             return caches.delete(name);
           })
       );
-    })
+      
+      // Take control of all clients immediately
+      await self.clients.claim();
+      
+      // Notify all clients about the update
+      const clients = await self.clients.matchAll();
+      clients.forEach((client) => {
+        client.postMessage({
+          type: 'SW_UPDATED',
+          version: SW_VERSION,
+          message: 'New version available',
+        });
+      });
+    })()
   );
-  // Take control of all clients immediately
-  self.clients.claim();
 });
 
-// Fetch event - NETWORK FIRST for everything (fixes refresh issues)
+// Fetch event - ALWAYS NETWORK FIRST, cache only as fallback
 self.addEventListener('fetch', (event: FetchEvent) => {
   const { request } = event;
   const url = new URL(request.url);
 
-  // Skip non-GET requests
+  // Skip non-GET requests entirely
   if (request.method !== 'GET') {
     return;
   }
 
-  // For API requests, always network first with cache fallback
+  // Skip chrome-extension and other non-http(s) requests
+  if (!url.protocol.startsWith('http')) {
+    return;
+  }
+
+  // For API requests - network only with data cache fallback for offline
   if (url.pathname.includes('/rest/v1/') || url.pathname.includes('/functions/')) {
     event.respondWith(
       fetch(request)
         .then((response) => {
-          // Only cache successful responses
+          // Only cache successful GET responses for offline fallback
           if (response.ok) {
             const responseClone = response.clone();
             caches.open(DATA_CACHE).then((cache) => {
@@ -74,12 +91,12 @@ self.addEventListener('fetch', (event: FetchEvent) => {
           return response;
         })
         .catch(async () => {
-          // Network failed, try cache
+          // Network failed, try cache for offline support
           const cachedResponse = await caches.match(request);
           if (cachedResponse) {
             return cachedResponse;
           }
-          // Return offline fallback for API requests
+          // Return offline error response
           return new Response(
             JSON.stringify({ error: 'offline', message: 'You are offline. Data will sync when connection is restored.' }),
             { status: 503, headers: { 'Content-Type': 'application/json' } }
@@ -89,28 +106,36 @@ self.addEventListener('fetch', (event: FetchEvent) => {
     return;
   }
 
-  // For all other requests (HTML, JS, CSS) - NETWORK FIRST to ensure fresh content
+  // For navigation and all other requests - NETWORK FIRST, no caching navigation
   event.respondWith(
     fetch(request)
       .then((response) => {
-        // Don't cache navigation requests to ensure fresh content
-        if (request.mode === 'navigate') {
+        // NEVER cache navigation/HTML requests - always serve fresh
+        if (request.mode === 'navigate' || request.destination === 'document') {
           return response;
         }
-        // Cache other assets for offline fallback
-        const responseClone = response.clone();
-        caches.open(STATIC_CACHE).then((cache) => {
-          cache.put(request, responseClone);
-        });
+        
+        // Only cache static assets (JS, CSS, images) for offline fallback
+        if (response.ok && (
+          request.destination === 'script' ||
+          request.destination === 'style' ||
+          request.destination === 'image' ||
+          request.destination === 'font'
+        )) {
+          const responseClone = response.clone();
+          caches.open(STATIC_CACHE).then((cache) => {
+            cache.put(request, responseClone);
+          });
+        }
         return response;
       })
       .catch(async () => {
-        // Network failed, try cache
+        // Network failed, try cache only as fallback
         const cachedResponse = await caches.match(request);
         if (cachedResponse) {
           return cachedResponse;
         }
-        // For navigation requests, return cached index
+        // For navigation, try to return cached index for offline app shell
         if (request.mode === 'navigate') {
           const indexResponse = await caches.match('/');
           if (indexResponse) return indexResponse;
@@ -135,7 +160,6 @@ async function syncPendingSales() {
     
     for (const sale of pendingData.sales || []) {
       try {
-        // Attempt to sync the sale
         const response = await fetch('/rest/v1/sales', {
           method: 'POST',
           headers: {
@@ -145,7 +169,6 @@ async function syncPendingSales() {
         });
 
         if (response.ok) {
-          // Remove from pending
           await removePendingSale(sale.id);
           console.log('[ServiceWorker] Synced sale:', sale.id);
         }
@@ -192,6 +215,25 @@ self.addEventListener('message', (event: ExtendableMessageEvent) => {
   if (event.data && event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
   }
+  
+  // Force refresh all caches
+  if (event.data && event.data.type === 'CLEAR_CACHES') {
+    event.waitUntil(
+      (async () => {
+        const cacheNames = await caches.keys();
+        await Promise.all(
+          cacheNames
+            .filter((name) => name !== PENDING_SYNC)
+            .map((name) => caches.delete(name))
+        );
+        // Notify the client
+        const clients = await self.clients.matchAll();
+        clients.forEach((client) => {
+          client.postMessage({ type: 'CACHES_CLEARED' });
+        });
+      })()
+    );
+  }
 });
 
 async function queueSaleForSync(sale: any) {
@@ -200,7 +242,6 @@ async function queueSaleForSync(sale: any) {
   const cache = await caches.open(PENDING_SYNC);
   await cache.put('/pending-data', new Response(JSON.stringify(pendingData)));
   
-  // Request background sync
   if ('sync' in self.registration) {
     await self.registration.sync.register('sync-sales');
   }
