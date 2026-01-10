@@ -59,10 +59,18 @@ export const ProductGrid = ({ medications, onAddToCart, isLoading, onQuickItemCl
     return isBefore(parseISO(expiryDate), new Date());
   };
 
+  // Normalize barcode values to handle whitespace, invisible chars, etc.
+  const normalizeBarcode = (v: string | null | undefined) =>
+    String(v ?? '')
+      .trim()
+      .replace(/\u200B/g, '')
+      .replace(/\s+/g, '');
+
   // Handle barcode scan (from camera or hardware scanner)
   const handleBarcodeScan = useCallback((barcode: string) => {
+    const scanned = normalizeBarcode(barcode);
     const medication = effectiveMedications.find(
-      (med) => med.barcode_id === barcode || med.batch_number === barcode
+      (med) => normalizeBarcode(med.barcode_id) === scanned || normalizeBarcode(med.batch_number) === scanned
     );
 
     if (medication) {
