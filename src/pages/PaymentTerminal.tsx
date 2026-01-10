@@ -132,13 +132,25 @@ const PaymentTerminal = () => {
     const paymentMethodToUse = selectedPayment;
     
     try {
-      // Complete the sale (deduct stock) with staff name and payment method
-      await completeSale.mutateAsync({
-        items: transactionToPrint.items,
-        shiftId: activeShift?.id,
-        staffName: userProfile?.full_name || undefined,
-        paymentMethod: paymentMethodToUse,
-      });
+      // Separate regular items from quick items
+      const regularItems = transactionToPrint.items.filter(item => !item.isQuickItem);
+      const quickItems = transactionToPrint.items.filter(item => item.isQuickItem);
+
+      // Only call completeSale for regular inventory items (to deduct stock)
+      if (regularItems.length > 0) {
+        await completeSale.mutateAsync({
+          items: regularItems,
+          shiftId: activeShift?.id,
+          staffName: userProfile?.full_name || undefined,
+          paymentMethod: paymentMethodToUse,
+        });
+      }
+
+      // Quick items are already recorded in pending_quick_items when invoiced
+      // We just need to mark the transaction as complete
+      if (quickItems.length > 0) {
+        console.log(`[PaymentTerminal] ${quickItems.length} quick item(s) - no stock deduction needed`);
+      }
 
       // Mark the pending transaction as completed
       await completePendingTransaction.mutateAsync({
@@ -147,7 +159,6 @@ const PaymentTerminal = () => {
       });
 
       // Reset state IMMEDIATELY after successful sale - BEFORE print dialog
-      // This way button shows "Complete Sale" again right away
       setFoundTransaction(null);
       setSelectedPayment(null);
       setIsProcessing(false);
