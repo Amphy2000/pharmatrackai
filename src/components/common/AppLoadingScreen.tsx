@@ -16,7 +16,7 @@ export const AppLoadingScreen = ({ children }: AppLoadingScreenProps) => {
     // Update online status
     const handleOnline = () => setIsOnline(true);
     const handleOffline = () => setIsOnline(false);
-    
+
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
@@ -71,7 +71,7 @@ export const AppLoadingScreen = ({ children }: AppLoadingScreenProps) => {
           <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center shadow-lg animate-pulse">
             <Pill className="h-8 w-8 text-white" />
           </div>
-          <h1 className="text-xl font-bold text-foreground">PharmaTrak</h1>
+          <h1 className="text-xl font-bold text-foreground">PharmaTrack</h1>
         </div>
 
         {/* Loading indicator */}
@@ -80,9 +80,9 @@ export const AppLoadingScreen = ({ children }: AppLoadingScreenProps) => {
             <Loader2 className="h-4 w-4 animate-spin" />
             <span className="text-sm">Loading...</span>
           </div>
-          
+
           <Progress value={progress} className="h-1.5" />
-          
+
           <p className="text-xs text-muted-foreground">
             {progress < 30 && "Initializing..."}
             {progress >= 30 && progress < 60 && "Loading components..."}
@@ -111,7 +111,7 @@ export const AppLoadingScreen = ({ children }: AppLoadingScreenProps) => {
           <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
             <div className="p-3 rounded-lg bg-muted/50 border border-border/50">
               <p className="text-xs text-muted-foreground">
-                {isOnline 
+                {isOnline
                   ? "Network seems slow. The app will work offline once loaded."
                   : "You're offline. Some features may be limited."}
               </p>
