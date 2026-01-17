@@ -72,56 +72,7 @@ const OnboardingTour: React.FC = () => {
         },
     ];
 
-    useEffect(() => {
-        // Initialize driver
-        driverObj.current = driver({
-            showProgress: false,
-            animate: true,
-            allowClose: true,
-            overlayOpacity: 0.75,
-            stagePadding: 4,
-            doneBtnText: 'Finish',
-            nextBtnText: 'Next',
-            prevBtnText: 'Back',
-            onNextClick: () => {
-                const nextStepIndex = (driverObj.current.getActiveIndex() || 0) + 1;
-                handleTransition(nextStepIndex);
-            },
-            onPrevClick: () => {
-                const prevStepIndex = (driverObj.current.getActiveIndex() || 0) - 1;
-                handleTransition(prevStepIndex);
-            },
-            onCloseClick: () => {
-                localStorage.setItem('tour_completed_v1', 'true');
-                driverObj.current?.destroy();
-            },
-        });
-
-        // Start tour if not completed
-        const isCompleted = localStorage.getItem('tour_completed_v1');
-        if (!isCompleted && location.pathname === '/dashboard') {
-            const timer = setTimeout(() => {
-                if (driverObj.current) {
-                    driverObj.current.setSteps(steps.map(s => ({ element: s.element, popover: s.popover })));
-                    driverObj.current.drive();
-                }
-            }, 3000); // 3 second delay for first time
-            return () => clearTimeout(timer);
-        }
-
-        // Listen for manual trigger
-        const handleManualStart = () => {
-            navigate('/dashboard');
-            setTimeout(() => {
-                driverObj.current.setSteps(steps.map(s => ({ element: s.element, popover: s.popover })));
-                driverObj.current.drive();
-            }, 500);
-        };
-
-        window.addEventListener('start-onboarding-tour', handleManualStart);
-        return () => window.removeEventListener('start-onboarding-tour', handleManualStart);
-    }, []);
-
+    // Use window.location.pathname to avoid stale closure issues
     const handleTransition = (stepIndex: number) => {
         if (stepIndex < 0 || stepIndex >= steps.length) {
             if (stepIndex >= steps.length) {
@@ -132,30 +83,99 @@ const OnboardingTour: React.FC = () => {
         }
 
         const targetStep = steps[stepIndex];
+        const currentPath = window.location.pathname;
 
-        if (targetStep.route && targetStep.route !== location.pathname) {
+        if (targetStep.route && targetStep.route !== currentPath) {
             // Save state and navigate
             localStorage.setItem('onboarding_tour_step', stepIndex.toString());
+            driverObj.current?.destroy(); // Clean up before navigation
             navigate(targetStep.route);
         } else {
             driverObj.current?.moveTo(stepIndex);
         }
     };
 
-    // Resumption logic
+    useEffect(() => {
+        // Initialize driver
+        driverObj.current = driver({
+            showProgress: false,
+            animate: true,
+            allowClose: true,
+            overlayOpacity: 0.85,
+            stagePadding: 10,
+            doneBtnText: 'Finish',
+            nextBtnText: 'Next',
+            prevBtnText: 'Back',
+            onNextClick: () => {
+                const activeIndex = driverObj.current?.getActiveIndex();
+                if (typeof activeIndex === 'number') {
+                    handleTransition(activeIndex + 1);
+                }
+            },
+            onPrevClick: () => {
+                const activeIndex = driverObj.current?.getActiveIndex();
+                if (typeof activeIndex === 'number') {
+                    handleTransition(activeIndex - 1);
+                }
+            },
+            onCloseClick: () => {
+                localStorage.setItem('tour_completed_v1', 'true');
+                driverObj.current?.destroy();
+            },
+        });
+
+        // Initial Start Logic
+        const isCompleted = localStorage.getItem('tour_completed_v1');
+        const currentPath = window.location.pathname;
+
+        if (!isCompleted && currentPath === '/dashboard') {
+            const timer = setTimeout(() => {
+                if (driverObj.current && !localStorage.getItem('onboarding_tour_step')) {
+                    driverObj.current.setSteps(steps.map(s => ({ element: s.element, popover: s.popover })));
+                    driverObj.current.drive();
+                }
+            }, 3500);
+            return () => clearTimeout(timer);
+        }
+
+        // Listen for manual trigger
+        const handleManualStart = () => {
+            if (window.location.pathname !== '/dashboard') {
+                navigate('/dashboard');
+                setTimeout(() => {
+                    driverObj.current?.setSteps(steps.map(s => ({ element: s.element, popover: s.popover })));
+                    driverObj.current?.drive();
+                }, 1000);
+            } else {
+                driverObj.current?.setSteps(steps.map(s => ({ element: s.element, popover: s.popover })));
+                driverObj.current?.drive();
+            }
+        };
+
+        window.addEventListener('start-onboarding-tour', handleManualStart);
+        return () => {
+            window.removeEventListener('start-onboarding-tour', handleManualStart);
+            driverObj.current?.destroy();
+        };
+    }, [navigate]); // navigate is stable, but adding it for completeness
+
+    // Resumption logic - Triggers on page change
     useEffect(() => {
         const savedStep = localStorage.getItem('onboarding_tour_step');
         if (savedStep && driverObj.current) {
             const stepIndex = parseInt(savedStep, 10);
             localStorage.removeItem('onboarding_tour_step');
 
-            // Wait for navigation and rendering
+            // Wait a bit longer for page content to be ready
             const timer = setTimeout(() => {
-                if (driverObj.current) {
+                const element = steps[stepIndex].element;
+                const el = element === 'body' ? document.body : document.querySelector(element);
+
+                if (el && driverObj.current) {
                     driverObj.current.setSteps(steps.map(s => ({ element: s.element, popover: s.popover })));
                     driverObj.current.drive(stepIndex);
                 }
-            }, 800);
+            }, 1200);
             return () => clearTimeout(timer);
         }
     }, [location.pathname]);
