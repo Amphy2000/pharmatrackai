@@ -1,10 +1,10 @@
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { 
-  Plus, 
-  FileImage, 
-  RefreshCw, 
+import {
+  Plus,
+  FileImage,
+  RefreshCw,
   Package,
   Layers
 } from 'lucide-react';
@@ -37,21 +37,22 @@ export const SimpleInventoryActions = ({
           Choose how you want to add or update your inventory
         </p>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          <Button 
+          <Button
             onClick={onShelfEntry}
-            variant="default" 
-            size="lg" 
+            variant="default"
+            size="lg"
             className="h-24 flex-col gap-2 bg-gradient-primary hover:opacity-90 btn-glow"
           >
             <Layers className="h-6 w-6" />
             <span className="text-sm font-medium">Shelf Entry</span>
             <Badge variant="secondary" className="text-[10px] bg-white/20">Fastest</Badge>
           </Button>
-          
-          <Button 
+
+          <Button
+            id="tour-invoice-scanner"
             onClick={onScanInvoice}
-            variant="outline" 
-            size="lg" 
+            variant="outline"
+            size="lg"
             className="h-24 flex-col gap-2"
           >
             <FileImage className="h-6 w-6" />
@@ -59,20 +60,21 @@ export const SimpleInventoryActions = ({
             <Badge variant="outline" className="text-[10px] bg-gradient-premium text-white border-0">AI</Badge>
           </Button>
 
-          <Button 
+          <Button
             onClick={onUpdateStock}
-            variant="outline" 
-            size="lg" 
+            variant="outline"
+            size="lg"
             className="h-24 flex-col gap-2"
           >
             <RefreshCw className="h-6 w-6" />
             <span className="text-sm font-medium">Update Stock</span>
           </Button>
 
-          <Button 
+          <Button
+            id="tour-add-product"
             onClick={onAddProducts}
-            variant="outline" 
-            size="lg" 
+            variant="outline"
+            size="lg"
             className="h-24 flex-col gap-2"
           >
             <Plus className="h-6 w-6" />

@@ -40,7 +40,7 @@ export const AIInsightsPanel = ({ medications, branchName }: AIInsightsPanelProp
   const { currentBranchName } = useBranchContext();
   const { pharmacyId } = usePharmacy();
   const currencySymbol = currency === 'NGN' ? '₦' : '$';
-  
+
   const displayBranchName = branchName || currentBranchName || 'Your Branch';
 
   const getIconForCategory = (category: string) => {
@@ -172,7 +172,7 @@ export const AIInsightsPanel = ({ medications, branchName }: AIInsightsPanelProp
       setCooldownRemaining(remaining);
       setIsRateLimited(true);
       setIsLoading(false);
-      
+
       // Use cached data if available
       const cachedData = sessionStorage.getItem(SESSION_INSIGHTS_DATA_KEY);
       if (cachedData) {
@@ -246,7 +246,7 @@ export const AIInsightsPanel = ({ medications, branchName }: AIInsightsPanelProp
 
       const finalInsights = mappedInsights.slice(0, 6);
       setInsights(finalInsights);
-      
+
       // Cache in session storage
       sessionStorage.setItem(SESSION_INSIGHTS_KEY, pharmacyId || '');
       sessionStorage.setItem(SESSION_INSIGHTS_DATA_KEY, JSON.stringify(finalInsights));
@@ -269,7 +269,7 @@ export const AIInsightsPanel = ({ medications, branchName }: AIInsightsPanelProp
   // Cooldown countdown timer
   useEffect(() => {
     if (cooldownRemaining <= 0) return;
-    
+
     const timer = setInterval(() => {
       setCooldownRemaining(prev => {
         if (prev <= 1) {
@@ -280,7 +280,7 @@ export const AIInsightsPanel = ({ medications, branchName }: AIInsightsPanelProp
         return prev - 1;
       });
     }, 1000);
-    
+
     return () => clearInterval(timer);
   }, [cooldownRemaining]);
 
@@ -325,7 +325,7 @@ export const AIInsightsPanel = ({ medications, branchName }: AIInsightsPanelProp
   };
 
   return (
-    <div className="glass-card rounded-2xl overflow-hidden">
+    <div id="tour-ai-insights" className="glass-card rounded-2xl overflow-hidden">
       {/* Header */}
       <div className="p-6 border-b border-border/50">
         <div className="flex items-center justify-between">
@@ -354,8 +354,8 @@ export const AIInsightsPanel = ({ medications, branchName }: AIInsightsPanelProp
                 {isRateLimited && cooldownRemaining > 0
                   ? 'System cooling down...'
                   : isRateLimited
-                  ? 'Using cached insights'
-                  : `Actionable recommendations for ${displayBranchName}`}
+                    ? 'Using cached insights'
+                    : `Actionable recommendations for ${displayBranchName}`}
               </p>
             </div>
           </div>
@@ -433,7 +433,7 @@ export const AIInsightsPanel = ({ medications, branchName }: AIInsightsPanelProp
                       )}
                     </div>
                     <p className="text-sm text-foreground leading-relaxed mb-2">{insight.message}</p>
-                    
+
                     {insight.action && (
                       <p className="text-xs text-muted-foreground flex items-start gap-1.5 pt-2 border-t border-border/30">
                         <ArrowRight className="h-3 w-3 flex-shrink-0 mt-0.5" />

@@ -45,10 +45,10 @@ import { OwnerBranchReportsPanel } from '@/components/dashboard/OwnerBranchRepor
 import { BranchLockedOverlay } from '@/components/branches/BranchLockedOverlay';
 import { PendingQuickItemsPanel } from '@/components/inventory/PendingQuickItemsPanel';
 import { startOfDay, endOfDay, parseISO } from 'date-fns';
-import { 
-  Package, 
-  AlertTriangle, 
-  Clock, 
+import {
+  Package,
+  AlertTriangle,
+  Clock,
   XCircle,
   ShoppingCart,
   TrendingUp,
@@ -75,10 +75,10 @@ const containerVariants: Variants = {
 
 const itemVariants: Variants = {
   hidden: { opacity: 0, y: 20 },
-  visible: { 
-    opacity: 1, 
-    y: 0, 
-    transition: { duration: 0.5 } 
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.5 }
   }
 };
 
@@ -117,7 +117,7 @@ const Dashboard = () => {
     const today = new Date();
     const dayStart = startOfDay(today);
     const dayEnd = endOfDay(today);
-    
+
     return sales
       .filter(sale => {
         const saleDate = parseISO(sale.sale_date);
@@ -146,7 +146,7 @@ const Dashboard = () => {
   if (authLoading || pharmacyLoading || permissionsLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <motion.div 
+        <motion.div
           initial={{ opacity: 0, scale: 0.9 }}
           animate={{ opacity: 1, scale: 1 }}
           className="text-center"
@@ -229,10 +229,10 @@ const Dashboard = () => {
       <ProductTour />
       <PWAInstallPrompt />
       <Header />
-      
+
       <main className="container mx-auto px-4 sm:px-6 py-6 sm:py-8 max-w-[1600px]">
         {/* Welcome Section */}
-        <motion.section 
+        <motion.section
           initial={{ opacity: 0, y: -20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
@@ -278,13 +278,14 @@ const Dashboard = () => {
           {/* Simple Mode - Default View */}
           <TabsContent value="simple" className="space-y-6">
             {/* Giant Quick Actions - Most Prominent */}
-            <motion.section 
+            <motion.section
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
             >
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
                 <Button
+                  id="tour-pos-link"
                   onClick={() => navigate('/checkout')}
                   className="h-32 sm:h-40 flex flex-col items-center justify-center gap-4 bg-gradient-primary hover:opacity-90 shadow-glow-primary btn-glow text-lg sm:text-xl font-semibold"
                 >
@@ -309,7 +310,7 @@ const Dashboard = () => {
             <BranchAlertSummaryWidget />
 
             {/* Live Marketplace Proof - Show value of marketplace */}
-            <motion.section 
+            <motion.section
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.25 }}
@@ -317,7 +318,7 @@ const Dashboard = () => {
               <MarketplaceProofWidget />
             </motion.section>
             {isOwnerOrManager && (
-              <motion.section 
+              <motion.section
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.28 }}
@@ -326,7 +327,7 @@ const Dashboard = () => {
               </motion.section>
             )}
             {isOwnerOrManager && (
-              <motion.section 
+              <motion.section
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.3 }}
@@ -337,7 +338,7 @@ const Dashboard = () => {
 
             {/* AI Business Insights - Text-based, easy to understand */}
             {medications.length > 0 && (
-              <motion.section 
+              <motion.section
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.4 }}
@@ -348,25 +349,25 @@ const Dashboard = () => {
 
             {/* AI Slow-Moving Products Analysis */}
             {medications.length > 0 && (
-              <motion.section 
+              <motion.section
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.45 }}
               >
-                <SlowMovingProductsPanel 
-                  medications={medications} 
-                  salesData={sales?.map(s => ({ 
-                    medication_id: s.medication_id, 
-                    quantity: s.quantity, 
-                    sale_date: s.sale_date 
-                  }))} 
+                <SlowMovingProductsPanel
+                  medications={medications}
+                  salesData={sales?.map(s => ({
+                    medication_id: s.medication_id,
+                    quantity: s.quantity,
+                    sale_date: s.sale_date
+                  }))}
                 />
               </motion.section>
             )}
 
             {/* Expiry Discount Engine */}
             {medications.length > 0 && (
-              <motion.section 
+              <motion.section
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.5 }}
@@ -376,7 +377,7 @@ const Dashboard = () => {
             )}
 
             {/* Secondary Quick Actions */}
-            <motion.section 
+            <motion.section
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.6 }}
@@ -438,7 +439,7 @@ const Dashboard = () => {
           <TabsContent value="analytics" className="space-y-6">
             {/* Sales Analytics - Revenue, Profit, Orders (FIRST) */}
             {isOwnerOrManager && medications.length > 0 && (
-              <motion.section 
+              <motion.section
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.1 }}
@@ -449,7 +450,7 @@ const Dashboard = () => {
 
             {/* Financial Summary - Inventory value, expired loss (SECOND) */}
             {isOwnerOrManager && medications.length > 0 && (
-              <motion.section 
+              <motion.section
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.15 }}
@@ -460,7 +461,7 @@ const Dashboard = () => {
 
             {/* Manager KPIs - Today's revenue, margin (THIRD) */}
             {isOwnerOrManager && (
-              <motion.section 
+              <motion.section
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2 }}
@@ -470,7 +471,7 @@ const Dashboard = () => {
             )}
 
             {/* Quick Glance, Shift Clock & Live Activity */}
-            <motion.section 
+            <motion.section
               variants={containerVariants}
               initial="hidden"
               animate="visible"
@@ -489,7 +490,7 @@ const Dashboard = () => {
             </motion.section>
 
             {/* Key Metrics */}
-            <motion.section 
+            <motion.section
               variants={containerVariants}
               initial="hidden"
               animate="visible"
@@ -540,7 +541,7 @@ const Dashboard = () => {
 
             {/* Business Intelligence Section */}
             {isOwnerOrManager && medications.length > 0 && (
-              <motion.section 
+              <motion.section
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.35 }}
@@ -563,7 +564,7 @@ const Dashboard = () => {
 
             {/* Multi-Branch Reports - Owner/Manager Only */}
             {isOwnerOrManager && (
-              <motion.section 
+              <motion.section
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.4 }}
@@ -574,7 +575,7 @@ const Dashboard = () => {
 
             {/* Consolidated Reports - Owner/Manager Only */}
             {isOwnerOrManager && (
-              <motion.section 
+              <motion.section
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.45 }}
@@ -585,7 +586,7 @@ const Dashboard = () => {
 
             {/* Branch Comparison - Owner/Manager Only */}
             {isOwnerOrManager && (
-              <motion.section 
+              <motion.section
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.5 }}
@@ -596,7 +597,7 @@ const Dashboard = () => {
 
             {/* Staff Performance - Owner/Manager Only */}
             {isOwnerOrManager && (
-              <motion.section 
+              <motion.section
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.55 }}
@@ -607,7 +608,7 @@ const Dashboard = () => {
 
             {/* Inventory Charts */}
             {medications.length > 0 && (
-              <motion.section 
+              <motion.section
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.6 }}
@@ -617,7 +618,7 @@ const Dashboard = () => {
             )}
 
             {/* Staff Quick Actions */}
-            <motion.section 
+            <motion.section
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.65 }}
@@ -627,7 +628,7 @@ const Dashboard = () => {
 
             {/* NAFDAC Compliance */}
             {medications.length > 0 && (
-              <motion.section 
+              <motion.section
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.7 }}

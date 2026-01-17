@@ -28,7 +28,7 @@ const ProductTourContext = createContext<ProductTourContextValue | null>(null);
 export const ProductTourProvider = ({ children }: { children: ReactNode }) => {
   const { user } = useAuth();
   const { userRole, isLoading: permissionsLoading } = usePermissions();
-  
+
   const [isOpen, setIsOpen] = useState(false);
   const [currentStep, setCurrentStep] = useState(0);
   const [hasCompletedTour, setHasCompletedTour] = useState(true);
@@ -46,21 +46,23 @@ export const ProductTourProvider = ({ children }: { children: ReactNode }) => {
   // Check if user has completed the tour for their current role
   useEffect(() => {
     if (!user?.id || permissionsLoading) return;
-    
+
     const tourKey = getTourStorageKey(user.id, userRole);
     const completed = localStorage.getItem(tourKey);
-    
+
     if (completed === 'true') {
       setHasCompletedTour(true);
     } else {
       setHasCompletedTour(false);
-      // Auto-start tour for first-time users after a short delay
+      // Auto-start disabled in favor of new OnboardingTour
+      /*
       const timer = setTimeout(() => {
         if (tourSteps.length > 0) {
           setIsOpen(true);
         }
       }, 1500);
       return () => clearTimeout(timer);
+      */
     }
   }, [user?.id, userRole, permissionsLoading, tourSteps.length]);
 
@@ -114,15 +116,9 @@ export const ProductTourProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const resetTour = useCallback(() => {
-    if (user?.id) {
-      const tourKey = getTourStorageKey(user.id, userRole);
-      localStorage.removeItem(tourKey);
-    }
-    setHasCompletedTour(false);
-    setCurrentStep(0);
-    setIsPaused(false);
-    setIsOpen(true);
-  }, [user?.id, userRole]);
+    // Dispatch event for the new Driver.js onboarding tour
+    window.dispatchEvent(new CustomEvent('start-onboarding-tour'));
+  }, []);
 
   return (
     <ProductTourContext.Provider

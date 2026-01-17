@@ -48,6 +48,8 @@ import Explore from "./pages/Explore";
 import PartnerLanding from "./pages/PartnerLanding";
 import MarketplaceInsights from "./pages/MarketplaceInsights";
 import NotFound from "./pages/NotFound";
+import OnboardingTour from "./components/OnboardingTour";
+
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
@@ -283,10 +285,9 @@ const App = () => (
                                 </ProtectedRoute>
                               }
                             />
-                            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-                            <Route path="*" element={<NotFound />} />
                             <Route path="*" element={<NotFound />} />
                           </Routes>
+                          <OnboardingTour />
                         </ErrorBoundary>
                       </BrowserRouter>
                     </TooltipProvider>

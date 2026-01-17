@@ -64,7 +64,7 @@ const Inventory = () => {
   // Also get mutations from useMedications for editing
   const { deleteMedication, updateMedication } = useMedications();
   const { isSimpleMode } = useRegionalSettings();
-  
+
   // Use branch-specific meds for all displays (expiry, low stock, etc.)
   // This ensures new branches show 0 items until stock is transferred
   const medications = branchMedications as unknown as Medication[];
@@ -87,7 +87,7 @@ const Inventory = () => {
   const [bulkShelveOpen, setBulkShelveOpen] = useState(false);
   const [bulkUnshelveOpen, setBulkUnshelveOpen] = useState(false);
   // Prefill data for Add Medication from Photo Expiry Scan
-  
+
   const { pharmacy } = usePharmacy();
   const { currency } = useCurrency();
   const { currentBranchName, isMainBranch } = useBranchContext();
@@ -95,7 +95,7 @@ const Inventory = () => {
 
   const filteredMedications = useMemo(() => {
     let result = medications;
-    
+
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
       result = result.filter(m =>
@@ -104,14 +104,14 @@ const Inventory = () => {
         m.batch_number.toLowerCase().includes(query)
       );
     }
-    
+
     return result;
   }, [medications, searchQuery]);
 
   // Sort medications to show selected items first
   const sortedMedications = useMemo(() => {
     if (selectedIds.size === 0) return filteredMedications;
-    
+
     return [...filteredMedications].sort((a, b) => {
       const aSelected = selectedIds.has(a.id) ? 0 : 1;
       const bSelected = selectedIds.has(b.id) ? 0 : 1;
@@ -207,23 +207,23 @@ const Inventory = () => {
   const branchMetrics = getMetrics();
   const lowStockCount = branchMetrics.lowStock;
   const totalProducts = branchMetrics.totalSKUs;
-  
+
   // Calculate expiring items with more detail - using branch-specific stock
   // Cast to BranchMedication to access branch_stock
   const branchMeds = branchMedications as BranchMedication[];
-  
+
   const expiringItems = branchMeds.filter(m => {
     const expiryDate = parseISO(m.expiry_date);
     const daysToExpiry = differenceInDays(expiryDate, today);
     return daysToExpiry > 0 && daysToExpiry <= 30 && m.branch_stock > 0;
   });
-  
+
   const expiredItems = branchMeds.filter(m => parseISO(m.expiry_date) <= today && m.branch_stock > 0);
-  
+
   const lowStockMedications = branchMeds
     .filter(m => m.branch_stock > 0 && m.branch_stock <= m.branch_reorder_level)
     .slice(0, 10);
-  
+
   // Items expiring soon sorted by urgency - only show items with stock
   const expiryUrgentItems = branchMeds
     .filter(m => m.branch_stock > 0) // Only items with stock in this branch
@@ -250,7 +250,7 @@ const Inventory = () => {
   return (
     <div className="min-h-screen bg-background">
       <Header />
-      
+
       <main className="container mx-auto px-4 py-8">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-8">
           <div>
@@ -267,9 +267,9 @@ const Inventory = () => {
               )}
             </div>
             <p className="text-muted-foreground mt-1">
-              {isSimpleMode 
+              {isSimpleMode
                 ? 'Add and manage your products'
-                : isMainBranch 
+                : isMainBranch
                   ? 'Central inventory management - stock levels apply to all branches'
                   : `Managing stock for ${currentBranchName}`
               }
@@ -281,7 +281,11 @@ const Inventory = () => {
                 <DollarSign className="h-4 w-4" />
                 Bulk Pricing
               </Button>
-              <Button onClick={() => setShowAddMedicationModal(true)} className="gap-2 bg-gradient-primary hover:opacity-90 btn-glow">
+              <Button
+                id="tour-add-product"
+                onClick={() => setShowAddMedicationModal(true)}
+                className="gap-2 bg-gradient-primary hover:opacity-90 btn-glow"
+              >
                 <Plus className="h-4 w-4" />
                 Add New Medication
               </Button>
@@ -359,7 +363,13 @@ const Inventory = () => {
                   <FileSpreadsheet className="h-5 w-5" />
                   CSV Import
                 </Button>
-                <Button onClick={() => setShowMultiImageScanner(true)} variant="outline" size="lg" className="gap-2">
+                <Button
+                  id="tour-invoice-scanner"
+                  onClick={() => setShowMultiImageScanner(true)}
+                  variant="outline"
+                  size="lg"
+                  className="gap-2"
+                >
                   <FileImage className="h-5 w-5" />
                   Scan Invoice
                   <Badge variant="outline" className="ml-1 text-xs bg-gradient-premium text-white border-0">AI</Badge>
@@ -474,8 +484,8 @@ const Inventory = () => {
                         </p>
                       </div>
                       <div className="w-16">
-                        <Progress 
-                          value={getExpiryProgress(item.daysToExpiry)} 
+                        <Progress
+                          value={getExpiryProgress(item.daysToExpiry)}
                           className="h-2"
                         />
                       </div>
@@ -524,8 +534,8 @@ const Inventory = () => {
                           </p>
                         </div>
                         <div className="w-16">
-                          <Progress 
-                            value={Math.min(stockPercentage, 100)} 
+                          <Progress
+                            value={Math.min(stockPercentage, 100)}
                             className="h-2"
                           />
                         </div>
@@ -600,8 +610,8 @@ const Inventory = () => {
                 <Button variant="outline" size="sm" onClick={() => setSelectedIds(new Set())}>
                   Clear
                 </Button>
-                <BulkMarketplaceActions 
-                  selectedIds={selectedIds} 
+                <BulkMarketplaceActions
+                  selectedIds={selectedIds}
                   onComplete={() => {
                     setSelectedIds(new Set());
                   }}
@@ -622,9 +632,9 @@ const Inventory = () => {
             ) : (
               <div className="flex items-center gap-2 mt-3 flex-wrap">
                 <span className="text-xs text-muted-foreground">Quick Select:</span>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
+                <Button
+                  variant="outline"
+                  size="sm"
                   onClick={() => {
                     const expiredIds = medications
                       .filter(m => parseISO(m.expiry_date) <= new Date())
@@ -636,9 +646,9 @@ const Inventory = () => {
                   <AlertTriangle className="h-3 w-3 mr-1" />
                   Expired ({expiredItems.length})
                 </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
+                <Button
+                  variant="outline"
+                  size="sm"
                   onClick={() => {
                     const lowStockIds = medications
                       .filter(m => m.current_stock <= m.reorder_level)
@@ -650,9 +660,9 @@ const Inventory = () => {
                   <TrendingDown className="h-3 w-3 mr-1" />
                   Low Stock ({lowStockCount})
                 </Button>
-                <Button 
-                  variant="outline" 
-                  size="sm" 
+                <Button
+                  variant="outline"
+                  size="sm"
                   onClick={() => {
                     const expiringIds = medications
                       .filter(m => {
@@ -668,9 +678,9 @@ const Inventory = () => {
                   Expiring Soon ({expiringItems.length})
                 </Button>
                 <div className="ml-auto">
-                  <CategoryMarketplaceToggle 
-                    medications={medications} 
-                    onUpdate={() => {}} 
+                  <CategoryMarketplaceToggle
+                    medications={medications}
+                    onUpdate={() => { }}
                   />
                 </div>
               </div>
@@ -696,27 +706,27 @@ const Inventory = () => {
           </CardContent>
         </Card>
       </main>
-      
+
       <ReceiveStockModal
         open={showReceiveStockModal}
         onOpenChange={setShowReceiveStockModal}
       />
-      
+
       <StockCountModal
         open={showStockCountModal}
         onOpenChange={setShowStockCountModal}
       />
-      
+
       <MultiImageInvoiceScanner
         open={showMultiImageScanner}
         onOpenChange={setShowMultiImageScanner}
       />
-      
+
       <SmartCSVImportModal
         open={showCSVImportModal}
         onOpenChange={setShowCSVImportModal}
       />
-      
+
       <AddMedicationModal
         open={showAddMedicationModal}
         onOpenChange={(open) => {
@@ -727,7 +737,7 @@ const Inventory = () => {
         }}
         editingMedication={editingMedication}
       />
-      
+
       <BulkPriceUpdateModal
         open={showBulkPriceModal}
         onOpenChange={setShowBulkPriceModal}
