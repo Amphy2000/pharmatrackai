@@ -92,18 +92,20 @@ const OnboardingTour: React.FC = () => {
                 handleTransition(prevStepIndex);
             },
             onCloseClick: () => {
-                localStorage.setItem('tour_completed_', 'true');
-                driverObj.current.destroy();
+                localStorage.setItem('tour_completed_v1', 'true');
+                driverObj.current?.destroy();
             },
         });
 
         // Start tour if not completed
-        const isCompleted = localStorage.getItem('tour_completed_');
+        const isCompleted = localStorage.getItem('tour_completed_v1');
         if (!isCompleted && location.pathname === '/dashboard') {
             const timer = setTimeout(() => {
-                driverObj.current.setSteps(steps.map(s => ({ element: s.element, popover: s.popover })));
-                driverObj.current.drive();
-            }, 2000);
+                if (driverObj.current) {
+                    driverObj.current.setSteps(steps.map(s => ({ element: s.element, popover: s.popover })));
+                    driverObj.current.drive();
+                }
+            }, 3000); // 3 second delay for first time
             return () => clearTimeout(timer);
         }
 
@@ -123,20 +125,20 @@ const OnboardingTour: React.FC = () => {
     const handleTransition = (stepIndex: number) => {
         if (stepIndex < 0 || stepIndex >= steps.length) {
             if (stepIndex >= steps.length) {
-                localStorage.setItem('tour_completed_', 'true');
-                driverObj.current.destroy();
+                localStorage.setItem('tour_completed_v1', 'true');
+                driverObj.current?.destroy();
             }
             return;
         }
 
         const targetStep = steps[stepIndex];
 
-        if (targetStep.route !== location.pathname) {
+        if (targetStep.route && targetStep.route !== location.pathname) {
             // Save state and navigate
             localStorage.setItem('onboarding_tour_step', stepIndex.toString());
             navigate(targetStep.route);
         } else {
-            driverObj.current.moveTo(stepIndex);
+            driverObj.current?.moveTo(stepIndex);
         }
     };
 
@@ -148,10 +150,13 @@ const OnboardingTour: React.FC = () => {
             localStorage.removeItem('onboarding_tour_step');
 
             // Wait for navigation and rendering
-            setTimeout(() => {
-                driverObj.current.setSteps(steps.map(s => ({ element: s.element, popover: s.popover })));
-                driverObj.current.drive(stepIndex);
-            }, 500);
+            const timer = setTimeout(() => {
+                if (driverObj.current) {
+                    driverObj.current.setSteps(steps.map(s => ({ element: s.element, popover: s.popover })));
+                    driverObj.current.drive(stepIndex);
+                }
+            }, 800);
+            return () => clearTimeout(timer);
         }
     }, [location.pathname]);
 
