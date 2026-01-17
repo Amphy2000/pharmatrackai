@@ -569,11 +569,11 @@
 
 /* Driver.js Premium Styling - Clean, Crisp & Professional */
 .driver-popover {
-  border-radius: 1.5rem !important;
-  padding: 0 !important;
-  border: none !important;
+  border-radius: 1.25rem !important;
+  padding: 2.5rem !important;
+  border: 1px solid hsl(var(--border) / 0.5) !important;
   box-shadow:
-    0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
+    0 25px 50px -12px rgba(0, 0, 0, 0.5) !important;
   background: hsl(var(--card)) !important;
   width: 480px !important;
   max-width: calc(100vw - 40px) !important;
@@ -582,10 +582,8 @@
 }
 
 .driver-popover-content {
-  padding: 3.5rem !important;
-  border-radius: 1.5rem !important;
-  border: 1px solid hsl(var(--border) / 0.5) !important;
-  background: hsl(var(--card)) !important;
+  padding: 0 !important;
+  background: transparent !important;
   color: hsl(var(--foreground)) !important;
   position: relative !important;
 }
@@ -598,6 +596,7 @@
   color: hsl(var(--primary)) !important;
   line-height: 1.2 !important;
   letter-spacing: -0.02em !important;
+  padding-right: 2rem !important;
 }
 
 .driver-popover-description {
@@ -613,13 +612,12 @@
   gap: 1rem !important;
   justify-content: flex-end !important;
   align-items: center !important;
-  padding: 0 !important;
+  padding-top: 1.5rem !important;
   background: transparent !important;
 }
 
 .driver-popover-prev-btn,
-.driver-popover-next-btn,
-.driver-popover-close-btn {
+.driver-popover-next-btn {
   background: hsl(var(--primary)) !important;
   color: hsl(var(--primary-foreground)) !important;
   border-radius: 0.75rem !important;
@@ -634,6 +632,30 @@
   text-align: center !important;
 }
 
+.driver-popover-close-btn {
+  position: absolute !important;
+  top: 1.5rem !important;
+  right: 1.5rem !important;
+  width: 24px !important;
+  height: 24px !important;
+  padding: 0 !important;
+  background: transparent !important;
+  color: hsl(var(--muted-foreground)) !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  font-size: 20px !important;
+  border: none !important;
+  cursor: pointer !important;
+  opacity: 0.5 !important;
+  transition: opacity 0.2s !important;
+}
+
+.driver-popover-close-btn:hover {
+  opacity: 1 !important;
+  background: transparent !important;
+}
+
 .driver-popover-prev-btn {
   background: hsl(var(--muted)) !important;
   color: hsl(var(--muted-foreground)) !important;
@@ -643,8 +665,7 @@
   background: hsl(var(--muted) / 0.8) !important;
 }
 
-.driver-popover-next-btn:hover,
-.driver-popover-close-btn:hover {
+.driver-popover-next-btn:hover {
   background: hsl(var(--primary) / 0.9) !important;
   transform: translateY(-1px) !important;
 }
