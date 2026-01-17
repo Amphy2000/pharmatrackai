@@ -28,7 +28,7 @@ const OnboardingTour: React.FC = () => {
                 side: 'bottom',
                 align: 'start',
             },
-            route: '/dashboard',
+            route: '/inventory',
         },
         {
             element: '#tour-ai-insights',
