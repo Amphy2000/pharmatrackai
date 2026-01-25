@@ -10,7 +10,13 @@ export async function callAI(
 ): Promise<{ data: any; error: any }> {
     try {
         const { data: { session } } = await supabase.auth.getSession();
-        if (!session) throw new Error("Not authenticated");
+
+        // Relaxed Auth: Try to use session, but fallback to anonymous if missing
+        const accessToken = session?.access_token || "anonymous_token";
+
+        if (!session) {
+            console.warn("[AI Bridge] No active session found. Proceeding with anonymous access.");
+        }
 
         // 1. Try Vercel API first (Free, no credit limit)
         console.log(`[AI Bridge] Attempting Vercel API: /api/${endpoint}`);
@@ -18,7 +24,7 @@ export async function callAI(
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
-                "Authorization": `Bearer ${session.access_token}`
+                "Authorization": `Bearer ${accessToken}`
             },
             body: JSON.stringify(payload)
         });
