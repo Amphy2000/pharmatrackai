@@ -3,10 +3,10 @@ import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { useBarcodeScanner } from '@/hooks/useBarcodeScanner';
 import { isBefore, parseISO } from 'date-fns';
-import { 
-  ArrowLeft, 
-  ShoppingCart, 
-  CreditCard, 
+import {
+  ArrowLeft,
+  ShoppingCart,
+  CreditCard,
   Trash2,
   Check,
   Pause,
@@ -17,7 +17,7 @@ import {
   Keyboard,
   HelpCircle,
   User,
-  
+
   ChevronDown,
   WifiOff
 } from 'lucide-react';
@@ -44,10 +44,8 @@ import { PatientSelector } from '@/components/pos/PatientSelector';
 // PrescriptionImageUpload removed - not needed
 import { KeyboardShortcutsOverlay } from '@/components/pos/KeyboardShortcutsOverlay';
 import { ExpiredBatchWarningDialog } from '@/components/pos/ExpiredBatchWarningDialog';
-import { SmartUpsellPanel } from '@/components/pos/SmartUpsellPanel';
 import { QuickItemModal, QuickItem } from '@/components/pos/QuickItemModal';
 import { SaleTypeToggle, SaleType } from '@/components/pos/SaleTypeToggle';
-import { useSmartUpsell } from '@/hooks/useSmartUpsell';
 import { Customer } from '@/types/customer';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -72,7 +70,7 @@ import { FileText, Banknote, CreditCard as CreditCardIcon, Landmark } from 'luci
 
 const Checkout = () => {
   const { medications: branchMedications, isLoading, isOffline, updateLocalStock } = useBranchInventory();
-  
+
   // Keep a full list for barcode lookups (including 0 stock), but display only sellable items.
   const allMedications = branchMedications
     .map(m => ({
@@ -84,18 +82,7 @@ const Checkout = () => {
   const { completeSale } = useSales();
   const { activeShift } = useShifts();
   const cart = useCart();
-  
-  // Smart Upsell - AI-powered product suggestions
-  const { 
-    suggestions: upsellSuggestions, 
-    isLoading: isLoadingUpsells, 
-    dismissSuggestion 
-  } = useSmartUpsell({
-    cartItems: cart.items,
-    availableMedications: medications,
-    enabled: cart.items.length > 0,
-    debounceMs: 2000, // Wait 2 seconds after last cart change
-  });
+
   const { formatPrice, currency } = useCurrency();
   const { isSimpleMode, regulatory } = useRegionalSettings();
   const { pharmacy } = usePharmacy();
@@ -126,7 +113,7 @@ const Checkout = () => {
     },
     enabled: !!user?.id,
   });
-  
+
   const [customerName, setCustomerName] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('cash');
   const [saleType, setSaleType] = useState<SaleType>('retail');
@@ -211,14 +198,14 @@ const Checkout = () => {
     const handleKeyDown = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement;
       const isInputField = target.tagName === 'INPUT' || target.tagName === 'TEXTAREA' || target.isContentEditable;
-      
+
       // / key to toggle shortcuts overlay (works anywhere except input fields)
       if (e.key === '/' && !isInputField) {
         e.preventDefault();
         setShowShortcuts(prev => !prev);
         return;
       }
-      
+
       // Don't process other shortcuts if dialogs are open or in input fields
       if (isInputField || checkoutOpen || previewOpen || heldPanelOpen || showShortcuts) return;
 
@@ -272,7 +259,7 @@ const Checkout = () => {
   const getReceiptParams = (isPaid: boolean = true, isDigital: boolean = false, method: PaymentMethod = paymentMethod) => {
     // Calculate FEFO batch notes for multi-batch sales
     const batchInfo = getFEFOBatchInfo(medications, cart.items);
-    const batchNotes = batchInfo.map(info => 
+    const batchNotes = batchInfo.map(info =>
       `${info.productName}: ${info.batchDetails.join(' + ')}`
     );
 
@@ -299,11 +286,11 @@ const Checkout = () => {
 
   const handleHoldSale = () => {
     if (cart.items.length === 0) return;
-    
+
     holdTransaction(cart.items, customerName, cart.getTotal());
     cart.clearCart();
     setCustomerName('');
-    
+
     toast({
       title: 'Sale held',
       description: 'Transaction saved. Resume it anytime from the Held button.',
@@ -320,7 +307,7 @@ const Checkout = () => {
       });
       setCustomerName(transaction.customerName);
       setHeldPanelOpen(false);
-      
+
       toast({
         title: 'Sale resumed',
         description: 'Transaction loaded into cart.',
@@ -341,7 +328,7 @@ const Checkout = () => {
       // Create an iframe for printing instead of opening a new window
       const pdfBlob = receipt.output('blob');
       const url = URL.createObjectURL(pdfBlob);
-      
+
       // Create hidden iframe for printing
       const iframe = document.createElement('iframe');
       iframe.style.position = 'fixed';
@@ -351,9 +338,9 @@ const Checkout = () => {
       iframe.style.height = '0';
       iframe.style.border = 'none';
       iframe.src = url;
-      
+
       document.body.appendChild(iframe);
-      
+
       iframe.onload = () => {
         setTimeout(() => {
           iframe.contentWindow?.print();
@@ -390,12 +377,12 @@ const Checkout = () => {
     }
 
     setIsProcessing(true);
-    
+
     // Store cart items before clearing
     const currentItems = [...cart.items];
     const currentCustomer = customerName;
     const currentPaymentMethod = paymentMethod;
-    
+
     try {
       // Skip stock validation when offline - trust local cache
       if (!isOffline) {
@@ -403,19 +390,19 @@ const Checkout = () => {
         // Skip validation for Quick Items (Express Sales) - they don't have inventory
         const stockIssues: string[] = [];
         const priceChanges: { name: string; oldPrice: number; newPrice: number }[] = [];
-        
+
         for (const item of currentItems) {
           // Skip Quick Items - they don't exist in inventory
           if (item.isQuickItem) {
             continue;
           }
-          
+
           const freshMed = branchMedications.find(m => m.id === item.medication.id);
           if (!freshMed) {
             stockIssues.push(`${item.medication.name} is no longer available`);
             continue;
           }
-          
+
           // Check stock
           if (freshMed.branch_stock < item.quantity) {
             if (freshMed.branch_stock === 0) {
@@ -424,7 +411,7 @@ const Checkout = () => {
               stockIssues.push(`${item.medication.name}: only ${freshMed.branch_stock} left (you have ${item.quantity} in cart)`);
             }
           }
-          
+
           // SAFEGUARD 2: Check for price changes since item was added to cart
           const cartPrice = item.medication.selling_price || item.medication.unit_price;
           const currentPrice = freshMed.selling_price || freshMed.unit_price;
@@ -436,7 +423,7 @@ const Checkout = () => {
             });
           }
         }
-        
+
         // Show stock issues as error (only if there are issues with non-quick items)
         if (stockIssues.length > 0) {
           toast({
@@ -447,10 +434,10 @@ const Checkout = () => {
           setIsProcessing(false);
           return;
         }
-        
+
         // Warn about price changes but allow proceeding
         if (priceChanges.length > 0) {
-          const priceMsg = priceChanges.map(p => 
+          const priceMsg = priceChanges.map(p =>
             `${p.name}: ${formatPrice(p.oldPrice)} → ${formatPrice(p.newPrice)}`
           ).join(', ');
           toast({
@@ -469,13 +456,13 @@ const Checkout = () => {
           });
         }
       }
-      
+
       // Recalculate total with verified prices
       const currentTotal = currentItems.reduce((sum, item) => {
         const price = item.medication.selling_price || item.medication.unit_price;
         return sum + (price * item.quantity);
       }, 0);
-      
+
       const result = await completeSale.mutateAsync({
         items: currentItems,
         customerName: selectedPatient?.full_name || currentCustomer || undefined,
@@ -493,7 +480,7 @@ const Checkout = () => {
       setLastReceiptItems(currentItems);
       setLastReceiptTotal(currentTotal);
       setLastPaymentMethod(currentPaymentMethod);
-      
+
       // Generate receipt for preview (digital version for preview always shows logo)
       const receipt = await generateReceipt({
         items: currentItems,
@@ -502,7 +489,7 @@ const Checkout = () => {
         date: new Date(),
         ...getReceiptParams(true, true, currentPaymentMethod), // isPaid=true, isDigital=true for preview
       });
-      
+
       setPreviewReceipt(receipt);
       setPreviewOpen(true);
       setSaleComplete(true);
@@ -537,7 +524,7 @@ const Checkout = () => {
   const handleAddQuickItem = async (item: QuickItem) => {
     // Add to cart immediately
     cart.addQuickItem(item.name, item.price, item.quantity);
-    
+
     // Save to pending_quick_items for manager review (async, don't block)
     createQuickItem.mutate({
       name: item.name,
@@ -551,7 +538,7 @@ const Checkout = () => {
 
   const handlePrintLastReceipt = async () => {
     if (!lastReceiptNumber || lastReceiptItems.length === 0) return;
-    
+
     // Digital version for preview
     const receipt = await generateReceipt({
       items: lastReceiptItems,
@@ -560,14 +547,14 @@ const Checkout = () => {
       date: new Date(),
       ...getReceiptParams(true, true, lastPaymentMethod),
     });
-    
+
     setPreviewReceipt(receipt);
     setPreviewOpen(true);
   };
 
   // Generate Invoice (credit sale - unpaid) - saves to pending_transactions
   const { createPendingTransaction } = usePendingTransactions();
-  
+
   const handleGenerateInvoice = async () => {
     if (cart.items.length === 0) return;
 
@@ -583,7 +570,7 @@ const Checkout = () => {
         items: currentItems,
         total: currentTotal,
       });
-      
+
       if (!pendingTx) {
         throw new Error('Failed to create pending transaction');
       }
@@ -608,7 +595,7 @@ const Checkout = () => {
         shortCode: pendingTx.short_code,
         barcode: pendingTx.barcode,
       });
-      
+
       await printHtmlReceipt(html);
 
       // Clear cart after generating invoice
@@ -659,9 +646,9 @@ const Checkout = () => {
       />
 
       {/* Keyboard Shortcuts Overlay */}
-      <KeyboardShortcutsOverlay 
-        open={showShortcuts} 
-        onClose={() => setShowShortcuts(false)} 
+      <KeyboardShortcutsOverlay
+        open={showShortcuts}
+        onClose={() => setShowShortcuts(false)}
       />
 
       {/* Premium Header */}
@@ -820,19 +807,6 @@ const Checkout = () => {
                   saleType={saleType}
                 />
 
-                {/* Smart Upsell - hidden on mobile to save space */}
-                {cart.items.length > 0 && (
-                  <div className="hidden sm:block">
-                    <SmartUpsellPanel
-                      suggestions={upsellSuggestions}
-                      isLoading={isLoadingUpsells}
-                      onAddToCart={cart.addItem}
-                      onDismiss={dismissSuggestion}
-                      cartItems={cart.items}
-                    />
-                  </div>
-                )}
-
                 {/* Collapsible extras - hidden on mobile */}
                 {cart.items.length > 0 && (
                   <div className="hidden sm:block mt-3 space-y-1">
@@ -942,11 +916,10 @@ const Checkout = () => {
                     <button
                       type="button"
                       onClick={() => setPaymentMethod('cash')}
-                      className={`flex flex-col items-center justify-center gap-1 p-3 rounded-xl border transition-all ${
-                        paymentMethod === 'cash'
-                          ? 'border-primary bg-primary/10 text-primary'
-                          : 'border-border/50 hover:border-primary/50 hover:bg-primary/5'
-                      }`}
+                      className={`flex flex-col items-center justify-center gap-1 p-3 rounded-xl border transition-all ${paymentMethod === 'cash'
+                        ? 'border-primary bg-primary/10 text-primary'
+                        : 'border-border/50 hover:border-primary/50 hover:bg-primary/5'
+                        }`}
                     >
                       <Banknote className="h-5 w-5" />
                       <span className="text-xs font-medium">Cash</span>
@@ -954,11 +927,10 @@ const Checkout = () => {
                     <button
                       type="button"
                       onClick={() => setPaymentMethod('transfer')}
-                      className={`flex flex-col items-center justify-center gap-1 p-3 rounded-xl border transition-all ${
-                        paymentMethod === 'transfer'
-                          ? 'border-primary bg-primary/10 text-primary'
-                          : 'border-border/50 hover:border-primary/50 hover:bg-primary/5'
-                      }`}
+                      className={`flex flex-col items-center justify-center gap-1 p-3 rounded-xl border transition-all ${paymentMethod === 'transfer'
+                        ? 'border-primary bg-primary/10 text-primary'
+                        : 'border-border/50 hover:border-primary/50 hover:bg-primary/5'
+                        }`}
                     >
                       <Landmark className="h-5 w-5" />
                       <span className="text-xs font-medium">Transfer</span>
@@ -966,11 +938,10 @@ const Checkout = () => {
                     <button
                       type="button"
                       onClick={() => setPaymentMethod('pos')}
-                      className={`flex flex-col items-center justify-center gap-1 p-3 rounded-xl border transition-all ${
-                        paymentMethod === 'pos'
-                          ? 'border-primary bg-primary/10 text-primary'
-                          : 'border-border/50 hover:border-primary/50 hover:bg-primary/5'
-                      }`}
+                      className={`flex flex-col items-center justify-center gap-1 p-3 rounded-xl border transition-all ${paymentMethod === 'pos'
+                        ? 'border-primary bg-primary/10 text-primary'
+                        : 'border-border/50 hover:border-primary/50 hover:bg-primary/5'
+                        }`}
                     >
                       <CreditCardIcon className="h-5 w-5" />
                       <span className="text-xs font-medium">POS</span>

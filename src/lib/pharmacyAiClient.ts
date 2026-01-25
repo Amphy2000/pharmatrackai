@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase';
+import { callAI } from '@/utils/ai-bridge';
 
 export class PharmacyAiError extends Error {
   status?: number;
@@ -27,7 +28,7 @@ async function getAuthHeaders(): Promise<Record<string, string>> {
 
   // Get the current session token
   const { data: { session } } = await supabase.auth.getSession();
-  
+
   if (session?.access_token) {
     headers['Authorization'] = `Bearer ${session.access_token}`;
   } else {
@@ -43,44 +44,18 @@ export async function callPharmacyAi<T>(params: {
   pharmacy_id: string | null | undefined;
   signal?: AbortSignal;
 }): Promise<T> {
-  const headers = await getAuthHeaders();
-  
-  const res = await fetch(PHARMACY_AI_URL, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({
-      action: params.action,
-      payload: params.payload,
-      pharmacy_id: params.pharmacy_id ?? null,
-    }),
-    signal: params.signal,
+  const { data, error } = await callAI('pharmacy-ai', {
+    action: params.action,
+    payload: params.payload,
+    pharmacy_id: params.pharmacy_id ?? null,
   });
 
-  const bodyText = await res.text();
-  let json: any = null;
-  try {
-    json = bodyText ? JSON.parse(bodyText) : null;
-  } catch {
-    json = null;
+  if (error) {
+    const msg = error.message || (typeof error === 'string' ? error : 'Request failed');
+    throw new PharmacyAiError(msg, { status: error.status });
   }
 
-  if (!res.ok) {
-    // Check for retry_after hint from server
-    const retryAfter = json?.retry_after;
-    
-    const msg =
-      json?.error ||
-      json?.message ||
-      (typeof json === 'string' ? json : null) ||
-      bodyText ||
-      `Request failed (${res.status})`;
-
-    const error = new PharmacyAiError(msg, { status: res.status, bodyText });
-    (error as any).retryAfter = retryAfter;
-    throw error;
-  }
-
-  return (json ?? ({} as any)) as T;
+  return (data ?? ({} as any)) as T;
 }
 
 export async function callPharmacyAiWithFallback<T>(params: {
