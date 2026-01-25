@@ -2,8 +2,6 @@ import { createClient } from '@supabase/supabase-js';
 
 // Switch to standard Flash model (same as smart-upsell) for better reliability
 const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
-// User provided key for the free tier
-const USER_GEMINI_KEY = "AIzaSyAX_JB6Y8g2pFQYRI6RFLIAe_ZsBAcW4zs";
 
 export default async function handler(req: any, res: any) {
     // 1. Set CORS headers
@@ -24,8 +22,15 @@ export default async function handler(req: any, res: any) {
 
         const { action, payload, message, messages } = req.body;
 
-        // Prioritize the hardcoded key if the env var isn't set (common in Vercel free tier without setup)
-        const apiKey = process.env.GEMINI_API_KEY || USER_GEMINI_KEY;
+        // Use environment variable for API Key
+        const apiKey = process.env.GEMINI_API_KEY;
+
+        if (!apiKey) {
+            return res.status(200).json({
+                error: 'GEMINI_API_KEY not configured in Vercel. Please add it in Settings > Environment Variables.',
+                interactions: []
+            });
+        }
 
         let prompt = "";
         let isJsonMode = false;
