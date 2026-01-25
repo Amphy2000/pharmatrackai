@@ -20,32 +20,47 @@ export async function callAI(
 
         // 1. Try Vercel API first (Free, no credit limit)
         console.log(`[AI Bridge] Attempting Vercel API: /api/${endpoint}`);
-        const vResponse = await fetch(`/api/${endpoint}`, {
-            method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${accessToken}`
-            },
-            body: JSON.stringify(payload)
-        });
 
-        if (vResponse.ok) {
-            const data = await vResponse.json();
-            console.log(`[AI Bridge] Success via Vercel: /api/${endpoint}`);
-            return { data, error: null };
-        }
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 15000); // 15s timeout
 
-        // 2. Handle specific errors
-        if (vResponse.status === 404) {
-            console.warn(`[AI Bridge] Vercel API /api/${endpoint} not found. Falling back to Supabase...`);
-        } else {
-            const errData = await vResponse.json().catch(() => ({}));
-            console.error(`[AI Bridge] Vercel Error (${vResponse.status}):`, errData);
+        try {
+            const vResponse = await fetch(`/api/${endpoint}`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${accessToken}`
+                },
+                body: JSON.stringify(payload),
+                signal: controller.signal
+            });
 
-            if (errData.error?.includes('Gemini API Key missing')) {
-                return { data: null, error: { message: "GEMINI_API_KEY is not set in Vercel dashboard." } };
+            clearTimeout(timeoutId);
+
+            const contentType = vResponse.headers.get("content-type");
+            if (vResponse.ok && contentType && contentType.includes("application/json")) {
+                const data = await vResponse.json();
+                console.log(`[AI Bridge] Success via Vercel: /api/${endpoint}`);
+                return { data, error: null };
+            } else if (vResponse.ok) {
+                console.warn(`[AI Bridge] Vercel returned non-JSON (likely HTML fallback): ${contentType}`);
+                // Fall through to Supabase fallback
+            } else {
+                // Check if 404
+                if (vResponse.status === 404) {
+                    console.warn(`[AI Bridge] Vercel API /api/${endpoint} not found (404). Falling back...`);
+                } else {
+                    const errText = await vResponse.text().catch(() => "No error text");
+                    console.error(`[AI Bridge] Vercel Error (${vResponse.status}):`, errText);
+                }
             }
+        } catch (fetchErr) {
+            clearTimeout(timeoutId);
+            console.warn(`[AI Bridge] Vercel fetch failed (network/timeout):`, fetchErr);
+            // Fall through to Supabase fallback
         }
+
+
 
         // 3. Fallback to Supabase Edge Functions (Uses Lovable Credits)
         console.log(`[AI Bridge] Falling back to Supabase Edge: ${endpoint}`);
