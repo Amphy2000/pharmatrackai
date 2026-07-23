@@ -40,7 +40,6 @@ export const useMedications = () => {
           table: 'medications',
         },
         () => {
-          // Invalidate and refetch medications on any change
           queryClient.invalidateQueries({ queryKey: ['medications'] });
         }
       )
@@ -57,7 +56,6 @@ export const useMedications = () => {
         throw new Error('No pharmacy selected. Please select a pharmacy and try again.');
       }
 
-      // Build insert object with only core required fields first
       const insertData: Record<string, any> = {
         name: newMedication.name,
         category: newMedication.category,
@@ -70,8 +68,8 @@ export const useMedications = () => {
         metadata: newMedication.metadata || {},
       };
 
-      // Only add optional fields if they have values (skip wholesale_price - may not exist on all dbs)
       if (newMedication.selling_price != null) insertData.selling_price = newMedication.selling_price;
+      if (newMedication.wholesale_price != null) insertData.wholesale_price = newMedication.wholesale_price;
       if (newMedication.manufacturing_date) insertData.manufacturing_date = newMedication.manufacturing_date;
       if (newMedication.barcode_id) insertData.barcode_id = newMedication.barcode_id;
       if (newMedication.dispensing_unit) insertData.dispensing_unit = newMedication.dispensing_unit;
@@ -79,7 +77,6 @@ export const useMedications = () => {
       if (newMedication.nafdac_reg_number) insertData.nafdac_reg_number = newMedication.nafdac_reg_number;
       if (newMedication.active_ingredients) insertData.active_ingredients = newMedication.active_ingredients;
 
-      // Try to insert first
       const result = await supabase
         .from('medications')
         .insert([insertData as any])
@@ -87,29 +84,7 @@ export const useMedications = () => {
         .single();
 
       if (result.error) throw result.error;
-      
-      let finalData = result.data;
-
-      // If success and wholesale_price provided, try to update it separately (may fail if column doesn't exist)
-      if (finalData && newMedication.wholesale_price != null) {
-        try {
-          const updateResult = await supabase
-            .from('medications')
-            .update({ wholesale_price: newMedication.wholesale_price } as any)
-            .eq('id', finalData.id)
-            .select()
-            .single();
-          
-          if (!updateResult.error && updateResult.data) {
-            finalData = updateResult.data;
-          }
-          // Silently ignore errors - column might not exist on external database
-        } catch {
-          // Silently ignore - wholesale_price column may not exist
-        }
-      }
-
-      return finalData;
+      return result.data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['medications'] });
@@ -129,29 +104,22 @@ export const useMedications = () => {
 
   const updateMedication = useMutation({
     mutationFn: async ({ id, ...updates }: Partial<Medication> & { id: string }) => {
-      // First verify the medication exists (use maybeSingle to avoid error on 0 rows)
       const { data: existing, error: fetchError } = await supabase
         .from('medications')
         .select('id')
         .eq('id', id)
         .maybeSingle();
-      
+
       if (fetchError) {
         throw new Error(`Database error: ${fetchError.message}`);
       }
-      
+
       if (!existing) {
         throw new Error('Medication not found or you do not have access to it');
       }
 
-      // Extract wholesale_price separately - it may not exist on external databases
-      const wholesalePrice = updates.wholesale_price;
-      delete updates.wholesale_price;
-
-      // Build update object explicitly to avoid sending undefined fields
       const updateData: Record<string, any> = {};
-      
-      // Copy over all defined values (except wholesale_price which we handle separately)
+
       Object.entries(updates).forEach(([key, value]) => {
         if (value !== undefined) {
           updateData[key] = value;
@@ -168,28 +136,7 @@ export const useMedications = () => {
       if (error) throw error;
       if (!data) throw new Error('Failed to update medication');
 
-      let finalData = data;
-
-      // If wholesale_price was provided, try to update it separately (may fail if column doesn't exist)
-      if (wholesalePrice !== undefined) {
-        try {
-          const wpResult = await supabase
-            .from('medications')
-            .update({ wholesale_price: wholesalePrice } as any)
-            .eq('id', id)
-            .select()
-            .maybeSingle();
-          
-          if (!wpResult.error && wpResult.data) {
-            finalData = wpResult.data;
-          }
-          // Silently ignore errors - column might not exist on external database
-        } catch {
-          // Silently ignore - wholesale_price column may not exist
-        }
-      }
-
-      return finalData;
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['medications'] });
@@ -255,13 +202,6 @@ export const useMedications = () => {
     return currentStock <= reorderLevel;
   };
 
-  const isExpiringSoon = (expiryDate: string): boolean => {
-    const today = new Date();
-    const thirtyDaysFromNow = addDays(today, 30);
-    const expiry = parseISO(expiryDate);
-    return isAfter(expiry, today) && isBefore(expiry, thirtyDaysFromNow);
-  };
-
   return {
     medications,
     isLoading,
@@ -272,6 +212,5 @@ export const useMedications = () => {
     getMetrics,
     isExpired,
     isLowStock,
-    isExpiringSoon,
   };
 };
