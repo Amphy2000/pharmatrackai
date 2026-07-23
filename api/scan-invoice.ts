@@ -1,4 +1,8 @@
-const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent";
+const GEMINI_MODELS = [
+    "gemini-1.5-flash",
+    "gemini-2.5-flash",
+    "gemini-2.0-flash-exp"
+];
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
 
 const VISION_FREE_MODELS = [
@@ -20,54 +24,67 @@ function extractJson(text: string): any {
             try { return JSON.parse(cleaned.substring(start, end + 1)); } catch { /* continue */ }
         }
     }
-    throw new Error(`Cannot parse JSON`);
+    throw new Error(`Cannot parse JSON from model output: ${text.substring(0, 100)}...`);
 }
 
 /**
- * Direct call to Google Gemini 1.5 Flash API (1,500 free requests / day)
+ * Direct call to Google Gemini API (1,500 free requests / day)
  */
 async function callGeminiDirect(apiKey: string, imageList: string[], systemPrompt: string): Promise<any> {
-    const contents: any[] = [];
     const parts: any[] = [{ text: systemPrompt }];
 
     for (const img of imageList) {
-        if (img.startsWith('data:image/')) {
-            const matches = img.match(/^data:(image\/[a-zA-Z]+);base64,(.+)$/);
-            if (matches) {
+        if (img.startsWith('data:')) {
+            const commaIndex = img.indexOf(',');
+            if (commaIndex !== -1) {
+                const header = img.substring(0, commaIndex);
+                const base64Data = img.substring(commaIndex + 1).replace(/[\r\n]/g, '');
+                const mimeMatch = header.match(/data:(image\/[a-zA-Z0-9.+_-]+)/);
+                const mimeType = mimeMatch ? mimeMatch[1] : 'image/jpeg';
                 parts.push({
                     inlineData: {
-                        mimeType: matches[1],
-                        data: matches[2]
+                        mimeType,
+                        data: base64Data
                     }
                 });
             }
         }
     }
 
-    contents.push({ parts });
+    let lastError: Error | null = null;
 
-    const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            contents,
-            generationConfig: {
-                temperature: 0.1,
-                responseMimeType: "application/json"
+    for (const modelName of GEMINI_MODELS) {
+        try {
+            const url = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+            const response = await fetch(url, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    contents: [{ parts }],
+                    generationConfig: {
+                        temperature: 0.1,
+                        responseMimeType: "application/json"
+                    }
+                })
+            });
+
+            if (!response.ok) {
+                const errText = await response.text();
+                throw new Error(`Gemini (${modelName}) HTTP ${response.status}: ${errText}`);
             }
-        })
-    });
 
-    if (!response.ok) {
-        const errText = await response.text();
-        throw new Error(`Gemini API HTTP ${response.status}: ${errText}`);
+            const resData = await response.json();
+            const candidateText = resData.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (!candidateText) throw new Error(`Gemini (${modelName}) returned empty text`);
+
+            return extractJson(candidateText);
+        } catch (err: any) {
+            console.warn(`[Scan Invoice] ${modelName} failed:`, err.message);
+            lastError = err;
+        }
     }
 
-    const resData = await response.json();
-    const candidateText = resData.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!candidateText) throw new Error("Gemini returned empty candidate text");
-
-    return extractJson(candidateText);
+    throw lastError || new Error("All Gemini models failed");
 }
 
 export default async function handler(req: any, res: any) {
@@ -84,14 +101,20 @@ export default async function handler(req: any, res: any) {
         const imageList = images || (imageUrl ? [imageUrl] : []);
 
         if (!imageList.length) {
-            return res.status(200).json({ items: [], invoiceTotal: null, supplierName: null });
+            return res.status(200).json({ error: "No image received. Please take or upload a photo of the invoice." });
         }
 
         const geminiKey = process.env.GEMINI_API_KEY;
         const openrouterKey = process.env.OPENROUTER_API_KEY;
 
+        if (!geminiKey && !openrouterKey) {
+            return res.status(200).json({
+                error: "GEMINI_API_KEY is not configured on Vercel yet. Please add GEMINI_API_KEY in Vercel Environment Variables and redeploy."
+            });
+        }
+
         const systemPrompt = `You are a PHARMACY INVOICE SPECIALIST. Extract product rows from the provided invoice image(s).
-Return strictly valid JSON format:
+Return strictly valid JSON format matching:
 {
   "items": [
     {
@@ -107,24 +130,23 @@ Return strictly valid JSON format:
   "supplierName": "string|null"
 }`;
 
-        // 1. PRIMARY: Direct Gemini 1.5 Flash (1,500 free calls / day)
+        // 1. PRIMARY: Direct Gemini API (1,500 free calls / day)
         if (geminiKey) {
             try {
-                console.log("[Scan Invoice] Attempting Direct Gemini 1.5 Flash...");
                 const result = await callGeminiDirect(geminiKey, imageList, systemPrompt);
                 if (result && Array.isArray(result.items)) {
-                    console.log(`[Scan Invoice] Gemini Flash success: Extracted ${result.items.length} items`);
                     return res.status(200).json(result);
                 }
             } catch (geminiErr: any) {
-                console.warn("[Scan Invoice] Direct Gemini Flash failed:", geminiErr?.message || geminiErr);
-                // Fallback to OpenRouter below
+                console.warn("[Scan Invoice] Direct Gemini failed:", geminiErr?.message || geminiErr);
+                if (!openrouterKey) {
+                    return res.status(200).json({ error: `Gemini extraction failed: ${geminiErr?.message || 'Check API key or image'}` });
+                }
             }
         }
 
         // 2. SECONDARY: OpenRouter Free Models
-        if (openrouterKey || geminiKey) {
-            const apiKey = openrouterKey || geminiKey;
+        if (openrouterKey) {
             const contentParts: any[] = [{ type: "text", text: systemPrompt }];
 
             imageList.forEach((img: string) => {
@@ -135,12 +157,11 @@ Return strictly valid JSON format:
 
             for (const model of VISION_FREE_MODELS) {
                 try {
-                    console.log(`[Scan Invoice] Attempting OpenRouter model: ${model}...`);
                     const response = await fetch(OPENROUTER_API_URL, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
-                            'Authorization': `Bearer ${apiKey}`,
+                            'Authorization': `Bearer ${openrouterKey}`,
                             'HTTP-Referer': 'https://pharmatrack.com.ng',
                             'X-Title': 'PharmaTrack AI'
                         },
@@ -162,11 +183,10 @@ Return strictly valid JSON format:
             }
         }
 
-        // 3. TERTIARY: Return empty structure so UI opens manual table gracefully
-        return res.status(200).json({ items: [], invoiceTotal: null, supplierName: null, note: "Manual entry mode active." });
+        return res.status(200).json({ error: "Failed to extract items from invoice. Please ensure image is clear and try again." });
 
     } catch (error: any) {
         console.error('Scan Invoice API Error:', error);
-        return res.status(200).json({ items: [], invoiceTotal: null, supplierName: null });
+        return res.status(200).json({ error: error?.message || 'Failed to process invoice' });
     }
 }
