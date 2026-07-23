@@ -1,14 +1,12 @@
 import { createClient } from '@supabase/supabase-js';
 
-// OpenRouter free API endpoint
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
 
-// Fast free models - raced in parallel, first to succeed wins
 const FREE_MODELS = [
-    "meta-llama/llama-3.1-8b-instruct:free",
-    "qwen/qwen-2.5-7b-instruct:free",
-    "google/gemini-2.5-flash:free",
-    "mistralai/mistral-7b-instruct:free",
+    "google/gemma-4-26b-a4b-it:free",
+    "nvidia/nemotron-nano-12b-v2-vl:free",
+    "google/gemma-4-31b-it:free",
+    "openrouter/free"
 ];
 
 export default async function handler(req: any, res: any) {
@@ -48,7 +46,6 @@ If no interactions, return: {"interactions":[]}`;
 Return: {"suggestions":[{"title":"...","description":"...","priority":"high|medium|low"}]}`;
 
         } else if (message || messages) {
-            // Generic chat - no JSON mode needed
             const history = (messages || [])
                 .filter((m: any) => m.role !== 'system')
                 .slice(-10)
@@ -70,17 +67,13 @@ Return: {"suggestions":[{"title":"...","description":"...","priority":"high|medi
     }
 }
 
-/** Robust JSON extractor - handles markdown fences, leading/trailing text */
 function extractJson(text: string): any {
     if (!text) throw new Error("Empty response");
 
-    // Remove markdown code fences
     let cleaned = text.replace(/```(?:json)?\n?/g, '').replace(/```/g, '').trim();
 
-    // Try direct parse first
     try { return JSON.parse(cleaned); } catch { /* continue */ }
 
-    // Find JSON object/array bounds
     const firstBrace = cleaned.indexOf('{');
     const firstBracket = cleaned.indexOf('[');
     const start = firstBrace === -1 ? firstBracket : firstBracket === -1 ? firstBrace : Math.min(firstBrace, firstBracket);
@@ -96,7 +89,6 @@ function extractJson(text: string): any {
     throw new Error(`Cannot parse JSON from: ${text.substring(0, 200)}`);
 }
 
-/** Calls a single OpenRouter model */
 async function callModel(model: string, messages: any[], apiKey: string, signal: AbortSignal): Promise<string> {
     const response = await fetch(OPENROUTER_API_URL, {
         method: "POST",
@@ -111,7 +103,6 @@ async function callModel(model: string, messages: any[], apiKey: string, signal:
             messages,
             temperature: 0.1,
             max_tokens: 1024,
-            // NO response_format: not all free models support it
         }),
         signal
     });
@@ -127,11 +118,9 @@ async function callModel(model: string, messages: any[], apiKey: string, signal:
     return content;
 }
 
-/** Race multiple models - first successful wins. Falls back if all fail. */
 async function raceModels(messages: any[], apiKey: string, system: string, res: any, isJson: boolean) {
     const fullMessages = [{ role: "system", content: system }, ...messages];
 
-    // Create one AbortController per model - cancel others when first succeeds
     const controllers = FREE_MODELS.map(() => new AbortController());
 
     const attempts = FREE_MODELS.map((model, i) =>
@@ -139,38 +128,38 @@ async function raceModels(messages: any[], apiKey: string, system: string, res: 
             .then(text => ({ text, model }))
     );
 
-    let errors: string[] = [];
+    try {
+        const { text, model } = await Promise.any(attempts.map(p =>
+            p.catch(e => Promise.reject(e))
+        ));
 
-    while (attempts.length > 0) {
-        try {
-            // Promise.any: resolves with first fulfilled, rejects only if ALL reject
-            const { text, model } = await Promise.any(attempts.map(p =>
-                p.catch(e => { errors.push(e.message); return Promise.reject(e); })
-            ));
+        controllers.forEach(c => c.abort());
+        console.log(`[OpenRouter] Won race with model: ${model}`);
 
-            // Cancel all remaining in-flight requests
-            controllers.forEach(c => c.abort());
-
-            console.log(`[OpenRouter] Won race with model: ${model}`);
-
-            if (isJson) {
-                try {
-                    const parsed = extractJson(text);
-                    return res.status(200).json(parsed);
-                } catch (parseErr: any) {
-                    console.warn(`[OpenRouter] JSON parse failed for ${model}: ${parseErr.message}`);
-                    // If parse fails, continue trying remaining models
-                    errors.push(`${model}: JSON parse error`);
-                    continue;
-                }
+        if (isJson) {
+            try {
+                const parsed = extractJson(text);
+                return res.status(200).json(parsed);
+            } catch (parseErr: any) {
+                console.warn(`[OpenRouter] JSON parse failed for ${model}: ${parseErr.message}`);
             }
-
+        } else {
             return res.status(200).json({ reply: text });
-        } catch {
-            break;
         }
+    } catch {
+        console.warn("[OpenRouter] Parallel race failed, attempting fallback to openrouter/free...");
     }
 
-    console.error("[OpenRouter] All models failed:", errors);
-    return res.status(200).json({ interactions: [], error: `AI unavailable. Please try again. (${errors.slice(0, 2).join('; ')})` });
+    // Direct fallback attempt
+    try {
+        const text = await callModel("openrouter/free", fullMessages, apiKey, new AbortController().signal);
+        if (isJson) {
+            return res.status(200).json(extractJson(text));
+        }
+        return res.status(200).json({ reply: text });
+    } catch (fallbackErr: any) {
+        console.error("[OpenRouter] Fallback failed:", fallbackErr.message);
+    }
+
+    return res.status(200).json({ interactions: [], error: `AI temporarily busy. Please click again.` });
 }

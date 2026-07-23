@@ -3,10 +3,10 @@ import { createClient } from '@supabase/supabase-js';
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
 
 const FREE_MODELS = [
-    "meta-llama/llama-3.1-8b-instruct:free",
-    "qwen/qwen-2.5-7b-instruct:free",
-    "google/gemini-2.5-flash:free",
-    "mistralai/mistral-7b-instruct:free",
+    "google/gemma-4-26b-a4b-it:free",
+    "nvidia/nemotron-nano-12b-v2-vl:free",
+    "google/gemma-4-31b-it:free",
+    "openrouter/free"
 ];
 
 function extractJson(text: string): any {
