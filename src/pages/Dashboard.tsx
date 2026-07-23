@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, Variants } from 'framer-motion';
 import { useMedications } from '@/hooks/useMedications';
@@ -7,44 +7,23 @@ import { useSales } from '@/hooks/useSales';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePharmacy } from '@/hooks/usePharmacy';
 import { useUserProfile } from '@/hooks/useUserProfile';
-import { useShifts } from '@/hooks/useShifts';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { useBranchContext } from '@/contexts/BranchContext';
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
 import { Header } from '@/components/Header';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { MetricCard } from '@/components/dashboard/MetricCard';
-import { InventoryCharts } from '@/components/dashboard/InventoryCharts';
 import { AIInsightsPanel } from '@/components/dashboard/AIInsightsPanel';
-import { NAFDACCompliancePanel } from '@/components/dashboard/NAFDACCompliancePanel';
 import { FinancialSummary } from '@/components/dashboard/FinancialSummary';
 import { SalesAnalytics } from '@/components/dashboard/SalesAnalytics';
 import { ManagerKPIPanel } from '@/components/dashboard/ManagerKPIPanel';
-import { StaffQuickActions } from '@/components/dashboard/StaffQuickActions';
-import { ShiftClock } from '@/components/dashboard/ShiftClock';
-import { StaffPerformancePanel } from '@/components/dashboard/StaffPerformancePanel';
-import { ProfitMarginAnalyzer } from '@/components/dashboard/ProfitMarginAnalyzer';
-import { DemandForecasting } from '@/components/dashboard/DemandForecasting';
-import { ExpiryDiscountEngine } from '@/components/dashboard/ExpiryDiscountEngine';
-import { QuickGlancePanel } from '@/components/dashboard/QuickGlancePanel';
-import { QuickFinancialsPanel } from '@/components/dashboard/QuickFinancialsPanel';
-import { SavingsROIPanel } from '@/components/dashboard/SavingsROIPanel';
-import { SlowMovingProductsPanel } from '@/components/dashboard/SlowMovingProductsPanel';
-import { LiveActivityFeed } from '@/components/dashboard/LiveActivityFeed';
-import { MarketplaceProofWidget } from '@/components/dashboard/MarketplaceProofWidget';
-import { ProductTour } from '@/components/ProductTour';
-import { PWAInstallPrompt } from '@/components/pwa/PWAInstallPrompt';
-import { BranchAlertSummaryWidget } from '@/components/dashboard/BranchAlertSummaryWidget';
-import { BranchComparisonPanel } from '@/components/dashboard/BranchComparisonPanel';
-import { ConsolidatedReportsPanel } from '@/components/dashboard/ConsolidatedReportsPanel';
-import { OwnerBranchReportsPanel } from '@/components/dashboard/OwnerBranchReportsPanel';
+import { InventoryCharts } from '@/components/dashboard/InventoryCharts';
 import { BranchLockedOverlay } from '@/components/branches/BranchLockedOverlay';
 import { PendingQuickItemsPanel } from '@/components/inventory/PendingQuickItemsPanel';
-import { startOfDay, endOfDay, parseISO } from 'date-fns';
+import { ProductTour } from '@/components/ProductTour';
+import { PWAInstallPrompt } from '@/components/pwa/PWAInstallPrompt';
+import { startOfDay, endOfDay, startOfWeek, startOfMonth, endOfMonth, parseISO } from 'date-fns';
 import {
   Package,
   AlertTriangle,
@@ -53,33 +32,24 @@ import {
   ShoppingCart,
   TrendingUp,
   Loader2,
-  Zap,
-  Users,
-  Shield,
-  Bell,
   DollarSign,
   BarChart3,
   Home,
   Building2,
-  Globe
+  Settings,
+  Users,
+  Zap,
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
-// Animation variants with proper typing
 const containerVariants: Variants = {
   hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: { staggerChildren: 0.1 }
-  }
+  visible: { opacity: 1, transition: { staggerChildren: 0.08 } },
 };
 
 const itemVariants: Variants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: { duration: 0.5 }
-  }
+  hidden: { opacity: 0, y: 16 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.4 } },
 };
 
 const Dashboard = () => {
@@ -87,70 +57,67 @@ const Dashboard = () => {
   const { user, isLoading: authLoading } = useAuth();
   const { pharmacy, isLoading: pharmacyLoading } = usePharmacy();
   const { displayName } = useUserProfile();
-  const { medications, isLoading: medsLoading, getMetrics } = useMedications();
+  const { medications, isLoading: medsLoading } = useMedications();
   const { medications: branchMedications, getMetrics: getBranchMetrics } = useBranchInventory();
   const { sales } = useSales();
-  const { activeShift } = useShifts();
   const { isOwnerOrManager, userRole, hasPermission, isLoading: permissionsLoading } = usePermissions();
   const { formatPrice } = useCurrency();
   const { currentBranchName, currentBranchId, isBranchLocked, activeBranchesLimit, currentBranchPosition } = useBranchContext();
 
-  // Fetch audit log count for ROI dashboard (price change attempts)
-  const { data: auditLogCount = 0 } = useQuery({
-    queryKey: ['audit-log-count', pharmacy?.id],
-    queryFn: async () => {
-      if (!pharmacy?.id) return 0;
-      const { count, error } = await supabase
-        .from('audit_logs')
-        .select('*', { count: 'exact', head: true })
-        .eq('pharmacy_id', pharmacy.id)
-        .eq('action', 'price_change_blocked');
-      if (error) return 0;
-      return count || 0;
-    },
-    enabled: !!pharmacy?.id,
-  });
-
-  // Calculate today's sales from real data
-  const todaysSales = useMemo(() => {
-    if (!sales || sales.length === 0) return 0;
+  // ── Financial summary from sales ─────────────────────────────────────────
+  const financials = useMemo(() => {
+    if (!sales?.length) return { todaySales: 0, todayProfit: 0, weekRevenue: 0, monthRevenue: 0, todayOrders: 0 };
     const today = new Date();
     const dayStart = startOfDay(today);
     const dayEnd = endOfDay(today);
+    const weekStart = startOfWeek(today, { weekStartsOn: 1 });
+    const monthStart = startOfMonth(today);
+    const monthEnd = endOfMonth(today);
 
-    return sales
-      .filter(sale => {
-        const saleDate = parseISO(sale.sale_date);
-        return saleDate >= dayStart && saleDate <= dayEnd;
-      })
-      .reduce((sum, sale) => sum + sale.total_price, 0);
+    let todaySales = 0, todayProfit = 0, weekRevenue = 0, monthRevenue = 0;
+    const todayOrderIds = new Set<string>();
+
+    sales.forEach(sale => {
+      const d = parseISO(sale.sale_date);
+      if (d >= dayStart && d <= dayEnd) {
+        todaySales += sale.total_price;
+        todayProfit += sale.total_price - (sale.unit_price * 0.75 * sale.quantity);
+        if (sale.receipt_id) todayOrderIds.add(sale.receipt_id);
+      }
+      if (d >= weekStart) weekRevenue += sale.total_price;
+      if (d >= monthStart && d <= monthEnd) monthRevenue += sale.total_price;
+    });
+
+    return {
+      todaySales,
+      todayProfit: Math.max(0, todayProfit),
+      weekRevenue,
+      monthRevenue,
+      todayOrders: todayOrderIds.size,
+    };
   }, [sales]);
 
-  // Count invoices scanned from audit logs
-  const { data: invoicesScanned = 0 } = useQuery({
-    queryKey: ['invoices-scanned', pharmacy?.id],
-    queryFn: async () => {
-      if (!pharmacy?.id) return 0;
-      const { count, error } = await supabase
-        .from('audit_logs')
-        .select('*', { count: 'exact', head: true })
-        .eq('pharmacy_id', pharmacy.id)
-        .eq('action', 'invoice_scanned');
-      if (error) return 0;
-      return count || 0;
-    },
-    enabled: !!pharmacy?.id,
-  });
+  // ── Stock health alerts ───────────────────────────────────────────────────
+  const stockAlerts = useMemo(() => {
+    if (!branchMedications?.length) return { expiredCount: 0, expiredValue: 0, expiringSoonCount: 0, expiringValue: 0, outOfStockCount: 0 };
+    const today = new Date();
+    const soon = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000);
 
-  // Loading state
+    let expiredCount = 0, expiredValue = 0, expiringSoonCount = 0, expiringValue = 0, outOfStockCount = 0;
+    branchMedications.forEach(m => {
+      const exp = new Date(m.expiry_date);
+      if (exp < today) { expiredCount++; expiredValue += m.branch_stock * m.unit_price; }
+      else if (exp <= soon && m.branch_stock > 0) { expiringSoonCount++; expiringValue += m.branch_stock * m.unit_price; }
+      if (m.branch_stock === 0) outOfStockCount++;
+    });
+    return { expiredCount, expiredValue, expiringSoonCount, expiringValue, outOfStockCount };
+  }, [branchMedications]);
+
+  // ── Loading / auth guards ─────────────────────────────────────────────────
   if (authLoading || pharmacyLoading || permissionsLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <motion.div
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="text-center"
-        >
+        <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="text-center">
           <div className="h-16 w-16 rounded-2xl bg-gradient-primary flex items-center justify-center mx-auto mb-4 shadow-glow-primary">
             <Loader2 className="h-8 w-8 animate-spin text-primary-foreground" />
           </div>
@@ -160,64 +127,18 @@ const Dashboard = () => {
     );
   }
 
-  // Redirect to auth if not logged in
-  if (!user) {
-    navigate('/');
-    return null;
-  }
+  if (!user) { navigate('/'); return null; }
+  if (!pharmacy) { navigate('/onboarding'); return null; }
 
-  // Redirect to onboarding if no pharmacy
-  if (!pharmacy) {
-    navigate('/onboarding');
-    return null;
-  }
+  // Role routing
+  if (userRole === 'staff' && !hasPermission('view_dashboard')) { navigate('/cashier-dashboard', { replace: true }); return null; }
+  if (userRole === 'staff' && hasPermission('view_dashboard')) { navigate('/staff-dashboard', { replace: true }); return null; }
+  if (userRole === 'manager') { navigate('/manager-dashboard', { replace: true }); return null; }
 
-  // Role-based dashboard routing
-  // Cashier (staff with no view_dashboard permission) → CashierDashboard
-  if (userRole === 'staff' && !hasPermission('view_dashboard')) {
-    navigate('/cashier-dashboard', { replace: true });
-    return null;
-  }
-
-  // Staff with view_dashboard permission (Pharmacist, Inventory Clerk) → StaffDashboard
-  if (userRole === 'staff' && hasPermission('view_dashboard')) {
-    navigate('/staff-dashboard', { replace: true });
-    return null;
-  }
-
-  // Managers → ManagerDashboard (branch-locked view)
-  if (userRole === 'manager') {
-    navigate('/manager-dashboard', { replace: true });
-    return null;
-  }
-
-  // Owner and Manager get the full dashboard (continue rendering below)
-  const metrics = getMetrics();
-  // Branch-specific metrics for dashboard display
   const branchMetrics = getBranchMetrics();
-
-  // Calculate total inventory value (branch-specific)
-  const totalInventoryValue = branchMedications?.reduce((sum, med) => {
-    return sum + (med.branch_stock * med.unit_price);
-  }, 0) || 0;
-
-  // Calculate protected value (expired + expiring soon inventory value) - branch-specific
-  const protectedValue = branchMedications?.reduce((sum, med) => {
-    const expiryDate = new Date(med.expiry_date);
-    const today = new Date();
-    const daysUntilExpiry = Math.ceil((expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-    if (daysUntilExpiry <= 30 && med.branch_stock > 0) {
-      return sum + (med.branch_stock * med.unit_price);
-    }
-    return sum;
-  }, 0) || 0;
-
-  // Calculate pending alerts count (branch-specific)
-  const pendingAlerts = (branchMetrics.lowStock || 0) + (branchMetrics.expired || 0) + (branchMetrics.expiringSoon || 0);
 
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">
-      {/* Branch Locked Overlay */}
       {isBranchLocked && (
         <BranchLockedOverlay
           branchName={currentBranchName}
@@ -225,415 +146,293 @@ const Dashboard = () => {
           branchPosition={currentBranchPosition}
         />
       )}
-
       <ProductTour />
       <PWAInstallPrompt />
       <Header />
 
-      <main className="container mx-auto px-4 sm:px-6 py-6 sm:py-8 max-w-[1600px]">
-        {/* Welcome Section */}
+      <main className="container mx-auto px-4 sm:px-6 py-6 sm:py-8 max-w-[1400px]">
+
+        {/* ── Welcome ──────────────────────────────────────────────────── */}
         <motion.section
-          initial={{ opacity: 0, y: -20 }}
+          initial={{ opacity: 0, y: -16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
+          transition={{ duration: 0.5 }}
           className="mb-6"
         >
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div>
-              <h1 className="text-2xl sm:text-4xl font-bold font-display tracking-tight mb-2">
-                Welcome back, <span className="text-gradient">{displayName}</span>
+              <h1 className="text-2xl sm:text-3xl font-bold font-display tracking-tight">
+                Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 17 ? 'afternoon' : 'evening'},{' '}
+                <span className="text-gradient">{displayName}</span>
               </h1>
-              <p className="text-sm sm:text-base text-muted-foreground">
-                Here's what's happening at <span className="text-foreground font-medium">{pharmacy.name}</span> today.
+              <p className="text-sm text-muted-foreground mt-0.5">
+                {pharmacy.name}{currentBranchName ? ` · ${currentBranchName}` : ''}
               </p>
             </div>
-            <div className="flex items-center gap-3">
-              {currentBranchName && (
-                <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-muted border border-border">
-                  <Building2 className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-sm font-medium">{currentBranchName}</span>
-                </div>
-              )}
-              <div className="flex items-center gap-2 px-4 py-2 rounded-xl bg-primary/10 border border-primary/20">
-                <Zap className="h-4 w-4 text-primary" />
-                <span className="text-sm text-primary font-medium">AI Active</span>
-              </div>
+            <div className="flex items-center gap-2">
+              <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                <Zap className="h-3 w-3" /> Autopilot Active
+              </span>
             </div>
           </div>
         </motion.section>
 
-        {/* Dashboard Tabs - Simple Mode Default */}
-        <Tabs defaultValue="simple" className="w-full">
+        {/* ── Tabs ─────────────────────────────────────────────────────── */}
+        <Tabs defaultValue="home" className="w-full">
           <TabsList className="mb-6 bg-muted/50 p-1">
-            <TabsTrigger value="simple" className="gap-2 data-[state=active]:bg-background">
-              <Home className="h-4 w-4" />
-              Simple View
+            <TabsTrigger value="home" className="gap-2 data-[state=active]:bg-background">
+              <Home className="h-4 w-4" /> Home
             </TabsTrigger>
             <TabsTrigger value="analytics" className="gap-2 data-[state=active]:bg-background">
-              <BarChart3 className="h-4 w-4" />
-              Analytics
+              <BarChart3 className="h-4 w-4" /> Analytics
             </TabsTrigger>
           </TabsList>
 
-          {/* Simple Mode - Default View */}
-          <TabsContent value="simple" className="space-y-6">
-            {/* Giant Quick Actions - Most Prominent */}
+          {/* ════════════════════════════════════════════════════════════
+              HOME TAB — clean owner view
+          ════════════════════════════════════════════════════════════ */}
+          <TabsContent value="home" className="space-y-5">
+
+            {/* 1. Hero: Today's Money — the only numbers owners look at daily */}
+            <motion.section variants={containerVariants} initial="hidden" animate="visible">
+              <div className="grid grid-cols-2 gap-4">
+                {/* Today's Revenue */}
+                <motion.div variants={itemVariants}>
+                  <Card className="relative overflow-hidden border-0 bg-gradient-to-br from-emerald-500/20 via-emerald-500/10 to-transparent">
+                    <CardContent className="p-5">
+                      <div className="flex items-center gap-2 mb-1">
+                        <DollarSign className="h-4 w-4 text-emerald-500" />
+                        <span className="text-xs font-medium text-muted-foreground">Today's Revenue</span>
+                      </div>
+                      <p className="text-2xl sm:text-3xl font-bold font-display text-emerald-600 dark:text-emerald-400 tabular-nums">
+                        {formatPrice(financials.todaySales)}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">{financials.todayOrders} orders today</p>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+
+                {/* Today's Profit */}
+                <motion.div variants={itemVariants}>
+                  <Card className="relative overflow-hidden border-0 bg-gradient-to-br from-primary/20 via-primary/10 to-transparent">
+                    <CardContent className="p-5">
+                      <div className="flex items-center gap-2 mb-1">
+                        <TrendingUp className="h-4 w-4 text-primary" />
+                        <span className="text-xs font-medium text-muted-foreground">Today's Profit</span>
+                      </div>
+                      <p className="text-2xl sm:text-3xl font-bold font-display text-primary tabular-nums">
+                        {formatPrice(financials.todayProfit)}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-1">Est. ~25% margin</p>
+                    </CardContent>
+                  </Card>
+                </motion.div>
+              </div>
+
+              {/* Week & Month as smaller secondary numbers */}
+              <motion.div variants={itemVariants}>
+                <div className="grid grid-cols-2 gap-3 mt-3">
+                  <div className="px-4 py-3 rounded-xl bg-muted/40 border border-border/40">
+                    <p className="text-[11px] text-muted-foreground mb-0.5">This Week</p>
+                    <p className="text-lg font-bold tabular-nums">{formatPrice(financials.weekRevenue)}</p>
+                  </div>
+                  <div className="px-4 py-3 rounded-xl bg-muted/40 border border-border/40">
+                    <p className="text-[11px] text-muted-foreground mb-0.5">This Month</p>
+                    <p className="text-lg font-bold tabular-nums">{formatPrice(financials.monthRevenue)}</p>
+                  </div>
+                </div>
+              </motion.div>
+            </motion.section>
+
+            {/* 2. Money at Risk — the 3 things bleeding cash right now */}
+            {(stockAlerts.expiredCount > 0 || stockAlerts.expiringSoonCount > 0 || stockAlerts.outOfStockCount > 0) && (
+              <motion.section
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.15 }}
+              >
+                <div className="flex items-center gap-2 mb-3">
+                  <AlertTriangle className="h-4 w-4 text-destructive" />
+                  <h2 className="text-sm font-semibold">Needs Attention</h2>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+
+                  {/* Expired */}
+                  <div
+                    className={cn(
+                      'p-4 rounded-xl border transition-all cursor-pointer hover:scale-[1.01]',
+                      stockAlerts.expiredCount > 0
+                        ? 'bg-destructive/10 border-destructive/30 hover:bg-destructive/15'
+                        : 'bg-muted/30 border-border/30 opacity-60'
+                    )}
+                    onClick={() => navigate('/inventory?filter=expired')}
+                  >
+                    <div className="flex items-center gap-2 mb-2">
+                      <XCircle className={cn('h-4 w-4', stockAlerts.expiredCount > 0 ? 'text-destructive' : 'text-muted-foreground')} />
+                      <span className="text-xs font-medium">Expired Stock</span>
+                    </div>
+                    <p className={cn('text-2xl font-bold tabular-nums', stockAlerts.expiredCount > 0 ? 'text-destructive' : 'text-muted-foreground')}>
+                      {stockAlerts.expiredCount}
+                    </p>
+                    {stockAlerts.expiredCount > 0 ? (
+                      <p className="text-xs text-destructive/70 mt-1">{formatPrice(stockAlerts.expiredValue)} written off</p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground mt-1">All clear ✓</p>
+                    )}
+                  </div>
+
+                  {/* Expiring Soon */}
+                  <div
+                    className={cn(
+                      'p-4 rounded-xl border transition-all cursor-pointer hover:scale-[1.01]',
+                      stockAlerts.expiringSoonCount > 0
+                        ? 'bg-amber-500/10 border-amber-500/30 hover:bg-amber-500/15'
+                        : 'bg-muted/30 border-border/30 opacity-60'
+                    )}
+                    onClick={() => navigate('/inventory?filter=expiring')}
+                  >
+                    <div className="flex items-center gap-2 mb-2">
+                      <Clock className={cn('h-4 w-4', stockAlerts.expiringSoonCount > 0 ? 'text-amber-500' : 'text-muted-foreground')} />
+                      <span className="text-xs font-medium">Expiring Soon</span>
+                    </div>
+                    <p className={cn('text-2xl font-bold tabular-nums', stockAlerts.expiringSoonCount > 0 ? 'text-amber-500' : 'text-muted-foreground')}>
+                      {stockAlerts.expiringSoonCount}
+                    </p>
+                    {stockAlerts.expiringSoonCount > 0 ? (
+                      <p className="text-xs text-amber-600/70 mt-1">{formatPrice(stockAlerts.expiringValue)} at risk · discount now</p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground mt-1">All clear ✓</p>
+                    )}
+                  </div>
+
+                  {/* Out of Stock */}
+                  <div
+                    className={cn(
+                      'p-4 rounded-xl border transition-all cursor-pointer hover:scale-[1.01]',
+                      stockAlerts.outOfStockCount > 0
+                        ? 'bg-orange-500/10 border-orange-500/30 hover:bg-orange-500/15'
+                        : 'bg-muted/30 border-border/30 opacity-60'
+                    )}
+                    onClick={() => navigate('/inventory?filter=outofstock')}
+                  >
+                    <div className="flex items-center gap-2 mb-2">
+                      <Package className={cn('h-4 w-4', stockAlerts.outOfStockCount > 0 ? 'text-orange-500' : 'text-muted-foreground')} />
+                      <span className="text-xs font-medium">Out of Stock</span>
+                    </div>
+                    <p className={cn('text-2xl font-bold tabular-nums', stockAlerts.outOfStockCount > 0 ? 'text-orange-500' : 'text-muted-foreground')}>
+                      {stockAlerts.outOfStockCount}
+                    </p>
+                    {stockAlerts.outOfStockCount > 0 ? (
+                      <p className="text-xs text-orange-600/70 mt-1">Customers walking away → reorder</p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground mt-1">Fully stocked ✓</p>
+                    )}
+                  </div>
+                </div>
+              </motion.section>
+            )}
+
+            {/* 3. Big Action Buttons */}
             <motion.section
-              initial={{ opacity: 0, y: 20 }}
+              initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.1 }}
+              transition={{ delay: 0.2 }}
             >
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Button
                   id="tour-pos-link"
                   onClick={() => navigate('/checkout')}
-                  className="h-32 sm:h-40 flex flex-col items-center justify-center gap-4 bg-gradient-primary hover:opacity-90 shadow-glow-primary btn-glow text-lg sm:text-xl font-semibold"
+                  className="h-28 sm:h-36 flex flex-col items-center justify-center gap-3 bg-gradient-primary hover:opacity-90 shadow-glow-primary btn-glow text-lg font-semibold"
                 >
-                  <ShoppingCart className="h-10 w-10 sm:h-14 sm:w-14" />
+                  <ShoppingCart className="h-9 w-9 sm:h-11 sm:w-11" />
                   Open Point of Sale
                 </Button>
                 <Button
                   onClick={() => navigate('/inventory')}
                   variant="outline"
-                  className="h-32 sm:h-40 flex flex-col items-center justify-center gap-4 border-2 border-primary/30 hover:bg-primary/5 hover:border-primary/50 text-lg sm:text-xl font-semibold group"
+                  className="h-28 sm:h-36 flex flex-col items-center justify-center gap-3 border-2 border-primary/30 hover:bg-primary/5 hover:border-primary/50 text-lg font-semibold group"
                 >
-                  <Package className="h-10 w-10 sm:h-14 sm:w-14 text-primary group-hover:scale-110 transition-transform" />
+                  <Package className="h-9 w-9 sm:h-11 sm:w-11 text-primary group-hover:scale-110 transition-transform" />
                   Manage Stock
                 </Button>
               </div>
             </motion.section>
 
-            {/* Quick Financials Panel - "Your Money" */}
-            <QuickFinancialsPanel />
-
-            {/* Branch-Specific Alert Summary Widget */}
-            <BranchAlertSummaryWidget />
-
-            {/* Live Marketplace Proof - Show value of marketplace */}
-            <motion.section
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.25 }}
-            >
-              <MarketplaceProofWidget />
-            </motion.section>
+            {/* 4. Pending quick-add items (owner only) */}
             {isOwnerOrManager && (
-              <motion.section
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.28 }}
-              >
+              <motion.section initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
                 <PendingQuickItemsPanel />
               </motion.section>
             )}
-            {isOwnerOrManager && (
-              <motion.section
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
-              >
-                <SavingsROIPanel invoicesScanned={invoicesScanned} auditLogCount={auditLogCount} />
-              </motion.section>
-            )}
 
-            {/* AI Business Insights - Text-based, easy to understand */}
+            {/* 5. AI Business Insights — text-only, max 4 cards */}
             {medications.length > 0 && (
-              <motion.section
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4 }}
-              >
+              <motion.section initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
                 <AIInsightsPanel medications={medications} />
               </motion.section>
             )}
 
-            {/* AI Slow-Moving Products Analysis */}
-            {medications.length > 0 && (
-              <motion.section
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.45 }}
-              >
-                <SlowMovingProductsPanel
-                  medications={medications}
-                  salesData={sales?.map(s => ({
-                    medication_id: s.medication_id,
-                    quantity: s.quantity,
-                    sale_date: s.sale_date
-                  }))}
-                />
-              </motion.section>
-            )}
-
-            {/* Expiry Discount Engine */}
-            {medications.length > 0 && (
-              <motion.section
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5 }}
-              >
-                <ExpiryDiscountEngine />
-              </motion.section>
-            )}
-
-            {/* Secondary Quick Actions */}
-            <motion.section
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.6 }}
-            >
-              <div className="grid grid-cols-2 md:grid-cols-6 gap-4">
+            {/* 6. Quick Nav — 3 links only */}
+            <motion.section initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}>
+              <div className="grid grid-cols-3 gap-3">
                 <Button
                   variant="outline"
-                  className="h-20 flex flex-col items-center justify-center gap-2 hover:bg-primary/5 hover:border-primary/30 transition-all group"
+                  className="h-16 flex flex-col items-center justify-center gap-1.5 hover:bg-primary/5 hover:border-primary/30 transition-all group"
                   onClick={() => navigate('/sales')}
                 >
-                  <TrendingUp className="h-5 w-5 group-hover:text-primary transition-colors" />
-                  <span className="text-sm">Sales History</span>
+                  <TrendingUp className="h-4 w-4 group-hover:text-primary transition-colors" />
+                  <span className="text-xs">Sales</span>
                 </Button>
                 <Button
                   variant="outline"
-                  className="h-20 flex flex-col items-center justify-center gap-2 hover:bg-emerald-500/10 hover:border-emerald-500/30 transition-all group"
-                  onClick={() => navigate('/upsell-analytics')}
-                >
-                  <TrendingUp className="h-5 w-5 group-hover:text-emerald-500 transition-colors" />
-                  <span className="text-sm">Upsell Analytics</span>
-                </Button>
-                <Button
-                  variant="outline"
-                  className="h-20 flex flex-col items-center justify-center gap-2 hover:bg-marketplace/10 hover:border-marketplace/30 transition-all group"
-                  onClick={() => navigate('/marketplace-insights')}
-                >
-                  <Globe className="h-5 w-5 group-hover:text-marketplace transition-colors" />
-                  <span className="text-sm">Marketplace</span>
-                </Button>
-                <Button
-                  variant="outline"
-                  className="h-20 flex flex-col items-center justify-center gap-2 hover:bg-primary/5 hover:border-primary/30 transition-all group"
+                  className="h-16 flex flex-col items-center justify-center gap-1.5 hover:bg-primary/5 hover:border-primary/30 transition-all group"
                   onClick={() => navigate('/customers')}
                 >
-                  <Users className="h-5 w-5 group-hover:text-primary transition-colors" />
-                  <span className="text-sm">Customers</span>
+                  <Users className="h-4 w-4 group-hover:text-primary transition-colors" />
+                  <span className="text-xs">Customers</span>
                 </Button>
                 <Button
                   variant="outline"
-                  className="h-20 flex flex-col items-center justify-center gap-2 hover:bg-primary/5 hover:border-primary/30 transition-all group"
-                  onClick={() => navigate('/suppliers')}
-                >
-                  <Package className="h-5 w-5 group-hover:text-primary transition-colors" />
-                  <span className="text-sm">Suppliers</span>
-                </Button>
-                <Button
-                  variant="outline"
-                  className="h-20 flex flex-col items-center justify-center gap-2 hover:bg-primary/5 hover:border-primary/30 transition-all group"
+                  className="h-16 flex flex-col items-center justify-center gap-1.5 hover:bg-primary/5 hover:border-primary/30 transition-all group"
                   onClick={() => navigate('/settings')}
                 >
-                  <Zap className="h-5 w-5 group-hover:text-primary transition-colors" />
-                  <span className="text-sm">Settings</span>
+                  <Settings className="h-4 w-4 group-hover:text-primary transition-colors" />
+                  <span className="text-xs">Settings</span>
                 </Button>
               </div>
             </motion.section>
           </TabsContent>
 
-          {/* Analytics Tab - Financials First for Owners */}
+          {/* ════════════════════════════════════════════════════════════
+              ANALYTICS TAB — for when owner wants to go deeper
+          ════════════════════════════════════════════════════════════ */}
           <TabsContent value="analytics" className="space-y-6">
-            {/* Sales Analytics - Revenue, Profit, Orders (FIRST) */}
+
+            {/* Sales Revenue & Profit over time */}
             {isOwnerOrManager && medications.length > 0 && (
-              <motion.section
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.1 }}
-              >
+              <motion.section initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
                 <SalesAnalytics />
               </motion.section>
             )}
 
-            {/* Financial Summary - Inventory value, expired loss (SECOND) */}
+            {/* Financial Summary — inventory value, expired loss */}
             {isOwnerOrManager && medications.length > 0 && (
-              <motion.section
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.15 }}
-              >
+              <motion.section initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
                 <FinancialSummary medications={medications} />
               </motion.section>
             )}
 
-            {/* Manager KPIs - Today's revenue, margin (THIRD) */}
+            {/* Manager KPI tiles */}
             {isOwnerOrManager && (
-              <motion.section
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.2 }}
-              >
+              <motion.section initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
                 <ManagerKPIPanel />
               </motion.section>
             )}
 
-            {/* Quick Glance, Shift Clock & Live Activity */}
-            <motion.section
-              variants={containerVariants}
-              initial="hidden"
-              animate="visible"
-            >
-              <div className="grid gap-4 sm:gap-6 grid-cols-1 lg:grid-cols-3 auto-rows-fr">
-                <motion.div variants={itemVariants} className="min-h-[280px]">
-                  <QuickGlancePanel />
-                </motion.div>
-                <motion.div variants={itemVariants} className="min-h-[280px]">
-                  <ShiftClock />
-                </motion.div>
-                <motion.div variants={itemVariants} className="min-h-[280px]">
-                  <LiveActivityFeed />
-                </motion.div>
-              </div>
-            </motion.section>
-
-            {/* Key Metrics */}
-            <motion.section
-              variants={containerVariants}
-              initial="hidden"
-              animate="visible"
-            >
-              <div className="grid gap-4 sm:gap-6 grid-cols-2 lg:grid-cols-4">
-                <motion.div variants={itemVariants}>
-                  <MetricCard
-                    title="Total SKUs"
-                    value={branchMetrics.totalSKUs}
-                    icon={<Package className="h-5 w-5 sm:h-7 sm:w-7" />}
-                    variant="primary"
-                    subtitle={currentBranchName ? `In ${currentBranchName}` : "Active medications"}
-                    trend={12}
-                    trendLabel="vs last month"
-                  />
-                </motion.div>
-                <motion.div variants={itemVariants}>
-                  <MetricCard
-                    title="Low Stock"
-                    value={branchMetrics.lowStock}
-                    icon={<AlertTriangle className="h-5 w-5 sm:h-7 sm:w-7" />}
-                    variant="warning"
-                    subtitle="Below reorder level"
-                    trend={-8}
-                    trendLabel="improved"
-                  />
-                </motion.div>
-                <motion.div variants={itemVariants}>
-                  <MetricCard
-                    title="Expired"
-                    value={branchMetrics.expired}
-                    icon={<XCircle className="h-5 w-5 sm:h-7 sm:w-7" />}
-                    variant="danger"
-                    subtitle="Require disposal"
-                  />
-                </motion.div>
-                <motion.div variants={itemVariants}>
-                  <MetricCard
-                    title="Expiring Soon"
-                    value={branchMetrics.expiringSoon}
-                    icon={<Clock className="h-5 w-5 sm:h-7 sm:w-7" />}
-                    variant="success"
-                    subtitle="Within 30 days"
-                  />
-                </motion.div>
-              </div>
-            </motion.section>
-
-            {/* Business Intelligence Section */}
-            {isOwnerOrManager && medications.length > 0 && (
-              <motion.section
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.35 }}
-              >
-                <div className="flex items-center gap-3 mb-6">
-                  <div className="h-10 w-10 rounded-xl bg-gradient-primary flex items-center justify-center shadow-glow-primary">
-                    <TrendingUp className="h-5 w-5 text-primary-foreground" />
-                  </div>
-                  <div>
-                    <h2 className="text-xl sm:text-2xl font-bold font-display">Business Intelligence</h2>
-                    <p className="text-sm text-muted-foreground">AI-powered insights for smarter decisions</p>
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6">
-                  <ProfitMarginAnalyzer />
-                  <DemandForecasting />
-                </div>
-              </motion.section>
-            )}
-
-            {/* Multi-Branch Reports - Owner/Manager Only */}
-            {isOwnerOrManager && (
-              <motion.section
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.4 }}
-              >
-                <OwnerBranchReportsPanel />
-              </motion.section>
-            )}
-
-            {/* Consolidated Reports - Owner/Manager Only */}
-            {isOwnerOrManager && (
-              <motion.section
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.45 }}
-              >
-                <ConsolidatedReportsPanel />
-              </motion.section>
-            )}
-
-            {/* Branch Comparison - Owner/Manager Only */}
-            {isOwnerOrManager && (
-              <motion.section
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5 }}
-              >
-                <BranchComparisonPanel />
-              </motion.section>
-            )}
-
-            {/* Staff Performance - Owner/Manager Only */}
-            {isOwnerOrManager && (
-              <motion.section
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.55 }}
-              >
-                <StaffPerformancePanel />
-              </motion.section>
-            )}
-
-            {/* Inventory Charts */}
+            {/* Inventory breakdown charts */}
             {medications.length > 0 && (
-              <motion.section
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.6 }}
-              >
+              <motion.section initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
                 <InventoryCharts medications={medications} />
-              </motion.section>
-            )}
-
-            {/* Staff Quick Actions */}
-            <motion.section
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.65 }}
-            >
-              <StaffQuickActions />
-            </motion.section>
-
-            {/* NAFDAC Compliance */}
-            {medications.length > 0 && (
-              <motion.section
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.7 }}
-              >
-                <NAFDACCompliancePanel medications={medications} />
               </motion.section>
             )}
           </TabsContent>
