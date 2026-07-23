@@ -1,80 +1,90 @@
 import { useState, useCallback } from 'react';
-import { Search, Sparkles, Loader2, X, AlertCircle } from 'lucide-react';
+import { Search, Sparkles, X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import { cn } from '@/lib/utils';
-import { usePharmacy } from '@/hooks/usePharmacy';
-import { callPharmacyAi, PharmacyAiError } from '@/lib/pharmacyAiClient';
 
 interface AISearchBarProps {
   onSearch: (query: string) => void;
   placeholder?: string;
 }
 
-export const AISearchBar = ({ onSearch, placeholder = "Search medications..." }: AISearchBarProps) => {
+// 0ms Autopilot Natural Language Clinical Query Expansion Dictionary
+const CLINICAL_INTENT_MAP: Array<{ keywords: string[]; searchExpand: string; label: string }> = [
+  {
+    keywords: ['fever', 'headache', 'body pain', 'analgesic', 'painkiller', 'pain', 'temperature'],
+    searchExpand: 'paracetamol ibuprofen diclofenac panadol acetaminophen analgesics',
+    label: 'Analgesics & Antipyretics'
+  },
+  {
+    keywords: ['malaria', 'fever antimalarial', 'typhoid'],
+    searchExpand: 'artemether lumefantrine amatem coartem lonart artesunate antimalarial',
+    label: 'Antimalarials'
+  },
+  {
+    keywords: ['cough', 'cold', 'catarrh', 'flu', 'runny nose', 'sore throat'],
+    searchExpand: 'cough syrup emzolyn benadryl piriton procold flutabs lozenges',
+    label: 'Cold & Cough Remedies'
+  },
+  {
+    keywords: ['antibiotic', 'infection', 'bacterial'],
+    searchExpand: 'amoxicillin ciprofloxacin ciprotab augmentin azithromycin doxycycline flagyl metronidazole',
+    label: 'Antibiotics & Anti-infectives'
+  },
+  {
+    keywords: ['hypertension', 'blood pressure', 'bp', 'high bp', 'heart'],
+    searchExpand: 'amlodipine lisinopril losartan atenolol nifedipine antihypertensive',
+    label: 'Antihypertensives'
+  },
+  {
+    keywords: ['diabetes', 'sugar', 'blood sugar', 'diabetic'],
+    searchExpand: 'metformin glibenclamide glimepiride insulin antidiabetic',
+    label: 'Antidiabetic Agents'
+  },
+  {
+    keywords: ['ulcer', 'stomach', 'heartburn', 'acid', 'indigestion'],
+    searchExpand: 'gestid omeprazole antacid pantoprazole nexium gastrogel',
+    label: 'Gastrointestinal & Antacids'
+  },
+  {
+    keywords: ['fungal', 'ringworm', 'candidiasis', 'itching', 'skin'],
+    searchExpand: 'fluconazole ketoconazole flucosten clotrimazole cream antifungal',
+    label: 'Antifungals & Dermatologicals'
+  },
+  {
+    keywords: ['vitamin', 'supplement', 'booster', 'blood tonic', 'blood'],
+    searchExpand: 'vitamin c multivitamin iron ferrous B-complex zinc supplement',
+    label: 'Vitamins & Supplements'
+  }
+];
+
+export const AISearchBar = ({ onSearch, placeholder = "Search medications, conditions (e.g., 'fever', 'cough', 'malaria')..." }: AISearchBarProps) => {
   const [query, setQuery] = useState('');
-  const [isAIProcessing, setIsAIProcessing] = useState(false);
-  const [isRateLimited, setIsRateLimited] = useState(false);
   const { toast } = useToast();
-  const { pharmacyId } = usePharmacy();
 
-  const handleAISearch = useCallback(async () => {
-    if (!query.trim()) return;
+  const handleAISearch = useCallback(() => {
+    const cleanQuery = query.trim().toLowerCase();
+    if (!cleanQuery) return;
 
-    setIsAIProcessing(true);
-    setIsRateLimited(false);
+    // 0ms Autopilot Intent Matching
+    const intentMatch = CLINICAL_INTENT_MAP.find(intent =>
+      intent.keywords.some(kw => cleanQuery.includes(kw))
+    );
 
-    try {
-      const data = await callPharmacyAi<{ searchTerms?: string; rateLimited?: boolean }>({
-        action: 'ai_search',
-        payload: { query: query.trim() },
-        pharmacy_id: pharmacyId,
-      });
-
-      if (data?.rateLimited) {
-        setIsRateLimited(true);
-        toast({
-          title: 'System Busy',
-          description: 'AI is processing many requests. Please wait a few seconds and try again.',
-          variant: 'default',
-        });
-        onSearch(query);
-        return;
-      }
-
-      if (data?.searchTerms) {
-        onSearch(data.searchTerms);
-        toast({
-          title: 'AI Search',
-          description: `Interpreted as: "${data.searchTerms}"`,
-        });
-      } else {
-        onSearch(query);
-      }
-    } catch (error) {
-      if (error instanceof PharmacyAiError && error.status === 429) {
-        setIsRateLimited(true);
-        toast({
-          title: 'System Busy',
-          description: 'AI is processing many requests. Please wait a few seconds and try again.',
-          variant: 'default',
-        });
-        onSearch(query);
-        return;
-      }
-
-      console.error('AI search failed:', error);
-      onSearch(query);
+    if (intentMatch) {
+      onSearch(intentMatch.searchExpand);
       toast({
-        title: 'Using regular search',
-        description: 'AI search unavailable, using standard search instead.',
-        variant: 'default',
+        title: '✨ Autopilot Smart Search',
+        description: `Searching category: ${intentMatch.label}`,
       });
-    } finally {
-      setIsAIProcessing(false);
+    } else {
+      onSearch(cleanQuery);
+      toast({
+        title: '✨ Smart Search',
+        description: `Filtered by "${query.trim()}"`,
+      });
     }
-  }, [query, onSearch, toast, pharmacyId]);
+  }, [query, onSearch, toast]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
@@ -84,7 +94,6 @@ export const AISearchBar = ({ onSearch, placeholder = "Search medications..." }:
 
   const handleClear = () => {
     setQuery('');
-    setIsRateLimited(false);
     onSearch('');
   };
 
@@ -97,7 +106,6 @@ export const AISearchBar = ({ onSearch, placeholder = "Search medications..." }:
           value={query}
           onChange={(e) => {
             setQuery(e.target.value);
-            setIsRateLimited(false);
             if (!e.target.value) onSearch('');
           }}
           onKeyDown={handleKeyDown}
@@ -115,20 +123,11 @@ export const AISearchBar = ({ onSearch, placeholder = "Search medications..." }:
       </div>
       <Button
         onClick={handleAISearch}
-        disabled={!query.trim() || isAIProcessing}
-        className={cn(
-          'gap-2 transition-all duration-300',
-          isRateLimited ? 'bg-warning hover:bg-warning/90' : 'bg-gradient-primary hover:opacity-90'
-        )}
+        disabled={!query.trim()}
+        className="gap-2 bg-gradient-primary hover:opacity-90 transition-all duration-300"
       >
-        {isAIProcessing ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
-        ) : isRateLimited ? (
-          <AlertCircle className="h-4 w-4" />
-        ) : (
-          <Sparkles className="h-4 w-4" />
-        )}
-        {isRateLimited ? 'Busy' : 'AI Search'}
+        <Sparkles className="h-4 w-4 text-amber-300 animate-pulse" />
+        Smart Search
       </Button>
     </div>
   );
