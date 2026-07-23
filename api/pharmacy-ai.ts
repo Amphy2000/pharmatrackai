@@ -9,76 +9,50 @@ const FREE_MODELS = [
     "openrouter/free"
 ];
 
-// Local Clinical Interaction Rules Database - instant 0ms fallback when AI/network is unavailable
-const COMMON_DRUG_RULES = [
-    {
-        keywords: [['amlodipine', 'nifedipine', 'felodipine'], ['paracetamol', 'acetaminophen', 'emzor paracetamol']],
-        severity: 'low',
-        description: 'Paracetamol may slightly reduce the blood pressure lowering effect of calcium channel blockers like Amlodipine, though this is usually clinically insignificant.',
-        recommendation: 'Monitor blood pressure regularly if taking high doses of analgesics.'
-    },
-    {
-        keywords: [['ibuprofen', 'diclofenac', 'naproxen', 'piroxicam', 'felvin'], ['aspirin', 'vasoprin']],
-        severity: 'high',
-        description: 'Concomitant use of NSAIDs with Aspirin increases the risk of gastrointestinal ulceration and bleeding.',
-        recommendation: 'Avoid combining NSAIDs with low-dose Aspirin unless specifically instructed by a physician.'
-    },
-    {
-        keywords: [['escitalopram', 'fluoxetine', 'sertraline'], ['tramadol']],
-        severity: 'severe',
-        description: 'Combining SSRIs with Tramadol significantly increases the risk of Serotonin Syndrome and seizures.',
-        recommendation: 'Avoid co-prescription. Consider an alternative non-serotonergic analgesic.'
-    },
-    {
-        keywords: [['ciprofloxacin', 'levofloxacin', 'ofloxacin'], ['gestid', 'antacid', 'calcium', 'magnesium', 'aluminum', 'ferrous', 'iron']],
-        severity: 'moderate',
-        description: 'Polyvalent cations in antacids or mineral supplements bind fluoroquinolone antibiotics in the GI tract, reducing absorption.',
-        recommendation: 'Administer fluoroquinolone at least 2 hours before or 6 hours after cation-containing products.'
-    },
-    {
-        keywords: [['amoxicillin', 'ampicillin'], ['allopurinol']],
-        severity: 'moderate',
-        description: 'Increased incidence of skin rash when aminopenicillins are administered with Allopurinol.',
-        recommendation: 'Monitor for signs of rash. Discontinue if hypersensitivity occurs.'
-    },
-    {
-        keywords: [['artemether', 'amatem', 'coartem', 'lumefantrine'], ['ketoconazole', 'fluconazole', 'flucosten']],
-        severity: 'moderate',
-        description: 'Azole antifungals may inhibit CYP3A4 metabolism of Artemether/Lumefantrine, potentially increasing plasma levels.',
-        recommendation: 'Consult a healthcare provider to ensure the combination is appropriate.'
-    },
-    {
-        keywords: [['metformin'], ['alcohol']],
-        severity: 'high',
-        description: 'Alcohol potentiates the effect of metformin on lactate metabolism, increasing the risk of lactic acidosis.',
-        recommendation: 'Warn patient against excessive alcohol intake.'
-    }
+const CLINICAL_RULES = [
+  { groupA: ['ibuprofen', 'diclofenac', 'naproxen', 'piroxicam', 'felvin', 'ketoprofen', 'indomethacin', 'meloxicam'], groupB: ['aspirin', 'vasoprin', 'clopidogrel', 'plavix', 'warfarin', 'rivaroxaban'], severity: 'high', description: 'Combining NSAIDs with Aspirin or anticoagulants significantly increases gastrointestinal bleeding risk.', recommendation: 'Avoid combination unless co-prescribed with PPI protection.' },
+  { groupA: ['ciprofloxacin', 'ciprotab', 'levofloxacin', 'ofloxacin'], groupB: ['gestid', 'antacid', 'magnesium', 'aluminum', 'calcium', 'ferrous', 'iron', 'zinc', 'milk'], severity: 'moderate', description: 'Polyvalent cations in antacids or iron supplements chelate fluoroquinolone antibiotics, severely impairing absorption.', recommendation: 'Administer antibiotic 2 hours before or 6 hours after cation products.' },
+  { groupA: ['escitalopram', 'fluoxetine', 'sertraline', 'citalopram'], groupB: ['tramadol', 'tramal'], severity: 'severe', description: 'Combining SSRI antidepressants with Tramadol significantly increases Serotonin Syndrome and seizure risk.', recommendation: 'Avoid co-prescription.' },
+  { groupA: ['ketoconazole', 'fluconazole', 'flucosten', 'itraconazole'], groupB: ['artemether', 'lumefantrine', 'amatem', 'coartem', 'lonart', 'artesunate'], severity: 'moderate', description: 'Azole antifungals inhibit CYP3A4 metabolism of Artemether/Lumefantrine, elevating antimalarial exposure and QT interval risk.', recommendation: 'Consult physician before co-administration.' },
+  { groupA: ['lisinopril', 'enalapril', 'ramipril', 'losartan', 'valsartan'], groupB: ['spironolactone', 'eplerenone', 'potassium'], severity: 'high', description: 'ACE inhibitors/ARBs with potassium-sparing diuretics can lead to severe hyperkalemia.', recommendation: 'Monitor serum potassium levels.' },
+  { groupA: ['simvastatin', 'atorvastatin'], groupB: ['erythromycin', 'clarithromycin', 'ketoconazole'], severity: 'high', description: 'Strong CYP3A4 inhibitors increase statin levels, elevating myopathy and rhabdomyolysis risk.', recommendation: 'Temporarily suspend statin during macrolide treatment.' },
+  { groupA: ['metronidazole', 'flagyl'], groupB: ['alcohol', 'ethanol'], severity: 'high', description: 'Causes severe disulfiram-like reaction (flushing, headache, tachycardia, vomiting).', recommendation: 'Strictly avoid alcohol during and 48 hours after treatment.' },
+  { groupA: ['doxycycline', 'tetracycline'], groupB: ['gestid', 'antacid', 'calcium', 'ferrous', 'iron', 'milk'], severity: 'moderate', description: 'Cations form insoluble complexes with tetracyclines, reducing absorption.', recommendation: 'Separate dosing by 2-3 hours.' },
+  { groupA: ['warfarin'], groupB: ['amoxicillin', 'augmentin', 'ciprofloxacin', 'metronidazole', 'septrin'], severity: 'high', description: 'Eradication of gut flora reduces Vitamin K synthesis, raising INR and bleeding risk.', recommendation: 'Monitor INR closely.' },
+  { groupA: ['atenolol', 'propranolol', 'bisoprolol'], groupB: ['verapamil', 'diltiazem'], severity: 'severe', description: 'Additive negative inotropic/chronotropic effects leading to severe bradycardia or heart block.', recommendation: 'Avoid combination.' },
+  { groupA: ['sildenafil', 'viagra', 'tadalafil'], groupB: ['nitroglycerin', 'isosorbide'], severity: 'severe', description: 'Potentiates nitrate hypotensive effects leading to life-threatening hypotension.', recommendation: 'Absolute contraindication.' },
+  { groupA: ['allopurinol'], groupB: ['amoxicillin', 'amoxil', 'ampicillin', 'augmentin'], severity: 'moderate', description: 'Significantly increases incidence of skin rash.', recommendation: 'Monitor for skin rash.' },
+  { groupA: ['glibenclamide', 'glimepiride'], groupB: ['ibuprofen', 'diclofenac', 'septrin', 'co-trimoxazole'], severity: 'high', description: 'Displaces sulfonylureas from plasma proteins, predisposing to severe hypoglycemia.', recommendation: 'Monitor blood glucose closely.' },
+  { groupA: ['methotrexate'], groupB: ['ibuprofen', 'diclofenac', 'piroxicam', 'aspirin'], severity: 'high', description: 'Reduces renal clearance of methotrexate leading to bone marrow toxicity.', recommendation: 'Avoid high-dose NSAIDs.' },
+  { groupA: ['digoxin'], groupB: ['furosemide', 'lasix', 'hydrochlorothiazide'], severity: 'high', description: 'Diuretic-induced hypokalemia increases Digoxin toxicity risk.', recommendation: 'Monitor serum potassium levels.' },
+  { groupA: ['levothyroxine'], groupB: ['calcium', 'ferrous', 'iron', 'gestid'], severity: 'moderate', description: 'Binds Levothyroxine in GI tract, reducing absorption.', recommendation: 'Separate by at least 4 hours.' },
+  { groupA: ['diazepam', 'valium', 'alprazolam'], groupB: ['tramadol', 'codeine', 'morphine', 'alcohol'], severity: 'severe', description: 'Profound CNS & respiratory depression risk.', recommendation: 'Avoid co-prescribing.' },
+  { groupA: ['amlodipine', 'nifedipine'], groupB: ['paracetamol', 'acetaminophen', 'emzor paracetamol'], severity: 'low', description: 'High dose paracetamol may slightly diminish BP lowering effect.', recommendation: 'Monitor blood pressure.' }
 ];
 
 function checkLocalInteractions(medications: any[]): any[] {
-    if (!Array.isArray(medications) || medications.length < 2) return [];
-    const found: any[] = [];
-    const matchedKeys = new Set<string>();
+  if (!Array.isArray(medications) || medications.length < 2) return [];
+  const found: any[] = [];
+  const matchedKeys = new Set<string>();
 
-    for (const rule of COMMON_DRUG_RULES) {
-        const [groupA, groupB] = rule.keywords;
-        const matchA = medications.find(m => groupA.some(kw => (m.name || '').toLowerCase().includes(kw)));
-        const matchB = medications.find(m => groupB.some(kw => (m.name || '').toLowerCase().includes(kw)));
+  for (const rule of CLINICAL_RULES) {
+    const matchA = medications.find(m => rule.groupA.some(kw => (m.name || '').toLowerCase().includes(kw)));
+    const matchB = medications.find(m => rule.groupB.some(kw => (m.name || '').toLowerCase().includes(kw)));
 
-        if (matchA && matchB && matchA !== matchB) {
-            const key = [matchA.name, matchB.name].sort().join('+');
-            if (!matchedKeys.has(key)) {
-                matchedKeys.add(key);
-                found.push({
-                    drugs: [matchA.name, matchB.name],
-                    severity: rule.severity,
-                    description: rule.description,
-                    recommendation: rule.recommendation
-                });
-            }
-        }
+    if (matchA && matchB && matchA.name !== matchB.name) {
+      const key = [matchA.name, matchB.name].sort().join('+');
+      if (!matchedKeys.has(key)) {
+        matchedKeys.add(key);
+        found.push({
+          drugs: [matchA.name, matchB.name],
+          severity: rule.severity,
+          description: rule.description,
+          recommendation: rule.recommendation
+        });
+      }
     }
-    return found;
+  }
+  return found;
 }
 
 export default async function handler(req: any, res: any) {
@@ -94,57 +68,52 @@ export default async function handler(req: any, res: any) {
         const { action, payload, message, messages } = req.body;
         const meds = payload?.medications || [];
 
-        // Check if this is an interaction check
         if (action === 'interaction_check' || action === 'check_drug_interactions') {
+            // Run instant clinical rule engine
+            const clinicalResults = checkLocalInteractions(meds);
+
             const apiKey = process.env.OPENROUTER_API_KEY || process.env.GEMINI_API_KEY;
-            
-            // Try AI first
             if (apiKey) {
-                const systemPrompt = `You are a clinical pharmacy AI. You MUST respond with ONLY valid JSON — no markdown, no backticks, no explanation.`;
-                const userPrompt = `Check drug interactions for: ${meds.map((m: any) => m.name || m).join(', ')}.
-Return this exact JSON structure:
-{"interactions":[{"drugs":["Drug A","Drug B"],"severity":"low","description":"Brief clinical explanation","recommendation":"Action to take"}]}
-If no interactions, return: {"interactions":[]}`;
+                const systemPrompt = `You are a clinical pharmacy AI. Respond with ONLY valid JSON: {"interactions":[{"drugs":["A","B"],"severity":"low|moderate|high|severe","description":"...","recommendation":"..."}]}`;
+                const userPrompt = `Check drug interactions for: ${meds.map((m: any) => m.name || m).join(', ')}.`;
 
                 try {
                     const aiResult = await raceModels([{ role: 'user', content: userPrompt }], apiKey, systemPrompt, true);
-                    if (aiResult && Array.isArray(aiResult.interactions)) {
-                        return res.status(200).json(aiResult);
+                    if (aiResult && Array.isArray(aiResult.interactions) && aiResult.interactions.length > 0) {
+                        const merged = [...clinicalResults];
+                        const existing = new Set(clinicalResults.map(i => i.drugs.sort().join('+')));
+                        for (const i of aiResult.interactions) {
+                            const k = (i.drugs || []).sort().join('+');
+                            if (k && !existing.has(k)) {
+                                merged.push(i);
+                                existing.add(k);
+                            }
+                        }
+                        return res.status(200).json({ interactions: merged });
                     }
                 } catch (aiErr) {
-                    console.warn("[Pharma AI] AI failed or rate limited, using clinical fallback engine:", aiErr);
+                    console.warn("[Pharma AI] AI call failed, using clinical fallback engine.");
                 }
             }
 
-            // Always fallback to local clinical interaction engine
-            const fallbackInteractions = checkLocalInteractions(meds);
-            return res.status(200).json({ interactions: fallbackInteractions });
+            return res.status(200).json({ interactions: clinicalResults });
         }
 
         if (action === 'inventory_optimize') {
-            const apiKey = process.env.OPENROUTER_API_KEY || process.env.GEMINI_API_KEY;
-            if (!apiKey) return res.status(200).json({ suggestions: [] });
-            try {
-                const result = await raceModels([{ role: 'user', content: `Analyze: ${JSON.stringify(payload)}` }], apiKey, "Respond with JSON: {\"suggestions\":[]}", true);
-                return res.status(200).json(result || { suggestions: [] });
-            } catch {
-                return res.status(200).json({ suggestions: [] });
-            }
+            return res.status(200).json({ suggestions: [] });
         }
 
         if (message || messages) {
             const apiKey = process.env.OPENROUTER_API_KEY || process.env.GEMINI_API_KEY;
-            if (!apiKey) return res.status(200).json({ reply: "AI service is currently offline." });
-            const history = (messages || [])
-                .filter((m: any) => m.role !== 'system')
-                .slice(-10)
+            if (!apiKey) return res.status(200).json({ reply: "AI service offline." });
+            const history = (messages || []).filter((m: any) => m.role !== 'system').slice(-10)
                 .map((m: any) => ({ role: m.role === 'assistant' || m.role === 'model' ? 'assistant' : 'user', content: m.content || m.parts?.[0]?.text || '' }));
             if (message) history.push({ role: 'user', content: message });
             try {
                 const result = await raceModels(history, apiKey, "You are PharmaTrack AI assistant.", false);
-                return res.status(200).json(result || { reply: "AI is temporarily busy." });
+                return res.status(200).json(result || { reply: "AI temporarily busy." });
             } catch {
-                return res.status(200).json({ reply: "AI is temporarily busy. Please try again." });
+                return res.status(200).json({ reply: "AI temporarily busy." });
             }
         }
 
@@ -152,8 +121,7 @@ If no interactions, return: {"interactions":[]}`;
 
     } catch (error: any) {
         console.error('Pharma AI Error:', error);
-        const fallback = checkLocalInteractions(req.body?.payload?.medications || []);
-        return res.status(200).json({ interactions: fallback });
+        return res.status(200).json({ interactions: checkLocalInteractions(req.body?.payload?.medications || []) });
     }
 }
 
@@ -161,9 +129,9 @@ function extractJson(text: string): any {
     if (!text) throw new Error("Empty response");
     let cleaned = text.replace(/```(?:json)?\n?/g, '').replace(/```/g, '').trim();
     try { return JSON.parse(cleaned); } catch { /* continue */ }
-    const firstBrace = cleaned.indexOf('{');
-    const firstBracket = cleaned.indexOf('[');
-    const start = firstBrace === -1 ? firstBracket : firstBracket === -1 ? firstBrace : Math.min(firstBrace, firstBracket);
+    const fb = cleaned.indexOf('{');
+    const fa = cleaned.indexOf('[');
+    const start = fb === -1 ? fa : fa === -1 ? fb : Math.min(fb, fa);
     if (start !== -1) {
         const end = Math.max(cleaned.lastIndexOf('}'), cleaned.lastIndexOf(']'));
         if (end > start) {
@@ -209,11 +177,9 @@ async function raceModels(messages: any[], apiKey: string, system: string, isJso
     try {
         const { text, model } = await Promise.any(attempts.map(p => p.catch(e => Promise.reject(e))));
         controllers.forEach(c => c.abort());
-        console.log(`[OpenRouter] Won race: ${model}`);
         if (isJson) return extractJson(text);
         return { reply: text };
     } catch {
-        // Fallback to openrouter/free
         const text = await callModel("openrouter/free", fullMessages, apiKey, new AbortController().signal);
         if (isJson) return extractJson(text);
         return { reply: text };

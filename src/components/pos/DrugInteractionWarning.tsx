@@ -6,13 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import type { Medication } from '@/types/medication';
 import { usePharmacy } from '@/hooks/usePharmacy';
 import { callPharmacyAiWithFallback } from '@/lib/pharmacyAiClient';
-
-interface DrugInteraction {
-  drugs: string[];
-  severity: 'low' | 'moderate' | 'high' | 'severe';
-  description: string;
-  recommendation: string;
-}
+import { checkClinicalInteractions, type DrugInteractionResult } from '@/utils/clinicalInteractionEngine';
 
 interface DrugInteractionWarningProps {
   cartItems: Array<{ medication: Medication; quantity: number }>;
@@ -49,80 +43,8 @@ const severityConfig = {
   },
 };
 
-// Client-side instant clinical interaction database fallback
-const COMMON_DRUG_RULES = [
-  {
-    keywords: [['amlodipine', 'nifedipine', 'felodipine'], ['paracetamol', 'acetaminophen', 'emzor paracetamol']],
-    severity: 'low' as const,
-    description: 'Paracetamol may slightly reduce the blood pressure lowering effect of calcium channel blockers like Amlodipine, though this is usually clinically insignificant.',
-    recommendation: 'Monitor blood pressure regularly if taking high doses of analgesics.'
-  },
-  {
-    keywords: [['ibuprofen', 'diclofenac', 'naproxen', 'piroxicam', 'felvin'], ['aspirin', 'vasoprin']],
-    severity: 'high' as const,
-    description: 'Concomitant use of NSAIDs with Aspirin increases the risk of gastrointestinal ulceration and bleeding.',
-    recommendation: 'Avoid combining NSAIDs with low-dose Aspirin unless specifically instructed by a physician.'
-  },
-  {
-    keywords: [['escitalopram', 'fluoxetine', 'sertraline'], ['tramadol']],
-    severity: 'severe' as const,
-    description: 'Combining SSRIs with Tramadol significantly increases the risk of Serotonin Syndrome and seizures.',
-    recommendation: 'Avoid co-prescription. Consider an alternative non-serotonergic analgesic.'
-  },
-  {
-    keywords: [['ciprofloxacin', 'levofloxacin', 'ofloxacin'], ['gestid', 'antacid', 'calcium', 'magnesium', 'aluminum', 'ferrous', 'iron']],
-    severity: 'moderate' as const,
-    description: 'Polyvalent cations in antacids or mineral supplements bind fluoroquinolone antibiotics in the GI tract, reducing absorption.',
-    recommendation: 'Administer fluoroquinolone at least 2 hours before or 6 hours after cation-containing products.'
-  },
-  {
-    keywords: [['amoxicillin', 'ampicillin'], ['allopurinol']],
-    severity: 'moderate' as const,
-    description: 'Increased incidence of skin rash when aminopenicillins are administered with Allopurinol.',
-    recommendation: 'Monitor for signs of rash. Discontinue if hypersensitivity occurs.'
-  },
-  {
-    keywords: [['artemether', 'amatem', 'coartem', 'lumefantrine'], ['ketoconazole', 'fluconazole', 'flucosten']],
-    severity: 'moderate' as const,
-    description: 'Azole antifungals may inhibit CYP3A4 metabolism of Artemether/Lumefantrine, potentially increasing plasma levels.',
-    recommendation: 'Consult a healthcare provider to ensure the combination is appropriate.'
-  },
-  {
-    keywords: [['metformin'], ['alcohol']],
-    severity: 'high' as const,
-    description: 'Alcohol potentiates the effect of metformin on lactate metabolism, increasing the risk of lactic acidosis.',
-    recommendation: 'Warn patient against excessive alcohol intake.'
-  }
-];
-
-function checkLocalInteractions(medications: Array<{ name: string }>): DrugInteraction[] {
-  if (!Array.isArray(medications) || medications.length < 2) return [];
-  const found: DrugInteraction[] = [];
-  const matchedKeys = new Set<string>();
-
-  for (const rule of COMMON_DRUG_RULES) {
-    const [groupA, groupB] = rule.keywords;
-    const matchA = medications.find(m => groupA.some(kw => (m.name || '').toLowerCase().includes(kw)));
-    const matchB = medications.find(m => groupB.some(kw => (m.name || '').toLowerCase().includes(kw)));
-
-    if (matchA && matchB && matchA !== matchB) {
-      const key = [matchA.name, matchB.name].sort().join('+');
-      if (!matchedKeys.has(key)) {
-        matchedKeys.add(key);
-        found.push({
-          drugs: [matchA.name, matchB.name],
-          severity: rule.severity,
-          description: rule.description,
-          recommendation: rule.recommendation
-        });
-      }
-    }
-  }
-  return found;
-}
-
 export const DrugInteractionWarning = ({ cartItems }: DrugInteractionWarningProps) => {
-  const [interactions, setInteractions] = useState<DrugInteraction[]>([]);
+  const [interactions, setInteractions] = useState<DrugInteractionResult[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [dismissed, setDismissed] = useState(false);
   const [lastCheckedMeds, setLastCheckedMeds] = useState<string>('');
@@ -148,8 +70,12 @@ export const DrugInteractionWarning = ({ cartItems }: DrugInteractionWarningProp
       setIsLoading(true);
       setDismissed(false);
 
+      // 1. Instant Local Clinical Engine Check (0ms)
+      const localInteractions = checkClinicalInteractions(cartItems.map(item => item.medication));
+
       try {
-        const data = await callPharmacyAiWithFallback<{ interactions?: DrugInteraction[]; error?: string }>({
+        // 2. Secondary AI Check
+        const data = await callPharmacyAiWithFallback<{ interactions?: DrugInteractionResult[]; error?: string }>({
           actions: ['interaction_check', 'check_drug_interactions'],
           payload: {
             medications: cartItems.map(item => ({
@@ -160,24 +86,32 @@ export const DrugInteractionWarning = ({ cartItems }: DrugInteractionWarningProp
           pharmacy_id: pharmacyId,
         });
 
-        if (data?.interactions && Array.isArray(data.interactions)) {
-          setInteractions(data.interactions);
+        if (data?.interactions && Array.isArray(data.interactions) && data.interactions.length > 0) {
+          // Merge AI interactions with local interactions avoiding duplicates
+          const merged = [...localInteractions];
+          const existingKeys = new Set(localInteractions.map(i => i.drugs.sort().join('+')));
+
+          for (const aiInt of data.interactions) {
+            const key = (aiInt.drugs || []).sort().join('+');
+            if (key && !existingKeys.has(key)) {
+              merged.push(aiInt);
+              existingKeys.add(key);
+            }
+          }
+          setInteractions(merged);
         } else {
-          // Fallback to local clinical rule engine
-          const local = checkLocalInteractions(cartItems.map(item => item.medication));
-          setInteractions(local);
+          setInteractions(localInteractions);
         }
       } catch {
         // Safe failover: use local clinical rule engine on network/API failure
-        const local = checkLocalInteractions(cartItems.map(item => item.medication));
-        setInteractions(local);
+        setInteractions(localInteractions);
       } finally {
         setLastCheckedMeds(currentMeds);
         setIsLoading(false);
       }
     };
 
-    const timeout = setTimeout(checkInteractions, 500);
+    const timeout = setTimeout(checkInteractions, 300);
     return () => clearTimeout(timeout);
   }, [cartItems, pharmacyId, lastCheckedMeds]);
 
@@ -185,7 +119,7 @@ export const DrugInteractionWarning = ({ cartItems }: DrugInteractionWarningProp
     return null;
   }
 
-  if (isLoading) {
+  if (isLoading && interactions.length === 0) {
     return (
       <div className="p-3 rounded-lg bg-muted/30 border border-border/50 flex items-center gap-2">
         <Shield className="h-4 w-4 text-muted-foreground animate-pulse" />
@@ -209,7 +143,7 @@ export const DrugInteractionWarning = ({ cartItems }: DrugInteractionWarningProp
               <div className="max-h-[40vh] overflow-y-auto w-full pr-3">
                 <div className="space-y-2">
                   {interactions.map((interaction, index) => {
-                    const config = severityConfig[interaction.severity];
+                    const config = severityConfig[interaction.severity] || severityConfig.moderate;
                     const Icon = config.icon;
 
                     return (
