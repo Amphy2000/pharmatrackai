@@ -159,107 +159,44 @@ export const AIInsightsPanel = ({ medications, branchName }: AIInsightsPanelProp
   }, [formatPrice]);
 
   const fetchInsights = useCallback(async (forceRefresh = false) => {
-    if (medications.length === 0) {
+    if (!medications || medications.length === 0) {
       setInsights([]);
       setIsLoading(false);
       return;
     }
 
-    // Check cooldown
-    const cooldownUntil = sessionStorage.getItem(COOLDOWN_KEY);
-    if (cooldownUntil && Date.now() < parseInt(cooldownUntil)) {
-      const remaining = Math.ceil((parseInt(cooldownUntil) - Date.now()) / 1000);
-      setCooldownRemaining(remaining);
-      setIsRateLimited(true);
-      setIsLoading(false);
-
-      // Use cached data if available
-      const cachedData = sessionStorage.getItem(SESSION_INSIGHTS_DATA_KEY);
-      if (cachedData) {
-        try {
-          setInsights(JSON.parse(cachedData));
-        } catch {
-          setInsights(generateFallbackInsights(medications));
-        }
-      } else {
-        setInsights(generateFallbackInsights(medications));
-      }
-      return;
-    }
-
-    // Check if we already fetched this session (unless manual refresh)
-    if (!forceRefresh && sessionStorage.getItem(SESSION_INSIGHTS_KEY) === pharmacyId) {
-      const cachedData = sessionStorage.getItem(SESSION_INSIGHTS_DATA_KEY);
-      if (cachedData) {
-        try {
-          setInsights(JSON.parse(cachedData));
-          setIsLoading(false);
-          return;
-        } catch {
-          // Continue to fetch if parsing fails
-        }
-      }
-    }
-
     setIsLoading(true);
     setIsRateLimited(false);
-    setCooldownRemaining(0);
 
     try {
-      const data = await callPharmacyAiWithFallback<any>({
-        actions: ['business_analysis', 'generate_insights'],
-        payload: {
-          medications,
-          currency,
-          currencySymbol,
-        },
-        pharmacy_id: pharmacyId,
-      });
+      // 1. Instant Autopilot Calculation (0ms)
+      const instantInsights = generateFallbackInsights(medications);
+      setInsights(instantInsights);
 
-      if (data?.rateLimited) {
-        setIsRateLimited(true);
-        const fallback = generateFallbackInsights(medications);
-        setInsights(fallback);
-        // Set cooldown for 3 seconds
-        sessionStorage.setItem(COOLDOWN_KEY, (Date.now() + 3000).toString());
-        setCooldownRemaining(3);
-        return;
+      // 2. Try remote API in background if force refreshed
+      if (forceRefresh) {
+        const data = await callPharmacyAiWithFallback<any>({
+          actions: ['business_analysis', 'generate_insights'],
+          payload: { medications, currency, currencySymbol },
+          pharmacy_id: pharmacyId,
+        }).catch(() => null);
+
+        if (data?.insights && Array.isArray(data.insights) && data.insights.length > 0) {
+          const mapped: Insight[] = data.insights.map((insight: any, index: number) => ({
+            id: insight.id || `insight-${index}`,
+            type: insight.type as 'warning' | 'suggestion' | 'info',
+            message: insight.message,
+            action: insight.action,
+            impact: insight.impact,
+            category: insight.category as Insight['category'],
+            icon: getIconForCategory(insight.category || insight.type),
+            priority: insight.type === 'warning' ? 'high' : insight.type === 'suggestion' ? 'medium' : 'low',
+          }));
+          setInsights(mapped.slice(0, 6));
+        }
       }
-
-      const mappedInsights: Insight[] = (data.insights || []).map((insight: {
-        id: string;
-        type: string;
-        message: string;
-        action?: string;
-        impact?: string;
-        category?: string;
-      }, index: number) => ({
-        id: insight.id || `insight-${index}`,
-        type: insight.type as 'warning' | 'suggestion' | 'info',
-        message: insight.message,
-        action: insight.action,
-        impact: insight.impact,
-        category: insight.category as Insight['category'],
-        icon: getIconForCategory(insight.category || insight.type),
-        priority: insight.type === 'warning' ? 'high' : insight.type === 'suggestion' ? 'medium' : 'low',
-      }));
-
-      const finalInsights = mappedInsights.slice(0, 6);
-      setInsights(finalInsights);
-
-      // Cache in session storage
-      sessionStorage.setItem(SESSION_INSIGHTS_KEY, pharmacyId || '');
-      sessionStorage.setItem(SESSION_INSIGHTS_DATA_KEY, JSON.stringify(finalInsights));
-    } catch (error) {
-      if (error instanceof PharmacyAiError && error.status === 429) {
-        setIsRateLimited(true);
-        // Set cooldown for 3 seconds on 429
-        sessionStorage.setItem(COOLDOWN_KEY, (Date.now() + 3000).toString());
-        setCooldownRemaining(3);
-      }
-      console.error('Failed to generate AI insights:', error);
-      const fallback = generateFallbackInsights(medications);
-      setInsights(fallback);
+    } catch {
+      setInsights(generateFallbackInsights(medications));
     } finally {
       setIsLoading(false);
       setIsManualRefresh(false);

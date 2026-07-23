@@ -39,6 +39,7 @@ import { GroupedProductGrid } from '@/components/pos/GroupedProductGrid';
 import { CartPanel } from '@/components/pos/CartPanel';
 import { HeldTransactionsPanel } from '@/components/pos/HeldTransactionsPanel';
 import { DrugInteractionWarning } from '@/components/pos/DrugInteractionWarning';
+import { SmartUpsellSuggestions } from '@/components/pos/SmartUpsellSuggestions';
 import { ReceiptPreviewModal } from '@/components/pos/ReceiptPreviewModal';
 import { PatientSelector } from '@/components/pos/PatientSelector';
 // PrescriptionImageUpload removed - not needed
@@ -813,6 +814,12 @@ const Checkout = () => {
                     {cart.items.length >= 2 && (
                       <DrugInteractionWarning cartItems={cart.items} />
                     )}
+
+                    <SmartUpsellSuggestions
+                      cartItems={cart.items}
+                      availableInventory={allMedications}
+                      onAddToCart={cart.addItem}
+                    />
 
                     <Collapsible>
                       <CollapsibleTrigger asChild>
