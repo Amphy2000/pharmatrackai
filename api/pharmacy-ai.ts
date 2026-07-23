@@ -3,8 +3,15 @@ import { createClient } from '@supabase/supabase-js';
 // OpenRouter free API endpoint
 const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
 
+// Fast free models - raced in parallel, first to succeed wins
+const FREE_MODELS = [
+    "meta-llama/llama-3.1-8b-instruct:free",
+    "qwen/qwen-2.5-7b-instruct:free",
+    "google/gemini-2.5-flash:free",
+    "mistralai/mistral-7b-instruct:free",
+];
+
 export default async function handler(req: any, res: any) {
-    // 1. Set CORS headers
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
@@ -14,151 +21,156 @@ export default async function handler(req: any, res: any) {
     }
 
     try {
-        const authHeader = req.headers['authorization'];
-        // Relaxed auth: Allow request if header is missing in some cases or just log it
-        if (!authHeader) {
-            console.warn("Missing auth header, proceeding anyway for testing");
-        }
-
         const { action, payload, message, messages } = req.body;
 
-        // Use environment variable for API Key
         const apiKey = process.env.OPENROUTER_API_KEY || process.env.GEMINI_API_KEY;
-
         if (!apiKey) {
-            return res.status(200).json({ error: 'OPENROUTER_API_KEY not configured. Please add it in Vercel Environment Variables.', interactions: [] });
+            return res.status(200).json({ error: 'OPENROUTER_API_KEY not configured in Vercel Environment Variables.', interactions: [] });
         }
 
-        let prompt = "";
-        let isJsonMode = false;
+        let systemPrompt = "You are PharmaTrack AI, a pharmacy assistant. Always return valid JSON only — no markdown, no explanation, just the raw JSON object.";
+        let userPrompt = "";
 
-        // 2. Handle different actions
         if (action === 'interaction_check' || action === 'check_drug_interactions') {
-            const meds = (payload?.medications || []).map((m: any) => `${m.name} (${m.category || 'Medication'})`).join(', ');
+            const meds = (payload?.medications || [])
+                .map((m: any) => `${m.name} (${m.category || 'Medication'})`)
+                .join(', ');
 
-            // Simplified prompt for speed and reliability
-            prompt = `Analyze these medications for interactions: ${meds}. 
-            Return JSON:
-            {
-                "interactions": [
-                    {
-                        "drugs": ["Drug A", "Drug B"],
-                        "severity": "low" | "moderate" | "high" | "severe",
-                        "description": "Short explanation",
-                        "recommendation": "Action to take"
-                    }
-                ]
-            }
-            Return empty interactions array if safe.`;
-            isJsonMode = true;
+            systemPrompt = `You are a clinical pharmacy AI. You MUST respond with ONLY valid JSON — no markdown, no backticks, no explanation.`;
+            userPrompt = `Check drug interactions for: ${meds}.
+Return this exact JSON structure:
+{"interactions":[{"drugs":["Drug A","Drug B"],"severity":"low","description":"Brief clinical explanation","recommendation":"Action to take"}]}
+If no interactions, return: {"interactions":[]}`;
+
         } else if (action === 'inventory_optimize') {
-            prompt = `Analyze this inventory data and provide optimization suggestions: ${JSON.stringify(payload)}. Be concise.`;
+            systemPrompt = `You are a pharmacy inventory AI. Respond with ONLY valid JSON.`;
+            userPrompt = `Analyze this inventory and give optimization suggestions: ${JSON.stringify(payload)}.
+Return: {"suggestions":[{"title":"...","description":"...","priority":"high|medium|low"}]}`;
+
         } else if (message || messages) {
-            // Generic Chat Mode
+            // Generic chat - no JSON mode needed
             const history = (messages || [])
                 .filter((m: any) => m.role !== 'system')
                 .slice(-10)
-                .map((m: any) => ({
-                    role: m.role === 'assistant' ? 'model' : 'user',
-                    parts: [{ text: m.content }]
-                }));
-
-            if (message) history.push({ role: 'user', parts: [{ text: message }] });
-
-            return await callOpenRouter(history, apiKey, "You are PharmaTrack AI.", res);
+                .map((m: any) => ({ role: m.role === 'assistant' || m.role === 'model' ? 'assistant' : 'user', content: m.content || m.parts?.[0]?.text || '' }));
+            if (message) history.push({ role: 'user', content: message });
+            return await raceModels(history, apiKey, "You are PharmaTrack AI, a helpful pharmacy assistant.", res, false);
         } else {
-            prompt = `Handle generic request: ${JSON.stringify(payload || req.body)}`;
+            userPrompt = `Handle request: ${JSON.stringify(payload || req.body)}`;
         }
 
-        // Standard prompt execution
-        const contents = [{ role: 'user', parts: [{ text: prompt }] }];
-        return await callOpenRouter(contents, apiKey, "You are PharmaTrack AI. Return valid JSON.", res, isJsonMode);
+        const chatMessages = [
+            { role: 'user', content: userPrompt }
+        ];
+        return await raceModels(chatMessages, apiKey, systemPrompt, res, true);
 
     } catch (error: any) {
         console.error('Pharma AI Error:', error);
-        return res.status(200).json({ error: error.message || 'Server error', interactions: [] }); // Return 200 with error to prevent "non-2xx" client crash
+        return res.status(200).json({ error: error.message || 'Server error', interactions: [] });
     }
 }
 
-async function callOpenRouter(contents: any[], apiKey: string, systemInstruction: string, res: any, isJsonMode = false) {
-    // Standardize Gemini parts/contents format to OpenAI messages format
-    const messages = contents.map((c: any) => {
-        const role = c.role === "model" || c.role === "assistant" ? "assistant" : "user";
-        const content = c.parts?.[0]?.text || c.content || "";
-        return { role, content };
+/** Robust JSON extractor - handles markdown fences, leading/trailing text */
+function extractJson(text: string): any {
+    if (!text) throw new Error("Empty response");
+
+    // Remove markdown code fences
+    let cleaned = text.replace(/```(?:json)?\n?/g, '').replace(/```/g, '').trim();
+
+    // Try direct parse first
+    try { return JSON.parse(cleaned); } catch { /* continue */ }
+
+    // Find JSON object/array bounds
+    const firstBrace = cleaned.indexOf('{');
+    const firstBracket = cleaned.indexOf('[');
+    const start = firstBrace === -1 ? firstBracket : firstBracket === -1 ? firstBrace : Math.min(firstBrace, firstBracket);
+
+    if (start !== -1) {
+        const lastBrace = cleaned.lastIndexOf('}');
+        const lastBracket = cleaned.lastIndexOf(']');
+        const end = Math.max(lastBrace, lastBracket);
+        if (end > start) {
+            try { return JSON.parse(cleaned.substring(start, end + 1)); } catch { /* continue */ }
+        }
+    }
+    throw new Error(`Cannot parse JSON from: ${text.substring(0, 200)}`);
+}
+
+/** Calls a single OpenRouter model */
+async function callModel(model: string, messages: any[], apiKey: string, signal: AbortSignal): Promise<string> {
+    const response = await fetch(OPENROUTER_API_URL, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${apiKey}`,
+            "HTTP-Referer": "https://pharmatrack.com.ng",
+            "X-Title": "PharmaTrack AI"
+        },
+        body: JSON.stringify({
+            model,
+            messages,
+            temperature: 0.1,
+            max_tokens: 1024,
+            // NO response_format: not all free models support it
+        }),
+        signal
     });
 
-    const activeKey = apiKey;
+    if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err?.error?.message || `HTTP ${response.status}`);
+    }
 
-    // We try multiple free models sequentially to ensure maximum speed and 100% uptime
-    const models = [
-        "google/gemini-2.5-flash:free",
-        "meta-llama/llama-3.1-8b-instruct:free",
-        "qwen/qwen-2.5-7b-instruct:free",
-        "openrouter/free"
-    ];
+    const data = await response.json();
+    const content = data?.choices?.[0]?.message?.content;
+    if (!content) throw new Error("Empty model response");
+    return content;
+}
 
-    let lastError = "";
+/** Race multiple models - first successful wins. Falls back if all fail. */
+async function raceModels(messages: any[], apiKey: string, system: string, res: any, isJson: boolean) {
+    const fullMessages = [{ role: "system", content: system }, ...messages];
 
-    for (const model of models) {
+    // Create one AbortController per model - cancel others when first succeeds
+    const controllers = FREE_MODELS.map(() => new AbortController());
+
+    const attempts = FREE_MODELS.map((model, i) =>
+        callModel(model, fullMessages, apiKey, controllers[i].signal)
+            .then(text => ({ text, model }))
+    );
+
+    let errors: string[] = [];
+
+    while (attempts.length > 0) {
         try {
-            console.log(`[OpenRouter] Attempting model: ${model}`);
+            // Promise.any: resolves with first fulfilled, rejects only if ALL reject
+            const { text, model } = await Promise.any(attempts.map(p =>
+                p.catch(e => { errors.push(e.message); return Promise.reject(e); })
+            ));
 
-            const fullMessages = [
-                { role: "system", content: systemInstruction },
-                ...messages
-            ];
+            // Cancel all remaining in-flight requests
+            controllers.forEach(c => c.abort());
 
-            const body: any = {
-                model,
-                messages: fullMessages,
-                temperature: 0.2,
-                max_tokens: 1024
-            };
+            console.log(`[OpenRouter] Won race with model: ${model}`);
 
-            if (isJsonMode) {
-                body.response_format = { type: "json_object" };
-            }
-
-            const response = await fetch(OPENROUTER_API_URL, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    "Authorization": `Bearer ${activeKey}`,
-                    "HTTP-Referer": "https://pharmatrack.com.ng",
-                    "X-Title": "PharmaTrack AI"
-                },
-                body: JSON.stringify(body),
-            });
-
-            if (!response.ok) {
-                const errData = await response.json().catch(() => ({}));
-                throw new Error(errData.error?.message || `OpenRouter error: ${response.status}`);
-            }
-
-            const data = await response.json();
-            const text = data.choices?.[0]?.message?.content || "";
-
-            if (isJsonMode) {
+            if (isJson) {
                 try {
-                    const cleanJson = text.replace(/```json\n|```/g, '').trim();
-                    return res.status(200).json(JSON.parse(cleanJson));
-                } catch {
-                    try {
-                        return res.status(200).json(JSON.parse(text));
-                    } catch {
-                        return res.status(200).json({ interactions: [], error: "Failed to parse JSON response from AI", raw: text });
-                    }
+                    const parsed = extractJson(text);
+                    return res.status(200).json(parsed);
+                } catch (parseErr: any) {
+                    console.warn(`[OpenRouter] JSON parse failed for ${model}: ${parseErr.message}`);
+                    // If parse fails, continue trying remaining models
+                    errors.push(`${model}: JSON parse error`);
+                    continue;
                 }
             }
 
             return res.status(200).json({ reply: text });
-        } catch (err: any) {
-            console.warn(`[OpenRouter] Model ${model} failed: ${err.message}`);
-            lastError = err.message;
+        } catch {
+            break;
         }
     }
 
-    return res.status(200).json({ interactions: [], error: `AI Connection Failed: ${lastError}` });
+    console.error("[OpenRouter] All models failed:", errors);
+    return res.status(200).json({ interactions: [], error: `AI unavailable. Please try again. (${errors.slice(0, 2).join('; ')})` });
 }
-

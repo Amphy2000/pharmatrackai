@@ -371,64 +371,81 @@ async function callOpenRouterAPI(
     });
   }
 
-  // Sequential fallback for models
-  const models = imageData
+  // Parallel model racing - fastest successful response wins
+  const FREE_MODELS = imageData
     ? [
         "google/gemini-2.5-flash:free",
-        "openrouter/free"
+        "meta-llama/llama-3.1-8b-instruct:free",
       ]
     : [
-        "google/gemini-2.5-flash:free",
         "meta-llama/llama-3.1-8b-instruct:free",
         "qwen/qwen-2.5-7b-instruct:free",
-        "openrouter/free"
+        "google/gemini-2.5-flash:free",
+        "mistralai/mistral-7b-instruct:free",
       ];
 
-  let lastError = "";
+  const controllers = FREE_MODELS.map(() => new AbortController());
 
-  for (const model of models) {
-    try {
-      console.log(`[OpenRouter Edge] Attempting model: ${model}`);
-      const response = await fetchWithRetry(
-        "https://openrouter.ai/api/v1/chat/completions",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
-            "HTTP-Referer": "https://pharmatrack.com.ng",
-            "X-Title": "PharmaTrack AI"
-          },
-          body: JSON.stringify({
-            model,
-            messages,
-            temperature: 0.2,
-            response_format: { type: "json_object" }
-          }),
-        }
-      );
-
+  const attempts = FREE_MODELS.map((model, i) =>
+    fetchWithRetry(
+      "https://openrouter.ai/api/v1/chat/completions",
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
+          "HTTP-Referer": "https://pharmatrack.com.ng",
+          "X-Title": "PharmaTrack AI"
+        },
+        body: JSON.stringify({
+          model,
+          messages,
+          temperature: 0.2,
+          max_tokens: 1500,
+          // NO response_format - not all free models support json_object
+        }),
+        signal: controllers[i].signal
+      }
+    ).then(async response => {
       if (!response.ok) {
         const errorText = await response.text();
-        throw new Error(`OpenRouter API error (${response.status}): ${errorText}`);
+        throw new Error(`${model}: HTTP ${response.status} - ${errorText.substring(0, 100)}`);
       }
-
       const data = await response.json();
       const content = data.choices?.[0]?.message?.content;
-      
-      if (!content) {
-        throw new Error("No content in AI response");
-      }
+      if (!content) throw new Error(`${model}: Empty response`);
+      return { content, model };
+    })
+  );
 
-      const cleanJson = content.replace(/```json\n|```/g, '').trim();
-      return JSON.parse(cleanJson);
-    } catch (err: any) {
-      console.warn(`[OpenRouter Edge] Model ${model} failed: ${err.message}`);
-      lastError = err.message;
-    }
+  let result: { content: string; model: string };
+  try {
+    result = await Promise.any(attempts);
+  } catch {
+    throw new Error("All AI models failed. Please try again in a moment.");
   }
 
-  throw new Error(`All models failed in Edge Function. Last error: ${lastError}`);
+  // Cancel remaining requests
+  controllers.forEach(c => c.abort());
+  console.log(`[OpenRouter Edge] Race won by: ${result.model}`);
+
+  // Robust JSON extraction - handles markdown fences and extra text
+  function extractJson(text: string): any {
+    let cleaned = text.replace(/```(?:json)?\n?/g, '').replace(/```/g, '').trim();
+    try { return JSON.parse(cleaned); } catch { /* continue */ }
+    const fb = cleaned.indexOf('{');
+    const fa = cleaned.indexOf('[');
+    const start = fb === -1 ? fa : fa === -1 ? fb : Math.min(fb, fa);
+    if (start !== -1) {
+      const end = Math.max(cleaned.lastIndexOf('}'), cleaned.lastIndexOf(']'));
+      if (end > start) {
+        try { return JSON.parse(cleaned.substring(start, end + 1)); } catch { /* continue */ }
+      }
+    }
+    throw new Error(`Cannot parse JSON from AI response: ${text.substring(0, 200)}`);
+  }
+
+  return extractJson(result.content);
 }
 
 // Action Handlers
