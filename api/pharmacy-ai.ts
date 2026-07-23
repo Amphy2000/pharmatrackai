@@ -1,7 +1,7 @@
 import { createClient } from '@supabase/supabase-js';
 
-// Switch to standard Flash model (same as smart-upsell) for better reliability
-const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent";
+// OpenRouter free API endpoint
+const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
 
 export default async function handler(req: any, res: any) {
     // 1. Set CORS headers
@@ -23,13 +23,10 @@ export default async function handler(req: any, res: any) {
         const { action, payload, message, messages } = req.body;
 
         // Use environment variable for API Key
-        const apiKey = process.env.GEMINI_API_KEY;
+        const apiKey = process.env.OPENROUTER_API_KEY || process.env.GEMINI_API_KEY;
 
         if (!apiKey) {
-            return res.status(200).json({
-                error: 'GEMINI_API_KEY not configured in Vercel. Please add it in Settings > Environment Variables.',
-                interactions: []
-            });
+            return res.status(200).json({ error: 'OPENROUTER_API_KEY not configured. Please add it in Vercel Environment Variables.', interactions: [] });
         }
 
         let prompt = "";
@@ -68,14 +65,14 @@ export default async function handler(req: any, res: any) {
 
             if (message) history.push({ role: 'user', parts: [{ text: message }] });
 
-            return await callGemini(history, apiKey, "You are PharmaTrack AI.", res);
+            return await callOpenRouter(history, apiKey, "You are PharmaTrack AI.", res);
         } else {
             prompt = `Handle generic request: ${JSON.stringify(payload || req.body)}`;
         }
 
         // Standard prompt execution
         const contents = [{ role: 'user', parts: [{ text: prompt }] }];
-        return await callGemini(contents, apiKey, "You are PharmaTrack AI. Return valid JSON.", res, isJsonMode);
+        return await callOpenRouter(contents, apiKey, "You are PharmaTrack AI. Return valid JSON.", res, isJsonMode);
 
     } catch (error: any) {
         console.error('Pharma AI Error:', error);
@@ -83,59 +80,85 @@ export default async function handler(req: any, res: any) {
     }
 }
 
-async function callGemini(contents: any[], apiKey: string, systemInstruction: string, res: any, isJsonMode = false) {
-    let attempts = 0;
-    const maxAttempts = 2; // Reduce attempts to fail fast if blocked
+async function callOpenRouter(contents: any[], apiKey: string, systemInstruction: string, res: any, isJsonMode = false) {
+    // Standardize Gemini parts/contents format to OpenAI messages format
+    const messages = contents.map((c: any) => {
+        const role = c.role === "model" || c.role === "assistant" ? "assistant" : "user";
+        const content = c.parts?.[0]?.text || c.content || "";
+        return { role, content };
+    });
 
-    while (attempts < maxAttempts) {
+    const activeKey = apiKey;
+
+    // We try multiple free models sequentially to ensure maximum speed and 100% uptime
+    const models = [
+        "google/gemini-2.5-flash:free",
+        "meta-llama/llama-3.1-8b-instruct:free",
+        "qwen/qwen-2.5-7b-instruct:free",
+        "openrouter/free"
+    ];
+
+    let lastError = "";
+
+    for (const model of models) {
         try {
-            const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    contents,
-                    generationConfig: {
-                        temperature: 0.2, // Lower temp for more deterministic JSON
-                        maxOutputTokens: 1024,
-                        responseMimeType: isJsonMode ? "application/json" : "text/plain"
-                    },
-                    systemInstruction: {
-                        parts: [{ text: systemInstruction }]
-                    }
-                }),
-            });
+            console.log(`[OpenRouter] Attempting model: ${model}`);
 
-            if (response.status === 429) {
-                const wait = 2000;
-                console.log(`[Gemini Bridge] Rate limited, waiting ${wait}ms...`);
-                await new Promise(r => setTimeout(r, wait));
-                attempts++;
-                continue;
+            const fullMessages = [
+                { role: "system", content: systemInstruction },
+                ...messages
+            ];
+
+            const body: any = {
+                model,
+                messages: fullMessages,
+                temperature: 0.2,
+                max_tokens: 1024
+            };
+
+            if (isJsonMode) {
+                body.response_format = { type: "json_object" };
             }
+
+            const response = await fetch(OPENROUTER_API_URL, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${activeKey}`,
+                    "HTTP-Referer": "https://pharmatrack.com.ng",
+                    "X-Title": "PharmaTrack AI"
+                },
+                body: JSON.stringify(body),
+            });
 
             if (!response.ok) {
                 const errData = await response.json().catch(() => ({}));
-                throw new Error(errData.error?.message || `Gemini error: ${response.status}`);
+                throw new Error(errData.error?.message || `OpenRouter error: ${response.status}`);
             }
 
             const data = await response.json();
-            const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+            const text = data.choices?.[0]?.message?.content || "";
 
             if (isJsonMode) {
                 try {
                     const cleanJson = text.replace(/```json\n|```/g, '').trim();
                     return res.status(200).json(JSON.parse(cleanJson));
                 } catch {
-                    return res.status(200).json({ interactions: [], error: "Failed to parse AI response" });
+                    try {
+                        return res.status(200).json(JSON.parse(text));
+                    } catch {
+                        return res.status(200).json({ interactions: [], error: "Failed to parse JSON response from AI", raw: text });
+                    }
                 }
             }
 
             return res.status(200).json({ reply: text });
         } catch (err: any) {
-            attempts++;
-            if (attempts >= maxAttempts) {
-                return res.status(200).json({ interactions: [], error: `AI Error: ${err.message}` });
-            }
+            console.warn(`[OpenRouter] Model ${model} failed: ${err.message}`);
+            lastError = err.message;
         }
     }
+
+    return res.status(200).json({ interactions: [], error: `AI Connection Failed: ${lastError}` });
 }
+

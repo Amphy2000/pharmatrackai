@@ -1,6 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 
-const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent";
+const OPENROUTER_API_URL = "https://openrouter.ai/api/v1/chat/completions";
 
 export default async function handler(req: any, res: any) {
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -34,9 +34,10 @@ export default async function handler(req: any, res: any) {
             return res.status(400).json({ error: 'medications must be an array', insights: [] });
         }
 
-        const apiKey = process.env.GEMINI_API_KEY;
+        // Use environment variable
+        const apiKey = process.env.OPENROUTER_API_KEY || process.env.GEMINI_API_KEY;
         if (!apiKey) {
-            return res.status(500).json({ error: 'Gemini API Key missing', insights: [] });
+            return res.status(500).json({ error: 'OPENROUTER_API_KEY not configured', insights: [] });
         }
 
         const today = new Date().toISOString().split('T')[0];
@@ -68,50 +69,55 @@ export default async function handler(req: any, res: any) {
             expiry: m.expiry_date
         }));
 
-        let attempts = 0;
-        const maxAttempts = 3;
+        const models = [
+            "google/gemini-2.5-flash:free",
+            "meta-llama/llama-3.1-8b-instruct:free",
+            "qwen/qwen-2.5-7b-instruct:free",
+            "openrouter/free"
+        ];
 
-        while (attempts < maxAttempts) {
+        let lastError = "";
+
+        for (const model of models) {
             try {
-                const response = await fetch(`${GEMINI_API_URL}?key=${apiKey}`, {
+                console.log(`[Insights] Attempting model: ${model}`);
+                const response = await fetch(OPENROUTER_API_URL, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${apiKey}`,
+                        'HTTP-Referer': 'https://pharmatrack.com.ng',
+                        'X-Title': 'PharmaTrack AI'
+                    },
                     body: JSON.stringify({
-                        contents: [{
-                            role: 'user',
-                            parts: [{ text: `${systemPrompt}\n\nInventory Data: ${JSON.stringify(inventorySummary)}` }]
-                        }],
-                        generationConfig: {
-                            responseMimeType: "application/json",
-                            temperature: 0.5
-                        }
+                        model,
+                        messages: [
+                            { role: 'system', content: systemPrompt },
+                            { role: 'user', content: `Inventory Data: ${JSON.stringify(inventorySummary)}` }
+                        ],
+                        temperature: 0.5,
+                        response_format: { type: "json_object" }
                     }),
                 });
 
-                if (response.status === 429) {
-                    const wait = (attempts + 1) * 5000;
-                    console.log(`[Insights] Rate limited, waiting ${wait}ms...`);
-                    await new Promise(r => setTimeout(r, wait));
-                    attempts++;
-                    continue;
-                }
-
                 if (!response.ok) {
-                    const err = await response.json();
-                    throw new Error(err.error?.message || `Gemini error: ${response.status}`);
+                    const err = await response.json().catch(() => ({}));
+                    throw new Error(err.error?.message || `OpenRouter error: ${response.status}`);
                 }
 
                 const data = await response.json();
-                const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
+                const content = data.choices?.[0]?.message?.content;
                 if (!content) throw new Error('Empty response from AI');
 
-                return res.status(200).json(JSON.parse(content));
+                const cleanJson = content.replace(/```json\n|```/g, '').trim();
+                return res.status(200).json(JSON.parse(cleanJson));
             } catch (err: any) {
-                attempts++;
-                if (attempts >= maxAttempts) throw err;
-                await new Promise(r => setTimeout(r, 2000));
+                console.warn(`[Insights] Model ${model} failed: ${err.message}`);
+                lastError = err.message;
             }
         }
+
+        throw new Error(`All models failed. Last error: ${lastError}`);
 
     } catch (error: any) {
         console.error('Insights API Error:', error);

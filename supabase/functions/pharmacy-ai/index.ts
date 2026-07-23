@@ -341,56 +341,94 @@ async function fetchWithRetry(
   throw lastError || new Error("All retry attempts failed");
 }
 
-// Call Gemini API with the appropriate prompt (optionally using cached content)
-async function callGeminiAPI(
+// Call OpenRouter API with the appropriate prompt (optionally using cached content, fallback models)
+async function callOpenRouterAPI(
   systemPrompt: string, 
   userContent: string, 
-  cacheId?: string | null
+  imageData?: string | null
 ): Promise<any> {
-  const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
-  if (!GEMINI_API_KEY) {
-    throw new Error("GEMINI_API_KEY is not configured");
+  const OPENROUTER_API_KEY = Deno.env.get("OPENROUTER_API_KEY") || Deno.env.get("GEMINI_API_KEY");
+  if (!OPENROUTER_API_KEY) {
+    throw new Error("OPENROUTER_API_KEY is not configured in Supabase secrets.");
   }
 
-  const requestBody: any = {
-    contents: [{
-      role: 'user',
-      parts: [{ text: `${systemPrompt}\n\n${userContent}` }]
-    }],
-    generationConfig: {
-      responseMimeType: 'application/json',
-    },
-  };
-  
-  // If we have a cache ID, reference it
-  if (cacheId) {
-    requestBody.cachedContent = cacheId;
-    console.log(`Using cached content: ${cacheId}`);
+  const messages: any[] = [
+    { role: "system", content: systemPrompt }
+  ];
+
+  if (imageData) {
+    messages.push({
+      role: "user",
+      content: [
+        { type: "text", text: userContent },
+        { type: "image_url", image_url: { url: imageData } }
+      ]
+    });
+  } else {
+    messages.push({
+      role: "user",
+      content: userContent
+    });
   }
 
-  const response = await fetchWithRetry(
-    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
-    {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(requestBody),
+  // Sequential fallback for models
+  const models = imageData
+    ? [
+        "google/gemini-2.5-flash:free",
+        "openrouter/free"
+      ]
+    : [
+        "google/gemini-2.5-flash:free",
+        "meta-llama/llama-3.1-8b-instruct:free",
+        "qwen/qwen-2.5-7b-instruct:free",
+        "openrouter/free"
+      ];
+
+  let lastError = "";
+
+  for (const model of models) {
+    try {
+      console.log(`[OpenRouter Edge] Attempting model: ${model}`);
+      const response = await fetchWithRetry(
+        "https://openrouter.ai/api/v1/chat/completions",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
+            "HTTP-Referer": "https://pharmatrack.com.ng",
+            "X-Title": "PharmaTrack AI"
+          },
+          body: JSON.stringify({
+            model,
+            messages,
+            temperature: 0.2,
+            response_format: { type: "json_object" }
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`OpenRouter API error (${response.status}): ${errorText}`);
+      }
+
+      const data = await response.json();
+      const content = data.choices?.[0]?.message?.content;
+      
+      if (!content) {
+        throw new Error("No content in AI response");
+      }
+
+      const cleanJson = content.replace(/```json\n|```/g, '').trim();
+      return JSON.parse(cleanJson);
+    } catch (err: any) {
+      console.warn(`[OpenRouter Edge] Model ${model} failed: ${err.message}`);
+      lastError = err.message;
     }
-  );
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error("Gemini API error:", response.status, errorText);
-    throw new Error(`AI service error: ${response.status}`);
   }
 
-  const data = await response.json();
-  const content = data.candidates?.[0]?.content?.parts?.[0]?.text;
-  
-  if (!content) {
-    throw new Error("No content in AI response");
-  }
-
-  return JSON.parse(content);
+  throw new Error(`All models failed in Edge Function. Last error: ${lastError}`);
 }
 
 // Action Handlers
@@ -408,7 +446,7 @@ async function handleDrugInteraction(payload: any): Promise<any> {
   const medicationList = medications.map((m: any) => m.name || m).join(", ");
   const userContent = `Check for drug interactions between these medications: ${medicationList}`;
   
-  return await callGeminiAPI(PROMPTS.drug_interaction, userContent);
+  return await callOpenRouterAPI(PROMPTS.drug_interaction, userContent);
 }
 
 async function handleSmartUpsell(payload: any): Promise<any> {
@@ -439,7 +477,7 @@ ${availableProducts || 'Use general pharmacy product suggestions'}
 
 Suggest complementary products that would genuinely help this customer.`;
 
-  return await callGeminiAPI(PROMPTS.smart_upsell, userContent);
+  return await callOpenRouterAPI(PROMPTS.smart_upsell, userContent);
 }
 
 async function handleBusinessInsights(
@@ -451,7 +489,7 @@ async function handleBusinessInsights(
   const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
   let cacheId: string | null = null;
   
-  // Try to use context caching for business insights
+  // Try to use context caching for business insights (if configured)
   if (pharmacyId && medications?.length && GEMINI_API_KEY) {
     cacheId = await getOrCreateCachedContent(pharmacyId, medications, GEMINI_API_KEY);
   }
@@ -517,7 +555,7 @@ ${getAttentionItems(medications)}
 
 Provide actionable insights to maximize profit and reduce waste.`;
 
-  return await callGeminiAPI(PROMPTS.business_insights, userContent, cacheId);
+  return await callOpenRouterAPI(PROMPTS.business_insights, userContent);
 }
 
 async function handleAISearch(payload: any): Promise<any> {
@@ -531,139 +569,19 @@ async function handleAISearch(payload: any): Promise<any> {
   
 Interpret this pharmacy search query and extract the search parameters.`;
 
-  return await callGeminiAPI(PROMPTS.ai_search, userContent);
+  return await callOpenRouterAPI(PROMPTS.ai_search, userContent);
 }
 
-// Configuration: Set to true to use Lovable AI Gateway, false to use direct Gemini API
-const USE_LOVABLE_AI_FOR_INVOICE = true;
-
 async function handleScanInvoice(payload: any): Promise<any> {
-  // Accept both imageBase64 and imageUrl (they may be the same data-uri)
   const imageData = payload?.imageBase64 || payload?.imageUrl;
 
   if (!imageData) {
     throw new Error("No invoice image provided. Send imageBase64 or imageUrl.");
   }
 
-  console.log(`Processing invoice scan, size: ${imageData.length} chars, using: ${USE_LOVABLE_AI_FOR_INVOICE ? 'Lovable AI' : 'Gemini API'}`);
+  console.log(`Processing invoice scan, size: ${imageData.length} chars, using OpenRouter`);
 
-  let content: string | undefined;
-
-  if (USE_LOVABLE_AI_FOR_INVOICE) {
-    // Use Lovable AI Gateway
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-    if (!LOVABLE_API_KEY) {
-      throw new Error("LOVABLE_API_KEY is not configured");
-    }
-
-    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${LOVABLE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          {
-            role: "user",
-            content: [
-              { type: "text", text: PROMPTS.scan_invoice },
-              { type: "image_url", image_url: { url: imageData } },
-            ],
-          },
-        ],
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Lovable AI Vision error:", response.status, errorText);
-
-      if (response.status === 429) {
-        throw new Error("Rate limit exceeded");
-      }
-      if (response.status === 402) {
-        throw new Error("Payment required");
-      }
-      throw new Error(`Invoice scanning failed: ${response.status}`);
-    }
-
-    const data = await response.json();
-    content = data.choices?.[0]?.message?.content as string | undefined;
-  } else {
-    // Use direct Gemini API
-    const GEMINI_API_KEY = Deno.env.get("GEMINI_API_KEY");
-    if (!GEMINI_API_KEY) {
-      throw new Error("GEMINI_API_KEY is not configured. Please add your Gemini API key.");
-    }
-
-    // Extract base64 and mime type from data URL
-    const match = imageData.match(/^data:([^;]+);base64,(.+)$/);
-    if (!match) {
-      throw new Error("Invalid image format. Expected base64 data URL.");
-    }
-    const [, mimeType, base64Data] = match;
-
-    const response = await fetchWithRetry(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{
-            role: "user",
-            parts: [
-              { text: PROMPTS.scan_invoice },
-              {
-                inline_data: {
-                  mime_type: mimeType,
-                  data: base64Data
-                }
-              }
-            ]
-          }],
-          generationConfig: {
-            responseMimeType: "application/json",
-          },
-        }),
-      }
-    );
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Gemini API Vision error:", response.status, errorText);
-      throw new Error(`Invoice scanning failed: ${response.status}`);
-    }
-
-    const data = await response.json();
-    content = data.candidates?.[0]?.content?.parts?.[0]?.text as string | undefined;
-  }
-
-  if (!content) {
-    return { items: [], confidence: "low", notes: "No AI response content" };
-  }
-
-  // Try to extract JSON robustly (may be wrapped in markdown or contain extra text)
-  let jsonText = content;
-  const fenced = content.match(/```json\s*([\s\S]*?)\s*```/i);
-  if (fenced?.[1]) jsonText = fenced[1];
-  else {
-    const objMatch = content.match(/\{[\s\S]*\}/);
-    if (objMatch?.[0]) jsonText = objMatch[0];
-  }
-
-  let parsed: any;
-  try {
-    parsed = JSON.parse(jsonText);
-  } catch (e) {
-    console.error("Failed to parse invoice JSON:", e);
-    return {
-      items: [],
-      confidence: "low",
-      notes: "Could not parse invoice data. Please try a clearer image.",
-    };
-  }
+  const parsed = await callOpenRouterAPI(PROMPTS.scan_invoice, "Extract invoice details from the attached image.", imageData);
 
   // Normalize response shape - ensure items array exists at top level
   if (parsed.result?.items && !parsed.items) {
@@ -686,71 +604,10 @@ async function handleScanExpiry(payload: any): Promise<any> {
     throw new Error("No product image provided. Send imageBase64 or imageUrl.");
   }
 
-  // Use Lovable AI Gateway for faster processing
-  const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
-  if (!LOVABLE_API_KEY) {
-    throw new Error("LOVABLE_API_KEY is not configured");
-  }
+  console.log(`Processing expiry scan, size: ${imageData.length} chars, using OpenRouter`);
 
-  console.log(`Processing expiry scan via Lovable AI, size: ${imageData.length} chars`);
-
-  // Use the faster flash-lite model for quick OCR-like tasks
-  const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Authorization": `Bearer ${LOVABLE_API_KEY}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: "google/gemini-2.5-flash-lite",
-      messages: [
-        {
-          role: "user",
-          content: [
-            {
-              type: "text",
-              text: PROMPTS.scan_expiry
-            },
-            {
-              type: "image_url",
-              image_url: {
-                url: imageData
-              }
-            }
-          ]
-        }
-      ],
-    }),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    console.error("Lovable AI Vision error:", response.status, errorText);
-    
-    if (response.status === 429) {
-      throw new Error("AI is busy. Please wait a moment and try again.");
-    }
-    if (response.status === 402) {
-      throw new Error("AI credits depleted. Please add credits in settings.");
-    }
-    throw new Error(`Expiry scanning failed: ${response.status}`);
-  }
-
-  const data = await response.json();
-  const content = data.choices?.[0]?.message?.content;
+  const parsed = await callOpenRouterAPI(PROMPTS.scan_expiry, "Extract expiry details from the attached product packaging image.", imageData);
   
-  if (!content) {
-    throw new Error("Could not extract expiry information");
-  }
-
-  // Parse JSON from the response (may be wrapped in markdown)
-  let jsonContent = content;
-  const jsonMatch = content.match(/```json\s*([\s\S]*?)\s*```/);
-  if (jsonMatch) {
-    jsonContent = jsonMatch[1];
-  }
-
-  const parsed = JSON.parse(jsonContent);
   console.log(`Extracted expiry: ${parsed.expiry_date}, product: ${parsed.product_name}`);
   
   return parsed;
