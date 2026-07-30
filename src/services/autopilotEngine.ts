@@ -703,6 +703,9 @@ export class AutopilotEngine {
 
     medications.forEach(med => {
       if (!med.expiry_date || med.current_stock <= 0) return;
+      // Skip if clearance discount has already been applied
+      if (med.metadata?.clearance_applied === true) return;
+
       const expiry = parseISO(med.expiry_date);
       const daysUntilExpiry = differenceInDays(expiry, now);
 

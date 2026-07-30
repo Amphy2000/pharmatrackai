@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { Tag, ChevronDown, ChevronUp, AlertTriangle, AlertCircle, Clock, CheckCircle2, Percent, TrendingUp, Sparkles, Loader2 } from 'lucide-react';
+import { Tag, ChevronDown, ChevronUp, AlertTriangle, AlertCircle, Clock, CheckCircle2, Percent, TrendingUp, Sparkles, Loader2, Sparkle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ClearanceQueueSummary, ClearanceQueueItem } from '@/services/autopilotEngine';
@@ -60,7 +60,7 @@ function ClearanceRow({
   const UrgencyIcon = cfg.icon;
 
   return (
-    <div className={cn('flex flex-col sm:flex-row sm:items-center gap-3 p-3 rounded-xl border', cfg.row)}>
+    <div className={cn('flex flex-col sm:flex-row sm:items-center gap-3 p-3 rounded-xl border transition-all duration-300', cfg.row)}>
       {/* Left: name + badges */}
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
@@ -87,7 +87,7 @@ function ClearanceRow({
           size="sm"
           disabled={isApplying}
           onClick={() => onApply(item)}
-          className="h-8 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold gap-1 text-xs shadow-sm"
+          className="h-8 bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold gap-1 text-xs shadow-sm transition-transform active:scale-95"
         >
           {isApplying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Tag className="h-3.5 w-3.5" />}
           Apply -{item.recommendedDiscountPercent}%
@@ -99,33 +99,54 @@ function ClearanceRow({
 
 export const ClearanceQueueCard = ({ queue, onRecordAction }: ClearanceQueueCardProps) => {
   const { formatPrice } = useCurrency();
-  const { updateMedication } = useMedications();
+  const { updateMedication, medications } = useMedications();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [isExpanded, setIsExpanded] = useState(false);
   const [applyingId, setApplyingId] = useState<string | null>(null);
+  const [processedIds, setProcessedIds] = useState<Set<string>>(new Set());
 
-  const sortedItems = useMemo(() => {
+  // Filter out processed items & items already marked as clearance_applied
+  const visibleItems = useMemo(() => {
     if (!queue?.items) return [];
-    return [...queue.items].sort((a, b) => a.daysUntilExpiry - b.daysUntilExpiry);
-  }, [queue?.items]);
+    return queue.items
+      .filter(item => !processedIds.has(item.medicationId))
+      .sort((a, b) => a.daysUntilExpiry - b.daysUntilExpiry);
+  }, [queue?.items, processedIds]);
+
+  const totalValueAtRisk = useMemo(() => visibleItems.reduce((sum, i) => sum + i.valueAtRisk, 0), [visibleItems]);
+  const totalPotentialRecovery = useMemo(() => visibleItems.reduce((sum, i) => sum + i.potentialRecovery, 0), [visibleItems]);
 
   const handleApplyDiscount = async (item: ClearanceQueueItem) => {
     setApplyingId(item.medicationId);
     try {
+      // Find full medication object to preserve existing metadata
+      const currentMed = medications.find(m => m.id === item.medicationId);
+      const existingMetadata = currentMed?.metadata || {};
+
       await updateMedication.mutateAsync({
         id: item.medicationId,
         selling_price: item.discountedPrice,
+        metadata: {
+          ...existingMetadata,
+          clearance_applied: true,
+          clearance_discount: item.recommendedDiscountPercent,
+          clearance_applied_at: new Date().toISOString(),
+        },
       });
+
+      // Mark as processed so it immediately vanishes from queue UI
+      setProcessedIds(prev => new Set(prev).add(item.medicationId));
+
       toast({
-        title: 'Clearance price updated',
-        description: `${item.medicationName} discounted by ${item.recommendedDiscountPercent}% to ${formatPrice(item.discountedPrice)}.`,
+        title: 'Clearance price updated in inventory!',
+        description: `${item.medicationName} is now ${formatPrice(item.discountedPrice)} (-${item.recommendedDiscountPercent}%). Removed from clearance queue.`,
       });
       if (onRecordAction) onRecordAction('/inventory?filter=expiring');
-    } catch {
+    } catch (error) {
       toast({
         title: 'Failed to apply discount',
-        description: 'Please try again from Inventory.',
+        description: 'Please check connection or try again from Inventory.',
         variant: 'destructive',
       });
     } finally {
@@ -133,8 +154,8 @@ export const ClearanceQueueCard = ({ queue, onRecordAction }: ClearanceQueueCard
     }
   };
 
-  if (!queue || queue.totalItems === 0 || sortedItems.length === 0) {
-    return null; // Don't show anything if zero items in clearance queue
+  if (!queue || visibleItems.length === 0) {
+    return null; // All clearance items cleared or zero items
   }
 
   // Collapsed View (Sleek 1-line bar)
@@ -150,14 +171,14 @@ export const ClearanceQueueCard = ({ queue, onRecordAction }: ClearanceQueueCard
               <span className="text-[10px] font-bold uppercase tracking-wider text-amber-300">
                 Autopilot Clearance Queue
               </span>
-              {queue.criticalCount > 0 && (
+              {visibleItems.some(i => i.urgency === 'critical') && (
                 <Badge className="bg-red-500/20 border-red-400/30 text-red-300 text-[10px] py-0 h-4">
-                  {queue.criticalCount} Critical (&le;7d)
+                  {visibleItems.filter(i => i.urgency === 'critical').length} Critical (&le;7d)
                 </Badge>
               )}
             </div>
             <p className="text-xs font-semibold text-white truncate">
-              {queue.totalItems} medicines expiring soon • Value at risk: <span className="text-rose-300">{formatPrice(queue.totalValueAtRisk)}</span> • Recoverable: <span className="text-emerald-400">{formatPrice(queue.totalPotentialRecovery)}</span>
+              {visibleItems.length} medicines expiring soon • Value at risk: <span className="text-rose-300">{formatPrice(totalValueAtRisk)}</span> • Recoverable: <span className="text-emerald-400">{formatPrice(totalPotentialRecovery)}</span>
             </p>
           </div>
         </div>
@@ -168,7 +189,7 @@ export const ClearanceQueueCard = ({ queue, onRecordAction }: ClearanceQueueCard
             onClick={() => setIsExpanded(true)}
             className="h-8 text-xs font-semibold bg-amber-500 hover:bg-amber-600 text-slate-950 gap-1 px-3 shadow-sm"
           >
-            <span>Review Clearance ({queue.totalItems})</span>
+            <span>Review Clearance ({visibleItems.length})</span>
             <ChevronDown className="h-3.5 w-3.5" />
           </Button>
         </div>
@@ -192,24 +213,24 @@ export const ClearanceQueueCard = ({ queue, onRecordAction }: ClearanceQueueCard
                 Autopilot — Automatic Clearance Queue
               </span>
               <h3 className="text-lg font-bold text-white leading-tight">
-                {queue.totalItems} Product{queue.totalItems > 1 ? 's' : ''} Approaching Expiry
+                {visibleItems.length} Product{visibleItems.length > 1 ? 's' : ''} Approaching Expiry
               </h3>
             </div>
           </div>
 
           <div className="flex items-center gap-2">
             <Badge className="bg-rose-500/20 border-rose-400/30 text-rose-300 text-[11px] py-1">
-              Risk: {formatPrice(queue.totalValueAtRisk)}
+              Risk: {formatPrice(totalValueAtRisk)}
             </Badge>
             <Badge className="bg-emerald-500/20 border-emerald-400/30 text-emerald-300 text-[11px] py-1">
-              Recoverable: {formatPrice(queue.totalPotentialRecovery)}
+              Recoverable: {formatPrice(totalPotentialRecovery)}
             </Badge>
           </div>
         </div>
 
         {/* Line Items List */}
         <div className="space-y-2 mb-4 max-h-[360px] overflow-y-auto pr-1">
-          {sortedItems.map(item => (
+          {visibleItems.map(item => (
             <ClearanceRow
               key={item.medicationId}
               item={item}
