@@ -3,7 +3,7 @@ import { useMedications } from '@/hooks/useMedications';
 import { useSales } from '@/hooks/useSales';
 import { usePharmacy } from '@/hooks/usePharmacy';
 import { useDbNotifications } from '@/hooks/useDbNotifications';
-import { AutopilotEngine, ReorderSuggestion, ExpiryBucket, DashboardIntelligence, DailyBriefing, PriorityActionItem, PurchaseOrderDraft } from '@/services/autopilotEngine';
+import { AutopilotEngine, ReorderSuggestion, ExpiryBucket, DashboardIntelligence, DailyBriefing, PriorityActionItem, PurchaseOrderDraft, ClearanceQueueSummary } from '@/services/autopilotEngine';
 import { supabase } from '@/lib/supabase';
 
 const AUTOPILOT_CHECK_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes background check
@@ -63,6 +63,11 @@ export function useAutopilotEngine() {
   const purchaseDraft: PurchaseOrderDraft = useMemo(() => {
     return AutopilotEngine.computePurchaseOrderDraft(medications || [], sales || []);
   }, [medications, sales]);
+
+  // 5c. Compute Automatic Clearance Queue (Phase 2.2)
+  const clearanceQueue: ClearanceQueueSummary = useMemo(() => {
+    return AutopilotEngine.computeClearanceQueue(medications || []);
+  }, [medications]);
 
   // 6. Compute Today's Priorities (Ranked by 0-100 Priority Score + Workflow Memory Weight)
   const todaysPriorities: PriorityActionItem[] = useMemo(() => {
@@ -210,6 +215,7 @@ export function useAutopilotEngine() {
     intelligence,
     dailyBriefing,
     purchaseDraft,
+    clearanceQueue,
     todaysPriorities,
     recordActionClick,
     isLoading: medsLoading || salesLoading,

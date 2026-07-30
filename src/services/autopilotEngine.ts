@@ -126,6 +126,39 @@ export interface PurchaseOrderDraft {
   lowStockCount: number;
 }
 
+/**
+ * Phase 2.2 — Automatic Clearance Queue
+ * Pre-calculates clearance discount recommendations for medicines approaching expiry.
+ * Pharmacists review and approve — prices are never changed automatically.
+ */
+export interface ClearanceQueueItem {
+  medicationId: string;
+  medicationName: string;
+  category: string;
+  batchNumber?: string;
+  expiryDate: string;
+  daysUntilExpiry: number;
+  currentStock: number;
+  originalPrice: number;
+  recommendedDiscountPercent: number;
+  discountedPrice: number;
+  valueAtRisk: number;
+  potentialRecovery: number;
+  urgency: 'critical' | 'urgent' | 'warning' | 'notice';
+}
+
+export interface ClearanceQueueSummary {
+  generatedAt: string;
+  items: ClearanceQueueItem[];
+  totalItems: number;
+  totalValueAtRisk: number;
+  totalPotentialRecovery: number;
+  criticalCount: number; // <= 7 days
+  urgentCount: number;   // 8-30 days
+  warningCount: number;  // 31-60 days
+  noticeCount: number;   // 61-90 days
+}
+
 export class AutopilotEngine {
 
   /**
@@ -634,6 +667,100 @@ export class AutopilotEngine {
       overallUrgency,
       criticalCount,
       lowStockCount,
+    };
+  }
+
+  /**
+   * 7. Automatic Clearance Queue (Phase 2.2)
+   *
+   * Automatically groups medicines approaching expiry (<= 90 days) into a clearance queue.
+   * Calculates recommended clearance discount percentages based on urgency:
+   *  - <= 7 days: 35% discount
+   *  - 8-30 days: 25% discount
+   *  - 31-60 days: 15% discount
+   *  - 61-90 days: 10% discount
+   *
+   * Estimates total inventory value at risk and potential revenue recovery.
+   * Pharmacists review and approve — prices are never changed automatically.
+   */
+  static computeClearanceQueue(medications: Medication[]): ClearanceQueueSummary {
+    const now = new Date();
+    const items: ClearanceQueueItem[] = [];
+
+    if (!medications || medications.length === 0) {
+      return {
+        generatedAt: now.toISOString(),
+        items: [],
+        totalItems: 0,
+        totalValueAtRisk: 0,
+        totalPotentialRecovery: 0,
+        criticalCount: 0,
+        urgentCount: 0,
+        warningCount: 0,
+        noticeCount: 0,
+      };
+    }
+
+    medications.forEach(med => {
+      if (!med.expiry_date || med.current_stock <= 0) return;
+      const expiry = parseISO(med.expiry_date);
+      const daysUntilExpiry = differenceInDays(expiry, now);
+
+      // Only items that have not expired yet, but expire within 90 days
+      if (daysUntilExpiry <= 0 || daysUntilExpiry > 90) return;
+
+      let recommendedDiscountPercent = 10;
+      let urgency: ClearanceQueueItem['urgency'] = 'notice';
+
+      if (daysUntilExpiry <= 7) {
+        recommendedDiscountPercent = 35;
+        urgency = 'critical';
+      } else if (daysUntilExpiry <= 30) {
+        recommendedDiscountPercent = 25;
+        urgency = 'urgent';
+      } else if (daysUntilExpiry <= 60) {
+        recommendedDiscountPercent = 15;
+        urgency = 'warning';
+      }
+
+      const originalPrice = med.selling_price || med.unit_price || 0;
+      const discountedPrice = Math.max(1, Math.round(originalPrice * (1 - recommendedDiscountPercent / 100)));
+      const valueAtRisk = originalPrice * med.current_stock;
+      const potentialRecovery = discountedPrice * med.current_stock;
+
+      items.push({
+        medicationId: med.id,
+        medicationName: med.name,
+        category: med.category || 'General',
+        batchNumber: med.batch_number,
+        expiryDate: med.expiry_date,
+        daysUntilExpiry,
+        currentStock: med.current_stock,
+        originalPrice,
+        recommendedDiscountPercent,
+        discountedPrice,
+        valueAtRisk,
+        potentialRecovery,
+        urgency,
+      });
+    });
+
+    // Sort by days until expiry ascending (most urgent first)
+    items.sort((a, b) => a.daysUntilExpiry - b.daysUntilExpiry);
+
+    const totalValueAtRisk = items.reduce((sum, item) => sum + item.valueAtRisk, 0);
+    const totalPotentialRecovery = items.reduce((sum, item) => sum + item.potentialRecovery, 0);
+
+    return {
+      generatedAt: now.toISOString(),
+      items,
+      totalItems: items.length,
+      totalValueAtRisk,
+      totalPotentialRecovery,
+      criticalCount: items.filter(i => i.urgency === 'critical').length,
+      urgentCount: items.filter(i => i.urgency === 'urgent').length,
+      warningCount: items.filter(i => i.urgency === 'warning').length,
+      noticeCount: items.filter(i => i.urgency === 'notice').length,
     };
   }
 }

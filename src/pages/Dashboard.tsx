@@ -25,6 +25,7 @@ import { InventoryCharts } from '@/components/dashboard/InventoryCharts';
 import { BranchLockedOverlay } from '@/components/branches/BranchLockedOverlay';
 import { PendingQuickItemsPanel } from '@/components/inventory/PendingQuickItemsPanel';
 import { PurchaseOrderDraftCard } from '@/components/dashboard/PurchaseOrderDraftCard';
+import { ClearanceQueueCard } from '@/components/dashboard/ClearanceQueueCard';
 import { ProductTour } from '@/components/ProductTour';
 import { PWAInstallPrompt } from '@/components/pwa/PWAInstallPrompt';
 import { startOfDay, endOfDay, startOfWeek, startOfMonth, endOfMonth, parseISO } from 'date-fns';
@@ -66,7 +67,7 @@ const Dashboard = () => {
   const { isOwnerOrManager, userRole, hasPermission, isLoading: permissionsLoading } = usePermissions();
   const { formatPrice } = useCurrency();
   const { currentBranchName, isBranchLocked, activeBranchesLimit, currentBranchPosition } = useBranchContext();
-  const { dailyBriefing, todaysPriorities, purchaseDraft, recordActionClick } = useAutopilotEngine();
+  const { dailyBriefing, todaysPriorities, purchaseDraft, clearanceQueue, recordActionClick } = useAutopilotEngine();
 
   // ── Financial summary from sales ─────────────────────────────────────────
   const financials = useMemo(() => {
@@ -227,6 +228,18 @@ const Dashboard = () => {
             >
               <PurchaseOrderDraftCard
                 draft={purchaseDraft}
+                onRecordAction={recordActionClick}
+              />
+            </motion.section>
+
+            {/* 4. Automatic Clearance Queue (Phase 2.2 - Sleek & Collapsible) */}
+            <motion.section
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.12 }}
+            >
+              <ClearanceQueueCard
+                queue={clearanceQueue}
                 onRecordAction={recordActionClick}
               />
             </motion.section>
