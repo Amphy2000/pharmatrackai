@@ -48,7 +48,7 @@ import Explore from "./pages/Explore";
 import PartnerLanding from "./pages/PartnerLanding";
 import MarketplaceInsights from "./pages/MarketplaceInsights";
 import NotFound from "./pages/NotFound";
-import OnboardingTour from "./components/OnboardingTour";
+import { ProductTour } from "./components/ProductTour";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -287,7 +287,7 @@ const App = () => (
                             />
                             <Route path="*" element={<NotFound />} />
                           </Routes>
-                          <OnboardingTour />
+                          <ProductTour />
                         </ErrorBoundary>
                       </BrowserRouter>
                     </TooltipProvider>

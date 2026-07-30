@@ -54,15 +54,12 @@ export const ProductTourProvider = ({ children }: { children: ReactNode }) => {
       setHasCompletedTour(true);
     } else {
       setHasCompletedTour(false);
-      // Auto-start disabled in favor of new OnboardingTour
-      /*
       const timer = setTimeout(() => {
         if (tourSteps.length > 0) {
           setIsOpen(true);
         }
-      }, 1500);
+      }, 2000);
       return () => clearTimeout(timer);
-      */
     }
   }, [user?.id, userRole, permissionsLoading, tourSteps.length]);
 
@@ -71,6 +68,17 @@ export const ProductTourProvider = ({ children }: { children: ReactNode }) => {
     setIsPaused(false);
     setIsOpen(true);
   }, []);
+
+  // Listen for manual trigger from header or help buttons
+  useEffect(() => {
+    const handleStartEvent = () => {
+      startTour();
+    };
+    window.addEventListener('start-onboarding-tour', handleStartEvent);
+    return () => {
+      window.removeEventListener('start-onboarding-tour', handleStartEvent);
+    };
+  }, [startTour]);
 
   const completeTourFn = useCallback(() => {
     if (user?.id) {
@@ -116,9 +124,8 @@ export const ProductTourProvider = ({ children }: { children: ReactNode }) => {
   }, []);
 
   const resetTour = useCallback(() => {
-    // Dispatch event for the new Driver.js onboarding tour
-    window.dispatchEvent(new CustomEvent('start-onboarding-tour'));
-  }, []);
+    startTour();
+  }, [startTour]);
 
   return (
     <ProductTourContext.Provider
