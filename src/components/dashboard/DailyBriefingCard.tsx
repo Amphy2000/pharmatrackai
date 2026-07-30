@@ -46,33 +46,33 @@ export const DailyBriefingCard = ({ briefing, userName, onRecordAction }: DailyB
           </span>
         </div>
 
-        {/* Concise Summary Bullet Points */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 my-4">
-          <div className="flex items-start gap-2.5 p-3 rounded-xl bg-white/5 border border-white/10 text-sm text-slate-200">
-            <Clock className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
-            <span>
-              <strong className="text-white">{briefing.expiringCount30Days} medicines</strong> expiring within 30 days
-            </span>
-          </div>
-
+        {/* Concise Summary Bullet Points (Phase 2.3 Opening Briefing) */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 my-4">
           <div className="flex items-start gap-2.5 p-3 rounded-xl bg-white/5 border border-white/10 text-sm text-slate-200">
             <Package className="h-4 w-4 text-rose-400 shrink-0 mt-0.5" />
             <span>
-              <strong className="text-white">{briefing.lowStockCount} products</strong> below reorder level
+              <strong className="text-white">{briefing.lowStockCount} medicines</strong> require restocking
             </span>
           </div>
 
           <div className="flex items-start gap-2.5 p-3 rounded-xl bg-white/5 border border-white/10 text-sm text-slate-200">
-            <TrendingUp className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" />
+            <Clock className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
             <span>
-              Yesterday's sales <strong className="text-white">{briefing.yesterdaySalesChange >= 0 ? `increased by ${briefing.yesterdaySalesChange}%` : `decreased by ${Math.abs(briefing.yesterdaySalesChange)}%`}</strong>
+              <strong className="text-white">{briefing.expiringCount30Days} medicines</strong> expire this month
             </span>
           </div>
 
           <div className="flex items-start gap-2.5 p-3 rounded-xl bg-white/5 border border-white/10 text-sm text-slate-200">
             <Sparkles className="h-4 w-4 text-indigo-400 shrink-0 mt-0.5" />
             <span>
-              Fastest seller: <strong className="text-white">{briefing.fastestSellingMedName}</strong>
+              Est. supplier order: <strong className="text-emerald-400">₦{briefing.estimatedSupplierOrderCost?.toLocaleString() || '0'}</strong>
+            </span>
+          </div>
+
+          <div className="flex items-start gap-2.5 p-3 rounded-xl bg-white/5 border border-white/10 text-sm text-slate-200">
+            <TrendingUp className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" />
+            <span>
+              Yesterday's sales <strong className="text-white">{briefing.yesterdaySalesChange >= 0 ? `up +${briefing.yesterdaySalesChange}%` : `down ${briefing.yesterdaySalesChange}%`}</strong>
             </span>
           </div>
         </div>

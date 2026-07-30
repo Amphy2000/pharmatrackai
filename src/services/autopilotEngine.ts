@@ -66,6 +66,7 @@ export interface DailyBriefing {
   greeting: string;
   expiringCount30Days: number;
   lowStockCount: number;
+  estimatedSupplierOrderCost: number;
   yesterdaySalesChange: number;
   fastestSellingMedName: string;
   stagnantMedName?: string;
@@ -367,7 +368,7 @@ export class AutopilotEngine {
   }
 
   /**
-   * 4. Daily Briefing Card Generator
+   * 4. Daily Briefing Card Generator (Phase 2.3 - Opening Briefing)
    */
   static computeDailyBriefing(
     medications: Medication[] = [],
@@ -378,10 +379,13 @@ export class AutopilotEngine {
 
     const expiryBuckets = this.computeExpiryBuckets(medications);
     const intel = this.computeDashboardIntelligence(medications, sales);
+    const purchaseDraft = this.computePurchaseOrderDraft(medications, sales);
+    const clearanceQueue = this.computeClearanceQueue(medications);
 
     const expiringCount30Days = expiryBuckets.expired.length + expiryBuckets.within30Days.length;
     const lowStockCount = medications.filter(m => m.current_stock <= m.reorder_level).length;
     const yesterdaySalesChange = intel.salesGrowthPercent;
+    const estimatedSupplierOrderCost = purchaseDraft.totalEstimatedCost;
 
     const fastestSellingMedName = intel.fastestSelling[0]?.name || 'Paracetamol 500mg';
 
@@ -390,29 +394,34 @@ export class AutopilotEngine {
     const stagnantMedName = stagnant?.name;
     const stagnantDays = stagnant?.daysWithoutSale || 42;
 
-    // Determine recommended first action
-    let recommendedActionText = 'Review low-stock medicines to prevent lost sales.';
-    let recommendedActionBtnText = 'Review Low Stock';
-    let recommendedActionRoute = '/inventory?filter=low-stock';
+    // Determine recommended first action (ranked by operational criticality)
+    let recommendedActionText = 'Open Point of Sale to begin today\'s dispensing.';
+    let recommendedActionBtnText = 'Open POS';
+    let recommendedActionRoute = '/checkout';
 
     if (expiryBuckets.expired.length > 0) {
-      recommendedActionText = `Unshelve ${expiryBuckets.expired.length} expired medicine(s) immediately for compliance.`;
+      recommendedActionText = `Unshelve ${expiryBuckets.expired.length} expired medicine(s) immediately for PCN compliance.`;
       recommendedActionBtnText = 'Clear Expired Stock';
       recommendedActionRoute = '/inventory?filter=expired';
+    } else if (purchaseDraft.totalItems > 0) {
+      recommendedActionText = `Review & approve today's supplier purchase draft (${purchaseDraft.totalItems} items, ₦${estimatedSupplierOrderCost.toLocaleString()}).`;
+      recommendedActionBtnText = 'Review Purchase Draft';
+      recommendedActionRoute = '/inventory?filter=low-stock';
+    } else if (clearanceQueue.totalItems > 0) {
+      recommendedActionText = `Apply clearance discount to ${clearanceQueue.totalItems} medicines expiring soon.`;
+      recommendedActionBtnText = 'Review Clearance';
+      recommendedActionRoute = '/inventory?filter=expiring';
     } else if (lowStockCount > 0) {
-      recommendedActionText = `Restock ${lowStockCount} item(s) currently below reorder levels.`;
+      recommendedActionText = `Restock ${lowStockCount} item(s) currently below reorder thresholds.`;
       recommendedActionBtnText = 'Restock Items';
       recommendedActionRoute = '/inventory?filter=low-stock';
-    } else if (expiryBuckets.within30Days.length > 0) {
-      recommendedActionText = `Set clearance discount on ${expiryBuckets.within30Days.length} items expiring this month.`;
-      recommendedActionBtnText = 'Set Discount';
-      recommendedActionRoute = '/inventory?filter=expiring';
     }
 
     return {
       greeting,
       expiringCount30Days,
       lowStockCount,
+      estimatedSupplierOrderCost,
       yesterdaySalesChange,
       fastestSellingMedName,
       stagnantMedName,
