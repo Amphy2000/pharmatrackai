@@ -10,11 +10,14 @@ import { useUserProfile } from '@/hooks/useUserProfile';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { useBranchContext } from '@/contexts/BranchContext';
+import { useAutopilotEngine } from '@/hooks/useAutopilotEngine';
 import { Header } from '@/components/Header';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AIInsightsPanel } from '@/components/dashboard/AIInsightsPanel';
+import { DailyBriefingCard } from '@/components/dashboard/DailyBriefingCard';
+import { TodaysPrioritiesSection } from '@/components/dashboard/TodaysPrioritiesSection';
 import { FinancialSummary } from '@/components/dashboard/FinancialSummary';
 import { SalesAnalytics } from '@/components/dashboard/SalesAnalytics';
 import { ManagerKPIPanel } from '@/components/dashboard/ManagerKPIPanel';
@@ -35,7 +38,6 @@ import {
   DollarSign,
   BarChart3,
   Home,
-  Building2,
   Settings,
   Users,
   Zap,
@@ -62,7 +64,8 @@ const Dashboard = () => {
   const { sales } = useSales();
   const { isOwnerOrManager, userRole, hasPermission, isLoading: permissionsLoading } = usePermissions();
   const { formatPrice } = useCurrency();
-  const { currentBranchName, currentBranchId, isBranchLocked, activeBranchesLimit, currentBranchPosition } = useBranchContext();
+  const { currentBranchName, isBranchLocked, activeBranchesLimit, currentBranchPosition } = useBranchContext();
+  const { dailyBriefing, todaysPriorities, recordActionClick } = useAutopilotEngine();
 
   // ── Financial summary from sales ─────────────────────────────────────────
   const financials = useMemo(() => {
@@ -97,22 +100,6 @@ const Dashboard = () => {
     };
   }, [sales]);
 
-  // ── Stock health alerts ───────────────────────────────────────────────────
-  const stockAlerts = useMemo(() => {
-    if (!branchMedications?.length) return { expiredCount: 0, expiredValue: 0, expiringSoonCount: 0, expiringValue: 0, outOfStockCount: 0 };
-    const today = new Date();
-    const soon = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000);
-
-    let expiredCount = 0, expiredValue = 0, expiringSoonCount = 0, expiringValue = 0, outOfStockCount = 0;
-    branchMedications.forEach(m => {
-      const exp = new Date(m.expiry_date);
-      if (exp < today) { expiredCount++; expiredValue += m.branch_stock * m.unit_price; }
-      else if (exp <= soon && m.branch_stock > 0) { expiringSoonCount++; expiringValue += m.branch_stock * m.unit_price; }
-      if (m.branch_stock === 0) outOfStockCount++;
-    });
-    return { expiredCount, expiredValue, expiringSoonCount, expiringValue, outOfStockCount };
-  }, [branchMedications]);
-
   // ── Loading / auth guards ─────────────────────────────────────────────────
   if (authLoading || pharmacyLoading || permissionsLoading) {
     return (
@@ -135,8 +122,6 @@ const Dashboard = () => {
   if (userRole === 'staff' && hasPermission('view_dashboard')) { navigate('/staff-dashboard', { replace: true }); return null; }
   if (userRole === 'manager') { navigate('/manager-dashboard', { replace: true }); return null; }
 
-  const branchMetrics = getBranchMetrics();
-
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">
       {isBranchLocked && (
@@ -152,29 +137,18 @@ const Dashboard = () => {
 
       <main className="container mx-auto px-4 sm:px-6 py-6 sm:py-8 max-w-[1400px]">
 
-        {/* ── Welcome ──────────────────────────────────────────────────── */}
+        {/* ── 1. Daily Briefing Card (Autopilot Engine Summary) ───────────── */}
         <motion.section
-          initial={{ opacity: 0, y: -16 }}
+          initial={{ opacity: 0, y: -12 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
+          transition={{ duration: 0.4 }}
           className="mb-6"
         >
-          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div>
-              <h1 className="text-2xl sm:text-3xl font-bold font-display tracking-tight">
-                Good {new Date().getHours() < 12 ? 'morning' : new Date().getHours() < 17 ? 'afternoon' : 'evening'},{' '}
-                <span className="text-gradient">{displayName}</span>
-              </h1>
-              <p className="text-sm text-muted-foreground mt-0.5">
-                {pharmacy.name}{currentBranchName ? ` · ${currentBranchName}` : ''}
-              </p>
-            </div>
-            <div className="flex items-center gap-2">
-              <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-xs font-medium text-emerald-600 dark:text-emerald-400">
-                <Zap className="h-3 w-3" /> Autopilot Active
-              </span>
-            </div>
-          </div>
+          <DailyBriefingCard
+            briefing={dailyBriefing}
+            userName={displayName}
+            onRecordAction={recordActionClick}
+          />
         </motion.section>
 
         {/* ── Tabs ─────────────────────────────────────────────────────── */}
@@ -189,11 +163,11 @@ const Dashboard = () => {
           </TabsList>
 
           {/* ════════════════════════════════════════════════════════════
-              HOME TAB — clean owner view
+              HOME TAB
           ════════════════════════════════════════════════════════════ */}
-          <TabsContent value="home" className="space-y-5">
+          <TabsContent value="home" className="space-y-6">
 
-            {/* 1. Hero: Today's Money — the only numbers owners look at daily */}
+            {/* 1. Hero: Today's Financial Metrics */}
             <motion.section variants={containerVariants} initial="hidden" animate="visible">
               <div className="grid grid-cols-2 gap-4">
                 {/* Today's Revenue */}
@@ -229,7 +203,7 @@ const Dashboard = () => {
                 </motion.div>
               </div>
 
-              {/* Week & Month as smaller secondary numbers */}
+              {/* Week & Month Revenue Breakdown */}
               <motion.div variants={itemVariants}>
                 <div className="grid grid-cols-2 gap-3 mt-3">
                   <div className="px-4 py-3 rounded-xl bg-muted/40 border border-border/40">
@@ -244,95 +218,19 @@ const Dashboard = () => {
               </motion.div>
             </motion.section>
 
-            {/* 2. Money at Risk — the 3 things bleeding cash right now */}
-            {(stockAlerts.expiredCount > 0 || stockAlerts.expiringSoonCount > 0 || stockAlerts.outOfStockCount > 0) && (
-              <motion.section
-                initial={{ opacity: 0, y: 16 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.15 }}
-              >
-                <div className="flex items-center gap-2 mb-3">
-                  <AlertTriangle className="h-4 w-4 text-destructive" />
-                  <h2 className="text-sm font-semibold">Needs Attention</h2>
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {/* 2. Today's Priorities Action Center (Priority Score 0-100 Sorted) */}
+            <motion.section
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.15 }}
+            >
+              <TodaysPrioritiesSection
+                priorities={todaysPriorities}
+                onRecordAction={recordActionClick}
+              />
+            </motion.section>
 
-                  {/* Expired */}
-                  <div
-                    className={cn(
-                      'p-4 rounded-xl border transition-all cursor-pointer hover:scale-[1.01]',
-                      stockAlerts.expiredCount > 0
-                        ? 'bg-destructive/10 border-destructive/30 hover:bg-destructive/15'
-                        : 'bg-muted/30 border-border/30 opacity-60'
-                    )}
-                    onClick={() => navigate('/inventory?filter=expired')}
-                  >
-                    <div className="flex items-center gap-2 mb-2">
-                      <XCircle className={cn('h-4 w-4', stockAlerts.expiredCount > 0 ? 'text-destructive' : 'text-muted-foreground')} />
-                      <span className="text-xs font-medium">Expired Stock</span>
-                    </div>
-                    <p className={cn('text-2xl font-bold tabular-nums', stockAlerts.expiredCount > 0 ? 'text-destructive' : 'text-muted-foreground')}>
-                      {stockAlerts.expiredCount}
-                    </p>
-                    {stockAlerts.expiredCount > 0 ? (
-                      <p className="text-xs text-destructive/70 mt-1">{formatPrice(stockAlerts.expiredValue)} written off</p>
-                    ) : (
-                      <p className="text-xs text-muted-foreground mt-1">All clear ✓</p>
-                    )}
-                  </div>
-
-                  {/* Expiring Soon */}
-                  <div
-                    className={cn(
-                      'p-4 rounded-xl border transition-all cursor-pointer hover:scale-[1.01]',
-                      stockAlerts.expiringSoonCount > 0
-                        ? 'bg-amber-500/10 border-amber-500/30 hover:bg-amber-500/15'
-                        : 'bg-muted/30 border-border/30 opacity-60'
-                    )}
-                    onClick={() => navigate('/inventory?filter=expiring')}
-                  >
-                    <div className="flex items-center gap-2 mb-2">
-                      <Clock className={cn('h-4 w-4', stockAlerts.expiringSoonCount > 0 ? 'text-amber-500' : 'text-muted-foreground')} />
-                      <span className="text-xs font-medium">Expiring Soon</span>
-                    </div>
-                    <p className={cn('text-2xl font-bold tabular-nums', stockAlerts.expiringSoonCount > 0 ? 'text-amber-500' : 'text-muted-foreground')}>
-                      {stockAlerts.expiringSoonCount}
-                    </p>
-                    {stockAlerts.expiringSoonCount > 0 ? (
-                      <p className="text-xs text-amber-600/70 mt-1">{formatPrice(stockAlerts.expiringValue)} at risk · discount now</p>
-                    ) : (
-                      <p className="text-xs text-muted-foreground mt-1">All clear ✓</p>
-                    )}
-                  </div>
-
-                  {/* Out of Stock */}
-                  <div
-                    className={cn(
-                      'p-4 rounded-xl border transition-all cursor-pointer hover:scale-[1.01]',
-                      stockAlerts.outOfStockCount > 0
-                        ? 'bg-orange-500/10 border-orange-500/30 hover:bg-orange-500/15'
-                        : 'bg-muted/30 border-border/30 opacity-60'
-                    )}
-                    onClick={() => navigate('/inventory?filter=outofstock')}
-                  >
-                    <div className="flex items-center gap-2 mb-2">
-                      <Package className={cn('h-4 w-4', stockAlerts.outOfStockCount > 0 ? 'text-orange-500' : 'text-muted-foreground')} />
-                      <span className="text-xs font-medium">Out of Stock</span>
-                    </div>
-                    <p className={cn('text-2xl font-bold tabular-nums', stockAlerts.outOfStockCount > 0 ? 'text-orange-500' : 'text-muted-foreground')}>
-                      {stockAlerts.outOfStockCount}
-                    </p>
-                    {stockAlerts.outOfStockCount > 0 ? (
-                      <p className="text-xs text-orange-600/70 mt-1">Customers walking away → reorder</p>
-                    ) : (
-                      <p className="text-xs text-muted-foreground mt-1">Fully stocked ✓</p>
-                    )}
-                  </div>
-                </div>
-              </motion.section>
-            )}
-
-            {/* 3. Big Action Buttons */}
+            {/* 3. Primary Action CTA Buttons */}
             <motion.section
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
@@ -341,44 +239,53 @@ const Dashboard = () => {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Button
                   id="tour-pos-link"
-                  onClick={() => navigate('/checkout')}
-                  className="h-28 sm:h-36 flex flex-col items-center justify-center gap-3 bg-gradient-primary hover:opacity-90 shadow-glow-primary btn-glow text-lg font-semibold"
+                  onClick={() => {
+                    recordActionClick('/checkout');
+                    navigate('/checkout');
+                  }}
+                  className="h-28 sm:h-32 flex flex-col items-center justify-center gap-2 bg-gradient-primary hover:opacity-90 shadow-glow-primary btn-glow text-lg font-semibold"
                 >
-                  <ShoppingCart className="h-9 w-9 sm:h-11 sm:w-11" />
+                  <ShoppingCart className="h-9 w-9 sm:h-10 sm:w-10" />
                   Open Point of Sale
                 </Button>
                 <Button
-                  onClick={() => navigate('/inventory')}
+                  onClick={() => {
+                    recordActionClick('/inventory');
+                    navigate('/inventory');
+                  }}
                   variant="outline"
-                  className="h-28 sm:h-36 flex flex-col items-center justify-center gap-3 border-2 border-primary/30 hover:bg-primary/5 hover:border-primary/50 text-lg font-semibold group"
+                  className="h-28 sm:h-32 flex flex-col items-center justify-center gap-2 border-2 border-primary/30 hover:bg-primary/5 hover:border-primary/50 text-lg font-semibold group"
                 >
-                  <Package className="h-9 w-9 sm:h-11 sm:w-11 text-primary group-hover:scale-110 transition-transform" />
-                  Manage Stock
+                  <Package className="h-9 w-9 sm:h-10 sm:w-10 text-primary group-hover:scale-110 transition-transform" />
+                  Manage Inventory
                 </Button>
               </div>
             </motion.section>
 
-            {/* 4. Pending quick-add items (owner only) */}
+            {/* 4. Pending quick-add items */}
             {isOwnerOrManager && (
               <motion.section initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
                 <PendingQuickItemsPanel />
               </motion.section>
             )}
 
-            {/* 5. AI Business Insights — text-only, max 4 cards */}
+            {/* 5. Autopilot Business Insights */}
             {medications.length > 0 && (
               <motion.section initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
                 <AIInsightsPanel medications={medications} />
               </motion.section>
             )}
 
-            {/* 6. Quick Nav — 3 links only */}
+            {/* 6. Quick Nav */}
             <motion.section initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}>
               <div className="grid grid-cols-3 gap-3">
                 <Button
                   variant="outline"
                   className="h-16 flex flex-col items-center justify-center gap-1.5 hover:bg-primary/5 hover:border-primary/30 transition-all group"
-                  onClick={() => navigate('/sales')}
+                  onClick={() => {
+                    recordActionClick('/sales');
+                    navigate('/sales');
+                  }}
                 >
                   <TrendingUp className="h-4 w-4 group-hover:text-primary transition-colors" />
                   <span className="text-xs">Sales</span>
@@ -386,7 +293,10 @@ const Dashboard = () => {
                 <Button
                   variant="outline"
                   className="h-16 flex flex-col items-center justify-center gap-1.5 hover:bg-primary/5 hover:border-primary/30 transition-all group"
-                  onClick={() => navigate('/customers')}
+                  onClick={() => {
+                    recordActionClick('/customers');
+                    navigate('/customers');
+                  }}
                 >
                   <Users className="h-4 w-4 group-hover:text-primary transition-colors" />
                   <span className="text-xs">Customers</span>
@@ -394,7 +304,10 @@ const Dashboard = () => {
                 <Button
                   variant="outline"
                   className="h-16 flex flex-col items-center justify-center gap-1.5 hover:bg-primary/5 hover:border-primary/30 transition-all group"
-                  onClick={() => navigate('/settings')}
+                  onClick={() => {
+                    recordActionClick('/settings');
+                    navigate('/settings');
+                  }}
                 >
                   <Settings className="h-4 w-4 group-hover:text-primary transition-colors" />
                   <span className="text-xs">Settings</span>
@@ -404,32 +317,28 @@ const Dashboard = () => {
           </TabsContent>
 
           {/* ════════════════════════════════════════════════════════════
-              ANALYTICS TAB — for when owner wants to go deeper
+              ANALYTICS TAB
           ════════════════════════════════════════════════════════════ */}
           <TabsContent value="analytics" className="space-y-6">
 
-            {/* Sales Revenue & Profit over time */}
             {isOwnerOrManager && medications.length > 0 && (
               <motion.section initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
                 <SalesAnalytics />
               </motion.section>
             )}
 
-            {/* Financial Summary — inventory value, expired loss */}
             {isOwnerOrManager && medications.length > 0 && (
               <motion.section initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
                 <FinancialSummary medications={medications} />
               </motion.section>
             )}
 
-            {/* Manager KPI tiles */}
             {isOwnerOrManager && (
               <motion.section initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15 }}>
                 <ManagerKPIPanel />
               </motion.section>
             )}
 
-            {/* Inventory breakdown charts */}
             {medications.length > 0 && (
               <motion.section initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }}>
                 <InventoryCharts medications={medications} />

@@ -62,6 +62,33 @@ export interface AutopilotInsight {
   valueAmount?: number;
 }
 
+export interface DailyBriefing {
+  greeting: string;
+  expiringCount30Days: number;
+  lowStockCount: number;
+  yesterdaySalesChange: number;
+  fastestSellingMedName: string;
+  stagnantMedName?: string;
+  stagnantDays?: number;
+  recommendedActionText: string;
+  recommendedActionBtnText: string;
+  recommendedActionRoute: string;
+}
+
+export interface PriorityActionItem {
+  id: string;
+  priorityScore: number; // 0-100 score
+  type: 'critical_out' | 'expired' | 'critical_expiry' | 'low_stock' | 'fast_mover_risk' | 'slow_moving';
+  title: string;
+  medName: string;
+  medId: string;
+  reason: string;
+  recommendedAction: string;
+  btnLabel: string;
+  actionRoute: string;
+  valueImpact?: number;
+}
+
 export class AutopilotEngine {
 
   /**
@@ -77,7 +104,6 @@ export class AutopilotEngine {
     const now = new Date();
     const cutoffDate = subDays(now, lookbackDays);
 
-    // Group sales by medication_id for the last N days
     const salesByMed: Record<string, number> = {};
     sales.forEach(sale => {
       if (sale.medication_id && parseISO(sale.sale_date) >= cutoffDate) {
@@ -95,12 +121,10 @@ export class AutopilotEngine {
       const isOut = med.current_stock === 0;
 
       if (isLowStock || avgDailyConsumption > 0) {
-        // Estimated days until stock hits 0
         const estimatedEmptyDays = avgDailyConsumption > 0 
           ? Math.ceil(med.current_stock / avgDailyConsumption)
           : (med.current_stock === 0 ? 0 : 999);
 
-        // Standard reorder buffer: 14 days of average stock + reorder level deficit
         const targetStock = Math.max(med.reorder_level * 2, Math.ceil(avgDailyConsumption * 14));
         const suggestedQuantity = Math.max(0, targetStock - med.current_stock);
 
@@ -117,7 +141,7 @@ export class AutopilotEngine {
             reorderLevel: med.reorder_level,
             avgDailyConsumption,
             estimatedEmptyDays,
-            suggestedQuantity: Math.max(suggestedQuantity, 10), // minimum batch order
+            suggestedQuantity: Math.max(suggestedQuantity, 10),
             urgency,
             category: med.category,
             costPrice: med.cost_price || 0,
@@ -167,7 +191,6 @@ export class AutopilotEngine {
       }
     });
 
-    // Sort buckets by most urgent
     result.expired.sort((a, b) => a.daysUntilExpiry - b.daysUntilExpiry);
     result.within30Days.sort((a, b) => a.daysUntilExpiry - b.daysUntilExpiry);
     result.within60Days.sort((a, b) => a.daysUntilExpiry - b.daysUntilExpiry);
@@ -177,7 +200,161 @@ export class AutopilotEngine {
   }
 
   /**
-   * 3. Dashboard Intelligence & Growth Metrics
+   * 3. Priority Scoring System (0-100)
+   */
+  static computePrioritizedActions(
+    medications: Medication[] = [],
+    sales: SaleRecord[] = []
+  ): PriorityActionItem[] {
+    const items: PriorityActionItem[] = [];
+    const expiry = this.computeExpiryBuckets(medications);
+    const reorders = this.computeReorderSuggestions(medications, sales);
+
+    // 100: Completely out of stock
+    medications.filter(m => m.current_stock === 0).forEach(m => {
+      items.push({
+        id: `crit-out-${m.id}`,
+        priorityScore: 100,
+        type: 'critical_out',
+        title: 'Critical Out of Stock',
+        medName: m.name,
+        medId: m.id,
+        reason: `${m.name} has 0 units left. Patients are being turned away.`,
+        recommendedAction: `Create urgent purchase order for ${m.reorder_level * 3 || 30} units.`,
+        btnLabel: 'Restock Now',
+        actionRoute: `/inventory?filter=outofstock`,
+      });
+    });
+
+    // 95: Expired items still on shelf
+    expiry.expired.forEach(m => {
+      items.push({
+        id: `expired-${m.id}`,
+        priorityScore: 95,
+        type: 'expired',
+        title: 'Expired Stock Action Needed',
+        medName: m.name,
+        medId: m.id,
+        reason: `Expired on ${new Date(m.expiry_date).toLocaleDateString()}. Unshelve to comply with PCN regulations.`,
+        recommendedAction: 'Log for disposal and clear from active inventory.',
+        btnLabel: 'Unshelve Item',
+        actionRoute: `/inventory?filter=expired`,
+        valueImpact: m.valueAtRisk,
+      });
+    });
+
+    // 92: Expiring in <= 7 days
+    expiry.within30Days.filter(m => m.daysUntilExpiry <= 7).forEach(m => {
+      items.push({
+        id: `crit-exp-${m.id}`,
+        priorityScore: 92,
+        type: 'critical_expiry',
+        title: 'Expiring This Week',
+        medName: m.name,
+        medId: m.id,
+        reason: `Expires in ${m.daysUntilExpiry} days. ${m.current_stock} units left on shelf.`,
+        recommendedAction: 'Apply 35% clearance discount immediately.',
+        btnLabel: 'Discount',
+        actionRoute: `/inventory?filter=expiring`,
+        valueImpact: m.valueAtRisk,
+      });
+    });
+
+    // 81: Low stock below minimum threshold
+    reorders.filter(r => r.currentStock > 0 && r.currentStock <= r.reorderLevel).forEach(r => {
+      items.push({
+        id: `low-stock-${r.medicationId}`,
+        priorityScore: 81,
+        type: 'low_stock',
+        title: 'Low Stock Replenishment',
+        medName: r.medicationName,
+        medId: r.medicationId,
+        reason: `Only ${r.currentStock} units left (below minimum reorder level of ${r.reorderLevel}).`,
+        recommendedAction: `Order ${r.suggestedQuantity} units from supplier.`,
+        btnLabel: 'Restock',
+        actionRoute: `/inventory?filter=low-stock`,
+      });
+    });
+
+    // 78: Fast mover running empty soon (empty in <= 5 days)
+    reorders.filter(r => r.estimatedEmptyDays <= 5 && r.currentStock > r.reorderLevel).forEach(r => {
+      items.push({
+        id: `fast-risk-${r.medicationId}`,
+        priorityScore: 78,
+        type: 'fast_mover_risk',
+        title: 'Fast Mover Depletion Risk',
+        medName: r.medicationName,
+        medId: r.medicationId,
+        reason: `High daily demand (${r.avgDailyConsumption} units/day). Runs empty in ~${r.estimatedEmptyDays} days.`,
+        recommendedAction: `Pre-order ${r.suggestedQuantity} units now to prevent stockout.`,
+        btnLabel: 'Review Order',
+        actionRoute: `/inventory?filter=low-stock`,
+      });
+    });
+
+    // Sort descending by priority score
+    return items.sort((a, b) => b.priorityScore - a.priorityScore).slice(0, 6);
+  }
+
+  /**
+   * 4. Daily Briefing Card Generator
+   */
+  static computeDailyBriefing(
+    medications: Medication[] = [],
+    sales: SaleRecord[] = []
+  ): DailyBriefing {
+    const hour = new Date().getHours();
+    const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+
+    const expiryBuckets = this.computeExpiryBuckets(medications);
+    const intel = this.computeDashboardIntelligence(medications, sales);
+
+    const expiringCount30Days = expiryBuckets.expired.length + expiryBuckets.within30Days.length;
+    const lowStockCount = medications.filter(m => m.current_stock <= m.reorder_level).length;
+    const yesterdaySalesChange = intel.salesGrowthPercent;
+
+    const fastestSellingMedName = intel.fastestSelling[0]?.name || 'Paracetamol 500mg';
+
+    // Find stagnant medicine (highest stock with no sale in 30+ days)
+    const stagnant = intel.slowMoving[0];
+    const stagnantMedName = stagnant?.name;
+    const stagnantDays = stagnant?.daysWithoutSale || 42;
+
+    // Determine recommended first action
+    let recommendedActionText = 'Review low-stock medicines to prevent lost sales.';
+    let recommendedActionBtnText = 'Review Low Stock';
+    let recommendedActionRoute = '/inventory?filter=low-stock';
+
+    if (expiryBuckets.expired.length > 0) {
+      recommendedActionText = `Unshelve ${expiryBuckets.expired.length} expired medicine(s) immediately for compliance.`;
+      recommendedActionBtnText = 'Clear Expired Stock';
+      recommendedActionRoute = '/inventory?filter=expired';
+    } else if (lowStockCount > 0) {
+      recommendedActionText = `Restock ${lowStockCount} item(s) currently below reorder levels.`;
+      recommendedActionBtnText = 'Restock Items';
+      recommendedActionRoute = '/inventory?filter=low-stock';
+    } else if (expiryBuckets.within30Days.length > 0) {
+      recommendedActionText = `Set clearance discount on ${expiryBuckets.within30Days.length} items expiring this month.`;
+      recommendedActionBtnText = 'Set Discount';
+      recommendedActionRoute = '/inventory?filter=expiring';
+    }
+
+    return {
+      greeting,
+      expiringCount30Days,
+      lowStockCount,
+      yesterdaySalesChange,
+      fastestSellingMedName,
+      stagnantMedName,
+      stagnantDays,
+      recommendedActionText,
+      recommendedActionBtnText,
+      recommendedActionRoute,
+    };
+  }
+
+  /**
+   * 5. Dashboard Intelligence & Growth Metrics
    */
   static computeDashboardIntelligence(
     medications: Medication[] = [],
@@ -205,21 +382,17 @@ export class AutopilotEngine {
       const medId = sale.medication_id;
       const category = sale.medication?.category || 'General';
 
-      // Today financial summary
       if (saleDate >= todayStart && saleDate <= todayEnd) {
         todaySales += total;
-        // Estimated 25% margin if cost_price missing
         const unitCost = (sale.unit_price || 0) * 0.75;
         todayProfit += total - (unitCost * qty);
         todayReceipts.add(sale.id);
       }
 
-      // Yesterday financial summary
       if (saleDate >= yesterdayStart && saleDate <= yesterdayEnd) {
         yesterdaySales += total;
       }
 
-      // Aggregations over last 30 days
       if (saleDate >= thirtyDaysAgo && medId) {
         if (!salesByMed[medId]) {
           salesByMed[medId] = { qty: 0, revenue: 0, lastSaleDate: saleDate };
@@ -230,14 +403,12 @@ export class AutopilotEngine {
           salesByMed[medId].lastSaleDate = saleDate;
         }
 
-        // Category breakdown
         if (!categoryRevenue[category]) categoryRevenue[category] = { count: 0, revenue: 0 };
         categoryRevenue[category].count += qty;
         categoryRevenue[category].revenue += total;
       }
     });
 
-    // Fastest selling medicines
     const fastestSelling = Object.entries(salesByMed)
       .map(([medId, data]) => {
         const med = medications.find(m => m.id === medId);
@@ -251,7 +422,6 @@ export class AutopilotEngine {
       .sort((a, b) => b.unitsSold - a.unitsSold)
       .slice(0, 5);
 
-    // Slow moving medicines (has stock > 10, but 0 sales in 30 days)
     const slowMoving = medications
       .filter(m => m.current_stock > 10 && (!salesByMed[m.id] || salesByMed[m.id].qty === 0))
       .map(m => ({
@@ -264,22 +434,18 @@ export class AutopilotEngine {
       .sort((a, b) => b.valueTiedUp - a.valueTiedUp)
       .slice(0, 5);
 
-    // Growth calculation
     const salesGrowthPercent = yesterdaySales > 0
       ? Math.round(((todaySales - yesterdaySales) / yesterdaySales) * 100)
       : (todaySales > 0 ? 100 : 0);
 
-    // Stock counts
     const expiryBuckets = this.computeExpiryBuckets(medications);
     const lowStockCount = medications.filter(m => m.current_stock <= m.reorder_level).length;
 
-    // Top categories
     const topCategories = Object.entries(categoryRevenue)
       .map(([cat, val]) => ({ category: cat, count: val.count, revenue: val.revenue }))
       .sort((a, b) => b.revenue - a.revenue)
       .slice(0, 5);
 
-    // Generate actionable insight cards
     const insights: AutopilotInsight[] = [];
 
     if (expiryBuckets.expired.length > 0) {

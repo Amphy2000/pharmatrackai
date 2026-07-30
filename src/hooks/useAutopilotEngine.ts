@@ -3,10 +3,11 @@ import { useMedications } from '@/hooks/useMedications';
 import { useSales } from '@/hooks/useSales';
 import { usePharmacy } from '@/hooks/usePharmacy';
 import { useDbNotifications } from '@/hooks/useDbNotifications';
-import { AutopilotEngine, ReorderSuggestion, ExpiryBucket, DashboardIntelligence } from '@/services/autopilotEngine';
+import { AutopilotEngine, ReorderSuggestion, ExpiryBucket, DashboardIntelligence, DailyBriefing, PriorityActionItem } from '@/services/autopilotEngine';
 import { supabase } from '@/lib/supabase';
 
 const AUTOPILOT_CHECK_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes background check
+const WORKFLOW_MEMORY_KEY = 'pharmatrack_workflow_memory';
 
 export function useAutopilotEngine() {
   const { medications, isLoading: medsLoading } = useMedications();
@@ -15,28 +16,69 @@ export function useAutopilotEngine() {
   const { notifications, fetchNotifications } = useDbNotifications();
   const lastSyncRef = useRef<number>(0);
 
-  // 1. Compute Smart Reorder Suggestions
+  // 1. Workflow Memory: Record user interaction history in localStorage
+  const recordActionClick = useCallback((actionRoute: string) => {
+    try {
+      const stored = localStorage.getItem(WORKFLOW_MEMORY_KEY);
+      const memory: Record<string, number> = stored ? JSON.parse(stored) : {};
+      memory[actionRoute] = (memory[actionRoute] || 0) + 1;
+      localStorage.setItem(WORKFLOW_MEMORY_KEY, JSON.stringify(memory));
+    } catch {
+      // Ignore local storage errors
+    }
+  }, []);
+
+  const getWorkflowMemory = useCallback((): Record<string, number> => {
+    try {
+      const stored = localStorage.getItem(WORKFLOW_MEMORY_KEY);
+      return stored ? JSON.parse(stored) : {};
+    } catch {
+      return {};
+    }
+  }, []);
+
+  // 2. Compute Smart Reorder Suggestions
   const reorderSuggestions: ReorderSuggestion[] = useMemo(() => {
     if (!medications) return [];
     return AutopilotEngine.computeReorderSuggestions(medications, sales || []);
   }, [medications, sales]);
 
-  // 2. Compute Expiry Buckets
+  // 3. Compute Expiry Buckets
   const expiryBuckets: ExpiryBucket = useMemo(() => {
     if (!medications) return { expired: [], within30Days: [], within60Days: [], within90Days: [], totalValueAtRisk: 0 };
     return AutopilotEngine.computeExpiryBuckets(medications);
   }, [medications]);
 
-  // 3. Compute Dashboard Intelligence
+  // 4. Compute Dashboard Intelligence
   const intelligence: DashboardIntelligence = useMemo(() => {
     return AutopilotEngine.computeDashboardIntelligence(medications || [], sales || []);
   }, [medications, sales]);
 
-  // 4. Background Automation & Deduplicated Notification Dispatcher
+  // 5. Compute Daily Briefing
+  const dailyBriefing: DailyBriefing = useMemo(() => {
+    return AutopilotEngine.computeDailyBriefing(medications || [], sales || []);
+  }, [medications, sales]);
+
+  // 6. Compute Today's Priorities (Ranked by 0-100 Priority Score + Workflow Memory Weight)
+  const todaysPriorities: PriorityActionItem[] = useMemo(() => {
+    const rawItems = AutopilotEngine.computePrioritizedActions(medications || [], sales || []);
+    const memory = getWorkflowMemory();
+
+    // Adjust score slightly (+2 per frequent click) to reflect learned user preference
+    return rawItems.map(item => {
+      const freq = memory[item.actionRoute] || 0;
+      const memoryBoost = Math.min(10, freq * 2);
+      return {
+        ...item,
+        priorityScore: Math.min(100, item.priorityScore + memoryBoost),
+      };
+    }).sort((a, b) => b.priorityScore - a.priorityScore);
+  }, [medications, sales, getWorkflowMemory]);
+
+  // 7. Background Automation & Deduplicated Notification Dispatcher
   const runAutopilotBackgroundCheck = useCallback(async () => {
     if (!pharmacy?.id || !medications || medications.length === 0) return;
 
-    // Limit execution to once per 5 minutes to prevent spamming DB
     const nowMs = Date.now();
     if (nowMs - lastSyncRef.current < 5 * 60 * 1000) return;
     lastSyncRef.current = nowMs;
@@ -57,7 +99,6 @@ export function useAutopilotEngine() {
         entity_id?: string;
       }> = [];
 
-      // A. Check Expired Items
       if (expiryBuckets.expired.length > 0) {
         const title = '🚨 Expired Stock Alert';
         const message = `${expiryBuckets.expired.length} medicine(s) have expired. ${expiryBuckets.expired[0].name} requires immediate disposal.`;
@@ -76,7 +117,6 @@ export function useAutopilotEngine() {
         }
       }
 
-      // B. Check 30-Day Expiring Items
       if (expiryBuckets.within30Days.length > 0) {
         const title = '⚠️ Medicines Expiring This Month';
         const message = `${expiryBuckets.within30Days.length} medicine(s) expire within 30 days. Consider setting promotional discounts.`;
@@ -94,7 +134,6 @@ export function useAutopilotEngine() {
         }
       }
 
-      // C. Check Low Stock & Stockouts with Days-to-Empty prediction
       reorderSuggestions.slice(0, 3).forEach(sug => {
         const isOut = sug.currentStock === 0;
         const title = isOut ? `📉 Out of Stock: ${sug.medicationName}` : `📊 Low Stock: ${sug.medicationName}`;
@@ -117,7 +156,6 @@ export function useAutopilotEngine() {
         }
       });
 
-      // D. Growth Trend Notification
       if (intelligence.salesGrowthPercent !== 0 && Math.abs(intelligence.salesGrowthPercent) >= 15) {
         const isUp = intelligence.salesGrowthPercent > 0;
         const title = isUp ? '📈 Strong Sales Performance' : '📊 Revenue Update';
@@ -139,7 +177,6 @@ export function useAutopilotEngine() {
         }
       }
 
-      // Bulk insert new alerts into Supabase if any
       if (newAlertsToInsert.length > 0) {
         const { error } = await supabase
           .from('notifications')
@@ -154,7 +191,6 @@ export function useAutopilotEngine() {
     }
   }, [pharmacy?.id, medications, expiryBuckets, reorderSuggestions, intelligence, notifications, fetchNotifications]);
 
-  // Trigger background check on load and periodic interval
   useEffect(() => {
     if (!medsLoading && !salesLoading) {
       runAutopilotBackgroundCheck();
@@ -167,6 +203,9 @@ export function useAutopilotEngine() {
     reorderSuggestions,
     expiryBuckets,
     intelligence,
+    dailyBriefing,
+    todaysPriorities,
+    recordActionClick,
     isLoading: medsLoading || salesLoading,
     runAutopilotBackgroundCheck,
   };
