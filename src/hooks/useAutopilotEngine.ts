@@ -3,7 +3,7 @@ import { useMedications } from '@/hooks/useMedications';
 import { useSales } from '@/hooks/useSales';
 import { usePharmacy } from '@/hooks/usePharmacy';
 import { useDbNotifications } from '@/hooks/useDbNotifications';
-import { AutopilotEngine, ReorderSuggestion, ExpiryBucket, DashboardIntelligence, DailyBriefing, PriorityActionItem } from '@/services/autopilotEngine';
+import { AutopilotEngine, ReorderSuggestion, ExpiryBucket, DashboardIntelligence, DailyBriefing, PriorityActionItem, PurchaseOrderDraft } from '@/services/autopilotEngine';
 import { supabase } from '@/lib/supabase';
 
 const AUTOPILOT_CHECK_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes background check
@@ -57,6 +57,11 @@ export function useAutopilotEngine() {
   // 5. Compute Daily Briefing
   const dailyBriefing: DailyBriefing = useMemo(() => {
     return AutopilotEngine.computeDailyBriefing(medications || [], sales || []);
+  }, [medications, sales]);
+
+  // 5b. Compute Smart Purchase Order Draft (Phase 2.1)
+  const purchaseDraft: PurchaseOrderDraft = useMemo(() => {
+    return AutopilotEngine.computePurchaseOrderDraft(medications || [], sales || []);
   }, [medications, sales]);
 
   // 6. Compute Today's Priorities (Ranked by 0-100 Priority Score + Workflow Memory Weight)
@@ -204,6 +209,7 @@ export function useAutopilotEngine() {
     expiryBuckets,
     intelligence,
     dailyBriefing,
+    purchaseDraft,
     todaysPriorities,
     recordActionClick,
     isLoading: medsLoading || salesLoading,

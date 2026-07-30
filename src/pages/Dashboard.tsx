@@ -24,6 +24,7 @@ import { ManagerKPIPanel } from '@/components/dashboard/ManagerKPIPanel';
 import { InventoryCharts } from '@/components/dashboard/InventoryCharts';
 import { BranchLockedOverlay } from '@/components/branches/BranchLockedOverlay';
 import { PendingQuickItemsPanel } from '@/components/inventory/PendingQuickItemsPanel';
+import { PurchaseOrderDraftCard } from '@/components/dashboard/PurchaseOrderDraftCard';
 import { ProductTour } from '@/components/ProductTour';
 import { PWAInstallPrompt } from '@/components/pwa/PWAInstallPrompt';
 import { startOfDay, endOfDay, startOfWeek, startOfMonth, endOfMonth, parseISO } from 'date-fns';
@@ -65,7 +66,7 @@ const Dashboard = () => {
   const { isOwnerOrManager, userRole, hasPermission, isLoading: permissionsLoading } = usePermissions();
   const { formatPrice } = useCurrency();
   const { currentBranchName, isBranchLocked, activeBranchesLimit, currentBranchPosition } = useBranchContext();
-  const { dailyBriefing, todaysPriorities, recordActionClick } = useAutopilotEngine();
+  const { dailyBriefing, todaysPriorities, purchaseDraft, recordActionClick } = useAutopilotEngine();
 
   // ── Financial summary from sales ─────────────────────────────────────────
   const financials = useMemo(() => {
@@ -148,6 +149,19 @@ const Dashboard = () => {
           <DailyBriefingCard
             briefing={dailyBriefing}
             userName={displayName}
+            onRecordAction={recordActionClick}
+          />
+        </motion.section>
+
+        {/* ── 2. Smart Purchase Order Draft (Phase 2.1) ────────────────── */}
+        <motion.section
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.1 }}
+          className="mb-6"
+        >
+          <PurchaseOrderDraftCard
+            draft={purchaseDraft}
             onRecordAction={recordActionClick}
           />
         </motion.section>

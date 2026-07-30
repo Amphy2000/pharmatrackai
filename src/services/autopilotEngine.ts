@@ -89,6 +89,43 @@ export interface PriorityActionItem {
   valueImpact?: number;
 }
 
+/**
+ * Phase 2.1 — Smart Purchase Order Draft
+ * A pre-built supplier order prepared automatically by the Autopilot Engine.
+ * The pharmacist only needs to review and approve — never calculate from scratch.
+ */
+export interface PurchaseOrderLineItem {
+  medicationId: string;
+  medicationName: string;
+  category: string;
+  currentStock: number;
+  reorderLevel: number;
+  suggestedQuantity: number;
+  costPrice: number;
+  lineTotalCost: number;
+  urgency: 'critical' | 'high' | 'medium' | 'low';
+  avgDailyConsumption: number;
+  /** How many days the restocked quantity will last at current consumption rate */
+  daysOfStockAfterReorder: number;
+  supplierHint?: string;
+}
+
+export interface PurchaseOrderDraft {
+  /** ISO timestamp when this draft was generated */
+  generatedAt: string;
+  lineItems: PurchaseOrderLineItem[];
+  totalItems: number;
+  totalEstimatedCost: number;
+  /** Human-readable note about what triggered this draft */
+  summary: string;
+  /** Urgency of the overall order */
+  overallUrgency: 'critical' | 'high' | 'medium' | 'low';
+  /** How many items are critically out of stock */
+  criticalCount: number;
+  /** How many items are just low but not yet out */
+  lowStockCount: number;
+}
+
 export class AutopilotEngine {
 
   /**
@@ -526,6 +563,77 @@ export class AutopilotEngine {
       expiryCount: expiryBuckets.expired.length + expiryBuckets.within30Days.length,
       topCategories,
       insights,
+    };
+  }
+
+  /**
+   * 6. Smart Purchase Order Draft (Phase 2.1)
+   *
+   * Automatically prepares a supplier purchase draft from low-stock medicines.
+   * Groups by urgency, calculates quantities, estimates total cost and post-reorder
+   * stock duration. The pharmacist reviews and approves — never calculates manually.
+   */
+  static computePurchaseOrderDraft(
+    medications: Medication[],
+    sales: SaleRecord[] = [],
+    lookbackDays: number = 30
+  ): PurchaseOrderDraft {
+    const suggestions = this.computeReorderSuggestions(medications, sales, lookbackDays);
+
+    const lineItems: PurchaseOrderLineItem[] = suggestions.map(sug => {
+      const med = medications.find(m => m.id === sug.medicationId);
+      const costPrice = sug.costPrice ?? (med?.unit_price ?? 0);
+      const lineTotalCost = costPrice * sug.suggestedQuantity;
+
+      // After restocking, how many days will stock last?
+      const totalStockAfterReorder = sug.currentStock + sug.suggestedQuantity;
+      const daysOfStockAfterReorder =
+        sug.avgDailyConsumption > 0
+          ? Math.round(totalStockAfterReorder / sug.avgDailyConsumption)
+          : 999;
+
+      return {
+        medicationId: sug.medicationId,
+        medicationName: sug.medicationName,
+        category: sug.category ?? 'General',
+        currentStock: sug.currentStock,
+        reorderLevel: sug.reorderLevel,
+        suggestedQuantity: sug.suggestedQuantity,
+        costPrice,
+        lineTotalCost,
+        urgency: sug.urgency,
+        avgDailyConsumption: sug.avgDailyConsumption,
+        daysOfStockAfterReorder,
+        supplierHint: med?.supplier ?? undefined,
+      };
+    });
+
+    const totalEstimatedCost = lineItems.reduce((sum, item) => sum + item.lineTotalCost, 0);
+    const criticalCount = lineItems.filter(i => i.urgency === 'critical').length;
+    const lowStockCount = lineItems.filter(i => i.urgency !== 'critical').length;
+
+    let overallUrgency: PurchaseOrderDraft['overallUrgency'] = 'low';
+    if (criticalCount > 0) overallUrgency = 'critical';
+    else if (lineItems.some(i => i.urgency === 'high')) overallUrgency = 'high';
+    else if (lineItems.some(i => i.urgency === 'medium')) overallUrgency = 'medium';
+
+    let summary = 'All stock levels are healthy. No purchase order required at this time.';
+    if (lineItems.length > 0) {
+      const parts: string[] = [];
+      if (criticalCount > 0) parts.push(`${criticalCount} item${criticalCount > 1 ? 's' : ''} out of stock`);
+      if (lowStockCount > 0) parts.push(`${lowStockCount} item${lowStockCount > 1 ? 's' : ''} below reorder level`);
+      summary = `Draft prepared: ${parts.join(', ')}. Total estimated cost: ₦${totalEstimatedCost.toLocaleString()}.`;
+    }
+
+    return {
+      generatedAt: new Date().toISOString(),
+      lineItems,
+      totalItems: lineItems.length,
+      totalEstimatedCost,
+      summary,
+      overallUrgency,
+      criticalCount,
+      lowStockCount,
     };
   }
 }
