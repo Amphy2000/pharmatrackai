@@ -160,6 +160,37 @@ export interface ClearanceQueueSummary {
   noticeCount: number;   // 61-90 days
 }
 
+/**
+ * Phase 2.4 — Automatic Daily Closing Report
+ * Auto-generated end-of-day summary detailing sales, profit, best seller, slow movers,
+ * inventory movement, and key recommendations.
+ */
+export interface DailyClosingReport {
+  reportDate: string;
+  generatedAt: string;
+  sales: {
+    totalRevenue: number;
+    totalOrders: number;
+    totalUnitsSold: number;
+    estimatedProfit: number;
+    averageOrderValue: number;
+  };
+  bestSeller?: {
+    id: string;
+    name: string;
+    unitsSold: number;
+    revenue: number;
+  };
+  slowMoversCount: number;
+  topSlowMovers: { id: string; name: string; stock: number; valueTiedUp: number }[];
+  lowStockCount: number;
+  expiringMedicinesCount: number;
+  inventoryMovement: {
+    unitsSoldToday: number;
+  };
+  keyRecommendations: string[];
+}
+
 export class AutopilotEngine {
 
   /**
@@ -773,6 +804,117 @@ export class AutopilotEngine {
       urgentCount: items.filter(i => i.urgency === 'urgent').length,
       warningCount: items.filter(i => i.urgency === 'warning').length,
       noticeCount: items.filter(i => i.urgency === 'notice').length,
+    };
+  }
+
+  /**
+   * 8. Automatic Daily Closing Report (Phase 2.4)
+   *
+   * Auto-generates end-of-day summary detailing sales, profit, best seller, slow movers,
+   * inventory movement, and key recommendations for tomorrow.
+   * Pure deterministic local calculation ($0 cost).
+   */
+  static computeDailyClosingReport(
+    medications: Medication[] = [],
+    sales: SaleRecord[] = []
+  ): DailyClosingReport {
+    const now = new Date();
+    const todayStart = startOfDay(now);
+    const todayEnd = endOfDay(now);
+
+    let totalRevenue = 0;
+    let estimatedProfit = 0;
+    let totalUnitsSold = 0;
+    const todayOrderIds = new Set<string>();
+    const salesByMed: Record<string, { qty: number; revenue: number }> = {};
+
+    sales.forEach(sale => {
+      const saleDate = parseISO(sale.sale_date);
+      if (saleDate >= todayStart && saleDate <= todayEnd) {
+        const qty = sale.quantity || 0;
+        const total = sale.total_price || 0;
+        totalRevenue += total;
+        totalUnitsSold += qty;
+
+        const unitCost = (sale.unit_price || 0) * 0.75;
+        estimatedProfit += total - (unitCost * qty);
+
+        if (sale.id) todayOrderIds.add(sale.id);
+
+        if (sale.medication_id) {
+          if (!salesByMed[sale.medication_id]) {
+            salesByMed[sale.medication_id] = { qty: 0, revenue: 0 };
+          }
+          salesByMed[sale.medication_id].qty += qty;
+          salesByMed[sale.medication_id].revenue += total;
+        }
+      }
+    });
+
+    const totalOrders = todayOrderIds.size;
+    const averageOrderValue = totalOrders > 0 ? Math.round(totalRevenue / totalOrders) : 0;
+
+    // Identify Best Seller today
+    const sortedTodaySales = Object.entries(salesByMed).sort((a, b) => b[1].qty - a[1].qty);
+    let bestSeller: DailyClosingReport['bestSeller'] = undefined;
+
+    if (sortedTodaySales.length > 0) {
+      const [medId, data] = sortedTodaySales[0];
+      const med = medications.find(m => m.id === medId);
+      bestSeller = {
+        id: medId,
+        name: med?.name || 'Medication',
+        unitsSold: data.qty,
+        revenue: data.revenue,
+      };
+    }
+
+    // Slow movers & inventory health
+    const intel = this.computeDashboardIntelligence(medications, sales);
+    const expiryBuckets = this.computeExpiryBuckets(medications);
+    const lowStockCount = medications.filter(m => m.current_stock <= m.reorder_level).length;
+    const expiringMedicinesCount = expiryBuckets.expired.length + expiryBuckets.within30Days.length;
+
+    // Key recommendations for tomorrow
+    const keyRecommendations: string[] = [];
+
+    if (lowStockCount > 0) {
+      keyRecommendations.push(`Approve supplier restock order for ${lowStockCount} low-stock item(s).`);
+    }
+    if (expiryBuckets.expired.length > 0) {
+      keyRecommendations.push(`Unshelve ${expiryBuckets.expired.length} expired product(s) before opening tomorrow.`);
+    }
+    if (expiryBuckets.within30Days.length > 0) {
+      keyRecommendations.push(`Apply clearance discounts to ${expiryBuckets.within30Days.length} items expiring within 30 days.`);
+    }
+    if (keyRecommendations.length === 0) {
+      keyRecommendations.push('Pharmacy inventory is in great shape. Maintain stock levels tomorrow.');
+    }
+
+    return {
+      reportDate: now.toISOString().split('T')[0],
+      generatedAt: now.toISOString(),
+      sales: {
+        totalRevenue,
+        totalOrders,
+        totalUnitsSold,
+        estimatedProfit: Math.max(0, estimatedProfit),
+        averageOrderValue,
+      },
+      bestSeller,
+      slowMoversCount: intel.slowMoving.length,
+      topSlowMovers: intel.slowMoving.map(s => ({
+        id: s.id,
+        name: s.name,
+        stock: s.stock,
+        valueTiedUp: s.valueTiedUp,
+      })),
+      lowStockCount,
+      expiringMedicinesCount,
+      inventoryMovement: {
+        unitsSoldToday: totalUnitsSold,
+      },
+      keyRecommendations,
     };
   }
 }
