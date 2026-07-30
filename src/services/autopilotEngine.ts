@@ -161,6 +161,38 @@ export interface ClearanceQueueSummary {
 }
 
 /**
+ * Phase 2.5 — Predictive Stockout Prevention
+ * Forward-looking engine: identifies medicines currently ABOVE reorder level
+ * but projected to run out within 21 days based on 14-day rolling sales velocity.
+ * Completely separate from PO Draft (which only covers already-low/out items).
+ */
+export interface StockoutPrediction {
+  medicationId: string;
+  medicationName: string;
+  category: string;
+  currentStock: number;
+  reorderLevel: number;
+  avgDailyVelocity: number;         // units/day (14-day rolling average)
+  daysUntilStockout: number;        // projected days of stock remaining
+  projectedStockoutDate: string;    // ISO date
+  urgency: 'critical' | 'high' | 'medium';  // ≤3d, ≤7d, ≤14d
+  suggestedPreOrderQty: number;     // recommended pre-order quantity
+  estimatedPreOrderCost: number;
+  costPrice: number;
+  supplierHint?: string;
+}
+
+export interface StockoutForecast {
+  generatedAt: string;
+  predictions: StockoutPrediction[];
+  totalAtRisk: number;
+  criticalCount: number;   // runs out in ≤3 days
+  highCount: number;       // runs out in 4-7 days
+  mediumCount: number;     // runs out in 8-21 days
+  totalPreOrderCost: number;
+}
+
+/**
  * Phase 2.4 — Automatic Daily Closing Report
  * Auto-generated end-of-day summary detailing sales, profit, best seller, slow movers,
  * inventory movement, and key recommendations.
@@ -915,6 +947,121 @@ export class AutopilotEngine {
         unitsSoldToday: totalUnitsSold,
       },
       keyRecommendations,
+    };
+  }
+
+  /**
+   * 9. Predictive Stockout Prevention (Phase 2.5)
+   *
+   * Uses 14-day rolling sales velocity to predict which medicines will run out
+   * within the next 21 days — even if they're currently ABOVE the reorder level.
+   * This is forward-looking intelligence, not reactive. Excludes items already
+   * captured in the PO Draft (already at/below reorder level).
+   */
+  static computeStockoutForecast(
+    medications: Medication[],
+    sales: SaleRecord[] = [],
+    lookbackDays: number = 14,
+    horizonDays: number = 21
+  ): StockoutForecast {
+    if (!medications || medications.length === 0) {
+      return {
+        generatedAt: new Date().toISOString(),
+        predictions: [],
+        totalAtRisk: 0,
+        criticalCount: 0,
+        highCount: 0,
+        mediumCount: 0,
+        totalPreOrderCost: 0,
+      };
+    }
+
+    const now = new Date();
+    const cutoffDate = subDays(now, lookbackDays);
+
+    // Build 14-day rolling sales velocity map
+    const salesByMed: Record<string, number> = {};
+    sales.forEach(sale => {
+      if (sale.medication_id && parseISO(sale.sale_date) >= cutoffDate) {
+        salesByMed[sale.medication_id] = (salesByMed[sale.medication_id] || 0) + (sale.quantity || 0);
+      }
+    });
+
+    const predictions: StockoutPrediction[] = [];
+
+    medications.forEach(med => {
+      // Only consider items currently ABOVE reorder level (below = already in PO Draft)
+      if (med.current_stock <= med.reorder_level) return;
+      // Skip items with no stock
+      if (med.current_stock <= 0) return;
+
+      const totalUnitsSold = salesByMed[med.id] || 0;
+      // Require some sales velocity — zero-velocity items are slow movers, not stockout risks
+      if (totalUnitsSold === 0) return;
+
+      const avgDailyVelocity = totalUnitsSold / lookbackDays;
+
+      // Days until stock hits reorder level (not zero — we want to flag BEFORE it's low)
+      const usableStock = Math.max(0, med.current_stock - med.reorder_level);
+      const daysUntilReorderHit = avgDailyVelocity > 0
+        ? Math.floor(usableStock / avgDailyVelocity)
+        : 999;
+
+      // Only flag items that will hit reorder level within the horizon
+      if (daysUntilReorderHit > horizonDays) return;
+
+      // Days until full stockout (stock reaches 0)
+      const daysUntilStockout = avgDailyVelocity > 0
+        ? Math.floor(med.current_stock / avgDailyVelocity)
+        : 999;
+
+      const projectedStockoutDate = new Date(
+        now.getTime() + daysUntilStockout * 24 * 60 * 60 * 1000
+      ).toISOString().split('T')[0];
+
+      let urgency: StockoutPrediction['urgency'] = 'medium';
+      if (daysUntilReorderHit <= 3) urgency = 'critical';
+      else if (daysUntilReorderHit <= 7) urgency = 'high';
+
+      // Suggested pre-order: enough stock for 30 days at current velocity
+      const target30Days = Math.ceil(avgDailyVelocity * 30);
+      const suggestedPreOrderQty = Math.max(10, target30Days - med.current_stock + med.reorder_level);
+
+      const costPrice = med.cost_price || med.unit_price || 0;
+      const estimatedPreOrderCost = costPrice * suggestedPreOrderQty;
+
+      predictions.push({
+        medicationId: med.id,
+        medicationName: med.name,
+        category: med.category || 'General',
+        currentStock: med.current_stock,
+        reorderLevel: med.reorder_level,
+        avgDailyVelocity: Math.round(avgDailyVelocity * 10) / 10,
+        daysUntilStockout,
+        projectedStockoutDate,
+        urgency,
+        suggestedPreOrderQty,
+        estimatedPreOrderCost,
+        costPrice,
+        supplierHint: med.supplier ?? undefined,
+      });
+    });
+
+    // Sort: critical first, then by days until stockout ascending
+    const urgencyRank = { critical: 0, high: 1, medium: 2 };
+    predictions.sort((a, b) => {
+      const uDiff = urgencyRank[a.urgency] - urgencyRank[b.urgency];
+      return uDiff !== 0 ? uDiff : a.daysUntilStockout - b.daysUntilStockout;
+    });
+
+    return {
+      generatedAt: now.toISOString(),
+      predictions,
+      totalAtRisk: predictions.length,
+      criticalCount: predictions.filter(p => p.urgency === 'critical').length,
+      highCount: predictions.filter(p => p.urgency === 'high').length,
+      mediumCount: predictions.filter(p => p.urgency === 'medium').length,
+      totalPreOrderCost: predictions.reduce((sum, p) => sum + p.estimatedPreOrderCost, 0),
     };
   }
 }

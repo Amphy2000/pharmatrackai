@@ -3,7 +3,7 @@ import { useMedications } from '@/hooks/useMedications';
 import { useSales } from '@/hooks/useSales';
 import { usePharmacy } from '@/hooks/usePharmacy';
 import { useDbNotifications } from '@/hooks/useDbNotifications';
-import { AutopilotEngine, ReorderSuggestion, ExpiryBucket, DashboardIntelligence, DailyBriefing, PriorityActionItem, PurchaseOrderDraft, ClearanceQueueSummary, DailyClosingReport } from '@/services/autopilotEngine';
+import { AutopilotEngine, ReorderSuggestion, ExpiryBucket, DashboardIntelligence, DailyBriefing, PriorityActionItem, PurchaseOrderDraft, ClearanceQueueSummary, DailyClosingReport, StockoutForecast } from '@/services/autopilotEngine';
 import { supabase } from '@/lib/supabase';
 
 const AUTOPILOT_CHECK_INTERVAL_MS = 15 * 60 * 1000; // 15 minutes background check
@@ -72,6 +72,11 @@ export function useAutopilotEngine() {
   // 5d. Compute Automatic Daily Closing Report (Phase 2.4)
   const closingReport: DailyClosingReport = useMemo(() => {
     return AutopilotEngine.computeDailyClosingReport(medications || [], sales || []);
+  }, [medications, sales]);
+
+  // 5e. Compute Predictive Stockout Forecast (Phase 2.5)
+  const stockoutForecast: StockoutForecast = useMemo(() => {
+    return AutopilotEngine.computeStockoutForecast(medications || [], sales || []);
   }, [medications, sales]);
 
   // 6. Compute Today's Priorities (Ranked by 0-100 Priority Score + Workflow Memory Weight)
@@ -222,6 +227,7 @@ export function useAutopilotEngine() {
     purchaseDraft,
     clearanceQueue,
     closingReport,
+    stockoutForecast,
     todaysPriorities,
     recordActionClick,
     isLoading: medsLoading || salesLoading,

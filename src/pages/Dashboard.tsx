@@ -25,6 +25,7 @@ import { InventoryCharts } from '@/components/dashboard/InventoryCharts';
 import { BranchLockedOverlay } from '@/components/branches/BranchLockedOverlay';
 import { PendingQuickItemsPanel } from '@/components/inventory/PendingQuickItemsPanel';
 import { PurchaseOrderDraftCard } from '@/components/dashboard/PurchaseOrderDraftCard';
+import { StockoutForecastCard } from '@/components/dashboard/StockoutForecastCard';
 import { ClearanceQueueCard } from '@/components/dashboard/ClearanceQueueCard';
 import { DailyClosingReportCard } from '@/components/dashboard/DailyClosingReportCard';
 import { ProductTour } from '@/components/ProductTour';
@@ -68,7 +69,7 @@ const Dashboard = () => {
   const { isOwnerOrManager, userRole, hasPermission, isLoading: permissionsLoading } = usePermissions();
   const { formatPrice } = useCurrency();
   const { currentBranchName, isBranchLocked, activeBranchesLimit, currentBranchPosition } = useBranchContext();
-  const { dailyBriefing, todaysPriorities, purchaseDraft, clearanceQueue, closingReport, recordActionClick } = useAutopilotEngine();
+  const { dailyBriefing, todaysPriorities, purchaseDraft, clearanceQueue, closingReport, stockoutForecast, recordActionClick } = useAutopilotEngine();
 
   // ── Financial summary from sales ─────────────────────────────────────────
   const financials = useMemo(() => {
@@ -233,7 +234,19 @@ const Dashboard = () => {
               />
             </motion.section>
 
-            {/* 4. Automatic Clearance Queue (Phase 2.2 - Sleek & Collapsible) */}
+            {/* 4. Predictive Stockout Prevention (Phase 2.5 - Forward-looking velocity forecast) */}
+            <motion.section
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.11 }}
+            >
+              <StockoutForecastCard
+                forecast={stockoutForecast}
+                onRecordAction={recordActionClick}
+              />
+            </motion.section>
+
+            {/* 5. Automatic Clearance Queue (Phase 2.2 - Sleek & Collapsible) */}
             <motion.section
               initial={{ opacity: 0, y: -8 }}
               animate={{ opacity: 1, y: 0 }}
@@ -245,7 +258,7 @@ const Dashboard = () => {
               />
             </motion.section>
 
-            {/* 5. Automatic Daily Closing Report (Phase 2.4 - Sleek & Collapsible) */}
+            {/* 6. Automatic Daily Closing Report (Phase 2.4 - Sleek & Collapsible) */}
             <motion.section
               initial={{ opacity: 0, y: -8 }}
               animate={{ opacity: 1, y: 0 }}
