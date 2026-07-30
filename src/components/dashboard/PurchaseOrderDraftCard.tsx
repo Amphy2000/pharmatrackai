@@ -51,7 +51,7 @@ const HEADER_URGENCY = {
 };
 
 function LineItemRow({ item, formatPrice }: { item: PurchaseOrderLineItem; formatPrice: (v: number) => string }) {
-  const cfg = URGENCY_CONFIG[item.urgency];
+  const cfg = URGENCY_CONFIG[item.urgency] || URGENCY_CONFIG.low;
   const UrgencyIcon = cfg.icon;
 
   return (
@@ -91,7 +91,7 @@ function LineItemRow({ item, formatPrice }: { item: PurchaseOrderLineItem; forma
         </div>
         <div className="text-center">
           <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wide">Est. Cost</p>
-          <p className="text-sm font-bold text-emerald-400 tabular-nums">{formatPrice(item.lineTotalCost)}</p>
+          <p className="text-sm font-bold text-emerald-400 tabular-nums">{formatPrice(item.lineTotalCost || 0)}</p>
         </div>
         <div className="text-center">
           <p className="text-[10px] font-medium text-slate-400 uppercase tracking-wide">After Restock</p>
@@ -112,11 +112,12 @@ export const PurchaseOrderDraftCard = ({ draft, onRecordAction }: PurchaseOrderD
 
   // Sort: critical first, then high, medium, low
   const sortedItems = useMemo(() => {
+    if (!draft?.lineItems) return [];
     const rank = { critical: 0, high: 1, medium: 2, low: 3 };
-    return [...draft.lineItems].sort((a, b) => rank[a.urgency] - rank[b.urgency]);
-  }, [draft.lineItems]);
+    return [...draft.lineItems].sort((a, b) => (rank[a.urgency] ?? 3) - (rank[b.urgency] ?? 3));
+  }, [draft?.lineItems]);
 
-  if (draft.totalItems === 0) {
+  if (!draft || draft.totalItems === 0 || sortedItems.length === 0) {
     return (
       <div className="relative overflow-hidden rounded-xl bg-slate-900/80 p-4 text-white border border-emerald-500/20 shadow-md">
         <div className="flex items-center gap-3">
@@ -132,7 +133,7 @@ export const PurchaseOrderDraftCard = ({ draft, onRecordAction }: PurchaseOrderD
     );
   }
 
-  const headerGradient = HEADER_URGENCY[draft.overallUrgency];
+  const headerGradient = HEADER_URGENCY[draft.overallUrgency] || HEADER_URGENCY.low;
 
   // Collapsed View (Sleek 1-line bar)
   if (!isExpanded) {
@@ -154,7 +155,7 @@ export const PurchaseOrderDraftCard = ({ draft, onRecordAction }: PurchaseOrderD
               )}
             </div>
             <p className="text-xs font-semibold text-white truncate">
-              {draft.totalItems} medicines prepared • Est. Total: <span className="text-emerald-400">{formatPrice(draft.totalEstimatedCost)}</span>
+              {draft.totalItems} medicines prepared • Est. Total: <span className="text-emerald-400">{formatPrice(draft.totalEstimatedCost || 0)}</span>
             </p>
           </div>
         </div>
@@ -216,30 +217,11 @@ export const PurchaseOrderDraftCard = ({ draft, onRecordAction }: PurchaseOrderD
           </div>
         </div>
 
-        {/* ── Line Item Preview ──────────────────────────────────────── */}
-        <div className="space-y-2 mb-4">
-          {previewItems.map(item => (
+        {/* ── All Line Items ────────────────────────────────────────── */}
+        <div className="space-y-2 mb-4 max-h-[400px] overflow-y-auto pr-1">
+          {sortedItems.map(item => (
             <LineItemRow key={item.medicationId} item={item} formatPrice={formatPrice} />
           ))}
-
-          {/* Expand/collapse remaining items */}
-          {sortedItems.length > 3 && (
-            <>
-              {isExpanded && sortedItems.slice(3).map(item => (
-                <LineItemRow key={item.medicationId} item={item} formatPrice={formatPrice} />
-              ))}
-              <button
-                onClick={() => setIsExpanded(prev => !prev)}
-                className="w-full flex items-center justify-center gap-1.5 py-2 text-xs font-medium text-indigo-300 hover:text-white transition-colors"
-              >
-                {isExpanded ? (
-                  <><ChevronUp className="h-3.5 w-3.5" /> Show less</>
-                ) : (
-                  <><ChevronDown className="h-3.5 w-3.5" /> Show {remainingCount} more item{remainingCount > 1 ? 's' : ''}</>
-                )}
-              </button>
-            </>
-          )}
         </div>
 
         {/* ── Total Cost Summary ─────────────────────────────────────── */}
@@ -251,15 +233,17 @@ export const PurchaseOrderDraftCard = ({ draft, onRecordAction }: PurchaseOrderD
                 Estimated Total Purchase
               </p>
               <p className="text-xl font-bold text-white tabular-nums">
-                {formatPrice(draft.totalEstimatedCost)}
+                {formatPrice(draft.totalEstimatedCost || 0)}
               </p>
             </div>
           </div>
           <div className="text-right">
             <p className="text-[10px] text-slate-400">Based on cost price × order qty</p>
-            <p className="text-[10px] text-slate-500">
-              Draft generated {new Date(draft.generatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-            </p>
+            {draft.generatedAt && (
+              <p className="text-[10px] text-slate-500">
+                Draft generated {new Date(draft.generatedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+              </p>
+            )}
           </div>
         </div>
 
@@ -272,7 +256,7 @@ export const PurchaseOrderDraftCard = ({ draft, onRecordAction }: PurchaseOrderD
                 setIsApproved(true);
                 if (onRecordAction) onRecordAction('/inventory?filter=low-stock');
               }}
-              className="flex-1 bg-indigo-500 hover:bg-indigo-600 text-white font-semibold gap-2 shadow-md"
+              className="flex-1 bg-indigo-500 hover:bg-indigo-600 text-white font-semibold gap-2 shadow-md text-xs"
             >
               <BadgeCheck className="h-4 w-4" />
               Mark Draft Reviewed

@@ -275,15 +275,22 @@ const Dashboard = () => {
               />
             </motion.section>
 
-            {/* 6. Pending quick-add items */}
-            {isOwnerOrManager && (
+            {/* 6. Autopilot Business Insights (Capital at Risk & Slow Movers) */}
+            {medications.length > 0 && (
               <motion.section initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
+                <AIInsightsPanel medications={medications} />
+              </motion.section>
+            )}
+
+            {/* 7. Pending quick-add items */}
+            {isOwnerOrManager && (
+              <motion.section initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
                 <PendingQuickItemsPanel />
               </motion.section>
             )}
 
-            {/* 7. Quick Nav */}
-            <motion.section initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+            {/* 8. Quick Nav */}
+            <motion.section initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}>
               <div className="grid grid-cols-3 gap-3">
                 <Button
                   variant="outline"
