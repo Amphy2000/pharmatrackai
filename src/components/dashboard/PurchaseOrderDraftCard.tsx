@@ -116,20 +116,16 @@ export const PurchaseOrderDraftCard = ({ draft, onRecordAction }: PurchaseOrderD
     return [...draft.lineItems].sort((a, b) => rank[a.urgency] - rank[b.urgency]);
   }, [draft.lineItems]);
 
-  // Preview: first 3 items before expand
-  const previewItems = sortedItems.slice(0, 3);
-  const remainingCount = Math.max(0, sortedItems.length - 3);
-
   if (draft.totalItems === 0) {
     return (
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-slate-900 via-slate-900 to-emerald-950 p-5 text-white shadow-xl border border-emerald-500/20">
+      <div className="relative overflow-hidden rounded-xl bg-slate-900/80 p-4 text-white border border-emerald-500/20 shadow-md">
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-500/20 border border-emerald-400/30">
-            <CheckCircle2 className="h-5 w-5 text-emerald-400" />
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-500/20 border border-emerald-400/30">
+            <CheckCircle2 className="h-4 w-4 text-emerald-400" />
           </div>
           <div>
-            <p className="text-sm font-semibold text-emerald-300">All Stock Levels Healthy</p>
-            <p className="text-xs text-slate-400">No purchase order required today.</p>
+            <p className="text-xs font-semibold text-emerald-300">All Stock Levels Healthy</p>
+            <p className="text-[11px] text-slate-400">Autopilot monitored — no reorders needed right now.</p>
           </div>
         </div>
       </div>
@@ -138,8 +134,48 @@ export const PurchaseOrderDraftCard = ({ draft, onRecordAction }: PurchaseOrderD
 
   const headerGradient = HEADER_URGENCY[draft.overallUrgency];
 
+  // Collapsed View (Sleek 1-line bar)
+  if (!isExpanded) {
+    return (
+      <div className={cn('relative overflow-hidden rounded-xl bg-gradient-to-r p-3.5 text-white shadow-md border flex items-center justify-between gap-3 flex-wrap sm:flex-nowrap', headerGradient)}>
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-500/20 border border-indigo-400/30 text-indigo-300">
+            <ShoppingCart className="h-4 w-4" />
+          </div>
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-300">
+                Autopilot Purchase Draft
+              </span>
+              {draft.criticalCount > 0 && (
+                <Badge className="bg-red-500/20 border-red-400/30 text-red-300 text-[10px] py-0 h-4">
+                  {draft.criticalCount} Out of Stock
+                </Badge>
+              )}
+            </div>
+            <p className="text-xs font-semibold text-white truncate">
+              {draft.totalItems} medicines prepared • Est. Total: <span className="text-emerald-400">{formatPrice(draft.totalEstimatedCost)}</span>
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-2 shrink-0 ml-auto">
+          <Button
+            size="sm"
+            onClick={() => setIsExpanded(true)}
+            className="h-8 text-xs font-semibold bg-indigo-500 hover:bg-indigo-600 text-white gap-1 px-3"
+          >
+            <span>Review Draft ({draft.totalItems})</span>
+            <ChevronDown className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Expanded View
   return (
-    <div className={cn('relative overflow-hidden rounded-2xl bg-gradient-to-br p-5 sm:p-6 text-white shadow-xl border', headerGradient)}>
+    <div className={cn('relative overflow-hidden rounded-2xl bg-gradient-to-br p-5 sm:p-6 text-white shadow-xl border transition-all', headerGradient)}>
 
       {/* Background glow blobs */}
       <div className="absolute -top-16 -right-16 h-48 w-48 rounded-full bg-indigo-500/8 blur-3xl pointer-events-none" />
@@ -228,8 +264,8 @@ export const PurchaseOrderDraftCard = ({ draft, onRecordAction }: PurchaseOrderD
         </div>
 
         {/* ── Action Bar ────────────────────────────────────────────── */}
-        {!isApproved ? (
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+          {!isApproved ? (
             <Button
               size="sm"
               onClick={() => {
@@ -241,36 +277,32 @@ export const PurchaseOrderDraftCard = ({ draft, onRecordAction }: PurchaseOrderD
               <BadgeCheck className="h-4 w-4" />
               Mark Draft Reviewed
             </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => {
-                if (onRecordAction) onRecordAction('/inventory?filter=low-stock');
-                navigate('/inventory?filter=low-stock');
-              }}
-              className="flex-1 border-white/20 text-slate-200 hover:bg-white/10 font-medium gap-2"
-            >
-              <Package className="h-4 w-4" />
-              Open Inventory
-            </Button>
-          </div>
-        ) : (
-          <div className="flex items-center gap-2.5 p-3 rounded-xl bg-emerald-500/15 border border-emerald-400/30">
-            <CheckCircle2 className="h-5 w-5 text-emerald-400 shrink-0" />
-            <div>
-              <p className="text-sm font-semibold text-emerald-300">Draft Reviewed</p>
-              <p className="text-xs text-slate-400">Go to Inventory to place orders with your suppliers.</p>
+          ) : (
+            <div className="flex-1 flex items-center gap-2 text-xs font-semibold text-emerald-300 bg-emerald-500/20 px-3 py-2 rounded-lg">
+              <CheckCircle2 className="h-4 w-4 text-emerald-400" /> Draft Reviewed
             </div>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => navigate('/inventory?filter=low-stock')}
-              className="ml-auto text-emerald-300 hover:text-white hover:bg-white/10 text-xs font-medium shrink-0"
-            >
-              Open Inventory
-            </Button>
-          </div>
-        )}
+          )}
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={() => {
+              if (onRecordAction) onRecordAction('/inventory?filter=low-stock');
+              navigate('/inventory?filter=low-stock');
+            }}
+            className="border-white/20 text-slate-200 hover:bg-white/10 font-medium gap-2 text-xs"
+          >
+            <Package className="h-3.5 w-3.5" />
+            Open Inventory
+          </Button>
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => setIsExpanded(false)}
+            className="text-xs text-slate-400 hover:text-white gap-1"
+          >
+            Collapse <ChevronUp className="h-3.5 w-3.5" />
+          </Button>
+        </div>
       </div>
     </div>
   );

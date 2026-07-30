@@ -138,34 +138,6 @@ const Dashboard = () => {
 
       <main className="container mx-auto px-4 sm:px-6 py-6 sm:py-8 max-w-[1400px]">
 
-        {/* ── 1. Daily Briefing Card (Autopilot Engine Summary) ───────────── */}
-        <motion.section
-          id="tour-ai-insights"
-          initial={{ opacity: 0, y: -12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
-          className="mb-6"
-        >
-          <DailyBriefingCard
-            briefing={dailyBriefing}
-            userName={displayName}
-            onRecordAction={recordActionClick}
-          />
-        </motion.section>
-
-        {/* ── 2. Smart Purchase Order Draft (Phase 2.1) ────────────────── */}
-        <motion.section
-          initial={{ opacity: 0, y: -8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.1 }}
-          className="mb-6"
-        >
-          <PurchaseOrderDraftCard
-            draft={purchaseDraft}
-            onRecordAction={recordActionClick}
-          />
-        </motion.section>
-
         {/* ── Tabs ─────────────────────────────────────────────────────── */}
         <Tabs defaultValue="home" className="w-full">
           <TabsList className="mb-6 bg-muted/50 p-1">
@@ -182,7 +154,7 @@ const Dashboard = () => {
           ════════════════════════════════════════════════════════════ */}
           <TabsContent value="home" className="space-y-6">
 
-            {/* 1. Hero: Today's Financial Metrics */}
+            {/* 1. HERO FIRST: Today's Financial Metrics & Business Performance */}
             <motion.section variants={containerVariants} initial="hidden" animate="visible">
               <div className="grid grid-cols-2 gap-4">
                 {/* Today's Revenue */}
@@ -233,23 +205,37 @@ const Dashboard = () => {
               </motion.div>
             </motion.section>
 
-            {/* 2. Today's Priorities Action Center (Priority Score 0-100 Sorted) */}
+            {/* 2. Autopilot Executive Briefing */}
             <motion.section
-              initial={{ opacity: 0, y: 16 }}
+              id="tour-ai-insights"
+              initial={{ opacity: 0, y: -8 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.15 }}
+              transition={{ duration: 0.4 }}
             >
-              <TodaysPrioritiesSection
-                priorities={todaysPriorities}
+              <DailyBriefingCard
+                briefing={dailyBriefing}
+                userName={displayName}
                 onRecordAction={recordActionClick}
               />
             </motion.section>
 
-            {/* 3. Primary Action CTA Buttons */}
+            {/* 3. Smart Purchase Order Draft (Phase 2.1 - Sleek & Collapsible) */}
+            <motion.section
+              initial={{ opacity: 0, y: -8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.1 }}
+            >
+              <PurchaseOrderDraftCard
+                draft={purchaseDraft}
+                onRecordAction={recordActionClick}
+              />
+            </motion.section>
+
+            {/* 4. Primary Action CTA Buttons */}
             <motion.section
               initial={{ opacity: 0, y: 16 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
+              transition={{ delay: 0.15 }}
             >
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <Button
@@ -258,9 +244,9 @@ const Dashboard = () => {
                     recordActionClick('/checkout');
                     navigate('/checkout');
                   }}
-                  className="h-28 sm:h-32 flex flex-col items-center justify-center gap-2 bg-gradient-primary hover:opacity-90 shadow-glow-primary btn-glow text-lg font-semibold"
+                  className="h-24 sm:h-28 flex flex-col items-center justify-center gap-1.5 bg-gradient-primary hover:opacity-90 shadow-glow-primary btn-glow text-lg font-semibold"
                 >
-                  <ShoppingCart className="h-9 w-9 sm:h-10 sm:w-10" />
+                  <ShoppingCart className="h-8 w-8 sm:h-9 sm:w-9" />
                   Open Point of Sale
                 </Button>
                 <Button
@@ -269,30 +255,35 @@ const Dashboard = () => {
                     navigate('/inventory');
                   }}
                   variant="outline"
-                  className="h-28 sm:h-32 flex flex-col items-center justify-center gap-2 border-2 border-primary/30 hover:bg-primary/5 hover:border-primary/50 text-lg font-semibold group"
+                  className="h-24 sm:h-28 flex flex-col items-center justify-center gap-1.5 border-2 border-primary/30 hover:bg-primary/5 hover:border-primary/50 text-lg font-semibold group"
                 >
-                  <Package className="h-9 w-9 sm:h-10 sm:w-10 text-primary group-hover:scale-110 transition-transform" />
+                  <Package className="h-8 w-8 sm:h-9 sm:w-9 text-primary group-hover:scale-110 transition-transform" />
                   Manage Inventory
                 </Button>
               </div>
             </motion.section>
 
-            {/* 4. Pending quick-add items */}
+            {/* 5. Today's Priorities (Ranked 0-100 Score) */}
+            <motion.section
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+            >
+              <TodaysPrioritiesSection
+                priorities={todaysPriorities}
+                onRecordAction={recordActionClick}
+              />
+            </motion.section>
+
+            {/* 6. Pending quick-add items */}
             {isOwnerOrManager && (
               <motion.section initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}>
                 <PendingQuickItemsPanel />
               </motion.section>
             )}
 
-            {/* 5. Autopilot Business Insights */}
-            {medications.length > 0 && (
-              <motion.section initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
-                <AIInsightsPanel medications={medications} />
-              </motion.section>
-            )}
-
-            {/* 6. Quick Nav */}
-            <motion.section initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}>
+            {/* 7. Quick Nav */}
+            <motion.section initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
               <div className="grid grid-cols-3 gap-3">
                 <Button
                   variant="outline"
