@@ -367,21 +367,31 @@ export const useBranchInventory = () => {
 
   // Calculate metrics for current branch
   const getMetrics = () => {
-    const lowStock = medications.filter(m => m.branch_stock <= m.branch_reorder_level).length;
-    const expired = medications.filter(m => new Date(m.expiry_date) <= new Date()).length;
-    const expiringSoon = medications.filter(m => {
-      const expiryDate = new Date(m.expiry_date);
-      const today = new Date();
-      const thirtyDaysFromNow = new Date(today.getTime() + 30 * 24 * 60 * 60 * 1000);
-      return expiryDate > today && expiryDate <= thirtyDaysFromNow;
+    const safeMeds = medications || [];
+    const now = new Date();
+    const thirtyDaysFromNow = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+
+    const lowStock = safeMeds.filter(m => (m.branch_stock ?? 0) <= (m.branch_reorder_level ?? 0)).length;
+
+    const expired = safeMeds.filter(m => {
+      if (!m.expiry_date) return false;
+      try { return new Date(m.expiry_date) <= now; } catch { return false; }
     }).length;
-    
+
+    const expiringSoon = safeMeds.filter(m => {
+      if (!m.expiry_date) return false;
+      try {
+        const expiryDate = new Date(m.expiry_date);
+        return expiryDate > now && expiryDate <= thirtyDaysFromNow;
+      } catch { return false; }
+    }).length;
+
     return {
-      totalSKUs: medications.length,
+      totalSKUs: safeMeds.length,
       lowStock,
       expired,
       expiringSoon,
-      totalValue: medications.reduce((sum, m) => sum + (m.branch_stock * (m.selling_price || m.unit_price)), 0),
+      totalValue: safeMeds.reduce((sum, m) => sum + ((m.branch_stock ?? 0) * (m.selling_price || m.unit_price || 0)), 0),
     };
   };
 

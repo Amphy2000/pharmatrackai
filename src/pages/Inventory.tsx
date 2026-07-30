@@ -223,12 +223,18 @@ const Inventory = () => {
   const branchMeds = branchMedications as BranchMedication[];
 
   const expiringItems = branchMeds.filter(m => {
-    const expiryDate = parseISO(m.expiry_date);
-    const daysToExpiry = differenceInDays(expiryDate, today);
-    return daysToExpiry > 0 && daysToExpiry <= 30 && m.branch_stock > 0;
+    if (!m.expiry_date) return false;
+    try {
+      const expiryDate = parseISO(m.expiry_date);
+      const daysToExpiry = differenceInDays(expiryDate, today);
+      return daysToExpiry > 0 && daysToExpiry <= 30 && m.branch_stock > 0;
+    } catch { return false; }
   });
 
-  const expiredItems = branchMeds.filter(m => parseISO(m.expiry_date) <= today && m.branch_stock > 0);
+  const expiredItems = branchMeds.filter(m => {
+    if (!m.expiry_date) return false;
+    try { return parseISO(m.expiry_date) <= today && m.branch_stock > 0; } catch { return false; }
+  });
 
   const lowStockMedications = branchMeds
     .filter(m => m.branch_stock > 0 && m.branch_stock <= m.branch_reorder_level)
@@ -236,11 +242,12 @@ const Inventory = () => {
 
   // Items expiring soon sorted by urgency - only show items with stock
   const expiryUrgentItems = branchMeds
-    .filter(m => m.branch_stock > 0) // Only items with stock in this branch
-    .map(m => ({
-      ...m,
-      daysToExpiry: differenceInDays(parseISO(m.expiry_date), today)
-    }))
+    .filter(m => m.branch_stock > 0 && !!m.expiry_date)
+    .map(m => {
+      let daysToExpiry = 999;
+      try { daysToExpiry = differenceInDays(parseISO(m.expiry_date), today); } catch { /* skip */ }
+      return { ...m, daysToExpiry };
+    })
     .filter(m => m.daysToExpiry > 0 && m.daysToExpiry <= 90)
     .sort((a, b) => a.daysToExpiry - b.daysToExpiry)
     .slice(0, 8);
