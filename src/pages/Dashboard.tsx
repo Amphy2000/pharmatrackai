@@ -139,6 +139,7 @@ const Dashboard = () => {
 
         {/* ── 1. Daily Briefing Card (Autopilot Engine Summary) ───────────── */}
         <motion.section
+          id="tour-ai-insights"
           initial={{ opacity: 0, y: -12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4 }}
