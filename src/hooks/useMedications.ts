@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabase';
 import { Medication, MedicationFormData, DashboardMetrics } from '@/types/medication';
 import { useToast } from '@/hooks/use-toast';
 import { usePharmacy } from '@/hooks/usePharmacy';
-import { addDays, isAfter, isBefore, parseISO } from 'date-fns';
+import { addDays, isAfter, isBefore, parseISO, differenceInDays } from 'date-fns';
 
 export const useMedications = () => {
   const queryClient = useQueryClient();
@@ -60,95 +60,70 @@ export const useMedications = () => {
         name: newMedication.name,
         category: newMedication.category,
         batch_number: newMedication.batch_number,
-        current_stock: newMedication.current_stock,
-        reorder_level: newMedication.reorder_level,
         expiry_date: newMedication.expiry_date,
-        unit_price: newMedication.unit_price,
+        current_stock: Number(newMedication.current_stock),
+        reorder_level: Number(newMedication.reorder_level),
+        unit_price: Number(newMedication.unit_price),
+        dispensing_unit: newMedication.dispensing_unit,
         pharmacy_id: pharmacyId,
-        metadata: newMedication.metadata || {},
       };
 
-      if (newMedication.selling_price != null) insertData.selling_price = newMedication.selling_price;
-      if (newMedication.wholesale_price != null) insertData.wholesale_price = newMedication.wholesale_price;
-      if (newMedication.manufacturing_date) insertData.manufacturing_date = newMedication.manufacturing_date;
-      if (newMedication.barcode_id) insertData.barcode_id = newMedication.barcode_id;
-      if (newMedication.dispensing_unit) insertData.dispensing_unit = newMedication.dispensing_unit;
-      if (newMedication.is_controlled != null) insertData.is_controlled = newMedication.is_controlled;
-      if (newMedication.nafdac_reg_number) insertData.nafdac_reg_number = newMedication.nafdac_reg_number;
-      if (newMedication.active_ingredients) insertData.active_ingredients = newMedication.active_ingredients;
+      if (newMedication.selling_price !== undefined) {
+        insertData.selling_price = Number(newMedication.selling_price);
+      }
+      if (newMedication.wholesale_price !== undefined) {
+        insertData.wholesale_price = Number(newMedication.wholesale_price);
+      }
+      if (newMedication.wholesale_min_qty !== undefined) {
+        insertData.wholesale_min_qty = Number(newMedication.wholesale_min_qty);
+      }
 
-      const result = await supabase
+      const { data, error } = await supabase
         .from('medications')
-        .insert([insertData as any])
+        .insert([insertData])
         .select()
         .single();
 
-      if (result.error) throw result.error;
-      return result.data;
+      if (error) throw error;
+      return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['medications'] });
       toast({
-        title: 'Medication Added',
-        description: 'New medication has been added to inventory.',
+        title: 'Success',
+        description: 'Medication added to inventory.',
       });
     },
-    onError: (error) => {
+    onError: (error: Error) => {
       toast({
         title: 'Error',
-        description: `Failed to add medication: ${error.message}`,
+        description: error.message || 'Failed to add medication.',
         variant: 'destructive',
       });
     },
   });
 
   const updateMedication = useMutation({
-    mutationFn: async ({ id, ...updates }: Partial<Medication> & { id: string }) => {
-      const { data: existing, error: fetchError } = await supabase
-        .from('medications')
-        .select('id')
-        .eq('id', id)
-        .maybeSingle();
-
-      if (fetchError) {
-        throw new Error(`Database error: ${fetchError.message}`);
-      }
-
-      if (!existing) {
-        throw new Error('Medication not found or you do not have access to it');
-      }
-
-      const updateData: Record<string, any> = {};
-
-      Object.entries(updates).forEach(([key, value]) => {
-        if (value !== undefined) {
-          updateData[key] = value;
-        }
-      });
+    mutationFn: async (medication: Partial<Medication> & { id: string }) => {
+      const { id, ...updates } = medication;
 
       const { data, error } = await supabase
         .from('medications')
-        .update(updateData)
+        .update(updates)
         .eq('id', id)
         .select()
-        .maybeSingle();
+        .single();
 
       if (error) throw error;
-      if (!data) throw new Error('Failed to update medication');
-
       return data;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['medications'] });
-      toast({
-        title: 'Medication Updated',
-        description: 'Medication details have been updated.',
-      });
     },
-    onError: (error) => {
+    onError: (error: Error) => {
       toast({
         title: 'Error',
-        description: `Failed to update medication: ${error.message}`,
+        description: error.message || 'Failed to update medication.',
         variant: 'destructive',
       });
     },
@@ -166,14 +141,14 @@ export const useMedications = () => {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['medications'] });
       toast({
-        title: 'Medication Deleted',
-        description: 'Medication has been removed from inventory.',
+        title: 'Success',
+        description: 'Medication removed from inventory.',
       });
     },
-    onError: (error) => {
+    onError: (error: Error) => {
       toast({
         title: 'Error',
-        description: `Failed to delete medication: ${error.message}`,
+        description: error.message || 'Failed to delete medication.',
         variant: 'destructive',
       });
     },
@@ -182,24 +157,49 @@ export const useMedications = () => {
   const getMetrics = (): DashboardMetrics => {
     const today = new Date();
     const thirtyDaysFromNow = addDays(today, 30);
+    const safeMeds = medications || [];
 
     return {
-      totalSKUs: medications.length,
-      lowStockItems: medications.filter(m => m.current_stock <= m.reorder_level).length,
-      expiredItems: medications.filter(m => isBefore(parseISO(m.expiry_date), today)).length,
-      expiringWithin30Days: medications.filter(m => {
-        const expiryDate = parseISO(m.expiry_date);
-        return isAfter(expiryDate, today) && isBefore(expiryDate, thirtyDaysFromNow);
+      totalSKUs: safeMeds.length,
+      lowStockItems: safeMeds.filter(m => (m.current_stock || 0) <= (m.reorder_level || 0)).length,
+      expiredItems: safeMeds.filter(m => m.expiry_date && isBefore(parseISO(m.expiry_date), today)).length,
+      expiringWithin30Days: safeMeds.filter(m => {
+        if (!m.expiry_date) return false;
+        try {
+          const expiryDate = parseISO(m.expiry_date);
+          return isAfter(expiryDate, today) && isBefore(expiryDate, thirtyDaysFromNow);
+        } catch {
+          return false;
+        }
       }).length,
     };
   };
 
-  const isExpired = (expiryDate: string): boolean => {
-    return isBefore(parseISO(expiryDate), new Date());
+  const isExpired = (expiryDate?: string | null): boolean => {
+    if (!expiryDate) return false;
+    try {
+      return isBefore(parseISO(expiryDate), new Date());
+    } catch {
+      return false;
+    }
   };
 
-  const isLowStock = (currentStock: number, reorderLevel: number): boolean => {
-    return currentStock <= reorderLevel;
+  const isExpiringSoon = (expiryDate?: string | null, days: number = 30): boolean => {
+    if (!expiryDate) return false;
+    try {
+      const expiry = parseISO(expiryDate);
+      const today = new Date();
+      const diff = differenceInDays(expiry, today);
+      return diff > 0 && diff <= days;
+    } catch {
+      return false;
+    }
+  };
+
+  const isLowStock = (currentStock?: number | null, reorderLevel?: number | null): boolean => {
+    const stock = currentStock ?? 0;
+    const reorder = reorderLevel ?? 0;
+    return stock <= reorder;
   };
 
   return {
@@ -211,6 +211,7 @@ export const useMedications = () => {
     deleteMedication,
     getMetrics,
     isExpired,
+    isExpiringSoon,
     isLowStock,
   };
 };

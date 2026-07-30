@@ -77,15 +77,17 @@ export const MedicationsTable = ({ medications, searchQuery, onEdit, selectedIds
   const [featureMedication, setFeatureMedication] = useState<Medication | null>(null);
 
   const filteredMedications = useMemo(() => {
-    let filtered = medications.filter((med) => {
-      const query = searchQuery.toLowerCase().trim();
+    let filtered = (medications || []).filter((med) => {
+      if (!med) return false;
+      const query = (searchQuery || '').toLowerCase().trim();
+      if (!query) return true;
       
       // Handle special keywords for status-based filtering
       if (query === 'expired') {
         return isExpired(med.expiry_date);
       }
       if (query === 'expiring' || query === 'expiring soon') {
-        return isExpiringSoon(med.expiry_date);
+        return isExpiringSoon ? isExpiringSoon(med.expiry_date) : false;
       }
       if (query === 'low stock' || query === 'low' || query === 'reorder') {
         return isLowStock(med.current_stock, med.reorder_level);
@@ -97,12 +99,17 @@ export const MedicationsTable = ({ medications, searchQuery, onEdit, selectedIds
         return med.is_shelved === false;
       }
       
-      // Regular text search
+      // Regular text search with safe null checks
+      const name = (med.name || '').toLowerCase();
+      const category = (med.category || '').toLowerCase();
+      const batch = (med.batch_number || '').toLowerCase();
+      const supplier = (med.supplier || '').toLowerCase();
+
       return (
-        med.name.toLowerCase().includes(query) ||
-        med.category.toLowerCase().includes(query) ||
-        med.batch_number.toLowerCase().includes(query) ||
-        (med.supplier && med.supplier.toLowerCase().includes(query))
+        name.includes(query) ||
+        category.includes(query) ||
+        batch.includes(query) ||
+        supplier.includes(query)
       );
     });
 

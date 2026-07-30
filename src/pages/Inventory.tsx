@@ -1,4 +1,5 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Header } from '@/components/Header';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -80,13 +81,20 @@ const Inventory = () => {
   const [showShelfEntryWizard, setShowShelfEntryWizard] = useState(false);
   const [editingMedication, setEditingMedication] = useState<Medication | null>(null);
   const [detailMedication, setDetailMedication] = useState<Medication | null>(null);
-  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [searchParams] = useSearchParams();
+  const urlFilterParam = searchParams.get('filter') || '';
+
+  const [searchQuery, setSearchQuery] = useState(urlFilterParam);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [bulkShelveOpen, setBulkShelveOpen] = useState(false);
   const [bulkUnshelveOpen, setBulkUnshelveOpen] = useState(false);
-  // Prefill data for Add Medication from Photo Expiry Scan
+
+  useEffect(() => {
+    if (urlFilterParam) {
+      setSearchQuery(urlFilterParam);
+    }
+  }, [urlFilterParam]);
 
   const { pharmacy } = usePharmacy();
   const { currency } = useCurrency();
@@ -94,15 +102,17 @@ const Inventory = () => {
   const { plan } = usePlanLimits();
 
   const filteredMedications = useMemo(() => {
-    let result = medications;
+    let result = medications || [];
 
     if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      result = result.filter(m =>
-        m.name.toLowerCase().includes(query) ||
-        m.category.toLowerCase().includes(query) ||
-        m.batch_number.toLowerCase().includes(query)
-      );
+      const query = searchQuery.toLowerCase().trim();
+      result = result.filter(m => {
+        if (!m) return false;
+        const name = (m.name || '').toLowerCase();
+        const category = (m.category || '').toLowerCase();
+        const batch = (m.batch_number || '').toLowerCase();
+        return name.includes(query) || category.includes(query) || batch.includes(query);
+      });
     }
 
     return result;
