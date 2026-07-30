@@ -268,14 +268,13 @@ export const PurchaseOrderDraftCard = ({ draft, onRecordAction }: PurchaseOrderD
           )}
           <Button
             size="sm"
-            variant="outline"
             onClick={() => {
               if (onRecordAction) onRecordAction('/inventory?filter=low-stock');
               navigate('/inventory?filter=low-stock');
             }}
-            className="border-white/20 text-slate-200 hover:bg-white/10 font-medium gap-2 text-xs"
+            className="bg-slate-800 hover:bg-slate-700 text-white border border-slate-600/80 font-medium gap-2 text-xs shadow-sm"
           >
-            <Package className="h-3.5 w-3.5" />
+            <Package className="h-3.5 w-3.5 text-indigo-300" />
             Open Inventory
           </Button>
           <Button
