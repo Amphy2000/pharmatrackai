@@ -81,6 +81,7 @@ const Inventory = () => {
   const [showShelfEntryWizard, setShowShelfEntryWizard] = useState(false);
   const [editingMedication, setEditingMedication] = useState<Medication | null>(null);
   const [detailMedication, setDetailMedication] = useState<Medication | null>(null);
+  const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
   const [searchParams] = useSearchParams();
   const urlFilterParam = searchParams.get('filter') || '';
 
@@ -497,7 +498,7 @@ const Inventory = () => {
                           {item.daysToExpiry}d
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {format(parseISO(item.expiry_date), 'MMM d')}
+                          {item.expiry_date ? (() => { try { return format(parseISO(item.expiry_date), 'MMM d'); } catch { return 'N/A'; } })() : 'N/A'}
                         </p>
                       </div>
                       <div className="w-16">
@@ -653,8 +654,11 @@ const Inventory = () => {
                   variant="outline"
                   size="sm"
                   onClick={() => {
-                    const expiredIds = medications
-                      .filter(m => parseISO(m.expiry_date) <= new Date())
+                    const expiredIds = (medications || [])
+                      .filter(m => {
+                        if (!m?.expiry_date) return false;
+                        try { return parseISO(m.expiry_date) <= new Date(); } catch { return false; }
+                      })
                       .map(m => m.id);
                     setSelectedIds(new Set(expiredIds));
                   }}
@@ -681,10 +685,13 @@ const Inventory = () => {
                   variant="outline"
                   size="sm"
                   onClick={() => {
-                    const expiringIds = medications
+                    const expiringIds = (medications || [])
                       .filter(m => {
-                        const days = differenceInDays(parseISO(m.expiry_date), new Date());
-                        return days > 0 && days <= 30;
+                        if (!m?.expiry_date) return false;
+                        try {
+                          const days = differenceInDays(parseISO(m.expiry_date), new Date());
+                          return days > 0 && days <= 30;
+                        } catch { return false; }
                       })
                       .map(m => m.id);
                     setSelectedIds(new Set(expiringIds));
