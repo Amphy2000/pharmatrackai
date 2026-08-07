@@ -278,7 +278,9 @@ export class AutopilotEngine {
             suggestedQuantity: Math.max(suggestedQuantity, 10),
             urgency,
             category: med.category,
-            costPrice: med.cost_price || 0,
+            costPrice: med.cost_price && med.cost_price > 0 
+              ? med.cost_price 
+              : (med.selling_price || med.unit_price || 0) * 0.75,
           });
         }
       }
@@ -687,7 +689,11 @@ export class AutopilotEngine {
 
     const lineItems: PurchaseOrderLineItem[] = suggestions.map(sug => {
       const med = medications.find(m => m.id === sug.medicationId);
-      const costPrice = sug.costPrice ?? (med?.unit_price ?? 0);
+      const costPrice = (sug.costPrice && sug.costPrice > 0)
+        ? sug.costPrice
+        : ((med?.cost_price && med.cost_price > 0)
+            ? med.cost_price
+            : ((med?.selling_price || med?.unit_price || 0) * 0.75));
       const lineTotalCost = costPrice * sug.suggestedQuantity;
 
       // After restocking, how many days will stock last?

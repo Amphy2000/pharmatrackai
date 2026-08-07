@@ -1,9 +1,12 @@
 import { useState, useMemo } from 'react';
-import { ShoppingCart, ChevronDown, ChevronUp, AlertTriangle, AlertCircle, Info, CheckCircle2, Package, Clock, BadgeCheck, FileText } from 'lucide-react';
+import { ShoppingCart, ChevronDown, ChevronUp, AlertTriangle, AlertCircle, Info, CheckCircle2, Package, Clock, BadgeCheck, FileText, MessageSquare, Printer, Copy } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { PurchaseOrderDraft, PurchaseOrderLineItem } from '@/services/autopilotEngine';
 import { useCurrency } from '@/contexts/CurrencyContext';
+import { usePharmacy } from '@/hooks/usePharmacy';
+import { useToast } from '@/hooks/use-toast';
+import { generatePurchaseOrder, generateOrderNumber } from '@/utils/purchaseOrderGenerator';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 
@@ -105,10 +108,85 @@ function LineItemRow({ item, formatPrice }: { item: PurchaseOrderLineItem; forma
 }
 
 export const PurchaseOrderDraftCard = ({ draft, onRecordAction }: PurchaseOrderDraftCardProps) => {
-  const { formatPrice } = useCurrency();
+  const { formatPrice, currency } = useCurrency();
+  const { pharmacy } = usePharmacy();
+  const { toast } = useToast();
   const navigate = useNavigate();
   const [isExpanded, setIsExpanded] = useState(false);
   const [isApproved, setIsApproved] = useState(false);
+
+  // Generate WhatsApp text for reps/wholesalers in Nigeria
+  const handleWhatsAppExport = () => {
+    if (!draft?.lineItems || draft.lineItems.length === 0) return;
+    
+    const pharmacyName = pharmacy?.name || 'Pharmacy';
+    const dateStr = new Date().toLocaleDateString('en-NG', { day: '2-digit', month: 'short', year: 'numeric' });
+    
+    let text = `📋 *RESTOCK REORDER LIST - ${pharmacyName}*\n📅 Date: ${dateStr}\n\n`;
+    draft.lineItems.forEach((item, idx) => {
+      text += `${idx + 1}. *${item.medicationName}* — Qty: *${item.suggestedQuantity}*`;
+      if (item.supplierHint) text += ` (Supplier: ${item.supplierHint})`;
+      text += `\n`;
+    });
+    
+    text += `\nTotal Items: ${draft.totalItems}\nEst. Cost: ${formatPrice(draft.totalEstimatedCost || 0)}\n\n_Generated via PharmaTrack Autopilot_`;
+    
+    // Copy to clipboard
+    navigator.clipboard.writeText(text);
+    
+    // Open WhatsApp with text prefilled
+    const encodedText = encodeURIComponent(text);
+    window.open(`https://wa.me/?text=${encodedText}`, '_blank');
+    
+    toast({
+      title: 'WhatsApp Reorder List Copied!',
+      description: 'The list has been copied to your clipboard and opened in WhatsApp.',
+    });
+  };
+
+  // Print PDF purchase order receipt
+  const handlePrintPDF = async () => {
+    if (!draft?.lineItems || draft.lineItems.length === 0) return;
+
+    // Group items by supplierHint or fallback
+    const itemsBySupplier = new Map<string, Array<{ medicationName: string; quantity: number; unitPrice: number; totalPrice: number }>>();
+
+    draft.lineItems.forEach(item => {
+      const supplierName = item.supplierHint || 'General Supplier';
+      const existing = itemsBySupplier.get(supplierName) || [];
+      existing.push({
+        medicationName: item.medicationName,
+        quantity: item.suggestedQuantity,
+        unitPrice: item.costPrice || 0,
+        totalPrice: item.lineTotalCost || 0,
+      });
+      itemsBySupplier.set(supplierName, existing);
+    });
+
+    const orders = Array.from(itemsBySupplier.entries()).map(([supplierName, items]) => ({
+      supplierName,
+      items,
+      totalAmount: items.reduce((sum, i) => sum + i.totalPrice, 0),
+    }));
+
+    const orderNumber = generateOrderNumber();
+    const doc = await generatePurchaseOrder({
+      orders,
+      pharmacyName: pharmacy?.name || 'Pharmacy',
+      pharmacyPhone: pharmacy?.phone || undefined,
+      orderNumber,
+      date: new Date(),
+      currency: currency as 'NGN' | 'USD' | 'GBP',
+    });
+
+    doc.autoPrint();
+    window.open(doc.output('bloburl'), '_blank');
+    
+    toast({
+      title: 'Purchase Order PDF Generated!',
+      description: 'Sending purchase order document to printer / preview.',
+    });
+  };
 
   // Sort: critical first, then high, medium, low
   const sortedItems = useMemo(() => {
@@ -260,7 +338,26 @@ export const PurchaseOrderDraftCard = ({ draft, onRecordAction }: PurchaseOrderD
         </div>
 
         {/* ── Action Bar ────────────────────────────────────────────── */}
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 flex-wrap">
+          <Button
+            size="sm"
+            onClick={handleWhatsAppExport}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white font-bold gap-2 shadow-sm text-xs"
+          >
+            <MessageSquare className="h-4 w-4" />
+            Send on WhatsApp
+          </Button>
+
+          <Button
+            size="sm"
+            onClick={handlePrintPDF}
+            variant="outline"
+            className="bg-slate-800 hover:bg-slate-700 text-white border-slate-600 font-medium gap-2 text-xs"
+          >
+            <Printer className="h-3.5 w-3.5 text-indigo-300" />
+            Print PDF Invoice
+          </Button>
+
           {!isApproved ? (
             <Button
               size="sm"
@@ -268,32 +365,22 @@ export const PurchaseOrderDraftCard = ({ draft, onRecordAction }: PurchaseOrderD
                 setIsApproved(true);
                 if (onRecordAction) onRecordAction('/inventory?filter=low-stock');
               }}
-              className="flex-1 bg-indigo-500 hover:bg-indigo-600 text-white font-semibold gap-2 shadow-md text-xs"
+              className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold gap-2 shadow-md text-xs"
             >
               <BadgeCheck className="h-4 w-4" />
-              Mark Draft Reviewed
+              Mark Reviewed
             </Button>
           ) : (
-            <div className="flex-1 flex items-center gap-2 text-xs font-semibold text-emerald-300 bg-emerald-500/20 px-3 py-2 rounded-lg">
+            <div className="flex items-center gap-2 text-xs font-semibold text-emerald-300 bg-emerald-500/20 px-3 py-1.5 rounded-lg">
               <CheckCircle2 className="h-4 w-4 text-emerald-400" /> Draft Reviewed
             </div>
           )}
-          <Button
-            size="sm"
-            onClick={() => {
-              if (onRecordAction) onRecordAction('/inventory?filter=low-stock');
-              navigate('/inventory?filter=low-stock');
-            }}
-            className="bg-slate-800 hover:bg-slate-700 text-white border border-slate-600/80 font-medium gap-2 text-xs shadow-sm"
-          >
-            <Package className="h-3.5 w-3.5 text-indigo-300" />
-            Open Inventory
-          </Button>
+
           <Button
             size="sm"
             variant="ghost"
             onClick={() => setIsExpanded(false)}
-            className="text-xs text-slate-400 hover:text-white gap-1"
+            className="text-xs text-slate-400 hover:text-white gap-1 ml-auto"
           >
             Collapse <ChevronUp className="h-3.5 w-3.5" />
           </Button>

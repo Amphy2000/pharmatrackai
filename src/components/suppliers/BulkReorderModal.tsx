@@ -159,22 +159,28 @@ export const BulkReorderModal = ({ open, onOpenChange }: BulkReorderModalProps) 
     }> = [];
 
     itemsBySupplier.forEach(({ supplier, items }) => {
-      if (!supplier) return; // Skip items without suppliers
+      const supplierName = supplier?.name || items[0]?.medication.supplier || 'General Supplier';
       
-      const orderItems = items
-        .filter(item => item.selectedSupplierProduct)
-        .map(item => ({
+      const orderItems = items.map(item => {
+        const unitPrice = item.selectedSupplierProduct
+          ? Number(item.selectedSupplierProduct.unit_price)
+          : (item.medication.cost_price && item.medication.cost_price > 0
+              ? item.medication.cost_price
+              : (item.medication.selling_price || item.medication.unit_price || 0) * 0.75);
+
+        return {
           medicationName: item.medication.name,
           quantity: item.quantity,
-          unitPrice: Number(item.selectedSupplierProduct!.unit_price),
-          totalPrice: Number(item.selectedSupplierProduct!.unit_price) * item.quantity,
-        }));
+          unitPrice,
+          totalPrice: unitPrice * item.quantity,
+        };
+      });
 
       if (orderItems.length > 0) {
         ordersForPrint.push({
-          supplierName: supplier.name,
-          supplierPhone: supplier.phone || undefined,
-          supplierAddress: supplier.address || undefined,
+          supplierName,
+          supplierPhone: supplier?.phone || undefined,
+          supplierAddress: supplier?.address || undefined,
           items: orderItems,
           totalAmount: orderItems.reduce((sum, i) => sum + i.totalPrice, 0),
         });
