@@ -145,40 +145,40 @@ export const PurchaseOrderDraftCard = ({ draft, onRecordAction }: PurchaseOrderD
 
     return (
       <div className={cn(
-        'relative rounded-xl bg-card border border-border/60 border-l-4 p-4 text-white shadow-sm',
+        'relative rounded-xl bg-card border border-border/80 border-l-4 p-4 text-card-foreground shadow-sm',
         'flex items-center justify-between gap-4 flex-wrap sm:flex-nowrap',
-        'hover:bg-muted/30 transition-colors cursor-pointer',
+        'hover:bg-muted/40 transition-colors cursor-pointer',
         borderColor
       )} onClick={() => setIsExpanded(true)}>
         {/* Icon */}
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-indigo-500/15 border border-indigo-400/20">
-          <ShoppingCart className="h-4 w-4 text-indigo-400" />
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-indigo-500/10 border border-indigo-500/20">
+          <ShoppingCart className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
         </div>
 
         {/* Label + summary */}
         <div className="flex-1 min-w-0">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-indigo-400 mb-0.5">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-indigo-600 dark:text-indigo-400 mb-0.5">
             Purchase Draft Ready
           </p>
-          <p className="text-sm font-semibold text-foreground truncate">
+          <p className="text-sm font-bold text-foreground truncate">
             {draft.totalItems} items need restocking
             {draft.criticalCount > 0 && (
-              <span className="ml-2 text-red-400 font-bold">• {draft.criticalCount} out of stock</span>
+              <span className="ml-2 text-red-600 dark:text-red-400 font-extrabold">• {draft.criticalCount} out of stock</span>
             )}
           </p>
         </div>
 
         {/* Primary stat */}
         <div className="text-right shrink-0 hidden sm:block">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Est. Cost</p>
-          <p className="text-2xl font-bold text-emerald-400 tabular-nums leading-none">{formatPrice(draft.totalEstimatedCost || 0)}</p>
+          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Est. Cost</p>
+          <p className="text-2xl font-extrabold text-emerald-600 dark:text-emerald-400 tabular-nums leading-none">{formatPrice(draft.totalEstimatedCost || 0)}</p>
         </div>
 
         {/* CTA */}
         <Button
           size="sm"
           onClick={(e) => { e.stopPropagation(); setIsExpanded(true); }}
-          className="h-8 text-xs font-semibold bg-indigo-500 hover:bg-indigo-600 text-white gap-1 px-3 shrink-0"
+          className="h-8 text-xs font-bold bg-indigo-600 hover:bg-indigo-700 text-white gap-1 px-3 shrink-0 shadow-sm"
         >
           Review <ChevronDown className="h-3.5 w-3.5" />
         </Button>

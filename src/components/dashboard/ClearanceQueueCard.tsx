@@ -165,41 +165,41 @@ export const ClearanceQueueCard = ({ queue, onRecordAction }: ClearanceQueueCard
 
     return (
       <div className={cn(
-        'relative rounded-xl bg-card border border-border/60 border-l-4 p-4 text-white shadow-sm',
+        'relative rounded-xl bg-card border border-border/80 border-l-4 p-4 text-card-foreground shadow-sm',
         'flex items-center justify-between gap-4 flex-wrap sm:flex-nowrap',
-        'hover:bg-muted/30 transition-colors cursor-pointer',
+        'hover:bg-muted/40 transition-colors cursor-pointer',
         borderColor
       )} onClick={() => setIsExpanded(true)}>
         {/* Icon */}
-        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-500/15 border border-amber-400/20">
-          <Tag className="h-4 w-4 text-amber-400" />
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-500/10 border border-amber-500/20">
+          <Tag className="h-4 w-4 text-amber-600 dark:text-amber-400" />
         </div>
 
         {/* Label + summary */}
         <div className="flex-1 min-w-0">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-amber-400 mb-0.5">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-amber-600 dark:text-amber-400 mb-0.5">
             Clearance Queue
           </p>
-          <p className="text-sm font-semibold text-foreground truncate">
+          <p className="text-sm font-bold text-foreground truncate">
             {visibleItems.length} medicines expiring soon
             {hasCritical && (
-              <span className="ml-2 text-red-400 font-bold">• {visibleItems.filter(i => i.urgency === 'critical').length} critical (≤7d)</span>
+              <span className="ml-2 text-red-600 dark:text-red-400 font-extrabold">• {visibleItems.filter(i => i.urgency === 'critical').length} critical (≤7d)</span>
             )}
           </p>
         </div>
 
         {/* Primary stat */}
         <div className="text-right shrink-0 hidden sm:block">
-          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Value at Risk</p>
-          <p className="text-2xl font-bold text-rose-400 tabular-nums leading-none">{formatPrice(totalValueAtRisk)}</p>
-          <p className="text-[11px] text-emerald-400 font-semibold">Recoverable: {formatPrice(totalPotentialRecovery)}</p>
+          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Value at Risk</p>
+          <p className="text-2xl font-extrabold text-rose-600 dark:text-rose-400 tabular-nums leading-none">{formatPrice(totalValueAtRisk)}</p>
+          <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-bold">Recoverable: {formatPrice(totalPotentialRecovery)}</p>
         </div>
 
         {/* CTA */}
         <Button
           size="sm"
           onClick={(e) => { e.stopPropagation(); setIsExpanded(true); }}
-          className="h-8 text-xs font-semibold bg-amber-500 hover:bg-amber-600 text-slate-950 gap-1 px-3 shrink-0"
+          className="h-8 text-xs font-bold bg-amber-600 hover:bg-amber-700 text-white gap-1 px-3 shrink-0 shadow-sm"
         >
           Review <ChevronDown className="h-3.5 w-3.5" />
         </Button>

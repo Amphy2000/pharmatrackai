@@ -161,30 +161,30 @@ const Dashboard = () => {
             <motion.section variants={containerVariants} initial="hidden" animate="visible">
               {/* Primary metric: full-width revenue hero */}
               <motion.div variants={itemVariants}>
-                <Card className="relative overflow-hidden border border-border/50 bg-gradient-to-br from-emerald-950/60 via-background to-background shadow-lg">
-                  <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/8 to-transparent pointer-events-none" />
-                  <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-emerald-400 to-emerald-600 rounded-l-xl" />
-                  <CardContent className="p-5 pl-6">
-                    <div className="flex items-start justify-between gap-4">
+                <Card className="relative overflow-hidden border border-border/80 bg-card shadow-sm">
+                  <div className="absolute top-0 left-0 w-1.5 h-full bg-emerald-500 rounded-l-xl" />
+                  <CardContent className="p-6 pl-7">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                       <div>
-                        <div className="flex items-center gap-2 mb-2">
-                          <div className="h-7 w-7 rounded-lg bg-emerald-500/20 flex items-center justify-center">
-                            <DollarSign className="h-3.5 w-3.5 text-emerald-400" />
+                        <div className="flex items-center gap-2 mb-1.5">
+                          <div className="h-7 w-7 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+                            <DollarSign className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
                           </div>
-                          <span className="text-xs font-semibold uppercase tracking-widest text-emerald-400">Today's Revenue</span>
+                          <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Today's Revenue</span>
                         </div>
-                        <p className="text-4xl sm:text-5xl font-bold font-display text-emerald-400 tabular-nums leading-none">
+                        <p className="text-4xl sm:text-5xl font-extrabold font-display text-emerald-600 dark:text-emerald-400 tabular-nums leading-none">
                           {formatPrice(financials.todaySales)}
                         </p>
-                        <p className="text-sm text-muted-foreground mt-2">
-                          <span className="text-white font-semibold">{financials.todayOrders}</span> orders completed today
+                        <p className="text-sm font-medium text-muted-foreground mt-2.5">
+                          <span className="text-foreground font-bold">{financials.todayOrders}</span> orders completed today
                         </p>
                       </div>
-                      <div className="text-right shrink-0">
-                        <div className="px-3 py-1.5 rounded-lg bg-primary/15 border border-primary/20">
-                          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-0.5">Est. Profit</p>
-                          <p className="text-xl font-bold text-primary tabular-nums">{formatPrice(financials.todayProfit)}</p>
-                          <p className="text-[10px] text-muted-foreground">~25% margin</p>
+
+                      <div className="sm:text-right shrink-0">
+                        <div className="inline-block px-4 py-2.5 rounded-xl bg-primary/10 border border-primary/20">
+                          <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-0.5">Est. Today's Profit</p>
+                          <p className="text-2xl font-extrabold text-primary tabular-nums">{formatPrice(financials.todayProfit)}</p>
+                          <p className="text-[11px] font-medium text-muted-foreground">~25% profit margin</p>
                         </div>
                       </div>
                     </div>
@@ -195,15 +195,15 @@ const Dashboard = () => {
               {/* Secondary: Week & Month */}
               <motion.div variants={itemVariants} className="mt-3">
                 <div className="grid grid-cols-2 gap-3">
-                  <div className="relative px-4 py-3.5 rounded-xl bg-muted/30 border border-border/50 overflow-hidden">
-                    <div className="absolute top-0 left-0 w-0.5 h-full bg-blue-500/60 rounded-l-xl" />
-                    <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-1">This Week</p>
-                    <p className="text-xl font-bold tabular-nums">{formatPrice(financials.weekRevenue)}</p>
+                  <div className="relative px-5 py-4 rounded-xl bg-card border border-border/80 shadow-sm overflow-hidden">
+                    <div className="absolute top-0 left-0 w-1 h-full bg-blue-500 rounded-l-xl" />
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-1">This Week</p>
+                    <p className="text-2xl font-bold text-foreground tabular-nums">{formatPrice(financials.weekRevenue)}</p>
                   </div>
-                  <div className="relative px-4 py-3.5 rounded-xl bg-muted/30 border border-border/50 overflow-hidden">
-                    <div className="absolute top-0 left-0 w-0.5 h-full bg-purple-500/60 rounded-l-xl" />
-                    <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-1">This Month</p>
-                    <p className="text-xl font-bold tabular-nums">{formatPrice(financials.monthRevenue)}</p>
+                  <div className="relative px-5 py-4 rounded-xl bg-card border border-border/80 shadow-sm overflow-hidden">
+                    <div className="absolute top-0 left-0 w-1 h-full bg-purple-500 rounded-l-xl" />
+                    <p className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground mb-1">This Month</p>
+                    <p className="text-2xl font-bold text-foreground tabular-nums">{formatPrice(financials.monthRevenue)}</p>
                   </div>
                 </div>
               </motion.div>
