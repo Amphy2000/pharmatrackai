@@ -158,41 +158,51 @@ export const ClearanceQueueCard = ({ queue, onRecordAction }: ClearanceQueueCard
     return null; // All clearance items cleared or zero items
   }
 
-  // Collapsed View (Sleek 1-line bar)
+  // Collapsed View — Premium left-border design
   if (!isExpanded) {
+    const hasCritical = visibleItems.some(i => i.urgency === 'critical');
+    const borderColor = hasCritical ? 'border-l-red-500' : 'border-l-amber-500';
+
     return (
-      <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-amber-950 via-slate-900 to-slate-900 border border-amber-500/25 p-3.5 text-white shadow-md flex items-center justify-between gap-3 flex-wrap sm:flex-nowrap">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-amber-500/20 border border-amber-400/30 text-amber-300">
-            <Tag className="h-4 w-4" />
-          </div>
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-amber-300">
-                Autopilot Clearance Queue
-              </span>
-              {visibleItems.some(i => i.urgency === 'critical') && (
-                <Badge className="bg-red-500/20 border-red-400/30 text-red-300 text-[10px] py-0 h-4">
-                  {visibleItems.filter(i => i.urgency === 'critical').length} Critical (&le;7d)
-                </Badge>
-              )}
-            </div>
-            <p className="text-xs font-semibold text-white truncate">
-              {visibleItems.length} medicines expiring soon • Value at risk: <span className="text-rose-300">{formatPrice(totalValueAtRisk)}</span> • Recoverable: <span className="text-emerald-400">{formatPrice(totalPotentialRecovery)}</span>
-            </p>
-          </div>
+      <div className={cn(
+        'relative rounded-xl bg-card border border-border/60 border-l-4 p-4 text-white shadow-sm',
+        'flex items-center justify-between gap-4 flex-wrap sm:flex-nowrap',
+        'hover:bg-muted/30 transition-colors cursor-pointer',
+        borderColor
+      )} onClick={() => setIsExpanded(true)}>
+        {/* Icon */}
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-amber-500/15 border border-amber-400/20">
+          <Tag className="h-4 w-4 text-amber-400" />
         </div>
 
-        <div className="flex items-center gap-2 shrink-0 ml-auto">
-          <Button
-            size="sm"
-            onClick={() => setIsExpanded(true)}
-            className="h-8 text-xs font-semibold bg-amber-500 hover:bg-amber-600 text-slate-950 gap-1 px-3 shadow-sm"
-          >
-            <span>Review Clearance ({visibleItems.length})</span>
-            <ChevronDown className="h-3.5 w-3.5" />
-          </Button>
+        {/* Label + summary */}
+        <div className="flex-1 min-w-0">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-amber-400 mb-0.5">
+            Clearance Queue
+          </p>
+          <p className="text-sm font-semibold text-foreground truncate">
+            {visibleItems.length} medicines expiring soon
+            {hasCritical && (
+              <span className="ml-2 text-red-400 font-bold">• {visibleItems.filter(i => i.urgency === 'critical').length} critical (≤7d)</span>
+            )}
+          </p>
         </div>
+
+        {/* Primary stat */}
+        <div className="text-right shrink-0 hidden sm:block">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Value at Risk</p>
+          <p className="text-2xl font-bold text-rose-400 tabular-nums leading-none">{formatPrice(totalValueAtRisk)}</p>
+          <p className="text-[11px] text-emerald-400 font-semibold">Recoverable: {formatPrice(totalPotentialRecovery)}</p>
+        </div>
+
+        {/* CTA */}
+        <Button
+          size="sm"
+          onClick={(e) => { e.stopPropagation(); setIsExpanded(true); }}
+          className="h-8 text-xs font-semibold bg-amber-500 hover:bg-amber-600 text-slate-950 gap-1 px-3 shrink-0"
+        >
+          Review <ChevronDown className="h-3.5 w-3.5" />
+        </Button>
       </div>
     );
   }

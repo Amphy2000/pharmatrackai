@@ -23,42 +23,46 @@ export const DailyClosingReportCard = ({ report, onRecordAction }: DailyClosingR
 
   if (!report) return null;
 
-  // Collapsed View (Sleek 1-line bar)
+  // Collapsed View — Premium left-border design
   if (!isExpanded) {
     return (
-      <div className="relative overflow-hidden rounded-xl bg-gradient-to-r from-slate-900 via-indigo-950 to-slate-900 border border-indigo-500/25 p-3.5 text-white shadow-md flex items-center justify-between gap-3 flex-wrap sm:flex-nowrap">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-500/20 border border-indigo-400/30 text-indigo-300">
-            <BarChart3 className="h-4 w-4" />
-          </div>
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-indigo-300">
-                Autopilot Daily Closing Report
-              </span>
-              <Badge className="bg-emerald-500/20 border-emerald-400/30 text-emerald-300 text-[10px] py-0 h-4">
-                Auto-Generated
-              </Badge>
-            </div>
-            <p className="text-xs font-semibold text-white truncate">
-              Today's Sales: <span className="text-emerald-400">{formatPrice(report.sales.totalRevenue)}</span> ({report.sales.totalOrders} orders)
-              {report.bestSeller && (
-                <span className="hidden md:inline text-slate-300"> • Best Seller: <strong>{report.bestSeller.name}</strong> ({report.bestSeller.unitsSold} sold)</span>
-              )}
-            </p>
-          </div>
+      <div className={cn(
+        'relative rounded-xl bg-card border border-border/60 border-l-4 border-l-indigo-500 p-4 text-white shadow-sm',
+        'flex items-center justify-between gap-4 flex-wrap sm:flex-nowrap',
+        'hover:bg-muted/30 transition-colors cursor-pointer',
+      )} onClick={() => setIsExpanded(true)}>
+        {/* Icon */}
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-indigo-500/15 border border-indigo-400/20">
+          <BarChart3 className="h-4 w-4 text-indigo-400" />
         </div>
 
-        <div className="flex items-center gap-2 shrink-0 ml-auto">
-          <Button
-            size="sm"
-            onClick={() => setIsExpanded(true)}
-            className="h-8 text-xs font-semibold bg-indigo-500 hover:bg-indigo-600 text-white gap-1 px-3 shadow-sm"
-          >
-            <span>View Closing Report</span>
-            <ChevronDown className="h-3.5 w-3.5" />
-          </Button>
+        {/* Label + summary */}
+        <div className="flex-1 min-w-0">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-indigo-400 mb-0.5">
+            Daily Closing Report
+          </p>
+          <p className="text-sm font-semibold text-foreground truncate">
+            {report.sales.totalOrders} orders today
+            {report.bestSeller && (
+              <span className="ml-2 text-muted-foreground">· Best: <span className="text-white">{report.bestSeller.name}</span></span>
+            )}
+          </p>
         </div>
+
+        {/* Primary stat */}
+        <div className="text-right shrink-0 hidden sm:block">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Today's Sales</p>
+          <p className="text-2xl font-bold text-emerald-400 tabular-nums leading-none">{formatPrice(report.sales.totalRevenue)}</p>
+        </div>
+
+        {/* CTA */}
+        <Button
+          size="sm"
+          onClick={(e) => { e.stopPropagation(); setIsExpanded(true); }}
+          className="h-8 text-xs font-semibold bg-indigo-500 hover:bg-indigo-600 text-white gap-1 px-3 shrink-0"
+        >
+          View Report <ChevronDown className="h-3.5 w-3.5" />
+        </Button>
       </div>
     );
   }

@@ -165,48 +165,50 @@ export const StockoutForecastCard = ({ forecast, onRecordAction }: StockoutForec
 
   // ── Collapsed View ────────────────────────────────────────────────────────
   if (!isExpanded) {
+    const borderColor =
+      forecast.criticalCount > 0 ? 'border-l-red-500' :
+      forecast.highCount > 0 ? 'border-l-orange-500' :
+      'border-l-sky-500';
+
     return (
       <div className={cn(
-        'relative overflow-hidden rounded-xl bg-gradient-to-r p-3.5 text-white shadow-md border flex items-center justify-between gap-3 flex-wrap sm:flex-nowrap',
-        headerGradient
-      )}>
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-sky-500/20 border border-sky-400/30">
-            <TrendingDown className="h-4 w-4 text-sky-300" />
-          </div>
-          <div className="min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <span className="text-[10px] font-bold uppercase tracking-wider text-sky-300">
-                Stockout Forecast
-              </span>
-              {forecast.criticalCount > 0 && (
-                <Badge className="bg-red-500/20 border-red-400/30 text-red-300 text-[10px] py-0 h-4">
-                  {forecast.criticalCount} Critical
-                </Badge>
-              )}
-              {forecast.highCount > 0 && (
-                <Badge className="bg-orange-500/20 border-orange-400/30 text-orange-300 text-[10px] py-0 h-4">
-                  {forecast.highCount} High Risk
-                </Badge>
-              )}
-            </div>
-            <p className="text-xs font-semibold text-white truncate">
-              {forecast.totalAtRisk} medicines approaching reorder level •{' '}
-              <span className="text-sky-300">AI velocity analysis</span>
-            </p>
-          </div>
+        'relative rounded-xl bg-card border border-border/60 border-l-4 p-4 text-white shadow-sm',
+        'flex items-center justify-between gap-4 flex-wrap sm:flex-nowrap',
+        'hover:bg-muted/30 transition-colors cursor-pointer',
+        borderColor
+      )} onClick={() => setIsExpanded(true)}>
+        {/* Icon */}
+        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-sky-500/15 border border-sky-400/20">
+          <TrendingDown className="h-4 w-4 text-sky-400" />
         </div>
 
-        <div className="flex items-center gap-2 shrink-0 ml-auto">
-          <Button
-            size="sm"
-            onClick={() => setIsExpanded(true)}
-            className="h-8 text-xs font-semibold bg-sky-500 hover:bg-sky-600 text-white gap-1 px-3"
-          >
-            <span>View Forecast ({forecast.totalAtRisk})</span>
-            <ChevronDown className="h-3.5 w-3.5" />
-          </Button>
+        {/* Label + summary */}
+        <div className="flex-1 min-w-0">
+          <p className="text-[10px] font-bold uppercase tracking-widest text-sky-400 mb-0.5">
+            Stockout Forecast · 21-Day Horizon
+          </p>
+          <p className="text-sm font-semibold text-foreground truncate">
+            {forecast.totalAtRisk} medicines approaching reorder level
+            {forecast.criticalCount > 0 && (
+              <span className="ml-2 text-red-400 font-bold">• {forecast.criticalCount} critical</span>
+            )}
+          </p>
         </div>
+
+        {/* Primary stat */}
+        <div className="text-right shrink-0 hidden sm:block">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Pre-Order Est.</p>
+          <p className="text-2xl font-bold text-sky-400 tabular-nums leading-none">{formatPrice(forecast.totalPreOrderCost || 0)}</p>
+        </div>
+
+        {/* CTA */}
+        <Button
+          size="sm"
+          onClick={(e) => { e.stopPropagation(); setIsExpanded(true); }}
+          className="h-8 text-xs font-semibold bg-sky-500 hover:bg-sky-600 text-white gap-1 px-3 shrink-0"
+        >
+          View Forecast <ChevronDown className="h-3.5 w-3.5" />
+        </Button>
       </div>
     );
   }

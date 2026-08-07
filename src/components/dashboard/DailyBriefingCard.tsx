@@ -1,8 +1,8 @@
-import { useMemo } from 'react';
-import { Sparkles, ArrowRight, ShieldAlert, Package, TrendingUp, Clock, AlertCircle } from 'lucide-react';
+import { Sparkles, ArrowRight, Package, TrendingUp, Clock, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useNavigate } from 'react-router-dom';
 import { DailyBriefing } from '@/services/autopilotEngine';
+import { cn } from '@/lib/utils';
 
 interface DailyBriefingCardProps {
   briefing: DailyBriefing;
@@ -46,34 +46,49 @@ export const DailyBriefingCard = ({ briefing, userName, onRecordAction }: DailyB
           </span>
         </div>
 
-        {/* Concise Summary Bullet Points (Phase 2.3 Opening Briefing) */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 my-4">
-          <div className="flex items-start gap-2.5 p-3 rounded-xl bg-white/5 border border-white/10 text-sm text-slate-200">
-            <Package className="h-4 w-4 text-rose-400 shrink-0 mt-0.5" />
-            <span>
-              <strong className="text-white">{briefing.lowStockCount} medicines</strong> require restocking
-            </span>
+        {/* Key Metrics Grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 my-4">
+          <div className="flex flex-col gap-1 p-3 rounded-xl bg-white/5 border border-white/8 hover:bg-white/8 transition-colors">
+            <div className="flex items-center gap-1.5">
+              <Package className="h-3.5 w-3.5 text-rose-400" />
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Low Stock</span>
+            </div>
+            <p className="text-2xl font-bold text-rose-400 tabular-nums leading-none">{briefing.lowStockCount}</p>
+            <p className="text-[11px] text-slate-400">medicines to restock</p>
           </div>
 
-          <div className="flex items-start gap-2.5 p-3 rounded-xl bg-white/5 border border-white/10 text-sm text-slate-200">
-            <Clock className="h-4 w-4 text-amber-400 shrink-0 mt-0.5" />
-            <span>
-              <strong className="text-white">{briefing.expiringCount30Days} medicines</strong> expire this month
-            </span>
+          <div className="flex flex-col gap-1 p-3 rounded-xl bg-white/5 border border-white/8 hover:bg-white/8 transition-colors">
+            <div className="flex items-center gap-1.5">
+              <Clock className="h-3.5 w-3.5 text-amber-400" />
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Expiring</span>
+            </div>
+            <p className="text-2xl font-bold text-amber-400 tabular-nums leading-none">{briefing.expiringCount30Days}</p>
+            <p className="text-[11px] text-slate-400">expire this month</p>
           </div>
 
-          <div className="flex items-start gap-2.5 p-3 rounded-xl bg-white/5 border border-white/10 text-sm text-slate-200">
-            <Sparkles className="h-4 w-4 text-indigo-400 shrink-0 mt-0.5" />
-            <span>
-              Est. supplier order: <strong className="text-emerald-400">₦{briefing.estimatedSupplierOrderCost?.toLocaleString() || '0'}</strong>
-            </span>
+          <div className="flex flex-col gap-1 p-3 rounded-xl bg-white/5 border border-white/8 hover:bg-white/8 transition-colors">
+            <div className="flex items-center gap-1.5">
+              <Sparkles className="h-3.5 w-3.5 text-indigo-400" />
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Supplier Est.</span>
+            </div>
+            <p className="text-lg font-bold text-emerald-400 tabular-nums leading-none truncate">
+              ₦{(briefing.estimatedSupplierOrderCost || 0).toLocaleString()}
+            </p>
+            <p className="text-[11px] text-slate-400">purchase draft total</p>
           </div>
 
-          <div className="flex items-start gap-2.5 p-3 rounded-xl bg-white/5 border border-white/10 text-sm text-slate-200">
-            <TrendingUp className="h-4 w-4 text-emerald-400 shrink-0 mt-0.5" />
-            <span>
-              Yesterday's sales <strong className="text-white">{briefing.yesterdaySalesChange >= 0 ? `up +${briefing.yesterdaySalesChange}%` : `down ${briefing.yesterdaySalesChange}%`}</strong>
-            </span>
+          <div className="flex flex-col gap-1 p-3 rounded-xl bg-white/5 border border-white/8 hover:bg-white/8 transition-colors">
+            <div className="flex items-center gap-1.5">
+              <TrendingUp className="h-3.5 w-3.5 text-emerald-400" />
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Yesterday</span>
+            </div>
+            <p className={cn(
+              'text-2xl font-bold tabular-nums leading-none',
+              briefing.yesterdaySalesChange >= 0 ? 'text-emerald-400' : 'text-rose-400'
+            )}>
+              {briefing.yesterdaySalesChange >= 0 ? '+' : ''}{briefing.yesterdaySalesChange}%
+            </p>
+            <p className="text-[11px] text-slate-400">vs. previous day</p>
           </div>
         </div>
 

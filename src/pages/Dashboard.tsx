@@ -157,52 +157,53 @@ const Dashboard = () => {
           ════════════════════════════════════════════════════════════ */}
           <TabsContent value="home" className="space-y-6">
 
-            {/* 1. HERO FIRST: Today's Financial Metrics & Business Performance */}
+            {/* 1. HERO: Financial Performance */}
             <motion.section variants={containerVariants} initial="hidden" animate="visible">
-              <div className="grid grid-cols-2 gap-4">
-                {/* Today's Revenue */}
-                <motion.div variants={itemVariants}>
-                  <Card className="relative overflow-hidden border-0 bg-gradient-to-br from-emerald-500/20 via-emerald-500/10 to-transparent">
-                    <CardContent className="p-5">
-                      <div className="flex items-center gap-2 mb-1">
-                        <DollarSign className="h-4 w-4 text-emerald-500" />
-                        <span className="text-xs font-medium text-muted-foreground">Today's Revenue</span>
-                      </div>
-                      <p className="text-2xl sm:text-3xl font-bold font-display text-emerald-600 dark:text-emerald-400 tabular-nums">
-                        {formatPrice(financials.todaySales)}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">{financials.todayOrders} orders today</p>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-
-                {/* Today's Profit */}
-                <motion.div variants={itemVariants}>
-                  <Card className="relative overflow-hidden border-0 bg-gradient-to-br from-primary/20 via-primary/10 to-transparent">
-                    <CardContent className="p-5">
-                      <div className="flex items-center gap-2 mb-1">
-                        <TrendingUp className="h-4 w-4 text-primary" />
-                        <span className="text-xs font-medium text-muted-foreground">Today's Profit</span>
-                      </div>
-                      <p className="text-2xl sm:text-3xl font-bold font-display text-primary tabular-nums">
-                        {formatPrice(financials.todayProfit)}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-1">Est. ~25% margin</p>
-                    </CardContent>
-                  </Card>
-                </motion.div>
-              </div>
-
-              {/* Week & Month Revenue Breakdown */}
+              {/* Primary metric: full-width revenue hero */}
               <motion.div variants={itemVariants}>
-                <div className="grid grid-cols-2 gap-3 mt-3">
-                  <div className="px-4 py-3 rounded-xl bg-muted/40 border border-border/40">
-                    <p className="text-[11px] text-muted-foreground mb-0.5">This Week</p>
-                    <p className="text-lg font-bold tabular-nums">{formatPrice(financials.weekRevenue)}</p>
+                <Card className="relative overflow-hidden border border-border/50 bg-gradient-to-br from-emerald-950/60 via-background to-background shadow-lg">
+                  <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/8 to-transparent pointer-events-none" />
+                  <div className="absolute top-0 left-0 w-1 h-full bg-gradient-to-b from-emerald-400 to-emerald-600 rounded-l-xl" />
+                  <CardContent className="p-5 pl-6">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className="h-7 w-7 rounded-lg bg-emerald-500/20 flex items-center justify-center">
+                            <DollarSign className="h-3.5 w-3.5 text-emerald-400" />
+                          </div>
+                          <span className="text-xs font-semibold uppercase tracking-widest text-emerald-400">Today's Revenue</span>
+                        </div>
+                        <p className="text-4xl sm:text-5xl font-bold font-display text-emerald-400 tabular-nums leading-none">
+                          {formatPrice(financials.todaySales)}
+                        </p>
+                        <p className="text-sm text-muted-foreground mt-2">
+                          <span className="text-white font-semibold">{financials.todayOrders}</span> orders completed today
+                        </p>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <div className="px-3 py-1.5 rounded-lg bg-primary/15 border border-primary/20">
+                          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground mb-0.5">Est. Profit</p>
+                          <p className="text-xl font-bold text-primary tabular-nums">{formatPrice(financials.todayProfit)}</p>
+                          <p className="text-[10px] text-muted-foreground">~25% margin</p>
+                        </div>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </motion.div>
+
+              {/* Secondary: Week & Month */}
+              <motion.div variants={itemVariants} className="mt-3">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="relative px-4 py-3.5 rounded-xl bg-muted/30 border border-border/50 overflow-hidden">
+                    <div className="absolute top-0 left-0 w-0.5 h-full bg-blue-500/60 rounded-l-xl" />
+                    <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-1">This Week</p>
+                    <p className="text-xl font-bold tabular-nums">{formatPrice(financials.weekRevenue)}</p>
                   </div>
-                  <div className="px-4 py-3 rounded-xl bg-muted/40 border border-border/40">
-                    <p className="text-[11px] text-muted-foreground mb-0.5">This Month</p>
-                    <p className="text-lg font-bold tabular-nums">{formatPrice(financials.monthRevenue)}</p>
+                  <div className="relative px-4 py-3.5 rounded-xl bg-muted/30 border border-border/50 overflow-hidden">
+                    <div className="absolute top-0 left-0 w-0.5 h-full bg-purple-500/60 rounded-l-xl" />
+                    <p className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-1">This Month</p>
+                    <p className="text-xl font-bold tabular-nums">{formatPrice(financials.monthRevenue)}</p>
                   </div>
                 </div>
               </motion.div>
@@ -215,6 +216,17 @@ const Dashboard = () => {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.4 }}
             >
+              {/* Section divider */}
+              <div className="flex items-center gap-3 mb-4">
+                <div className="flex items-center gap-2">
+                  <div className="h-5 w-5 rounded-md bg-indigo-500/20 flex items-center justify-center">
+                    <Zap className="h-3 w-3 text-indigo-400" />
+                  </div>
+                  <span className="text-[11px] font-bold uppercase tracking-widest text-indigo-400">Autopilot Engine</span>
+                </div>
+                <div className="flex-1 h-px bg-gradient-to-r from-indigo-500/30 to-transparent" />
+                <span className="text-[10px] text-muted-foreground">0ms · Local · No API cost</span>
+              </div>
               <DailyBriefingCard
                 briefing={dailyBriefing}
                 userName={displayName}
