@@ -113,7 +113,30 @@ export const PurchaseOrderDraftCard = ({ draft, onRecordAction }: PurchaseOrderD
   const { toast } = useToast();
   const navigate = useNavigate();
   const [isExpanded, setIsExpanded] = useState(false);
-  const [isApproved, setIsApproved] = useState(false);
+
+  // Daily persistent reviewed state in localStorage
+  const todayKey = useMemo(() => `pharmatrack_draft_reviewed_${new Date().toISOString().split('T')[0]}`, []);
+  const [isApproved, setIsApproved] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(todayKey) === 'true';
+    } catch {
+      return false;
+    }
+  });
+
+  const handleMarkReviewed = () => {
+    setIsApproved(true);
+    try {
+      localStorage.setItem(todayKey, 'true');
+    } catch {
+      // Ignore localStorage errors
+    }
+    toast({
+      title: 'Draft Marked as Reviewed',
+      description: "Today's reorder draft has been reviewed. This status will stay saved for today.",
+    });
+    if (onRecordAction) onRecordAction('/inventory?filter=low-stock');
+  };
 
   // Generate WhatsApp text for reps/wholesalers in Nigeria
   const handleWhatsAppExport = () => {
@@ -235,10 +258,17 @@ export const PurchaseOrderDraftCard = ({ draft, onRecordAction }: PurchaseOrderD
 
         {/* Label + summary */}
         <div className="flex-1 min-w-0">
-          <p className="text-[10px] font-bold uppercase tracking-widest text-indigo-600 dark:text-indigo-400 mb-0.5">
-            Purchase Draft Ready
-          </p>
-          <p className="text-sm font-bold text-foreground truncate">
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-indigo-600 dark:text-indigo-400">
+              Purchase Draft Ready
+            </p>
+            {isApproved && (
+              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                <CheckCircle2 className="h-3 w-3" /> Reviewed Today
+              </span>
+            )}
+          </div>
+          <p className="text-sm font-bold text-foreground truncate mt-0.5">
             {draft.totalItems} items need restocking
             {draft.criticalCount > 0 && (
               <span className="ml-2 text-red-600 dark:text-red-400 font-extrabold">• {draft.criticalCount} out of stock</span>
@@ -361,18 +391,15 @@ export const PurchaseOrderDraftCard = ({ draft, onRecordAction }: PurchaseOrderD
           {!isApproved ? (
             <Button
               size="sm"
-              onClick={() => {
-                setIsApproved(true);
-                if (onRecordAction) onRecordAction('/inventory?filter=low-stock');
-              }}
+              onClick={handleMarkReviewed}
               className="bg-indigo-600 hover:bg-indigo-700 text-white font-semibold gap-2 shadow-md text-xs"
             >
               <BadgeCheck className="h-4 w-4" />
               Mark Reviewed
             </Button>
           ) : (
-            <div className="flex items-center gap-2 text-xs font-semibold text-emerald-300 bg-emerald-500/20 px-3 py-1.5 rounded-lg">
-              <CheckCircle2 className="h-4 w-4 text-emerald-400" /> Draft Reviewed
+            <div className="flex items-center gap-2 text-xs font-bold text-emerald-300 bg-emerald-500/20 px-3.5 py-2 rounded-xl border border-emerald-500/30">
+              <CheckCircle2 className="h-4 w-4 text-emerald-400" /> Reviewed for Today
             </div>
           )}
 
