@@ -34,8 +34,6 @@ const faqs = [
 • **No demand prediction** – you keep over-ordering slow movers
 • **NAFDAC risk** – paper records won't pass a 2025 audit
 
-**We offer FREE data migration**: Send us your Excel file and we'll have your inventory live in 24 hours. Your staff will save 8 hours in their first week.
-
 Pharmacies switching from Excel typically see a **40% reduction in time** spent on inventory management.`,
     icon: BookOpen,
     iconColor: "text-primary",

@@ -357,14 +357,6 @@ const Landing = () => {
         
         <div className="container mx-auto px-4 sm:px-6 relative z-10">
           <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="max-w-4xl mx-auto text-center">
-            {/* Free Migration Badge */}
-            <motion.div variants={fadeInUp} transition={{
-            duration: 0.6
-          }} className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-success/10 border border-success/30 mb-6">
-              <FileUp className="h-4 w-4 text-success" />
-              <span className="text-sm font-medium text-success">Free Data Migration: We move your stock in 24 hours</span>
-            </motion.div>
-
             {/* Headline */}
             <motion.h1 variants={fadeInUp} transition={{
             duration: 0.7,
@@ -1201,9 +1193,9 @@ const Landing = () => {
         }} viewport={{
           once: true
         }} className="text-center mb-16">
-            <Badge variant="outline" className="mb-4 border-success/30 text-success">Easy Migration</Badge>
+            <Badge variant="outline" className="mb-4 border-success/30 text-success">Easy Setup</Badge>
             <h2 className="text-3xl sm:text-4xl md:text-5xl font-display font-bold mb-4">
-              Switching is <span className="text-gradient">Easier Than You Think</span>
+              Up and Running in <span className="text-gradient">Under 24 Hours</span>
             </h2>
             <p className="text-lg text-muted-foreground max-w-xl mx-auto">
               We handle the heavy lifting so you can focus on serving customers
@@ -1272,7 +1264,7 @@ const Landing = () => {
               <CardContent className="p-8">
                 <div className="text-center mb-8">
                   <Badge className="bg-success/20 text-success border-0 mb-4">Peace of Mind Guarantee</Badge>
-                  <h3 className="text-2xl font-display font-bold">Zero Risk Migration</h3>
+                  <h3 className="text-2xl font-display font-bold">Zero Risk Onboarding</h3>
                 </div>
                 <div className="grid md:grid-cols-3 gap-6">
                   {[{
@@ -1605,10 +1597,6 @@ const Landing = () => {
             <div className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-success/10 border border-success/30">
               <BadgeCheck className="h-5 w-5 text-success" />
               <span className="text-success font-medium">30-Day Money-Back Guarantee</span>
-            </div>
-            <div className="inline-flex items-center gap-3 px-6 py-3 rounded-full bg-primary/10 border border-primary/30 ml-4">
-              <FileUp className="h-5 w-5 text-primary" />
-              <span className="text-primary font-medium">Free Data Migration Included</span>
             </div>
           </motion.div>
         </div>
