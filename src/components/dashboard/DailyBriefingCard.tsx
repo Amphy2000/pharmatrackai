@@ -36,10 +36,6 @@ export const DailyBriefingCard = ({ briefing, userName, onRecordAction }: DailyB
               </h2>
             </div>
           </div>
-          <span className="px-3 py-1 text-xs font-semibold rounded-full bg-emerald-500/10 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 flex items-center gap-1.5">
-            <span className="h-2 w-2 rounded-full bg-emerald-500 animate-ping" />
-            0ms Local Engine Active
-          </span>
         </div>
 
         {/* Key Metrics Grid */}

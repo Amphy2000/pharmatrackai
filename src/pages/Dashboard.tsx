@@ -225,7 +225,6 @@ const Dashboard = () => {
                   <span className="text-[11px] font-bold uppercase tracking-widest text-indigo-400">Autopilot Engine</span>
                 </div>
                 <div className="flex-1 h-px bg-gradient-to-r from-indigo-500/30 to-transparent" />
-                <span className="text-[10px] text-muted-foreground">0ms · Local · No API cost</span>
               </div>
               <DailyBriefingCard
                 briefing={dailyBriefing}
