@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Clock, ShieldCheck, Globe, Smartphone, Sparkles, Check, Calculator, ArrowRight, Star, Zap, TrendingUp, Lock, BadgeCheck, ChevronRight, FileUp, Wand2, Timer, WifiOff, Database, Headphones, X, DollarSign, AlertTriangle, Phone, MessageCircle, Menu, Play } from 'lucide-react';
+import { Clock, ShieldCheck, Globe, Smartphone, Sparkles, Check, Calculator, ArrowRight, Star, Zap, TrendingUp, Lock, BadgeCheck, ChevronRight, FileUp, Wand2, Timer, WifiOff, Database, Headphones, X, DollarSign, AlertTriangle, Phone, MessageCircle, Menu, Play, Bot, Brain, BarChart3, BellRing, PackageSearch, Sunrise, Sunset, AlertCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Logo } from '@/components/Logo';
 import { Card, CardContent } from '@/components/ui/card';
@@ -130,7 +130,7 @@ const Landing = () => {
       annualPrice: 180000,
       setupLabel: 'Zero Setup Fee',
       target: 'Fast-growing pharmacies using AI',
-      features: ['Everything in Lite', 'UNLIMITED AI Invoice Scans', 'Automated Expiry Discounting', 'Demand Forecasting AI', 'Unlimited Users', 'Multi-Branch Ready', 'Staff Clock-in', 'NAFDAC Reports', 'Priority WhatsApp Support'],
+      features: ['Everything in Lite', 'UNLIMITED AI Invoice Scans', 'AI Autopilot Engine (5 Smart Systems)', 'Daily Opening Briefing & Closing Report', 'Automated Expiry Clearance Queue', 'Stockout Forecast (7-Day Prediction)', 'WhatsApp Restock Export', 'Unlimited Users', 'Multi-Branch Ready', 'Staff Clock-in', 'NAFDAC Reports', 'Priority WhatsApp Support'],
       notIncluded: [],
       highlight: true,
       isNew: false,
@@ -193,6 +193,11 @@ const Landing = () => {
     feature: 'Anti-Theft',
     oldApp: 'Staff can edit prices easily',
     pharmatrack: 'Locked Pricing: Zero-Price-Manipulation (Admin Only)',
+    critical: true
+  }, {
+    feature: 'Autopilot Intelligence',
+    oldApp: 'No proactive guidance — you guess what to do next',
+    pharmatrack: 'AI Autopilot Engine: Daily Briefing, Closing Report & Stockout Forecast',
     critical: true
   }, {
     feature: 'Clinical Care',
@@ -385,7 +390,7 @@ const Landing = () => {
             duration: 0.6,
             delay: 0.2
           }} className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto mb-10">
-              Eliminate expiry waste, stop staff leakage, and automate your inventory with the world's most advanced pharmacy intelligence system.
+              Eliminate expiry waste, stop staff leakage, and let AI run your pharmacy's daily operations — from morning briefing to closing report.
             </motion.p>
 
             {/* CTA */}
@@ -671,23 +676,17 @@ const Landing = () => {
         }} viewport={{
           once: true
         }} className="mt-12 max-w-3xl mx-auto">
-            <Card className="border-warning/50 bg-warning/10 backdrop-blur-xl">
+            <Card className="border-primary/30 bg-primary/5 backdrop-blur-xl">
               <CardContent className="p-6">
                 <div className="flex items-start gap-4">
-                  <div className="h-10 w-10 rounded-lg bg-warning/20 flex items-center justify-center flex-shrink-0">
-                    <AlertTriangle className="h-5 w-5 text-warning" />
+                  <div className="h-10 w-10 rounded-lg bg-primary/20 flex items-center justify-center flex-shrink-0">
+                    <ShieldCheck className="h-5 w-5 text-primary" />
                   </div>
                   <div>
-                    <h4 className="font-display font-bold mb-2 text-white">The "I've Seen Apps Like This" Response</h4>
-                    <p className="text-sm text-white/80 mb-4">
-                      "Sir, those apps are 'General POS.' They tell you what you sold. <span className="text-success font-medium">PharmaTrack AI tells you what you are losing.</span> Can those apps take a photo of your wholesale invoice and stock 50 drugs in 10 seconds? No. Can they generate a NAFDAC Batch Traceability report? No. Those apps are for supermarkets. <span className="text-primary font-medium">You are a Healthcare Professional—you deserve a tool built for your license.</span>"
+                    <h4 className="font-display font-bold mb-2">Purpose-Built for Pharmacists</h4>
+                    <p className="text-sm text-muted-foreground">
+                      Generic retail apps track sales. <span className="text-primary font-medium">PharmaTrack AI runs your entire pharmacy operation</span> — from the moment you open to the moment you close. AI Invoice Scanner, Autopilot Engine, NAFDAC compliance, and a marketplace that brings patients directly to you.
                     </p>
-                    <Link to="/sales-resources">
-                      <Button variant="outline" size="sm" className="border-warning/50 text-warning hover:bg-warning/10">
-                        Get Sales Toolkit
-                        <ChevronRight className="h-4 w-4 ml-1" />
-                      </Button>
-                    </Link>
                   </div>
                 </div>
               </CardContent>
@@ -874,17 +873,7 @@ const Landing = () => {
       {/* Features Bento Grid */}
       <section id="features" className="py-20 sm:py-32 relative">
         <div className="container mx-auto px-4 sm:px-6">
-          <motion.div initial={{
-          opacity: 0,
-          y: 20
-        }} whileInView={{
-          opacity: 1,
-          y: 0
-        }} viewport={{
-          once: true
-        }} transition={{
-          duration: 0.6
-        }} className="text-center mb-16">
+          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} className="text-center mb-16">
             <Badge variant="outline" className="mb-4 border-primary/30 text-primary">Complete Solution</Badge>
             <h2 className="text-3xl sm:text-4xl md:text-5xl font-display font-bold mb-4">
               Everything You Need to <span className="text-gradient">Dominate</span>
@@ -894,19 +883,75 @@ const Landing = () => {
             </p>
           </motion.div>
 
+          {/* --- AUTOPILOT ENGINE HERO FEATURE --- */}
+          <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} className="max-w-6xl mx-auto mb-8">
+            <Card className="glass-card border-primary/40 overflow-hidden shadow-glow-primary relative">
+              <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-primary" />
+              <CardContent className="p-6 sm:p-10">
+                <div className="grid lg:grid-cols-2 gap-8 items-center">
+                  {/* Left: Description */}
+                  <div>
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="h-14 w-14 rounded-2xl bg-gradient-primary flex items-center justify-center shadow-glow-primary">
+                        <Bot className="h-7 w-7 text-white" />
+                      </div>
+                      <div>
+                        <Badge className="bg-primary/20 text-primary border-0 mb-1">New — Autopilot Engine</Badge>
+                        <h3 className="text-2xl font-display font-bold">Your AI Pharmacy Manager</h3>
+                      </div>
+                    </div>
+                    <p className="text-muted-foreground mb-6">
+                      PharmaTrack AI doesn't just record what happened — it <span className="text-foreground font-medium">tells you what to do next</span>. The Autopilot Engine runs 5 intelligent systems in the background, so you can focus on serving patients.
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      {[
+                        { icon: Sunrise, label: 'Daily Opening Briefing', desc: 'Morning priorities auto-generated', color: 'text-amber-400' },
+                        { icon: PackageSearch, label: 'Smart Restock Drafts', desc: 'AI suggests purchase orders', color: 'text-blue-400' },
+                        { icon: AlertCircle, label: 'Clearance Queue', desc: 'Expiring stock auto-flagged for discount', color: 'text-orange-400' },
+                        { icon: Brain, label: 'Stockout Forecast', desc: '7-day AI stockout predictions', color: 'text-purple-400' },
+                        { icon: Sunset, label: 'Daily Closing Report', desc: 'End-of-day summary auto-generated', color: 'text-indigo-400' },
+                      ].map((item, i) => (
+                        <div key={i} className="flex items-start gap-2.5 p-3 rounded-lg bg-white/5 border border-white/8">
+                          <item.icon className={`h-4 w-4 mt-0.5 shrink-0 ${item.color}`} />
+                          <div>
+                            <p className="text-sm font-medium">{item.label}</p>
+                            <p className="text-xs text-muted-foreground">{item.desc}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  {/* Right: Visual */}
+                  <div className="space-y-3">
+                    <div className="text-center mb-4">
+                      <p className="text-sm text-muted-foreground font-medium uppercase tracking-wider">Your Day, Automated</p>
+                    </div>
+                    {[
+                      { time: '8:00 AM', label: 'Opening Briefing', note: '3 items need action today', color: 'border-l-amber-400', icon: Sunrise },
+                      { time: 'During Day', label: 'Stockout Forecast', note: 'Amoxicillin: 5 days left', color: 'border-l-red-400', icon: BellRing },
+                      { time: 'Ongoing', label: 'Clearance Queue', note: '₦45,000 at-risk stock flagged', color: 'border-l-orange-400', icon: AlertCircle },
+                      { time: '6:00 PM', label: 'Closing Report', note: 'Revenue: ₦280K | Top: Coartem', color: 'border-l-indigo-400', icon: Sunset },
+                    ].map((event, i) => (
+                      <motion.div key={i} initial={{ opacity: 0, x: 20 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ delay: i * 0.1 }}
+                        className={`flex items-center gap-4 p-3.5 rounded-xl bg-card border border-border/60 border-l-4 ${event.color}`}>
+                        <event.icon className="h-5 w-5 text-muted-foreground shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-sm">{event.label}</p>
+                          <p className="text-xs text-muted-foreground truncate">{event.note}</p>
+                        </div>
+                        <span className="text-xs text-muted-foreground shrink-0">{event.time}</span>
+                      </motion.div>
+                    ))}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+
+          {/* Core Features Grid */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6 max-w-6xl mx-auto">
             {/* AI Expiry - Featured Card */}
-            <motion.div initial={{
-            opacity: 0,
-            y: 30
-          }} whileInView={{
-            opacity: 1,
-            y: 0
-          }} viewport={{
-            once: true
-          }} transition={{
-            duration: 0.5
-          }} className="md:col-span-2 lg:col-span-1 lg:row-span-2">
+            <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5 }} className="md:col-span-2 lg:col-span-1">
               <Card className="h-full glass-card border-primary/30 overflow-hidden group hover:border-primary/50 transition-all duration-500">
                 <CardContent className="p-6 sm:p-8 h-full flex flex-col">
                   <div className="h-14 w-14 rounded-2xl bg-gradient-primary flex items-center justify-center mb-6 group-hover:shadow-glow-primary transition-all">
@@ -915,7 +960,7 @@ const Landing = () => {
                   <Badge className="w-fit mb-4 bg-primary/20 text-primary border-0">AI-Powered</Badge>
                   <h3 className="text-2xl font-display font-bold mb-3">Predictive Expiry Alerts</h3>
                   <p className="text-muted-foreground mb-6 flex-grow">
-                    AI analyzes inventory patterns to predict which items will expire before selling, giving you 60 days advance warning to act with discount strategies.
+                    AI analyzes your inventory to predict which items will expire before selling, giving you 60 days advance warning to act with smart discount strategies.
                   </p>
                   <div className="flex items-center gap-2 text-primary font-medium">
                     <TrendingUp className="h-4 w-4" />
@@ -926,18 +971,7 @@ const Landing = () => {
             </motion.div>
 
             {/* POS System */}
-            <motion.div initial={{
-            opacity: 0,
-            y: 30
-          }} whileInView={{
-            opacity: 1,
-            y: 0
-          }} viewport={{
-            once: true
-          }} transition={{
-            duration: 0.5,
-            delay: 0.1
-          }}>
+            <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5, delay: 0.1 }}>
               <Card className="h-full glass-card border-border/50 overflow-hidden group hover:border-success/30 transition-all">
                 <CardContent className="p-6 h-full flex flex-col">
                   <div className="h-12 w-12 rounded-xl bg-success/20 flex items-center justify-center mb-4">
@@ -950,18 +984,7 @@ const Landing = () => {
             </motion.div>
 
             {/* Staff Management */}
-            <motion.div initial={{
-            opacity: 0,
-            y: 30
-          }} whileInView={{
-            opacity: 1,
-            y: 0
-          }} viewport={{
-            once: true
-          }} transition={{
-            duration: 0.5,
-            delay: 0.2
-          }}>
+            <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5, delay: 0.2 }}>
               <Card className="h-full glass-card border-border/50 overflow-hidden group hover:border-secondary/30 transition-all">
                 <CardContent className="p-6 h-full flex flex-col">
                   <div className="h-12 w-12 rounded-xl bg-secondary/20 flex items-center justify-center mb-4">
@@ -973,116 +996,66 @@ const Landing = () => {
               </Card>
             </motion.div>
 
-            {/* Demand Forecasting */}
-            <motion.div initial={{
-            opacity: 0,
-            y: 30
-          }} whileInView={{
-            opacity: 1,
-            y: 0
-          }} viewport={{
-            once: true
-          }} transition={{
-            duration: 0.5,
-            delay: 0.3
-          }}>
+            {/* Stockout Forecast */}
+            <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5, delay: 0.3 }}>
               <Card className="h-full glass-card border-border/50 overflow-hidden group hover:border-info/30 transition-all">
                 <CardContent className="p-6 h-full flex flex-col">
                   <div className="h-12 w-12 rounded-xl bg-info/20 flex items-center justify-center mb-4">
-                    <TrendingUp className="h-6 w-6 text-info" />
+                    <BarChart3 className="h-6 w-6 text-info" />
                   </div>
-                  <h3 className="text-lg font-display font-bold mb-2">Demand Forecasting</h3>
-                  <p className="text-sm text-muted-foreground flex-grow">AI predicts what to reorder before you run out. Never lose a sale to stockouts.</p>
+                  <h3 className="text-lg font-display font-bold mb-2">Stockout & Demand Forecast</h3>
+                  <p className="text-sm text-muted-foreground flex-grow">AI predicts what to reorder and flags items running out in the next 7 days. Never lose a sale to an empty shelf.</p>
                 </CardContent>
               </Card>
             </motion.div>
 
             {/* Multi-Branch */}
-            <motion.div initial={{
-            opacity: 0,
-            y: 30
-          }} whileInView={{
-            opacity: 1,
-            y: 0
-          }} viewport={{
-            once: true
-          }} transition={{
-            duration: 0.5,
-            delay: 0.4
-          }}>
+            <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5, delay: 0.4 }}>
               <Card className="h-full glass-card border-border/50 overflow-hidden group hover:border-warning/30 transition-all">
                 <CardContent className="p-6 h-full flex flex-col">
                   <div className="h-12 w-12 rounded-xl bg-warning/20 flex items-center justify-center mb-4">
                     <Globe className="h-6 w-6 text-warning" />
                   </div>
                   <h3 className="text-lg font-display font-bold mb-2">Multi-Branch Support</h3>
-                  <p className="text-sm text-muted-foreground flex-grow">Manage multiple locations, transfer stock between branches, centralized reporting.</p>
+                  <p className="text-sm text-muted-foreground flex-grow">Manage multiple locations, transfer stock between branches, and get centralized reporting across all stores.</p>
                 </CardContent>
               </Card>
             </motion.div>
 
-            {/* Barcode Scanning */}
-            <motion.div initial={{
-            opacity: 0,
-            y: 30
-          }} whileInView={{
-            opacity: 1,
-            y: 0
-          }} viewport={{
-            once: true
-          }} transition={{
-            duration: 0.5,
-            delay: 0.5
-          }} className="md:col-span-2 lg:col-span-1">
+            {/* WhatsApp Restock Export */}
+            <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5, delay: 0.5 }} className="md:col-span-2 lg:col-span-1">
               <Card className="glass-card border-border/50 overflow-hidden group hover:border-primary/30 transition-all">
                 <CardContent className="p-6 flex items-start gap-4">
-                  <div className="h-12 w-12 rounded-xl bg-primary/20 flex items-center justify-center flex-shrink-0">
-                    <Smartphone className="h-6 w-6 text-primary" />
+                  <div className="h-12 w-12 rounded-xl bg-success/20 flex items-center justify-center flex-shrink-0">
+                    <MessageCircle className="h-6 w-6 text-success" />
                   </div>
                   <div>
-                    <h3 className="text-lg font-display font-bold mb-1">Mobile Barcode Scanning</h3>
-                    <p className="text-sm text-muted-foreground">No expensive hardware. Use your phone camera to scan and add stock instantly.</p>
+                    <h3 className="text-lg font-display font-bold mb-1">WhatsApp Restock Export</h3>
+                    <p className="text-sm text-muted-foreground">One-tap export of your restock list directly to any supplier's WhatsApp. No typing, no mistakes.</p>
                   </div>
                 </CardContent>
               </Card>
             </motion.div>
           </div>
 
-          {/* Additional Features Grid */}
-          <motion.div initial={{
-          opacity: 0,
-          y: 30
-        }} whileInView={{
-          opacity: 1,
-          y: 0
-        }} viewport={{
-          once: true
-        }} transition={{
-          duration: 0.5,
-          delay: 0.6
-        }} className="mt-12 max-w-6xl mx-auto">
+          {/* Additional Features Quick Grid */}
+          <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5, delay: 0.6 }} className="mt-8 max-w-6xl mx-auto">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {[{
-              icon: TrendingUp,
-              label: 'Sales Analytics',
-              desc: 'Real-time insights'
-            }, {
-              icon: Phone,
-              label: 'Automated Alerts',
-              desc: 'SMS & WhatsApp'
-            }, {
-              icon: ShieldCheck,
-              label: 'NAFDAC Compliance',
-              desc: 'Audit-ready reports'
-            }, {
-              icon: Sparkles,
-              label: 'Controlled Drugs',
-              desc: 'Narcotics register'
-            }].map((feature, i) => <div key={i} className="p-4 rounded-xl bg-muted/30 border border-border/50 text-center hover:bg-muted/50 transition-colors">
+                icon: TrendingUp, label: 'Sales Analytics', desc: 'Real-time insights'
+              }, {
+                icon: Phone, label: 'Automated Alerts', desc: 'SMS & WhatsApp'
+              }, {
+                icon: ShieldCheck, label: 'NAFDAC Compliance', desc: 'Audit-ready reports'
+              }, {
+                icon: Sparkles, label: 'Controlled Drugs', desc: 'Narcotics register'
+              }].map((feature, i) => (
+                <div key={i} className="p-4 rounded-xl bg-muted/30 border border-border/50 text-center hover:bg-muted/50 transition-colors">
                   <feature.icon className="h-6 w-6 mx-auto mb-2 text-primary" />
                   <p className="font-medium text-sm">{feature.label}</p>
                   <p className="text-xs text-muted-foreground">{feature.desc}</p>
-                </div>)}
+                </div>
+              ))}
             </div>
           </motion.div>
         </div>
