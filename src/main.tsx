@@ -8,7 +8,7 @@ import { AppLoadingScreen } from "./components/common/AppLoadingScreen";
 const App = lazy(() => import("./App.tsx"));
 
 // Auto-clear caches on new deployments - helps non-tech users get updates automatically
-const APP_VERSION = '2026.01.10.1';
+const APP_VERSION = '2026.08.10.v6';
 const LAST_VERSION_KEY = 'pharmatrack_app_version';
 
 const clearOldCaches = async () => {
@@ -26,6 +26,13 @@ const clearOldCaches = async () => {
       if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
         navigator.serviceWorker.controller.postMessage({ type: 'CLEAR_CACHES' });
       }
+      // Force unregister stale SW to pull fresh code
+      if ('serviceWorker' in navigator) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        for (const reg of registrations) {
+          await reg.update();
+        }
+      }
       // If not first visit, reload to get fresh content
       if (lastVersion) {
         console.log('[App] New version detected, reloading...');
@@ -40,8 +47,22 @@ const clearOldCaches = async () => {
 
 clearOldCaches();
 
-// Register service worker for offline POS
-registerServiceWorker();
+// Register service worker for offline POS and listen for SW_UPDATED message
+registerServiceWorker().then((registration) => {
+  if (registration) {
+    // Check for updates on every page load / focus
+    registration.update();
+  }
+});
+
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.addEventListener('message', (event) => {
+    if (event.data && event.data.type === 'SW_UPDATED') {
+      console.log('[SW] New version activated, reloading...');
+      window.location.reload();
+    }
+  });
+}
 
 createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
