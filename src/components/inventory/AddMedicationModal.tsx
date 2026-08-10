@@ -3,7 +3,9 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { format } from 'date-fns';
-import { CalendarIcon, Plus, Save, X, Truck, Search } from 'lucide-react';
+import { CalendarIcon, Plus, Save, X, Truck, Search, AlertTriangle, Info, Sparkles } from 'lucide-react';
+import { toast } from 'sonner';
+import { analyzeInventoryDuplicates } from '@/utils/inventoryDuplicateUtils';
 import { Medication, MedicationFormData } from '@/types/medication';
 import { useMedications } from '@/hooks/useMedications';
 import { useSuppliers } from '@/hooks/useSuppliers';
@@ -167,6 +169,30 @@ export const AddMedicationModal = ({
       active_ingredients: '',
     },
   });
+
+  const watchedName = form.watch('name');
+  const watchedBatchNumber = form.watch('batch_number');
+  const watchedCurrentStock = form.watch('current_stock');
+
+  const duplicateAnalysis = useMemo(() => {
+    if (!medications || isEditing) return { exactBatchMatch: null, sameNameBatches: [], similarNameProducts: [] };
+    return analyzeInventoryDuplicates(medications, watchedName, watchedBatchNumber, editingMedication?.id);
+  }, [medications, watchedName, watchedBatchNumber, isEditing, editingMedication]);
+
+  const handleTopUpBatch = async (existingMed: Medication) => {
+    const addQty = Number(watchedCurrentStock) || 0;
+    const newStock = Number(existingMed.current_stock) + addQty;
+    try {
+      await updateMedication.mutateAsync({
+        id: existingMed.id,
+        current_stock: newStock,
+      });
+      toast.success(`Updated stock for ${existingMed.name} (Batch: ${existingMed.batch_number}) to ${newStock} units`);
+      onOpenChange(false);
+    } catch (err) {
+      toast.error('Failed to update stock');
+    }
+  };
 
   useEffect(() => {
     if (editingMedication) {
@@ -453,6 +479,68 @@ export const AddMedicationModal = ({
                 )}
               />
             </div>
+
+            {/* DUPLICATE / SIMILAR PRODUCT DETECTION BANNERS */}
+            {/* 1. Exact Batch Match Alert */}
+            {duplicateAnalysis.exactBatchMatch && (
+              <div className="p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-200 space-y-2">
+                <div className="flex items-start gap-2.5">
+                  <AlertTriangle className="h-5 w-5 text-amber-500 shrink-0 mt-0.5" />
+                  <div className="text-xs space-y-1">
+                    <p className="font-semibold text-sm">
+                      Batch "{duplicateAnalysis.exactBatchMatch.batch_number}" already exists for "{duplicateAnalysis.exactBatchMatch.name}"
+                    </p>
+                    <p className="text-muted-foreground">
+                      Existing Stock: <span className="font-medium text-foreground">{duplicateAnalysis.exactBatchMatch.current_stock} units</span> | Expiry: <span className="font-medium text-foreground">{duplicateAnalysis.exactBatchMatch.expiry_date}</span>
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 pt-1">
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="bg-amber-600 hover:bg-amber-700 text-white text-xs h-8"
+                    onClick={() => handleTopUpBatch(duplicateAnalysis.exactBatchMatch!)}
+                  >
+                    Top-Up Existing Batch (+{watchedCurrentStock || 0} units)
+                  </Button>
+                  <span className="text-[11px] text-muted-foreground">or continue below for new batch</span>
+                </div>
+              </div>
+            )}
+
+            {/* 2. Same Name Existing Batches Info */}
+            {!duplicateAnalysis.exactBatchMatch && duplicateAnalysis.sameNameBatches.length > 0 && (
+              <div className="p-3 rounded-xl bg-info/10 border border-info/20 text-info-foreground flex items-center justify-between gap-2 text-xs">
+                <div className="flex items-center gap-2">
+                  <Info className="h-4 w-4 text-info shrink-0" />
+                  <span>
+                    <strong>{duplicateAnalysis.sameNameBatches[0].name}</strong> already exists ({duplicateAnalysis.sameNameBatches.reduce((sum, b) => sum + b.current_stock, 0)} units in stock across {duplicateAnalysis.sameNameBatches.length} batch(es)). Adding this creates a new FEFO batch.
+                  </span>
+                </div>
+              </div>
+            )}
+
+            {/* 3. Fuzzy / Similar Name Match Suggestion */}
+            {!duplicateAnalysis.exactBatchMatch && duplicateAnalysis.sameNameBatches.length === 0 && duplicateAnalysis.similarNameProducts.length > 0 && (
+              <div className="p-3 rounded-xl bg-primary/10 border border-primary/20 flex flex-wrap items-center justify-between gap-2 text-xs">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-primary shrink-0" />
+                  <span>
+                    Did you mean existing item: <strong>"{duplicateAnalysis.similarNameProducts[0].name}"</strong> ({duplicateAnalysis.similarNameProducts[0].totalStock} in stock)?
+                  </span>
+                </div>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="text-xs h-7 border-primary/40 text-primary hover:bg-primary/10"
+                  onClick={() => form.setValue('name', duplicateAnalysis.similarNameProducts[0].name)}
+                >
+                  Use Existing Name
+                </Button>
+              </div>
+            )}
 
             <FormField
               control={form.control}
