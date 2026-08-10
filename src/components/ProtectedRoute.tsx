@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { PharmacySelector } from '@/components/pharmacy/PharmacySelector';
 import { clearSelectedPharmacyId, getSelectedPharmacyId, setSelectedPharmacyId } from '@/hooks/useSelectedPharmacy';
+import AppShell from '@/components/common/AppShell';
 
 interface ProtectedRouteProps {
   children: ReactNode;
@@ -273,5 +274,5 @@ export const ProtectedRoute = ({ children, requireSubscription = true }: Protect
     );
   }
 
-  return <>{children}</>;
+  return <AppShell>{children}</AppShell>;
 };

@@ -23,8 +23,13 @@ import {
   Trash2,
   DollarSign,
   Check,
-  FileText
+  FileText,
+  Smartphone,
+  BellRing,
+  BellOff,
+  ShieldCheck
 } from 'lucide-react';
+import { usePushNotifications } from '@/hooks/usePushNotifications';
 import NotificationAuditLog from '@/components/notifications/NotificationAuditLog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -57,6 +62,13 @@ const Notifications = () => {
   const { formatPrice } = useCurrency();
   const { toast } = useToast();
   const { isOwnerOrManager, userRole } = usePermissions();
+  const {
+    permission: pushPermission,
+    isSubscribed: pushSubscribed,
+    isLoading: pushLoading,
+    requestPermissionAndSubscribe,
+    sendTestNotification,
+  } = usePushNotifications();
 
   // WhatsApp buttons visible to owner, manager, and all staff roles (pharmacist, inventory clerk, senior staff)
   const canSendAlerts = userRole !== null; // Any authenticated staff can send alerts
@@ -296,6 +308,77 @@ const Notifications = () => {
       </header>
 
       <main className="container mx-auto px-4 py-6 space-y-6 max-w-4xl">
+
+        {/* ──────────────────────────────────────────────────────────────
+             PUSH NOTIFICATION SETUP CARD
+             Always visible – nudges users to enable background OS alerts
+        ────────────────────────────────────────────────────────────── */}
+        <motion.div
+          initial={{ opacity: 0, y: -8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35 }}
+        >
+          {pushPermission !== 'granted' ? (
+            /* Not yet enabled – big prominent CTA */
+            <Card className="relative overflow-hidden border-2 border-primary/30 bg-gradient-to-r from-primary/5 via-background to-indigo-500/5">
+              <div className="absolute inset-0 bg-grid-white/5 pointer-events-none" />
+              <CardContent className="p-4 sm:p-5">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                  <div className="h-12 w-12 shrink-0 rounded-xl bg-primary/15 flex items-center justify-center ring-2 ring-primary/20">
+                    <BellRing className="h-6 w-6 text-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-bold text-sm">Enable Background Push Alerts</p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Get OS-level alerts for expired stock, low inventory &amp; AI daily briefings — <strong>even when the app is closed</strong>.
+                    </p>
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      {['Expired Meds 🚨','Low Stock 📦','Daily Briefing ⚡','Stockout Forecast 🔮'].map(t => (
+                        <span key={t} className="text-[10px] bg-primary/10 text-primary px-2 py-0.5 rounded-full font-medium">{t}</span>
+                      ))}
+                    </div>
+                  </div>
+                  <Button
+                    size="sm"
+                    className="shrink-0 gap-2 bg-primary hover:bg-primary/90 text-primary-foreground"
+                    onClick={requestPermissionAndSubscribe}
+                    disabled={pushLoading}
+                  >
+                    {pushLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Smartphone className="h-4 w-4" />}
+                    {pushLoading ? 'Setting up…' : 'Enable Push Alerts'}
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            /* Already enabled – compact green status strip + test button */
+            <Card className="border-emerald-500/30 bg-gradient-to-r from-emerald-500/5 to-green-500/5">
+              <CardContent className="p-3 sm:p-4">
+                <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+                  <div className="flex items-center gap-2 flex-1">
+                    <div className="h-8 w-8 shrink-0 rounded-lg bg-emerald-500/15 flex items-center justify-center">
+                      <ShieldCheck className="h-4 w-4 text-emerald-500" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-emerald-600 dark:text-emerald-400">Background Push Notifications Active</p>
+                      <p className="text-xs text-muted-foreground">Your device will receive alerts for expiry, low stock &amp; AI briefings — even when the app is closed.</p>
+                    </div>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="shrink-0 gap-2 border-emerald-500/40 text-emerald-600 hover:bg-emerald-500/10"
+                    onClick={sendTestNotification}
+                  >
+                    <Send className="h-3.5 w-3.5" />
+                    Send Test Push
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          )}
+        </motion.div>
+
         {/* Quick Send All Button - Visible to all staff */}
         {alerts.length > 0 && ownerPhone && canSendAlerts && (
           <Card className="bg-gradient-to-r from-green-500/10 to-emerald-500/10 border-green-500/30">

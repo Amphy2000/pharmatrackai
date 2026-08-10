@@ -245,6 +245,81 @@ async function queueSaleForSync(sale: any) {
   if ('sync' in self.registration) {
     await self.registration.sync.register('sync-sales');
   }
-}
+// ----------------------------------------------------
+// WEB PUSH & BACKGROUND NOTIFICATION EVENT HANDLERS
+// ----------------------------------------------------
+
+// Handle Web Push Event from OS/Server even when app is closed
+self.addEventListener('push', (event: PushEvent) => {
+  console.log('[ServiceWorker] Push event received:', event);
+
+  let data = {
+    title: 'PharmaTrack AI Alert 🔔',
+    body: 'You have a vital pharmacy notification.',
+    icon: '/icon-192.png',
+    badge: '/icon-192.png',
+    url: '/dashboard',
+    urgency: 'high',
+  };
+
+  if (event.data) {
+    try {
+      const payload = event.data.json();
+      data = { ...data, ...payload };
+    } catch (e) {
+      data.body = event.data.text() || data.body;
+    }
+  }
+
+  const options: NotificationOptions = {
+    body: data.body,
+    icon: data.icon || '/icon-192.png',
+    badge: data.badge || '/icon-192.png',
+    vibrate: [200, 100, 200, 100, 200],
+    data: {
+      url: data.url || '/dashboard',
+      timestamp: Date.now(),
+    },
+    actions: [
+      { action: 'open', title: 'Open App' },
+      { action: 'dismiss', title: 'Dismiss' }
+    ],
+    tag: 'pharmatrack-push-alert',
+    renotify: true,
+    requireInteraction: true,
+  };
+
+  event.waitUntil(
+    self.registration.showNotification(data.title, options)
+  );
+});
+
+// Handle OS Notification banner click event
+self.addEventListener('notificationclick', (event: NotificationEvent) => {
+  console.log('[ServiceWorker] Notification clicked:', event.notification);
+  event.notification.close();
+
+  if (event.action === 'dismiss') {
+    return;
+  }
+
+  const targetUrl = event.notification.data?.url || '/dashboard';
+
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+      // Focus open client window if available
+      for (const client of clientList) {
+        if ('focus' in client && client.url.includes(self.location.origin)) {
+          client.navigate(targetUrl);
+          return client.focus();
+        }
+      }
+      // Open new window if app was closed
+      if (self.clients.openWindow) {
+        return self.clients.openWindow(targetUrl);
+      }
+    })
+  );
+});
 
 export {};

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bell, CheckCheck, Trash2, RefreshCw, Loader2 } from 'lucide-react';
+import { Bell, CheckCheck, Trash2, RefreshCw, Loader2, Smartphone, BellRing, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useDbNotifications, DbNotification } from '@/hooks/useDbNotifications';
+import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { useNavigate } from 'react-router-dom';
 import { AlertTriangle, Info, CheckCircle, XCircle, Calendar, Package } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
@@ -24,6 +25,12 @@ export const NotificationBell = () => {
     markAllAsRead,
     generateInventoryNotifications 
   } = useDbNotifications();
+  const {
+    permission,
+    isSubscribed,
+    requestPermissionAndSubscribe,
+    sendTestNotification
+  } = usePushNotifications();
   const [open, setOpen] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const navigate = useNavigate();
@@ -126,6 +133,37 @@ export const NotificationBell = () => {
               </Button>
             )}
           </div>
+        </div>
+
+        {/* Web Push OS Alert Status Bar */}
+        <div className="p-2.5 bg-muted/40 border-b border-border text-xs space-y-1.5">
+          {permission !== 'granted' ? (
+            <Button
+              size="sm"
+              variant="default"
+              className="w-full h-8 text-xs gap-1.5 bg-gradient-primary hover:opacity-90 text-primary-foreground font-medium"
+              onClick={requestPermissionAndSubscribe}
+            >
+              <BellRing className="h-3.5 w-3.5" />
+              Enable Push Alerts (When App Closed)
+            </Button>
+          ) : (
+            <div className="flex items-center justify-between gap-1">
+              <div className="flex items-center gap-1.5 text-emerald-600 dark:text-emerald-400 text-[11px] font-medium">
+                <Smartphone className="h-3.5 w-3.5" />
+                <span>OS Background Push Active</span>
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-6 px-2 text-[10px] gap-1 border-primary/30 text-primary hover:bg-primary/10"
+                onClick={sendTestNotification}
+              >
+                <Send className="h-2.5 w-2.5" />
+                Test Push
+              </Button>
+            </div>
+          )}
         </div>
         <ScrollArea className="h-[320px]">
           {loading ? (
