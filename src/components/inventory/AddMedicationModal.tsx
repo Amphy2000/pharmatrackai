@@ -53,7 +53,7 @@ import { ALL_CATEGORIES, CATEGORY_GROUPS, ProductType, MedicationCategory, DISPE
 const formSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters').max(100),
   category: z.string().min(1, 'Category is required'),
-  batch_number: z.string().min(1, 'Batch number is required').max(50),
+  batch_number: z.string().max(50).optional(),
   barcode_id: z.string().max(100).optional(),
   current_stock: z.coerce.number().min(0, 'Stock cannot be negative'),
   reorder_level: z.coerce.number().min(0, 'Reorder level cannot be negative'),
@@ -310,7 +310,7 @@ export const AddMedicationModal = ({
     const medicationData: MedicationFormData & { active_ingredients?: string[]; wholesale_price?: number } = {
       name: values.name,
       category: values.category as MedicationCategory,
-      batch_number: values.batch_number,
+      batch_number: values.batch_number?.trim() || `BN-${Date.now().toString(36).toUpperCase().slice(-6)}`,
       barcode_id: values.barcode_id || undefined,
       current_stock: values.current_stock,
       reorder_level: values.reorder_level,
@@ -470,9 +470,9 @@ export const AddMedicationModal = ({
                 name="batch_number"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Batch Number</FormLabel>
+                    <FormLabel>Batch Number <span className="text-xs text-muted-foreground font-normal">(Optional)</span></FormLabel>
                     <FormControl>
-                      <Input placeholder="e.g., AMX-2024-001" {...field} />
+                      <Input placeholder="e.g., AMX-2024-001 (Auto-generated if left blank)" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -509,14 +509,30 @@ export const AddMedicationModal = ({
               </div>
             )}
 
-            {/* 2. Same Name Existing Batches Info */}
+            {/* 2. Same Name Existing Batches Info & Top-Up Option */}
             {!duplicateAnalysis.exactBatchMatch && duplicateAnalysis.sameNameBatches.length > 0 && (
-              <div className="p-3 rounded-xl bg-info/10 border border-info/20 text-info-foreground flex items-center justify-between gap-2 text-xs">
-                <div className="flex items-center gap-2">
-                  <Info className="h-4 w-4 text-info shrink-0" />
-                  <span>
-                    <strong>{duplicateAnalysis.sameNameBatches[0].name}</strong> already exists ({duplicateAnalysis.sameNameBatches.reduce((sum, b) => sum + b.current_stock, 0)} units in stock across {duplicateAnalysis.sameNameBatches.length} batch(es)). Adding this creates a new FEFO batch.
-                  </span>
+              <div className="p-3.5 rounded-xl bg-blue-500/10 border border-blue-500/30 text-blue-900 dark:text-blue-200 space-y-2">
+                <div className="flex items-start gap-2.5">
+                  <Info className="h-5 w-5 text-blue-500 shrink-0 mt-0.5" />
+                  <div className="text-xs space-y-1">
+                    <p className="font-semibold text-sm">
+                      "{duplicateAnalysis.sameNameBatches[0].name}" already exists in inventory
+                    </p>
+                    <p className="text-muted-foreground">
+                      Current Stock: <span className="font-medium text-foreground">{duplicateAnalysis.sameNameBatches.reduce((sum, b) => sum + b.current_stock, 0)} units</span> across {duplicateAnalysis.sameNameBatches.length} active batch(es).
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 pt-1">
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="bg-blue-600 hover:bg-blue-700 text-white text-xs h-8"
+                    onClick={() => handleTopUpBatch(duplicateAnalysis.sameNameBatches[0])}
+                  >
+                    Top-Up Existing Stock (+{watchedCurrentStock || 0} units)
+                  </Button>
+                  <span className="text-[11px] text-muted-foreground">or submit form to create a new FEFO batch</span>
                 </div>
               </div>
             )}
