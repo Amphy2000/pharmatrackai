@@ -30,6 +30,10 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { generateNAFDACComplianceReport } from '@/utils/nafdacReportGenerator';
 
+import { useNavigate } from 'react-router-dom';
+import { usePlanLimits } from '@/hooks/usePlanLimits';
+import { useToast } from '@/hooks/use-toast';
+
 interface NAFDACCompliancePanelProps {
   medications: Medication[];
 }
@@ -41,6 +45,9 @@ export const NAFDACCompliancePanel = ({ medications }: NAFDACCompliancePanelProp
   const [filter, setFilter] = useState<FilterType>('all');
   const { regulatory, flagEmoji } = useRegionalSettings();
   const { pharmacy } = usePharmacy();
+  const { hasNAFDACReports } = usePlanLimits();
+  const { toast } = useToast();
+  const navigate = useNavigate();
   const printRef = useRef<HTMLDivElement>(null);
 
   // Filter medications based on selected filter
@@ -109,6 +116,14 @@ export const NAFDACCompliancePanel = ({ medications }: NAFDACCompliancePanelProp
 
   const handleDownloadPDF = () => {
     if (!pharmacy) return;
+    if (!hasNAFDACReports) {
+      toast({
+        title: 'NAFDAC Audit Report is a Pro Feature',
+        description: 'Upgrade to AI Powerhouse to export 1-click NAFDAC Audit PDF Reports.',
+      });
+      navigate('/settings?tab=subscription');
+      return;
+    }
     
     const doc = generateNAFDACComplianceReport(
       filteredMedications,
@@ -131,6 +146,14 @@ export const NAFDACCompliancePanel = ({ medications }: NAFDACCompliancePanelProp
 
   const handlePrint = () => {
     if (!pharmacy) return;
+    if (!hasNAFDACReports) {
+      toast({
+        title: 'NAFDAC Audit Report is a Pro Feature',
+        description: 'Upgrade to AI Powerhouse to print NAFDAC Audit Reports.',
+      });
+      navigate('/settings?tab=subscription');
+      return;
+    }
     
     const doc = generateNAFDACComplianceReport(
       filteredMedications,

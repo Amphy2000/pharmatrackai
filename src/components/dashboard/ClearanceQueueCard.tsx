@@ -1,10 +1,11 @@
 import { useState, useMemo } from 'react';
-import { Tag, ChevronDown, ChevronUp, AlertTriangle, AlertCircle, Clock, CheckCircle2, Percent, TrendingUp, Sparkles, Loader2, Sparkle } from 'lucide-react';
+import { Tag, ChevronDown, ChevronUp, AlertTriangle, AlertCircle, Clock, CheckCircle2, Percent, TrendingUp, Sparkles, Loader2, Sparkle, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ClearanceQueueSummary, ClearanceQueueItem } from '@/services/autopilotEngine';
 import { useCurrency } from '@/contexts/CurrencyContext';
 import { useMedications } from '@/hooks/useMedications';
+import { usePlanLimits } from '@/hooks/usePlanLimits';
 import { useToast } from '@/hooks/use-toast';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
@@ -100,6 +101,7 @@ function ClearanceRow({
 export const ClearanceQueueCard = ({ queue, onRecordAction }: ClearanceQueueCardProps) => {
   const { formatPrice } = useCurrency();
   const { updateMedication, medications } = useMedications();
+  const { hasExpiryDiscounting } = usePlanLimits();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [isExpanded, setIsExpanded] = useState(false);
@@ -153,6 +155,28 @@ export const ClearanceQueueCard = ({ queue, onRecordAction }: ClearanceQueueCard
       setApplyingId(null);
     }
   };
+
+  if (!hasExpiryDiscounting) {
+    return (
+      <div className="relative rounded-xl bg-card border border-border/80 border-l-4 border-l-amber-500 p-4 text-card-foreground shadow-sm flex items-center justify-between gap-3 flex-wrap sm:flex-nowrap">
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 rounded-xl bg-amber-500/10 flex items-center justify-center shrink-0">
+            <Lock className="h-5 w-5 text-amber-500" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h4 className="font-semibold text-sm">Automated Clearance Queue</h4>
+              <Badge className="bg-amber-500/20 text-amber-600 dark:text-amber-300 text-[10px]">Pro Feature</Badge>
+            </div>
+            <p className="text-xs text-muted-foreground">Upgrade to AI Powerhouse to automatically flag at-risk stock and auto-apply smart clearance discounts before items expire.</p>
+          </div>
+        </div>
+        <Button size="sm" onClick={() => navigate('/settings?tab=subscription')} className="bg-amber-600 hover:bg-amber-700 text-white text-xs shrink-0">
+          Upgrade to Unlock
+        </Button>
+      </div>
+    );
+  }
 
   if (!queue || visibleItems.length === 0) {
     return null; // All clearance items cleared or zero items

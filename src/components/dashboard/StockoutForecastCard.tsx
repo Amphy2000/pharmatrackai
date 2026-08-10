@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { TrendingDown, ChevronDown, ChevronUp, AlertTriangle, AlertCircle, Clock, CheckCircle2, Zap, Calendar } from 'lucide-react';
+import { TrendingDown, ChevronDown, ChevronUp, AlertTriangle, AlertCircle, Clock, CheckCircle2, Zap, Calendar, Lock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { StockoutForecast, StockoutPrediction } from '@/services/autopilotEngine';
 import { useCurrency } from '@/contexts/CurrencyContext';
+import { usePlanLimits } from '@/hooks/usePlanLimits';
 import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 
