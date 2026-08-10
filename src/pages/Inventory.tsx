@@ -23,6 +23,7 @@ import { InternalTransferModal } from '@/components/inventory/InternalTransferMo
 import { BatchExpiryEntryModal } from '@/components/inventory/BatchExpiryEntryModal';
 import { ShelfEntryWizard } from '@/components/inventory/ShelfEntryWizard';
 import { SimpleInventoryActions } from '@/components/inventory/SimpleInventoryActions';
+import { ButtonHelpHint } from '@/components/common/ButtonHelpHint';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -295,37 +296,59 @@ const Inventory = () => {
           </div>
           {!isSimpleMode && (
             <div className="flex items-center gap-2 flex-wrap">
-              <Button onClick={() => setShowBulkPriceModal(true)} variant="outline" className="gap-2">
-                <DollarSign className="h-4 w-4" />
-                Bulk Pricing
-              </Button>
-              <Button
-                id="tour-add-product"
-                onClick={() => setShowAddMedicationModal(true)}
-                className="gap-2 bg-gradient-primary hover:opacity-90 btn-glow"
-              >
-                <Plus className="h-4 w-4" />
-                Add New Medication
-              </Button>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="gap-2">
-                    <Download className="h-4 w-4" />
-                    Export Report
-                    <ChevronDown className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem onClick={handleExportPDF} className="gap-2">
-                    <FileText className="h-4 w-4" />
-                    Export as PDF
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={handleExportExcel} className="gap-2">
-                    <FileSpreadsheet className="h-4 w-4" />
-                    Export as Excel (CSV)
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+              <div className="inline-flex items-center gap-1">
+                <Button onClick={() => setShowBulkPriceModal(true)} variant="outline" className="gap-2">
+                  <DollarSign className="h-4 w-4" />
+                  Bulk Pricing
+                </Button>
+                <ButtonHelpHint
+                  title="Bulk Pricing Update"
+                  description="Mass-update wholesale costs and retail selling prices across multiple items or categories in an Excel-like table."
+                  tip="Saves hours when wholesale prices change across suppliers."
+                />
+              </div>
+
+              <div className="inline-flex items-center gap-1">
+                <Button
+                  id="tour-add-product"
+                  onClick={() => setShowAddMedicationModal(true)}
+                  className="gap-2 bg-gradient-primary hover:opacity-90 btn-glow"
+                >
+                  <Plus className="h-4 w-4" />
+                  Add New Medication
+                </Button>
+                <ButtonHelpHint
+                  title="Add New Medication"
+                  description="Register a new drug or new batch entry manually into your pharmacy inventory database."
+                  tip="Auto-checks for duplicate names and existing batches as you type."
+                />
+              </div>
+
+              <div className="inline-flex items-center gap-1">
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="outline" className="gap-2">
+                      <Download className="h-4 w-4" />
+                      Export Report
+                      <ChevronDown className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="end">
+                    <DropdownMenuItem onClick={handleExportPDF} className="gap-2">
+                      <FileText className="h-4 w-4" />
+                      Export as PDF
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={handleExportExcel} className="gap-2">
+                      <FileSpreadsheet className="h-4 w-4" />
+                      Export as Excel (CSV)
+                    </DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+                <ButtonHelpHint
+                  title="Export Inventory Report"
+                  description="Download complete inventory valuation, expiry schedules, or low stock lists as PDF or Excel spreadsheets."
+                />
+              </div>
             </div>
           )}
         </div>
@@ -355,47 +378,108 @@ const Inventory = () => {
               <p className="text-sm text-muted-foreground mb-4">
                 Fast inventory management tools to save time during stocking
               </p>
-              <div className="flex flex-wrap gap-3">
-                <Button onClick={() => setShowShelfEntryWizard(true)} variant="default" size="lg" className="gap-2 bg-gradient-primary hover:opacity-90 btn-glow">
-                  <Layers className="h-5 w-5" />
-                  Shelf Entry
-                  <Badge variant="secondary" className="ml-1 text-xs bg-white/20">Fastest</Badge>
-                </Button>
-                <Button onClick={() => setShowQuickStockModal(true)} variant="secondary" size="lg" className="gap-2">
-                  <RefreshCw className="h-5 w-5" />
-                  Quick Stock Update
-                </Button>
-                <Button onClick={() => setShowTransferModal(true)} variant="outline" size="lg" className="gap-2">
-                  <ArrowRightLeft className="h-5 w-5" />
-                  Transfer Stock
-                </Button>
-                <Button onClick={() => setShowReceiveStockModal(true)} variant="outline" size="lg" className="gap-2">
-                  <PackagePlus className="h-5 w-5" />
-                  Receive Stock
-                </Button>
-                <Button onClick={() => setShowStockCountModal(true)} variant="outline" size="lg" className="gap-2">
-                  <ClipboardList className="h-5 w-5" />
-                  Stock Count
-                </Button>
-                <Button onClick={() => setShowCSVImportModal(true)} variant="outline" size="lg" className="gap-2">
-                  <FileSpreadsheet className="h-5 w-5" />
-                  CSV Import
-                </Button>
-                <Button
-                  id="tour-invoice-scanner"
-                  onClick={() => setShowMultiImageScanner(true)}
-                  variant="outline"
-                  size="lg"
-                  className="gap-2"
-                >
-                  <FileImage className="h-5 w-5" />
-                  Scan Invoice
-                  <Badge variant="outline" className="ml-1 text-xs bg-gradient-premium text-white border-0">AI</Badge>
-                </Button>
-                <Button onClick={() => setShowBatchEntryModal(true)} variant="outline" size="lg" className="gap-2">
-                  <Layers className="h-5 w-5" />
-                  Batch Entry
-                </Button>
+              <div className="flex flex-wrap gap-3 items-center">
+                <div className="inline-flex items-center gap-1">
+                  <Button onClick={() => setShowShelfEntryWizard(true)} variant="default" size="lg" className="gap-2 bg-gradient-primary hover:opacity-90 btn-glow">
+                    <Layers className="h-5 w-5" />
+                    Shelf Entry
+                    <Badge variant="secondary" className="ml-1 text-xs bg-white/20">Fastest</Badge>
+                  </Button>
+                  <ButtonHelpHint
+                    title="Shelf Entry Wizard"
+                    description="Walk shelf to shelf with your mobile phone or tablet to scan and update physical stock quantities in real time."
+                    tip="The fastest tool for routine shelf inventory audits."
+                  />
+                </div>
+
+                <div className="inline-flex items-center gap-1">
+                  <Button onClick={() => setShowQuickStockModal(true)} variant="secondary" size="lg" className="gap-2">
+                    <RefreshCw className="h-5 w-5" />
+                    Quick Stock Update
+                  </Button>
+                  <ButtonHelpHint
+                    title="Quick Stock Update"
+                    description="Rapidly adjust stock counts for single items without opening the full edit form."
+                    tip="Great for updating quantities when unpacking single items."
+                  />
+                </div>
+
+                <div className="inline-flex items-center gap-1">
+                  <Button onClick={() => setShowTransferModal(true)} variant="outline" size="lg" className="gap-2">
+                    <ArrowRightLeft className="h-5 w-5" />
+                    Transfer Stock
+                  </Button>
+                  <ButtonHelpHint
+                    title="Branch Stock Transfer"
+                    description="Move stock between your pharmacy branches or from central warehouse store to a branch."
+                    tip="Automatically adjusts balances on both sending and receiving branches."
+                  />
+                </div>
+
+                <div className="inline-flex items-center gap-1">
+                  <Button onClick={() => setShowReceiveStockModal(true)} variant="outline" size="lg" className="gap-2">
+                    <PackagePlus className="h-5 w-5" />
+                    Receive Stock
+                  </Button>
+                  <ButtonHelpHint
+                    title="Receive Wholesale Stock"
+                    description="Log incoming stock shipments from wholesale distributors directly into your inventory."
+                    tip="Links purchase cost & supplier details for accurate profit margin tracking."
+                  />
+                </div>
+
+                <div className="inline-flex items-center gap-1">
+                  <Button onClick={() => setShowStockCountModal(true)} variant="outline" size="lg" className="gap-2">
+                    <ClipboardList className="h-5 w-5" />
+                    Stock Count
+                  </Button>
+                  <ButtonHelpHint
+                    title="Physical Stock Audit"
+                    description="Perform periodic physical stock counts and calculate stock audit variance."
+                  />
+                </div>
+
+                <div className="inline-flex items-center gap-1">
+                  <Button onClick={() => setShowCSVImportModal(true)} variant="outline" size="lg" className="gap-2">
+                    <FileSpreadsheet className="h-5 w-5" />
+                    CSV Import
+                  </Button>
+                  <ButtonHelpHint
+                    title="CSV / Excel Bulk Import"
+                    description="Upload your drug catalog from an Excel or CSV file in seconds."
+                    tip="Auto-detects column headers and prevents duplicate items."
+                  />
+                </div>
+
+                <div className="inline-flex items-center gap-1">
+                  <Button
+                    id="tour-invoice-scanner"
+                    onClick={() => setShowMultiImageScanner(true)}
+                    variant="outline"
+                    size="lg"
+                    className="gap-2"
+                  >
+                    <FileImage className="h-5 w-5" />
+                    Scan Invoice
+                    <Badge variant="outline" className="ml-1 text-xs bg-gradient-premium text-white border-0">AI</Badge>
+                  </Button>
+                  <ButtonHelpHint
+                    title="AI Wholesale Invoice Scanner"
+                    description="Snap a photo of a paper wholesale invoice. AI extracts drug names, batch numbers, prices, and quantities automatically into stock in 10 seconds."
+                    tip="Saves 30+ minutes of manual typing per wholesale invoice delivery."
+                  />
+                </div>
+
+                <div className="inline-flex items-center gap-1">
+                  <Button onClick={() => setShowBatchEntryModal(true)} variant="outline" size="lg" className="gap-2">
+                    <Layers className="h-5 w-5" />
+                    Batch Entry
+                  </Button>
+                  <ButtonHelpHint
+                    title="Batch Expiry Entry"
+                    description="Add multiple products sharing the exact same expiry date or supplier shipment at once."
+                  />
+                </div>
               </div>
             </CardContent>
           </Card>
