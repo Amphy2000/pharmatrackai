@@ -21,6 +21,7 @@ import { LandingSocialProofTicker } from '@/components/landing/LandingSocialProo
 import { WhyNotFreeAppsFAQ } from '@/components/landing/WhyNotFreeAppsFAQ';
 import { MoneyFlowAnimation } from '@/components/landing/MoneyFlowAnimation';
 import { CostOfInactionCalculator } from '@/components/landing/CostOfInactionCalculator';
+import { FPMShowcase } from '@/components/landing/FPMShowcase';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 // Animation variants
@@ -357,13 +358,19 @@ const Landing = () => {
         
         <div className="container mx-auto px-4 sm:px-6 relative z-10">
           <motion.div variants={staggerContainer} initial="hidden" animate="visible" className="max-w-4xl mx-auto text-center">
+            {/* FPM Promise Badge */}
+            <motion.div variants={fadeInUp} className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-primary/10 border border-primary/30 text-primary text-xs font-bold uppercase tracking-widest mb-6">
+              <Sparkles className="h-4 w-4" />
+              The FPM Guarantee: Freedom. Power. More Money.
+            </motion.div>
+
             {/* Headline */}
             <motion.h1 variants={fadeInUp} transition={{
             duration: 0.7,
             delay: 0.1
           }} className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-display font-bold leading-tight mb-6">
-              Stop Guessing.{' '}
-              <span className="text-gradient-premium">Start Growing.</span>
+              Freedom. Power.{' '}
+              <span className="text-gradient-premium">More Money.</span>
               <br />
               <motion.span initial={{
               opacity: 0
@@ -372,8 +379,8 @@ const Landing = () => {
             }} transition={{
               delay: 0.5,
               duration: 0.8
-            }} className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl text-muted-foreground">
-                The AI Brain for Your Pharmacy.
+            }} className="text-2xl sm:text-3xl md:text-4xl text-muted-foreground font-normal">
+                The AI Autopilot Engine Built for Pharmacy Owners.
               </motion.span>
             </motion.h1>
 
@@ -382,7 +389,7 @@ const Landing = () => {
             duration: 0.6,
             delay: 0.2
           }} className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto mb-10">
-              Eliminate expiry waste, stop staff leakage, and let AI run your pharmacy's daily operations — from morning briefing to closing report.
+              Free yourself from the 14-hour daily counter grind. Stop staff leakage, automate NAFDAC compliance, and eliminate expiry waste with AI.
             </motion.p>
 
             {/* CTA */}
@@ -424,7 +431,7 @@ const Landing = () => {
               </motion.div>
             </motion.div>
             <p className="text-sm text-muted-foreground flex items-center justify-center gap-2 mt-4">
-              <Check className="h-4 w-4 text-success" />No credit card required
+              <Check className="h-4 w-4 text-success" />No credit card required • Instant 2-minute setup
             </p>
 
             {/* Live Social Proof Ticker */}
@@ -441,18 +448,18 @@ const Landing = () => {
             <motion.div variants={fadeInUp} transition={{
             duration: 0.6,
             delay: 0.5
-          }} className="mt-16 flex flex-wrap items-center justify-center gap-8">
+          }} className="mt-14 flex flex-wrap items-center justify-center gap-8">
               {[{
               icon: Zap,
               text: 'Built by Pharmacists, for Pharmacists',
               color: 'text-warning'
             }, {
               icon: Lock,
-              text: 'Enterprise-grade security',
+              text: 'Zero-Price-Manipulation Shift Locks',
               color: 'text-primary'
             }, {
               icon: Headphones,
-              text: '24/7 Priority support',
+              text: '24/7 Priority Support',
               color: 'text-success'
             }].map((item, i) => <motion.div key={i} initial={{
               opacity: 0,
@@ -464,7 +471,7 @@ const Landing = () => {
               delay: 0.6 + i * 0.1
             }} className="flex items-center gap-2 text-muted-foreground">
                   <item.icon className={`h-5 w-5 ${item.color}`} />
-                  <span className="text-sm">{item.text}</span>
+                  <span className="text-sm font-medium">{item.text}</span>
                 </motion.div>)}
             </motion.div>
           </motion.div>
@@ -484,6 +491,9 @@ const Landing = () => {
           </motion.div>
         </div>
       </section>
+
+      {/* FPM Pillars Deep-Dive Showcase */}
+      <FPMShowcase isInternational={isInternational} />
 
       {/* ROI Animation Section */}
       <section className="py-16 sm:py-24 relative overflow-hidden bg-muted/30">
