@@ -52,8 +52,31 @@ export const usePushNotifications = () => {
 
     const checkSubscription = async () => {
       try {
-        const registration = await navigator.serviceWorker.ready;
-        const sub = await registration.pushManager.getSubscription();
+        let registration = await navigator.serviceWorker.getRegistration('/sw.js');
+        if (!registration) {
+          registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+        }
+        await navigator.serviceWorker.ready;
+        let sub = await registration.pushManager.getSubscription();
+
+        // Auto-subscribe if permission is already granted but no active PushSubscription exists
+        if (Notification.permission === 'granted' && !sub) {
+          try {
+            sub = await registration.pushManager.subscribe({
+              userVisibleOnly: true,
+              applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+            });
+            if (pharmacy?.id) {
+              await saveSubscriptionToServer(sub, pharmacy.id);
+            }
+          } catch (autoSubErr) {
+            console.warn('[usePushNotifications] Auto-subscribe error:', autoSubErr);
+          }
+        } else if (Notification.permission === 'granted' && sub && pharmacy?.id) {
+          // Keep server subscription refreshed
+          saveSubscriptionToServer(sub, pharmacy.id);
+        }
+
         setState((prev) => ({
           ...prev,
           permission: Notification.permission,
