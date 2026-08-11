@@ -22,6 +22,7 @@ interface SaleRecord {
   unit_price: number;
   total_price: number;
   customer_name: string | null;
+  custom_item_name?: string | null;
   medications: { name: string; category: string } | null;
 }
 
@@ -116,7 +117,7 @@ export const exportSalesToPDF = (
     doc.text(format(new Date(sale.sale_date), 'MM/dd'), x, y);
     x += colWidths[0];
     
-    const medName = sale.medications?.name || 'Unknown';
+    const medName = sale.medications?.name || sale.custom_item_name || 'Express Sale';
     doc.text(medName.length > 28 ? medName.substring(0, 28) + '...' : medName, x, y);
     x += colWidths[1];
     
@@ -154,8 +155,8 @@ export const exportSalesToExcel = (
     format(new Date(sale.sale_date), 'yyyy-MM-dd'),
     format(new Date(sale.sale_date), 'HH:mm:ss'),
     sale.id.slice(0, 8),
-    sale.medications?.name || 'Unknown',
-    sale.medications?.category || 'Unknown',
+    sale.medications?.name || sale.custom_item_name || 'Express Sale',
+    sale.medications?.category || (sale.custom_item_name ? 'Quick Sale' : 'Unknown'),
     sale.quantity.toString(),
     sale.unit_price.toString(),
     sale.total_price.toString(),

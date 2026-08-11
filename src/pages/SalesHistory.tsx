@@ -58,7 +58,8 @@ import { cn } from '@/lib/utils';
 
 interface SaleWithMedication {
   id: string;
-  medication_id: string;
+  medication_id: string | null;
+  custom_item_name?: string | null;
   quantity: number;
   unit_price: number;
   total_price: number;
@@ -100,6 +101,7 @@ const SalesHistory = () => {
         .select(`
           id,
           medication_id,
+          custom_item_name,
           quantity,
           unit_price,
           total_price,
@@ -149,7 +151,7 @@ const SalesHistory = () => {
     if (searchQuery) {
       const query = searchQuery.toLowerCase().trim();
       result = result.filter(sale => 
-        sale.medications?.name.toLowerCase().includes(query) ||
+        (sale.medications?.name || sale.custom_item_name || '').toLowerCase().includes(query) ||
         sale.customer_name?.toLowerCase().includes(query) ||
         sale.sold_by_name?.toLowerCase().includes(query) ||
         sale.receipt_id?.toLowerCase().includes(query) ||
@@ -471,10 +473,12 @@ const SalesHistory = () => {
                         {sale.receipt_id || `#${sale.id.slice(0, 8)}`}
                       </code>
                     </TableCell>
-                    <TableCell className="font-medium">{sale.medications?.name || 'Unknown'}</TableCell>
+                    <TableCell className="font-medium">
+                      {sale.medications?.name || sale.custom_item_name || 'Express Sale Item'}
+                    </TableCell>
                     <TableCell>
                       <Badge variant="outline" className="text-xs">
-                        {sale.medications?.category || 'Unknown'}
+                        {sale.medications?.category || 'Quick Sale'}
                       </Badge>
                     </TableCell>
                     <TableCell className="text-center">{sale.quantity}</TableCell>

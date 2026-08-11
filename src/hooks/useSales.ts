@@ -67,7 +67,8 @@ interface CompleteSaleParams {
 
 interface SaleWithMedication {
   id: string;
-  medication_id: string;
+  medication_id: string | null;
+  custom_item_name?: string | null;
   quantity: number;
   unit_price: number;
   total_price: number;
@@ -122,6 +123,8 @@ const queueOfflineSale = (
       quantity: item.quantity,
       unitPrice: item.medication.selling_price || item.medication.unit_price,
       totalPrice: (item.medication.selling_price || item.medication.unit_price) * item.quantity,
+      isQuickItem: item.isQuickItem,
+      customItemName: item.isQuickItem ? item.medication.name : undefined,
     })),
     total,
     customerId: params.customerId,
@@ -160,6 +163,7 @@ export const useSales = () => {
         .select(`
           id,
           medication_id,
+          custom_item_name,
           quantity,
           unit_price,
           total_price,
@@ -356,39 +360,53 @@ async function processOnlineSale({
     const totalPrice = price * item.quantity;
     totalSaleAmount += totalPrice;
 
-    // Skip database operations for Quick Items (Express Sales)
-    // Quick items don't exist in inventory - they're recorded in pending_quick_items
-    if (item.isQuickItem) {
-      const itemReceiptId = items.length > 1 ? `${receiptId}-${index + 1}` : receiptId;
-      results.push({ item, newStock: 9999, receiptId: itemReceiptId });
-      continue;
-    }
-
+    let medicationIdToUse: string | null = null;
+    let customItemNameToUse: string | null = null;
     let currentStock = 0;
 
-    if (currentBranchId && !isMainBranch) {
-      const { data: branchInv, error: branchInvError } = await supabase
-        .from('branch_inventory')
-        .select('id, current_stock')
-        .eq('branch_id', currentBranchId)
-        .eq('medication_id', item.medication.id)
-        .maybeSingle();
-
-      if (branchInvError) throw branchInvError;
-      if (!branchInv) {
-        throw new Error('No stock record for this branch. Receive stock first.');
-      }
-
-      currentStock = branchInv.current_stock ?? 0;
-    } else {
-      const { data: medicationData, error: medicationError } = await supabase
+    if (item.isQuickItem) {
+      // Check if an existing medication matches the quick item name
+      const { data: matchedMed } = await supabase
         .from('medications')
-        .select('current_stock')
-        .eq('id', item.medication.id)
+        .select('id, current_stock')
+        .eq('pharmacy_id', pharmacyId)
+        .ilike('name', item.medication.name.trim())
         .maybeSingle();
 
-      if (medicationError) throw medicationError;
-      currentStock = medicationData?.current_stock ?? item.medication.current_stock ?? 0;
+      if (matchedMed) {
+        medicationIdToUse = matchedMed.id;
+        currentStock = matchedMed.current_stock ?? 0;
+      } else {
+        medicationIdToUse = null;
+        customItemNameToUse = item.medication.name.trim();
+        currentStock = 9999;
+      }
+    } else {
+      medicationIdToUse = item.medication.id;
+      if (currentBranchId && !isMainBranch) {
+        const { data: branchInv, error: branchInvError } = await supabase
+          .from('branch_inventory')
+          .select('id, current_stock')
+          .eq('branch_id', currentBranchId)
+          .eq('medication_id', item.medication.id)
+          .maybeSingle();
+
+        if (branchInvError) throw branchInvError;
+        if (!branchInv) {
+          throw new Error('No stock record for this branch. Receive stock first.');
+        }
+
+        currentStock = branchInv.current_stock ?? 0;
+      } else {
+        const { data: medicationData, error: medicationError } = await supabase
+          .from('medications')
+          .select('current_stock')
+          .eq('id', item.medication.id)
+          .maybeSingle();
+
+        if (medicationError) throw medicationError;
+        currentStock = medicationData?.current_stock ?? item.medication.current_stock ?? 0;
+      }
     }
 
     const newStock = Math.max(0, currentStock - item.quantity);
@@ -396,9 +414,10 @@ async function processOnlineSale({
     // Generate unique receipt_id for each sale record
     const itemReceiptId = items.length > 1 ? `${receiptId}-${index + 1}` : receiptId;
 
-    // Insert sale record WITH branch_id for isolation
+    // Insert sale record WITH branch_id for isolation (works for both standard & Quick/Express sales)
     const { data: saleData, error: saleError } = await supabase.from('sales').insert({
-      medication_id: item.medication.id,
+      medication_id: medicationIdToUse,
+      custom_item_name: customItemNameToUse,
       quantity: item.quantity,
       unit_price: price,
       total_price: totalPrice,
@@ -419,32 +438,30 @@ async function processOnlineSale({
       throw saleError;
     }
 
-    // Update main (HQ) stock only when selling from HQ
-    if (!currentBranchId || isMainBranch) {
-      await supabase
-        .from('medications')
-        .update({ current_stock: newStock })
-        .eq('id', item.medication.id);
-    }
-
-    // Update branch stock when selling from a non-HQ branch
-    if (currentBranchId && !isMainBranch) {
-      const { data: branchInv } = await supabase
-        .from('branch_inventory')
-        .select('id, current_stock')
-        .eq('branch_id', currentBranchId)
-        .eq('medication_id', item.medication.id)
-        .maybeSingle();
-
-      if (branchInv) {
+    // Update stock if matched or standard item
+    if (medicationIdToUse) {
+      if (!currentBranchId || isMainBranch) {
         await supabase
+          .from('medications')
+          .update({ current_stock: newStock })
+          .eq('id', medicationIdToUse);
+      } else if (currentBranchId && !isMainBranch) {
+        const { data: branchInv } = await supabase
           .from('branch_inventory')
-          .update({ current_stock: Math.max(0, branchInv.current_stock - item.quantity) })
-          .eq('id', branchInv.id);
+          .select('id, current_stock')
+          .eq('branch_id', currentBranchId)
+          .eq('medication_id', medicationIdToUse)
+          .maybeSingle();
+
+        if (branchInv) {
+          await supabase
+            .from('branch_inventory')
+            .update({ current_stock: Math.max(0, branchInv.current_stock - item.quantity) })
+            .eq('id', branchInv.id);
+        }
       }
     }
 
-    results.push({ item, newStock, receiptId: saleData?.receipt_id || itemReceiptId });
   }
 
   // Update shift stats if we have a shift

@@ -8,6 +8,8 @@ export interface PendingSale {
     quantity: number;
     unitPrice: number;
     totalPrice: number;
+    isQuickItem?: boolean;
+    customItemName?: string;
   }[];
   total: number;
   timestamp: number;
@@ -194,9 +196,14 @@ export const useOfflineSync = () => {
 
           // Insert each sale item
           for (const item of sale.items) {
+            const isQuick = item.isQuickItem || (item.medicationId && item.medicationId.startsWith('quick-'));
+            const medIdToUse = isQuick ? null : item.medicationId;
+            const customItemName = isQuick ? (item.customItemName || item.medicationName) : null;
+
             await supabase.from('sales').insert({
               pharmacy_id: pharmacyId,
-              medication_id: item.medicationId,
+              medication_id: medIdToUse,
+              custom_item_name: customItemName,
               quantity: item.quantity,
               unit_price: item.unitPrice,
               total_price: item.totalPrice,
@@ -209,18 +216,20 @@ export const useOfflineSync = () => {
               sold_by: user.id,
             });
 
-            // Update stock
-            const { data: medication } = await supabase
-              .from('medications')
-              .select('current_stock')
-              .eq('id', item.medicationId)
-              .single();
-
-            if (medication) {
-              await supabase
+            // Update stock only for regular items with valid medication_id
+            if (medIdToUse) {
+              const { data: medication } = await supabase
                 .from('medications')
-                .update({ current_stock: Math.max(0, medication.current_stock - item.quantity) })
-                .eq('id', item.medicationId);
+                .select('current_stock')
+                .eq('id', medIdToUse)
+                .single();
+
+              if (medication) {
+                await supabase
+                  .from('medications')
+                  .update({ current_stock: Math.max(0, medication.current_stock - item.quantity) })
+                  .eq('id', medIdToUse);
+              }
             }
           }
 
