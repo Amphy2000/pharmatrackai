@@ -155,6 +155,69 @@ export const IntelligentDataImportModal = ({
 
   const processFile = useCallback((file: File) => {
     const fileName = file.name.toLowerCase();
+    const isDocx = fileName.endsWith('.docx') || fileName.endsWith('.doc');
+
+    if (isDocx) {
+      // Clean Word .docx XML Table Extractor
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        try {
+          const buffer = e.target?.result as ArrayBuffer;
+          const decoder = new TextDecoder('utf-8');
+          const rawText = decoder.decode(buffer);
+
+          // Extract Word Table rows <w:tr> and cells <w:tc>
+          const trMatches = rawText.match(/<w:tr[\s>][\s\S]*?<\/w:tr>/gi);
+          if (trMatches && trMatches.length > 0) {
+            const rows: Record<string, string>[] = [];
+            let headers: string[] = [];
+
+            trMatches.forEach((trXml) => {
+              const tcMatches = trXml.match(/<w:tc[\s>][\s\S]*?<\/w:tc>/gi);
+              if (tcMatches) {
+                const cellTexts = tcMatches.map(tcXml => {
+                  const textMatches = tcXml.match(/<w:t[\s>][^>]*>([\s\S]*?)<\/w:t>/gi) || [];
+                  return textMatches.map(t => t.replace(/<[^>]+>/g, '')).join(' ').trim();
+                });
+
+                if (headers.length === 0 && cellTexts.some(c => c.length > 0)) {
+                  headers = cellTexts.map((h, idx) => h || `Col_${idx + 1}`);
+                } else if (cellTexts.some(c => c.length > 0)) {
+                  const row: Record<string, string> = {};
+                  cellTexts.forEach((val, colIdx) => {
+                    const headerKey = headers[colIdx] || `Col_${colIdx + 1}`;
+                    row[headerKey] = val;
+                  });
+                  rows.push(row);
+                }
+              }
+            });
+
+            if (rows.length > 0) {
+              processData(rows);
+              return;
+            }
+          }
+
+          // Fallback: extract plain text nodes <w:t> for AI extraction
+          const textMatches = rawText.match(/<w:t[\s>][^>]*>([\s\S]*?)<\/w:t>/gi);
+          if (textMatches && textMatches.length > 0) {
+            const plainText = textMatches.map(t => t.replace(/<[^>]+>/g, '')).join(' ');
+            if (plainText.trim().length > 10) {
+              handleAiUnstructuredExtract(plainText);
+              return;
+            }
+          }
+        } catch (err) {
+          console.warn('.docx parsing failed, using AI fallback...', err);
+        }
+
+        handleAiUnstructuredExtract(`Document: ${file.name}`);
+      };
+      reader.readAsArrayBuffer(file);
+      return;
+    }
+
     const isStandardSpreadsheet = fileName.endsWith('.xlsx') || fileName.endsWith('.xls') || fileName.endsWith('.ods') || fileName.endsWith('.csv') || fileName.endsWith('.tsv') || fileName.endsWith('.dbf');
     
     if (isStandardSpreadsheet) {
@@ -186,7 +249,6 @@ export const IntelligentDataImportModal = ({
             if (results.data && results.data.length > 0) {
               processData(results.data as Record<string, string>[]);
             } else {
-              // Try legacy text/AI parsing fallback
               readAsLegacyText(file);
             }
           },
@@ -195,7 +257,6 @@ export const IntelligentDataImportModal = ({
       };
       reader.readAsArrayBuffer(file);
     } else {
-      // Legacy document / binary backup (.doc, .docx, .pdf, .txt, .rtf, .dat, .bak)
       readAsLegacyText(file);
     }
   }, [toast, entityType]);
@@ -489,8 +550,8 @@ export const IntelligentDataImportModal = ({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-3xl max-h-[90vh] overflow-hidden flex flex-col">
-        <DialogHeader>
+      <DialogContent className="sm:max-w-3xl h-[85vh] max-h-[85vh] flex flex-col min-h-0 overflow-hidden p-4 sm:p-6">
+        <DialogHeader className="flex-shrink-0 mb-2">
           <DialogTitle className="font-display text-xl flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-primary" />
             Intelligent Data Import
@@ -505,7 +566,7 @@ export const IntelligentDataImportModal = ({
         </DialogHeader>
 
         {step === 'upload' && (
-          <div className="py-4 flex-1">
+          <div className="py-2 flex-1 min-h-0 overflow-y-auto pr-1">
             <Tabs value={entityType} onValueChange={(v) => setEntityType(v as ImportEntityType)}>
               <TabsList className="grid w-full grid-cols-3 mb-6">
                 <TabsTrigger value="medication">Products</TabsTrigger>
@@ -526,7 +587,7 @@ export const IntelligentDataImportModal = ({
               onClick={() => !isAiExtracting && fileInputRef.current?.click()}
               onDrop={handleDrop}
               onDragOver={(e) => e.preventDefault()}
-              className={`w-full h-52 border-2 border-dashed border-border/50 rounded-2xl hover:border-primary/50 hover:bg-primary/5 transition-all flex flex-col items-center justify-center gap-3 cursor-pointer relative overflow-hidden ${isAiExtracting ? 'opacity-70 pointer-events-none' : ''}`}
+              className={`w-full h-48 border-2 border-dashed border-border/50 rounded-2xl hover:border-primary/50 hover:bg-primary/5 transition-all flex flex-col items-center justify-center gap-3 cursor-pointer relative overflow-hidden ${isAiExtracting ? 'opacity-70 pointer-events-none' : ''}`}
             >
               {isAiExtracting ? (
                 <div className="flex flex-col items-center gap-3 text-primary animate-pulse">
@@ -574,8 +635,8 @@ export const IntelligentDataImportModal = ({
         )}
 
         {step === 'mapping' && (
-          <div className="flex-1 overflow-hidden flex flex-col">
-            <div className="flex items-center justify-between mb-4">
+          <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
+            <div className="flex items-center justify-between mb-3 flex-shrink-0">
               <div className="flex gap-2">
                 <Badge variant="secondary">{rawData.length} rows</Badge>
                 <Badge variant="default" className="bg-primary/20 text-primary">
@@ -591,7 +652,7 @@ export const IntelligentDataImportModal = ({
               </div>
             </div>
 
-            <ScrollArea className="flex-1 pr-4">
+            <ScrollArea className="flex-1 min-h-0 pr-3">
               <div className="space-y-3">
                 {headers.map((header) => {
                   const mapping = mappings[header];
@@ -646,7 +707,7 @@ export const IntelligentDataImportModal = ({
               </div>
             </ScrollArea>
 
-            <DialogFooter className="mt-4 pt-4 border-t">
+            <DialogFooter className="mt-3 pt-3 border-t flex-shrink-0">
               <Button variant="outline" onClick={handleClose}>Cancel</Button>
               <Button onClick={generatePreview} className="gap-2 bg-gradient-primary">
                 Preview Import
@@ -657,8 +718,8 @@ export const IntelligentDataImportModal = ({
         )}
 
         {step === 'preview' && (
-          <div className="flex-1 overflow-hidden flex flex-col">
-            <div className="flex items-center gap-4 mb-4">
+          <div className="flex-1 min-h-0 overflow-hidden flex flex-col">
+            <div className="flex items-center gap-4 mb-3 flex-shrink-0">
               <Badge variant="secondary">{previewRows.length} of {rawData.length} rows shown</Badge>
               {previewRows.some(r => r.errors.length > 0) && (
                 <Badge variant="destructive">
@@ -673,7 +734,7 @@ export const IntelligentDataImportModal = ({
               )}
             </div>
 
-            <ScrollArea className="flex-1">
+            <ScrollArea className="flex-1 min-h-0 pr-3">
               <div className="space-y-2">
                 {previewRows.slice(0, 20).map((row) => (
                   <div 
