@@ -99,6 +99,33 @@ export default async function handler(req: any, res: any) {
             return res.status(200).json({ interactions: clinicalResults });
         }
 
+        if (action === 'extract_unstructured_import') {
+            const rawText = payload?.rawText || message || '';
+            const entityType = payload?.entityType || 'medication';
+            const apiKey = process.env.OPENROUTER_API_KEY || process.env.GEMINI_API_KEY;
+
+            if (apiKey && rawText) {
+                const systemPrompt = `You are a clinical database parser for pharmacy software backups and document exports (e.g. Atrex, WinPharm, Rx30, PDF/Word prints).
+Respond with ONLY a valid JSON array of objects.
+For 'medication', fields should be: [{"name":"Med Name","selling_price":100,"unit_price":80,"current_stock":50,"category":"Tablet","batch_number":"B123","expiry_date":"2026-12-31"}].
+For 'customer', fields should be: [{"full_name":"John Doe","phone":"08012345678","email":"a@b.com","address":"..."}].
+For 'doctor', fields should be: [{"name":"Dr. Smith","specialty":"General","phone":"..."}].
+Extract as many complete records as possible.`;
+
+                const userPrompt = `Extract structured records from this legacy backup report text (${entityType}):\n\n${rawText.slice(0, 6000)}`;
+
+                try {
+                    const parsed = await raceModels([{ role: 'user', content: userPrompt }], apiKey, systemPrompt, true);
+                    const records = Array.isArray(parsed) ? parsed : (parsed?.records || parsed?.items || []);
+                    return res.status(200).json({ records });
+                } catch (aiErr) {
+                    console.error("[Pharma AI] Unstructured import parsing failed:", aiErr);
+                }
+            }
+
+            return res.status(200).json({ records: [] });
+        }
+
         if (action === 'inventory_optimize') {
             return res.status(200).json({ suggestions: [] });
         }

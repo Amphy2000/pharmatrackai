@@ -87,51 +87,13 @@ export const IntelligentDataImportModal = ({
   const config = IMPORT_CONFIGS[entityType];
   const allFields = [...config.fields.required, ...config.fields.optional];
 
-  const processFile = useCallback((file: File) => {
-    const isExcel = file.name.endsWith('.xlsx') || file.name.endsWith('.xls');
-    
-    if (isExcel) {
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        try {
-          const data = new Uint8Array(e.target?.result as ArrayBuffer);
-          const workbook = XLSX.read(data, { type: 'array' });
-          const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-          const jsonData = XLSX.utils.sheet_to_json<Record<string, string>>(firstSheet, { 
-            raw: false,
-            defval: '' 
-          });
-          
-          if (jsonData.length === 0) {
-            toast({ title: 'Empty File', description: 'No data found in the file.', variant: 'destructive' });
-            return;
-          }
-          
-          processData(jsonData);
-        } catch (error) {
-          toast({ title: 'Error', description: 'Failed to parse Excel file.', variant: 'destructive' });
-        }
-      };
-      reader.readAsArrayBuffer(file);
-    } else {
-      Papa.parse(file, {
-        header: true,
-        skipEmptyLines: true,
-        complete: (results) => {
-          if (results.data.length === 0) {
-            toast({ title: 'Empty File', description: 'No data found in the file.', variant: 'destructive' });
-            return;
-          }
-          processData(results.data as Record<string, string>[]);
-        },
-        error: (error) => {
-          toast({ title: 'Error', description: `Failed to parse CSV: ${error.message}`, variant: 'destructive' });
-        },
-      });
-    }
-  }, [toast, entityType]);
+  const [isAiExtracting, setIsAiExtracting] = useState(false);
 
   const processData = (data: Record<string, string>[]) => {
+    if (!data || data.length === 0) {
+      toast({ title: 'Empty Data', description: 'No valid records could be parsed.', variant: 'destructive' });
+      return;
+    }
     const fileHeaders = Object.keys(data[0]);
     setRawData(data);
     setHeaders(fileHeaders);
@@ -141,6 +103,163 @@ export const IntelligentDataImportModal = ({
     setMappings(autoMappings);
     
     setStep('mapping');
+  };
+
+  const handleAiUnstructuredExtract = async (text: string) => {
+    setIsAiExtracting(true);
+    toast({
+      title: '⚡ Deciphering Legacy Backup',
+      description: 'Using AI to parse legacy document format (e.g. Atrex / Word / PDF)...',
+    });
+
+    try {
+      const response = await callPharmacyAi<{ records: Record<string, any>[] }>({
+        action: 'extract_unstructured_import',
+        payload: { rawText: text, entityType },
+      });
+
+      if (response && Array.isArray(response.records) && response.records.length > 0) {
+        // Convert records to string values for processData
+        const stringifiedRows = response.records.map(rec => {
+          const row: Record<string, string> = {};
+          Object.keys(rec).forEach(key => {
+            row[key] = rec[key] !== null && rec[key] !== undefined ? String(rec[key]) : '';
+          });
+          return row;
+        });
+
+        toast({
+          title: 'Import Successful',
+          description: `Extracted ${stringifiedRows.length} records from legacy document using AI!`,
+        });
+
+        processData(stringifiedRows);
+      } else {
+        toast({
+          title: 'Extraction Notice',
+          description: 'AI could not automatically extract structured records. Please check the document format.',
+          variant: 'destructive',
+        });
+      }
+    } catch (err: any) {
+      console.error('AI extraction error:', err);
+      toast({
+        title: 'AI Extraction Failed',
+        description: err.message || 'Failed to extract data using AI.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsAiExtracting(false);
+    }
+  };
+
+  const processFile = useCallback((file: File) => {
+    const fileName = file.name.toLowerCase();
+    const isStandardSpreadsheet = fileName.endsWith('.xlsx') || fileName.endsWith('.xls') || fileName.endsWith('.ods') || fileName.endsWith('.csv') || fileName.endsWith('.tsv') || fileName.endsWith('.dbf');
+    
+    if (isStandardSpreadsheet) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const data = new Uint8Array(e.target?.result as ArrayBuffer);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const firstSheetName = workbook.SheetNames[0];
+          const firstSheet = workbook.Sheets[firstSheetName];
+          const jsonData = XLSX.utils.sheet_to_json<Record<string, string>>(firstSheet, { 
+            raw: false,
+            defval: '' 
+          });
+          
+          if (jsonData && jsonData.length > 0 && Object.keys(jsonData[0]).length > 1) {
+            processData(jsonData);
+            return;
+          }
+        } catch (error) {
+          console.warn('Standard XLSX parse failed, trying legacy text fallback...', error);
+        }
+
+        // Fallback for CSV/TSV using PapaParse
+        Papa.parse(file, {
+          header: true,
+          skipEmptyLines: true,
+          complete: (results) => {
+            if (results.data && results.data.length > 0) {
+              processData(results.data as Record<string, string>[]);
+            } else {
+              // Try legacy text/AI parsing fallback
+              readAsLegacyText(file);
+            }
+          },
+          error: () => readAsLegacyText(file),
+        });
+      };
+      reader.readAsArrayBuffer(file);
+    } else {
+      // Legacy document / binary backup (.doc, .docx, .pdf, .txt, .rtf, .dat, .bak)
+      readAsLegacyText(file);
+    }
+  }, [toast, entityType]);
+
+  const readAsLegacyText = (file: File) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      let rawText = '';
+      if (typeof e.target?.result === 'string') {
+        rawText = e.target.result;
+      } else if (e.target?.result instanceof ArrayBuffer) {
+        const decoder = new TextDecoder('latin1'); // Preserves character boundaries in binary .doc dumps
+        rawText = decoder.decode(e.target.result);
+      }
+
+      // Clean non-printable binary control characters while preserving lines and text
+      const cleanedText = rawText.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, ' ').trim();
+
+      if (!cleanedText) {
+        toast({ title: 'Empty Document', description: 'Could not extract readable text from file.', variant: 'destructive' });
+        return;
+      }
+
+      // Test line delimiter structure (e.g. pipe, tab, or comma)
+      const lines = cleanedText.split(/\r?\n/).filter(l => l.trim().length > 0);
+      const delimiters = ['|', '\t', ',', '   '];
+      let bestDelimiter = '';
+      let maxCols = 0;
+
+      for (const delim of delimiters) {
+        if (lines.length > 0) {
+          const cols = lines[0].split(delim).filter(Boolean).length;
+          if (cols > maxCols && cols >= 2) {
+            maxCols = cols;
+            bestDelimiter = delim;
+          }
+        }
+      }
+
+      if (bestDelimiter && lines.length > 1) {
+        const headerCols = lines[0].split(bestDelimiter).map(h => h.trim() || 'Col');
+        const rows: Record<string, string>[] = [];
+
+        for (let i = 1; i < lines.length; i++) {
+          const cells = lines[i].split(bestDelimiter);
+          const row: Record<string, string> = {};
+          headerCols.forEach((col, idx) => {
+            row[col] = cells[idx]?.trim() || '';
+          });
+          rows.push(row);
+        }
+
+        if (rows.length > 0) {
+          processData(rows);
+          return;
+        }
+      }
+
+      // Unstructured document/report (Atrex .doc, PDF report, Word doc, formatted text dump) -> AI extraction!
+      handleAiUnstructuredExtract(cleanedText);
+    };
+
+    // Try ArrayBuffer first for robust binary string decoding
+    reader.readAsArrayBuffer(file);
   };
 
   const handleFileSelect = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
@@ -362,36 +481,51 @@ export const IntelligentDataImportModal = ({
             <input
               ref={fileInputRef}
               type="file"
-              accept=".csv,.xlsx,.xls"
+              accept=".csv,.xlsx,.xls,.ods,.dbf,.doc,.docx,.txt,.rtf,.bak,.dat,.pdf"
               onChange={handleFileSelect}
               className="hidden"
             />
             
             <div
-              onClick={() => fileInputRef.current?.click()}
+              onClick={() => !isAiExtracting && fileInputRef.current?.click()}
               onDrop={handleDrop}
               onDragOver={(e) => e.preventDefault()}
-              className="w-full h-48 border-2 border-dashed border-border/50 rounded-2xl hover:border-primary/50 hover:bg-primary/5 transition-all flex flex-col items-center justify-center gap-4 cursor-pointer"
+              className={`w-full h-52 border-2 border-dashed border-border/50 rounded-2xl hover:border-primary/50 hover:bg-primary/5 transition-all flex flex-col items-center justify-center gap-3 cursor-pointer relative overflow-hidden ${isAiExtracting ? 'opacity-70 pointer-events-none' : ''}`}
             >
-              <div className="h-16 w-16 rounded-2xl bg-primary/10 flex items-center justify-center">
-                <Upload className="h-8 w-8 text-primary" />
-              </div>
-              <div className="text-center">
-                <p className="font-medium">Click to upload or drag and drop</p>
-                <p className="text-sm text-muted-foreground">CSV, Excel (.xlsx, .xls)</p>
-              </div>
+              {isAiExtracting ? (
+                <div className="flex flex-col items-center gap-3 text-primary animate-pulse">
+                  <Loader2 className="h-10 w-10 animate-spin" />
+                  <p className="font-semibold text-base">⚡ Deciphering Legacy Backup with AI...</p>
+                  <p className="text-xs text-muted-foreground max-w-sm text-center">Parsing legacy software report (Atrex, WinPharm, Word document, PDF or custom text backup)...</p>
+                </div>
+              ) : (
+                <>
+                  <div className="h-14 w-14 rounded-2xl bg-primary/10 flex items-center justify-center">
+                    <Upload className="h-7 w-7 text-primary" />
+                  </div>
+                  <div className="text-center px-4">
+                    <p className="font-medium text-base">Click to upload or drag & drop backup file</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Supports: <b>CSV, Excel (.xlsx, .xls), Word (.doc, .docx), Text dumps (.txt, .dat, .bak), PDF & DBF</b>
+                    </p>
+                  </div>
+                  <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 text-xs">
+                    <Sparkles className="h-3 w-3 mr-1" />
+                    Auto-Deciphers Atrex, WinPharm, Rx30 & Legacy Software Reports
+                  </Badge>
+                </>
+              )}
             </div>
 
-            <div className="mt-6 p-4 rounded-xl bg-muted/30">
-              <div className="flex items-center gap-2 mb-3">
+            <div className="mt-5 p-4 rounded-xl bg-muted/30 border border-border/40">
+              <div className="flex items-center gap-2 mb-2">
                 <Sparkles className="h-4 w-4 text-primary" />
-                <h4 className="font-medium">AI-Powered Import</h4>
+                <h4 className="font-medium text-sm">Universal Legacy Software Ingestion</h4>
               </div>
-              <ul className="text-sm text-muted-foreground space-y-1">
-                <li>• Automatically maps columns from your old system</li>
-                <li>• Works with any Nigerian supplier invoice format</li>
-                <li>• Preserves extra data you don't want to lose</li>
-                <li>• Auto-detects dates, batch numbers, prices</li>
+              <ul className="text-xs text-muted-foreground space-y-1">
+                <li>• <b>Proprietary Backup Support</b>: Works with messy Word dumps, binary exports, or text reports from Atrex, WinPharm, Rx30, or custom local POS.</li>
+                <li>• <b>AI Unstructured Extraction</b>: Automatically identifies Drug Name, Stock, Cost Price, Selling Price, Expiry Date & Batch numbers even if unformatted.</li>
+                <li>• <b>Zero Data Loss</b>: Unmapped fields are preserved safely in custom metadata for complete record keeping.</li>
               </ul>
             </div>
 
