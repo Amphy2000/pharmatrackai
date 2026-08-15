@@ -1,1 +1,21 @@
-      <DialogContent className="w-[95vw] max-w-5xl h-[90dvh] min-h-0 overflow-hidden flex flex-col p-3 sm:p-6">
+import { IntelligentDataImportModal } from '@/components/import/IntelligentDataImportModal';
+
+interface SmartCSVImportModalProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  defaultEntityType?: 'medication' | 'customer' | 'doctor';
+}
+
+export const SmartCSVImportModal = ({ 
+  open, 
+  onOpenChange, 
+  defaultEntityType = 'medication' 
+}: SmartCSVImportModalProps) => {
+  return (
+    <IntelligentDataImportModal
+      open={open}
+      onOpenChange={onOpenChange}
+      defaultEntityType={defaultEntityType}
+    />
+  );
+};
