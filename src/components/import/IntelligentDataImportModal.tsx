@@ -219,33 +219,47 @@ export const IntelligentDataImportModal = ({
         return;
       }
 
-      // Test line delimiter structure (e.g. pipe, tab, or comma)
+      // Scan lines to find header and table data (handles report title headers / page numbers)
       const lines = cleanedText.split(/\r?\n/).filter(l => l.trim().length > 0);
-      const delimiters = ['|', '\t', ',', '   '];
+      const delimiters = ['|', '\t', ',', ';', '   '];
+      
+      // 1. Multi-line Delimiter Scanner (scans top 20 lines to find the true table header)
       let bestDelimiter = '';
+      let bestHeaderIndex = -1;
       let maxCols = 0;
 
-      for (const delim of delimiters) {
-        if (lines.length > 0) {
-          const cols = lines[0].split(delim).filter(Boolean).length;
+      for (let lineIdx = 0; lineIdx < Math.min(20, lines.length); lineIdx++) {
+        for (const delim of delimiters) {
+          const cols = lines[lineIdx].split(delim).filter(c => c.trim().length > 0).length;
           if (cols > maxCols && cols >= 2) {
             maxCols = cols;
             bestDelimiter = delim;
+            bestHeaderIndex = lineIdx;
           }
         }
       }
 
-      if (bestDelimiter && lines.length > 1) {
-        const headerCols = lines[0].split(bestDelimiter).map(h => h.trim() || 'Col');
+      if (bestDelimiter && bestHeaderIndex !== -1 && lines.length > bestHeaderIndex + 1) {
+        const headerCols = lines[bestHeaderIndex]
+          .split(bestDelimiter)
+          .map(h => h.trim())
+          .filter(Boolean);
+
         const rows: Record<string, string>[] = [];
 
-        for (let i = 1; i < lines.length; i++) {
+        for (let i = bestHeaderIndex + 1; i < lines.length; i++) {
+          const lineText = lines[i].trim();
+          // Skip page footers or report headers
+          if (lineText.startsWith('Page ') || lineText.startsWith('Printed:') || lineText.startsWith('---')) continue;
+
           const cells = lines[i].split(bestDelimiter);
-          const row: Record<string, string> = {};
-          headerCols.forEach((col, idx) => {
-            row[col] = cells[idx]?.trim() || '';
-          });
-          rows.push(row);
+          if (cells.length >= 2) {
+            const row: Record<string, string> = {};
+            headerCols.forEach((col, idx) => {
+              row[col || `Col_${idx + 1}`] = cells[idx]?.trim() || '';
+            });
+            rows.push(row);
+          }
         }
 
         if (rows.length > 0) {
@@ -254,7 +268,29 @@ export const IntelligentDataImportModal = ({
         }
       }
 
-      // Unstructured document/report (Atrex .doc, PDF report, Word doc, formatted text dump) -> AI extraction!
+      // 2. Local Regex Pattern Extractor for print reports (e.g. "Paracetamol 500mg Tab   100   ₦250.00")
+      const regexRows: Record<string, string>[] = [];
+      for (const line of lines) {
+        const cleanLine = line.trim();
+        if (cleanLine.length < 5 || cleanLine.toLowerCase().includes('report') || cleanLine.toLowerCase().includes('total')) continue;
+        
+        // Matches: [Name] [Qty/Stock] [Price]
+        const match = cleanLine.match(/^([A-Za-z0-9\s/().%+-]{3,50})\s+(\d+)\s+(?:₦|\$|NGN|EUR|GBP)?\s*([\d,]+(?:\.\d{2})?)/);
+        if (match) {
+          regexRows.push({
+            'Product Name': match[1].trim(),
+            'Stock Quantity': match[2].trim(),
+            'Selling Price': match[3].replace(/,/g, '').trim(),
+          });
+        }
+      }
+
+      if (regexRows.length >= 2) {
+        processData(regexRows);
+        return;
+      }
+
+      // 3. Fallback: Unstructured document/report (Atrex .doc, PDF report, Word doc) -> AI extraction!
       handleAiUnstructuredExtract(cleanedText);
     };
 
