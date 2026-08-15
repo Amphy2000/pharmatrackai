@@ -41,6 +41,7 @@ import { useCustomers } from '@/hooks/useCustomers';
 import { useDoctors } from '@/hooks/useDoctors';
 import { MedicationFormData, MedicationCategory } from '@/types/medication';
 import { callPharmacyAi } from '@/lib/pharmacyAiClient';
+import mammoth from 'mammoth';
 
 interface IntelligentDataImportModalProps {
   open: boolean;
@@ -197,61 +198,23 @@ export const IntelligentDataImportModal = ({
     const isDocx = fileName.endsWith('.docx') || fileName.endsWith('.doc');
 
     if (isDocx) {
-      // Clean Word .docx XML Table Extractor
+      // Native Word .docx / .doc Document Text Extractor via mammoth
       const reader = new FileReader();
       reader.onload = async (e) => {
         try {
-          const buffer = e.target?.result as ArrayBuffer;
-          const decoder = new TextDecoder('utf-8');
-          const rawText = decoder.decode(buffer);
+          const arrayBuffer = e.target?.result as ArrayBuffer;
+          const result = await mammoth.extractRawText({ arrayBuffer });
+          const extractedText = result.value || '';
 
-          // Extract Word Table rows <w:tr> and cells <w:tc>
-          const trMatches = rawText.match(/<w:tr[\s>][\s\S]*?<\/w:tr>/gi);
-          if (trMatches && trMatches.length > 0) {
-            const rows: Record<string, string>[] = [];
-            let headers: string[] = [];
-
-            trMatches.forEach((trXml) => {
-              const tcMatches = trXml.match(/<w:tc[\s>][\s\S]*?<\/w:tc>/gi);
-              if (tcMatches) {
-                const cellTexts = tcMatches.map(tcXml => {
-                  const textMatches = tcXml.match(/<w:t[\s>][^>]*>([\s\S]*?)<\/w:t>/gi) || [];
-                  return textMatches.map(t => t.replace(/<[^>]+>/g, '')).join(' ').trim();
-                });
-
-                if (headers.length === 0 && cellTexts.some(c => c.length > 0)) {
-                  headers = cellTexts.map((h, idx) => h || `Col_${idx + 1}`);
-                } else if (cellTexts.some(c => c.length > 0)) {
-                  const row: Record<string, string> = {};
-                  cellTexts.forEach((val, colIdx) => {
-                    const headerKey = headers[colIdx] || `Col_${colIdx + 1}`;
-                    row[headerKey] = val;
-                  });
-                  rows.push(row);
-                }
-              }
-            });
-
-            if (rows.length > 0) {
-              processData(rows);
-              return;
-            }
+          if (extractedText && extractedText.trim().length > 10) {
+            parseExtractedText(extractedText);
+            return;
           }
-
-          // Fallback: extract plain text nodes <w:t> for AI extraction
-          const textMatches = rawText.match(/<w:t[\s>][^>]*>([\s\S]*?)<\/w:t>/gi);
-          if (textMatches && textMatches.length > 0) {
-            const plainText = textMatches.map(t => t.replace(/<[^>]+>/g, '')).join(' ');
-            if (plainText.trim().length > 10) {
-              handleAiUnstructuredExtract(plainText);
-              return;
-            }
-          }
-        } catch (err) {
-          console.warn('.docx parsing failed, using AI fallback...', err);
+        } catch (mammothErr) {
+          console.warn('Mammoth docx extraction failed, trying legacy text fallback...', mammothErr);
         }
 
-        handleAiUnstructuredExtract(`Document: ${file.name}`);
+        readAsLegacyText(file);
       };
       reader.readAsArrayBuffer(file);
       return;
@@ -299,6 +262,80 @@ export const IntelligentDataImportModal = ({
       readAsLegacyText(file);
     }
   }, [toast, entityType]);
+
+  const parseExtractedText = (cleanedText: string) => {
+    const lines = cleanedText.split(/\r?\n/).filter(l => l.trim().length > 0);
+    const delimiters = ['|', '\t', ',', ';', '   '];
+    
+    // 1. Multi-line Delimiter Scanner
+    let bestDelimiter = '';
+    let bestHeaderIndex = -1;
+    let maxCols = 0;
+
+    for (let lineIdx = 0; lineIdx < Math.min(20, lines.length); lineIdx++) {
+      for (const delim of delimiters) {
+        const cols = lines[lineIdx].split(delim).filter(c => c.trim().length > 0).length;
+        if (cols > maxCols && cols >= 2) {
+          maxCols = cols;
+          bestDelimiter = delim;
+          bestHeaderIndex = lineIdx;
+        }
+      }
+    }
+
+    if (bestDelimiter && bestHeaderIndex !== -1 && lines.length > bestHeaderIndex + 1) {
+      const headerCols = lines[bestHeaderIndex]
+        .split(bestDelimiter)
+        .map(h => h.trim())
+        .filter(Boolean);
+
+      const rows: Record<string, string>[] = [];
+
+      for (let i = bestHeaderIndex + 1; i < lines.length; i++) {
+        const lineText = lines[i].trim();
+        if (lineText.startsWith('Page ') || lineText.startsWith('Printed:') || lineText.startsWith('---')) continue;
+
+        const cells = lines[i].split(bestDelimiter);
+        if (cells.length >= 2) {
+          const row: Record<string, string> = {};
+          headerCols.forEach((col, idx) => {
+            row[col || `Col_${idx + 1}`] = cells[idx]?.trim() || '';
+          });
+          rows.push(row);
+        }
+      }
+
+      if (rows.length > 0) {
+        processData(rows, cleanedText);
+        return;
+      }
+    }
+
+    // 2. Line Pattern Extractor for tabular print lines (e.g. "1 Omeprazole Inj 10 Box 4,800.00 48,000.00")
+    const regexRows: Record<string, string>[] = [];
+    for (const line of lines) {
+      const cleanLine = line.trim();
+      if (cleanLine.length < 5 || cleanLine.toLowerCase().includes('report') || cleanLine.toLowerCase().includes('total')) continue;
+      
+      // Match line format: [Optional #] [Product Name] [Quantity] [Unit/Type] [Price/Unit] [Amount]
+      const lineMatch = cleanLine.match(/^(?:\d+\s+)?([A-Za-z0-9\s/().%+-]{3,50})\s+(\d+)\s*(?:[A-Za-z]{2,5})?\s+(?:₦|\$|NGN|EUR|GBP)?\s*([\d,]+(?:\.\d{2})?)/);
+      if (lineMatch) {
+        regexRows.push({
+          'Product Name': lineMatch[1].trim(),
+          'Stock Quantity': lineMatch[2].trim(),
+          'Selling Price': lineMatch[3].replace(/,/g, '').trim(),
+        });
+      }
+    }
+
+    if (regexRows.length >= 2) {
+      processData(regexRows, cleanedText);
+      return;
+    }
+
+    // 3. Fallback to AI unstructured extraction
+    handleAiUnstructuredExtract(cleanedText);
+  };
 
   const readAsLegacyText = (file: File) => {
     const reader = new FileReader();
