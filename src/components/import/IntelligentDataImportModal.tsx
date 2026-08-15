@@ -89,17 +89,55 @@ export const IntelligentDataImportModal = ({
 
   const [isAiExtracting, setIsAiExtracting] = useState(false);
 
-  const processData = (data: Record<string, string>[]) => {
+  const processData = (data: Record<string, string>[], originalRawText?: string) => {
     if (!data || data.length === 0) {
       toast({ title: 'Empty Data', description: 'No valid records could be parsed.', variant: 'destructive' });
       return;
     }
-    const fileHeaders = Object.keys(data[0]);
-    setRawData(data);
-    setHeaders(fileHeaders);
+
+    // Guard 1: Filter out rows that consist of raw binary noise (e.g. uncompressed ZIP bytes or binary dumps)
+    const cleanedRows = data.filter(row => {
+      const textSample = Object.values(row).join(' ');
+      if (!textSample || textSample.length < 3) return false;
+      // Count valid readable characters (letters, numbers, spaces, standard punctuation)
+      const readableCount = (textSample.match(/[a-zA-Z0-9\s.,/()%#₦$+-]/g) || []).length;
+      const ratio = readableCount / textSample.length;
+      // If less than 60% of characters are readable text, it's binary garbage
+      return ratio >= 0.60;
+    });
+
+    if (cleanedRows.length === 0) {
+      if (originalRawText && originalRawText.trim().length > 10) {
+        toast({
+          title: '⚡ Binary Backup Detected',
+          description: 'Document contains legacy binary formatting. Switched to AI extraction...',
+        });
+        handleAiUnstructuredExtract(originalRawText);
+        return;
+      }
+      toast({ title: 'Invalid Document', description: 'File contained unreadable binary formatting.', variant: 'destructive' });
+      return;
+    }
+
+    // Clean up headers from non-printable symbols
+    const firstRowKeys = Object.keys(cleanedRows[0]);
+    const cleanHeaders = firstRowKeys.map(k => k.replace(/[^a-zA-Z0-9\s_#/()%-]/g, '').trim() || 'Field');
+
+    const sanitizedRows = cleanedRows.map(row => {
+      const cleanRow: Record<string, string> = {};
+      firstRowKeys.forEach((oldKey, idx) => {
+        const newKey = cleanHeaders[idx];
+        const val = row[oldKey] || '';
+        cleanRow[newKey] = val.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F]/g, ' ').trim();
+      });
+      return cleanRow;
+    });
+
+    setRawData(sanitizedRows);
+    setHeaders(cleanHeaders);
     
     // Auto-map headers using AI fuzzy matching
-    const autoMappings = autoMapHeaders(fileHeaders, allFields, data);
+    const autoMappings = autoMapHeaders(cleanHeaders, allFields, sanitizedRows);
     setMappings(autoMappings);
     
     setStep('mapping');
@@ -324,7 +362,7 @@ export const IntelligentDataImportModal = ({
         }
 
         if (rows.length > 0) {
-          processData(rows);
+          processData(rows, cleanedText);
           return;
         }
       }
@@ -347,7 +385,7 @@ export const IntelligentDataImportModal = ({
       }
 
       if (regexRows.length >= 2) {
-        processData(regexRows);
+        processData(regexRows, cleanedText);
         return;
       }
 
