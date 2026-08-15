@@ -40,6 +40,7 @@ import { useMedications } from '@/hooks/useMedications';
 import { useCustomers } from '@/hooks/useCustomers';
 import { useDoctors } from '@/hooks/useDoctors';
 import { MedicationFormData, MedicationCategory } from '@/types/medication';
+import { callPharmacyAi } from '@/lib/pharmacyAiClient';
 
 interface IntelligentDataImportModalProps {
   open: boolean;
