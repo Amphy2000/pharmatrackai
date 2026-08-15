@@ -313,18 +313,43 @@ export const IntelligentDataImportModal = ({
 
     // 2. Line Pattern Extractor for tabular print lines (e.g. "1 Omeprazole Inj 10 Box 4,800.00 48,000.00")
     const regexRows: Record<string, string>[] = [];
+    const p1 = /^(?:\d+\s+)?(.*?)\s+(\d+)\s+([A-Za-z]{2,10})\s+(?:₦|\$|NGN|EUR|GBP)?\s*([\d,]+(?:\.\d{2})?)\s+(?:₦|\$|NGN|EUR|GBP)?\s*([\d,]+(?:\.\d{2})?)$/;
+    const p2 = /^(?:\d+\s+)?(.*?)\s+(\d+)\s+(?:₦|\$|NGN|EUR|GBP)?\s*([\d,]+(?:\.\d{2})?)\s+(?:₦|\$|NGN|EUR|GBP)?\s*([\d,]+(?:\.\d{2})?)$/;
+    const p3 = /^(?:\d+\s+)?(.*?)\s+(\d+)\s+(?:₦|\$|NGN|EUR|GBP)?\s*([\d,]+(?:\.\d{2})?)$/;
+
     for (const line of lines) {
       const cleanLine = line.trim();
       if (cleanLine.length < 5 || cleanLine.toLowerCase().includes('report') || cleanLine.toLowerCase().includes('total')) continue;
       
-      // Match line format: [Optional #] [Product Name] [Quantity] [Unit/Type] [Price/Unit] [Amount]
-      const lineMatch = cleanLine.match(/^(?:\d+\s+)?([A-Za-z0-9\s/().%+-]{3,50})\s+(\d+)\s*(?:[A-Za-z]{2,5})?\s+(?:₦|\$|NGN|EUR|GBP)?\s*([\d,]+(?:\.\d{2})?)/);
-      if (lineMatch) {
+      let match = cleanLine.match(p1);
+      if (match) {
         regexRows.push({
-          'Product Name': lineMatch[1].trim(),
-          'Stock Quantity': lineMatch[2].trim(),
-          'Selling Price': lineMatch[3].replace(/,/g, '').trim(),
+          'Product Name': match[1].trim(),
+          'Stock Quantity': match[2].trim(),
+          'Category': match[3].trim(),
+          'Purchase Price': match[4].replace(/,/g, '').trim(),
         });
+        continue;
+      }
+
+      match = cleanLine.match(p2);
+      if (match) {
+        regexRows.push({
+          'Product Name': match[1].trim(),
+          'Stock Quantity': match[2].trim(),
+          'Purchase Price': match[3].replace(/,/g, '').trim(),
+        });
+        continue;
+      }
+
+      match = cleanLine.match(p3);
+      if (match) {
+        regexRows.push({
+          'Product Name': match[1].trim(),
+          'Stock Quantity': match[2].trim(),
+          'Purchase Price': match[3].replace(/,/g, '').trim(),
+        });
+        continue;
       }
     }
 
@@ -407,18 +432,43 @@ export const IntelligentDataImportModal = ({
 
       // 2. Local Regex Pattern Extractor for print reports (e.g. "Paracetamol 500mg Tab   100   ₦250.00")
       const regexRows: Record<string, string>[] = [];
+      const p1 = /^(?:\d+\s+)?(.*?)\s+(\d+)\s+([A-Za-z]{2,10})\s+(?:₦|\$|NGN|EUR|GBP)?\s*([\d,]+(?:\.\d{2})?)\s+(?:₦|\$|NGN|EUR|GBP)?\s*([\d,]+(?:\.\d{2})?)$/;
+      const p2 = /^(?:\d+\s+)?(.*?)\s+(\d+)\s+(?:₦|\$|NGN|EUR|GBP)?\s*([\d,]+(?:\.\d{2})?)\s+(?:₦|\$|NGN|EUR|GBP)?\s*([\d,]+(?:\.\d{2})?)$/;
+      const p3 = /^(?:\d+\s+)?(.*?)\s+(\d+)\s+(?:₦|\$|NGN|EUR|GBP)?\s*([\d,]+(?:\.\d{2})?)$/;
+
       for (const line of lines) {
         const cleanLine = line.trim();
         if (cleanLine.length < 5 || cleanLine.toLowerCase().includes('report') || cleanLine.toLowerCase().includes('total')) continue;
         
-        // Matches: [Name] [Qty/Stock] [Price]
-        const match = cleanLine.match(/^([A-Za-z0-9\s/().%+-]{3,50})\s+(\d+)\s+(?:₦|\$|NGN|EUR|GBP)?\s*([\d,]+(?:\.\d{2})?)/);
+        let match = cleanLine.match(p1);
         if (match) {
           regexRows.push({
             'Product Name': match[1].trim(),
             'Stock Quantity': match[2].trim(),
-            'Selling Price': match[3].replace(/,/g, '').trim(),
+            'Category': match[3].trim(),
+            'Purchase Price': match[4].replace(/,/g, '').trim(),
           });
+          continue;
+        }
+
+        match = cleanLine.match(p2);
+        if (match) {
+          regexRows.push({
+            'Product Name': match[1].trim(),
+            'Stock Quantity': match[2].trim(),
+            'Purchase Price': match[3].replace(/,/g, '').trim(),
+          });
+          continue;
+        }
+
+        match = cleanLine.match(p3);
+        if (match) {
+          regexRows.push({
+            'Product Name': match[1].trim(),
+            'Stock Quantity': match[2].trim(),
+            'Purchase Price': match[3].replace(/,/g, '').trim(),
+          });
+          continue;
         }
       }
 
@@ -477,7 +527,18 @@ export const IntelligentDataImportModal = ({
       // Validate required fields
       config.fields.required.forEach(field => {
         if (!data[field]) {
-          errors.push(`Missing required field: ${config.labels[field] || field}`);
+          if (entityType === 'medication' && field === 'expiry_date') {
+            const twoYears = new Date();
+            twoYears.setFullYear(twoYears.getFullYear() + 2);
+            const defaultExp = twoYears.toISOString().split('T')[0];
+            data[field] = defaultExp;
+            warnings.push(`Expiry Date empty - defaulted to 2 years from now (${defaultExp})`);
+          } else if (entityType === 'medication' && field === 'unit_price') {
+            data[field] = '0';
+            warnings.push("Purchase Price empty - defaulted to 0");
+          } else {
+            errors.push(`Missing required field: ${config.labels[field] || field}`);
+          }
         }
       });
 
@@ -549,8 +610,12 @@ export const IntelligentDataImportModal = ({
     const categoryValue = (data.category || '').toLowerCase().trim();
     const category: MedicationCategory = categoryMap[categoryValue] || 'Other';
     
-    const expiryDate = parseFlexibleDate(data.expiry_date);
-    if (!expiryDate) throw new Error('Invalid expiry date');
+    let expiryDate = parseFlexibleDate(data.expiry_date);
+    if (!expiryDate) {
+      const twoYears = new Date();
+      twoYears.setFullYear(twoYears.getFullYear() + 2);
+      expiryDate = twoYears.toISOString().split('T')[0];
+    }
     
     const medication: MedicationFormData & { metadata?: Record<string, string> } = {
       name: data.name || '',
